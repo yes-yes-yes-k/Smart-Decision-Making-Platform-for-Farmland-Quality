@@ -15,7 +15,10 @@ class ToolExecutor:
             }
 
         try:
-            result = tool.run(**arguments)
+            if arguments:
+                result = tool.func(**arguments)
+            else:
+                result = tool.func()
             return {
                 "success": True,
                 "result": result,
