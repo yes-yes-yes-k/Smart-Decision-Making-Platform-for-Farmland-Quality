@@ -112,7 +112,7 @@ framework/
 **Interfaces:**
 - Produces: 完整的目录结构，为后续模块提供基础
 
-- [ ] **Step 1: 创建所有目录和 __init__.py 文件**
+- [x] **Step 1: 创建所有目录和 __init__.py 文件**
 
 ```bash
 mkdir -p framework/api/routes framework/llm framework/embedding framework/vector_store framework/rag framework/agents framework/function_calling framework/models framework/auth framework/upload framework/domain/assessment framework/domain/calculation framework/domain/data framework/domain/other_models
@@ -120,14 +120,14 @@ mkdir -p framework/api/routes framework/llm framework/embedding framework/vector
 touch framework/__init__.py framework/api/__init__.py framework/api/routes/__init__.py framework/llm/__init__.py framework/embedding/__init__.py framework/vector_store/__init__.py framework/rag/__init__.py framework/agents/__init__.py framework/function_calling/__init__.py framework/models/__init__.py framework/auth/__init__.py framework/upload/__init__.py framework/domain/__init__.py framework/domain/assessment/__init__.py framework/domain/calculation/__init__.py framework/domain/data/__init__.py framework/domain/other_models/__init__.py
 ```
 
-- [ ] **Step 2: 验证目录结构**
+- [x] **Step 2: 验证目录结构**
 
 ```bash
 find framework -name "__init__.py" | head -20
 ```
 Expected: 显示20个 __init__.py 文件路径
 
-- [ ] **Step 3: Commit**
+- [x] **Step 3: Commit**
 
 ```bash
 git add framework/
@@ -145,7 +145,7 @@ git commit -m "feat: create unified framework directory structure"
 - Produces: `Config` 类，包含数据库、JWT、LLM、Embedding、Chroma、文件上传等配置
 - Consumes: 环境变量
 
-- [ ] **Step 1: 编写配置模块**
+- [x] **Step 1: 编写配置模块**
 
 ```python
 import os
@@ -211,7 +211,7 @@ config_map = {
 }
 ```
 
-- [ ] **Step 2: 测试配置模块**
+- [x] **Step 2: 测试配置模块**
 
 ```python
 from framework.config import Config, config_map
@@ -221,7 +221,7 @@ print(f"Embed model: {Config.SILICONFLOW_EMBED_MODEL}")
 ```
 Expected: 输出正确的配置值
 
-- [ ] **Step 3: Commit**
+- [x] **Step 3: Commit**
 
 ```bash
 git add framework/config.py
@@ -239,13 +239,13 @@ git commit -m "feat: add unified configuration management module"
 - Produces: 更新后的项目依赖配置
 - Consumes: 当前 pyproject.toml
 
-- [ ] **Step 1: 读取当前 pyproject.toml**
+- [x] **Step 1: 读取当前 pyproject.toml**
 
 ```bash
 cat pyproject.toml
 ```
 
-- [ ] **Step 2: 更新依赖配置**
+- [x] **Step 2: 更新依赖配置**
 
 ```toml
 [project]
@@ -272,14 +272,14 @@ PyPDF2 = "^3.0.0"
 openpyxl = "^3.1.0"
 ```
 
-- [ ] **Step 3: 安装依赖**
+- [x] **Step 3: 安装依赖**
 
 ```bash
 pip install -e .
 ```
 Expected: 依赖安装成功
 
-- [ ] **Step 4: Commit**
+- [x] **Step 4: Commit**
 
 ```bash
 git add pyproject.toml
@@ -297,7 +297,7 @@ git commit -m "feat: update dependencies for unified framework"
 - Produces: `LLMService` 类，提供 `generate()` 和 `is_available()` 方法
 - Consumes: `framework/config.py`
 
-- [ ] **Step 1: 编写 LLM 服务**
+- [x] **Step 1: 编写 LLM 服务**
 
 ```python
 from __future__ import annotations
@@ -377,7 +377,7 @@ class LLMService:
 llm_service = LLMService()
 ```
 
-- [ ] **Step 2: 测试 LLM 服务**
+- [x] **Step 2: 测试 LLM 服务**
 
 ```python
 from framework.llm.service import llm_service
@@ -385,7 +385,7 @@ print(f"LLM available: {llm_service.is_available()}")
 ```
 Expected: 根据API密钥配置输出 True 或 False
 
-- [ ] **Step 3: Commit**
+- [x] **Step 3: Commit**
 
 ```bash
 git add framework/llm/service.py
@@ -403,7 +403,7 @@ git commit -m "feat: implement unified LLM service"
 - Produces: `EmbeddingService` 类，提供 `embed_query()` 和 `embed_documents()` 方法
 - Consumes: `framework/config.py`
 
-- [ ] **Step 1: 编写 Embedding 服务**
+- [x] **Step 1: 编写 Embedding 服务**
 
 ```python
 from __future__ import annotations
@@ -463,7 +463,7 @@ class EmbeddingService:
 embedding_service = EmbeddingService()
 ```
 
-- [ ] **Step 2: 测试 Embedding 服务**
+- [x] **Step 2: 测试 Embedding 服务**
 
 ```python
 from framework.embedding.service import embedding_service
@@ -471,7 +471,7 @@ print(f"Embedding available: {embedding_service.is_available()}")
 ```
 Expected: 根据API密钥配置输出 True 或 False
 
-- [ ] **Step 3: Commit**
+- [x] **Step 3: Commit**
 
 ```bash
 git add framework/embedding/service.py
@@ -489,7 +489,7 @@ git commit -m "feat: implement unified Embedding service with bge-m3"
 - Produces: `ChromaVectorStore` 类，提供 `add_documents()`, `search()`, `delete_by_source()` 方法
 - Consumes: `framework/config.py`, `framework/embedding/service.py`
 
-- [ ] **Step 1: 编写向量存储模块**
+- [x] **Step 1: 编写向量存储模块**
 
 ```python
 from __future__ import annotations
@@ -600,7 +600,7 @@ class ChromaVectorStore:
 vector_store = ChromaVectorStore()
 ```
 
-- [ ] **Step 2: 测试向量存储**
+- [x] **Step 2: 测试向量存储**
 
 ```python
 from framework.vector_store.chroma_store import vector_store
@@ -609,7 +609,7 @@ print(f"Collection stats: {stats}")
 ```
 Expected: 输出集合名称和文档数量
 
-- [ ] **Step 3: Commit**
+- [x] **Step 3: Commit**
 
 ```bash
 git add framework/vector_store/chroma_store.py
@@ -627,7 +627,7 @@ git commit -m "feat: implement Chroma vector store module"
 - Produces: `RAGChain` 类，提供 `chat()` 方法
 - Consumes: `framework/llm/service.py`, `framework/vector_store/chroma_store.py`, `framework/config.py`
 
-- [ ] **Step 1: 编写 RAG 问答链**
+- [x] **Step 1: 编写 RAG 问答链**
 
 ```python
 from __future__ import annotations
@@ -709,7 +709,7 @@ class RAGChain:
 rag_chain = RAGChain()
 ```
 
-- [ ] **Step 2: 测试 RAG 链**
+- [x] **Step 2: 测试 RAG 链**
 
 ```python
 from framework.rag.chain import rag_chain
@@ -718,7 +718,7 @@ print(f"RAG result: {result}")
 ```
 Expected: 输出问答结果字典
 
-- [ ] **Step 3: Commit**
+- [x] **Step 3: Commit**
 
 ```bash
 git add framework/rag/chain.py
@@ -736,7 +736,7 @@ git commit -m "feat: implement RAG QA chain"
 - Produces: `ToolRegistry` 类，提供 `register()`, `get()`, `list()`, `deregister()` 方法
 - Consumes: 无
 
-- [ ] **Step 1: 编写工具注册表**
+- [x] **Step 1: 编写工具注册表**
 
 ```python
 from __future__ import annotations
@@ -778,7 +778,7 @@ class ToolRegistry:
 tool_registry = ToolRegistry()
 ```
 
-- [ ] **Step 2: 测试工具注册表**
+- [x] **Step 2: 测试工具注册表**
 
 ```python
 from framework.function_calling.registry import tool_registry
@@ -796,7 +796,7 @@ print(f"After deregister: {tool_registry.list()}")
 ```
 Expected: 输出注册、获取、注销工具的结果
 
-- [ ] **Step 3: Commit**
+- [x] **Step 3: Commit**
 
 ```bash
 git add framework/function_calling/registry.py
@@ -814,7 +814,7 @@ git commit -m "feat: implement tool registry"
 - Produces: LangChain Tool 实例，注册到工具注册表
 - Consumes: `framework/function_calling/registry.py`, `framework/vector_store/chroma_store.py`
 
-- [ ] **Step 1: 编写 LangChain Tools 集成**
+- [x] **Step 1: 编写 LangChain Tools 集成**
 
 ```python
 from __future__ import annotations
@@ -845,7 +845,7 @@ document_search_tool = Tool(
 tool_registry.register("document_search", document_search_tool)
 ```
 
-- [ ] **Step 2: 测试工具集成**
+- [x] **Step 2: 测试工具集成**
 
 ```python
 from framework.function_calling.langchain_tools import document_search_tool
@@ -854,7 +854,7 @@ print(f"Search result: {result}")
 ```
 Expected: 输出搜索结果
 
-- [ ] **Step 3: Commit**
+- [x] **Step 3: Commit**
 
 ```bash
 git add framework/function_calling/langchain_tools.py
@@ -872,7 +872,7 @@ git commit -m "feat: implement LangChain Tools integration"
 - Produces: `CustomTool` 类和 `register_custom_tool()` 函数
 - Consumes: `framework/function_calling/registry.py`
 
-- [ ] **Step 1: 编写自定义工具接口**
+- [x] **Step 1: 编写自定义工具接口**
 
 ```python
 from __future__ import annotations
@@ -901,7 +901,7 @@ def register_custom_tool(tool: CustomTool) -> None:
     tool_registry.register(tool.name, langchain_tool, tool.schema)
 ```
 
-- [ ] **Step 2: 测试自定义工具注册**
+- [x] **Step 2: 测试自定义工具注册**
 
 ```python
 from framework.function_calling.custom_tools import CustomTool, register_custom_tool
@@ -930,7 +930,7 @@ print(f"Tools: {tool_registry.list()}")
 ```
 Expected: 输出包含 hello 工具的列表
 
-- [ ] **Step 3: Commit**
+- [x] **Step 3: Commit**
 
 ```bash
 git add framework/function_calling/custom_tools.py
@@ -948,7 +948,7 @@ git commit -m "feat: implement custom tool interface with JSON Schema"
 - Produces: `ToolExecutor` 类，提供 `execute()` 和 `execute_batch()` 方法
 - Consumes: `framework/function_calling/registry.py`
 
-- [ ] **Step 1: 编写工具执行器**
+- [x] **Step 1: 编写工具执行器**
 
 ```python
 from __future__ import annotations
@@ -993,7 +993,7 @@ class ToolExecutor:
 tool_executor = ToolExecutor()
 ```
 
-- [ ] **Step 2: 测试工具执行器**
+- [x] **Step 2: 测试工具执行器**
 
 ```python
 from framework.function_calling.executor import tool_executor
@@ -1002,7 +1002,7 @@ print(f"Execute result: {result}")
 ```
 Expected: 输出工具执行结果
 
-- [ ] **Step 3: Commit**
+- [x] **Step 3: Commit**
 
 ```bash
 git add framework/function_calling/executor.py
@@ -1020,7 +1020,7 @@ git commit -m "feat: implement tool executor"
 - Produces: `MultiAgentState` TypedDict 定义
 - Consumes: 无
 
-- [ ] **Step 1: 编写状态机定义**
+- [x] **Step 1: 编写状态机定义**
 
 ```python
 from __future__ import annotations
@@ -1037,7 +1037,7 @@ class MultiAgentState(TypedDict):
     relevance: Optional[float]
 ```
 
-- [ ] **Step 2: 测试状态定义**
+- [x] **Step 2: 测试状态定义**
 
 ```python
 from framework.agents.state import MultiAgentState
@@ -1055,7 +1055,7 @@ print(f"State created: {state}")
 ```
 Expected: 输出状态字典
 
-- [ ] **Step 3: Commit**
+- [x] **Step 3: Commit**
 
 ```bash
 git add framework/agents/state.py
@@ -1073,7 +1073,7 @@ git commit -m "feat: implement multi-agent state definition"
 - Produces: 各种节点函数（initialize_state, identify_question_node, route_models, execute_models, aggregate_results, llm_generate, finalize）
 - Consumes: `framework/agents/state.py`, `framework/llm/service.py`, `framework/embedding/service.py`, `framework/config.py`
 
-- [ ] **Step 1: 编写节点函数**
+- [x] **Step 1: 编写节点函数**
 
 ```python
 from __future__ import annotations
@@ -1335,7 +1335,7 @@ def finalize(state: MultiAgentState) -> MultiAgentState:
     return state
 ```
 
-- [ ] **Step 2: 测试节点函数**
+- [x] **Step 2: 测试节点函数**
 
 ```python
 from framework.agents.nodes import initialize_state, identify_question_node, identify_question_type
@@ -1349,7 +1349,7 @@ print(f"Identified: {state}")
 ```
 Expected: 输出初始化和识别后的状态
 
-- [ ] **Step 3: Commit**
+- [x] **Step 3: Commit**
 
 ```bash
 git add framework/agents/nodes.py
@@ -1367,7 +1367,7 @@ git commit -m "feat: implement concurrent model execution nodes"
 - Produces: `MultiAgentOrchestrator` 类，提供 `run()` 方法
 - Consumes: `framework/agents/state.py`, `framework/agents/nodes.py`
 
-- [ ] **Step 1: 编写多智能体编排器**
+- [x] **Step 1: 编写多智能体编排器**
 
 ```python
 from __future__ import annotations
@@ -1451,7 +1451,7 @@ class MultiAgentOrchestrator:
 multi_agent_orchestrator = MultiAgentOrchestrator()
 ```
 
-- [ ] **Step 2: 测试编排器**
+- [x] **Step 2: 测试编排器**
 
 ```python
 from framework.agents.orchestrator import multi_agent_orchestrator
@@ -1460,7 +1460,7 @@ print(f"Orchestrator result: {result}")
 ```
 Expected: 输出编排器执行结果
 
-- [ ] **Step 3: Commit**
+- [x] **Step 3: Commit**
 
 ```bash
 git add framework/agents/orchestrator.py
@@ -1482,7 +1482,7 @@ git commit -m "feat: implement multi-agent orchestrator"
 - Produces: SQLAlchemy 模型类
 - Consumes: `framework/config.py`
 
-- [ ] **Step 1: 创建数据库模型**
+- [x] **Step 1: 创建数据库模型**
 
 ```python
 # framework/models/__init__.py
@@ -1622,7 +1622,7 @@ class Document(db.Model):
         }
 ```
 
-- [ ] **Step 2: 测试模型导入**
+- [x] **Step 2: 测试模型导入**
 
 ```python
 from framework.models import User, Conversation, Message, Document
@@ -1630,7 +1630,7 @@ print("Models imported successfully")
 ```
 Expected: 输出成功信息
 
-- [ ] **Step 3: Commit**
+- [x] **Step 3: Commit**
 
 ```bash
 git add framework/models/
@@ -1649,7 +1649,7 @@ git commit -m "feat: migrate database models from org-backend"
 - Produces: JWT 认证工具函数和装饰器
 - Consumes: `framework/config.py`, `framework/models/user.py`
 
-- [ ] **Step 1: 编写 JWT 认证模块**
+- [x] **Step 1: 编写 JWT 认证模块**
 
 ```python
 # framework/auth/jwt.py
@@ -1686,7 +1686,7 @@ def admin_required(fn):
     return wrapper
 ```
 
-- [ ] **Step 2: 测试认证模块**
+- [x] **Step 2: 测试认证模块**
 
 ```python
 from framework.auth.jwt import md5_hash, generate_token
@@ -1694,7 +1694,7 @@ print(f"MD5 test: {md5_hash('test')}")
 ```
 Expected: 输出 MD5 哈希值
 
-- [ ] **Step 3: Commit**
+- [x] **Step 3: Commit**
 
 ```bash
 git add framework/auth/
@@ -1713,7 +1713,7 @@ git commit -m "feat: implement JWT authentication module"
 - Produces: 文件上传和文档解析功能
 - Consumes: `framework/config.py`, `framework/vector_store/chroma_store.py`
 
-- [ ] **Step 1: 编写文件上传模块**
+- [x] **Step 1: 编写文件上传模块**
 
 ```python
 # framework/upload/file_upload.py
@@ -1804,7 +1804,7 @@ def _parse_excel(file_path: str) -> str:
         return ""
 ```
 
-- [ ] **Step 2: 测试文件上传模块**
+- [x] **Step 2: 测试文件上传模块**
 
 ```python
 from framework.upload.file_upload import allowed_file, get_file_type
@@ -1813,7 +1813,7 @@ print(f"File type: {get_file_type('test.pdf')}")
 ```
 Expected: 输出 True 和 pdf
 
-- [ ] **Step 3: Commit**
+- [x] **Step 3: Commit**
 
 ```bash
 git add framework/upload/
@@ -1833,7 +1833,7 @@ git commit -m "feat: implement file upload and document parsing modules"
 - Produces: 六个专业模型（酸化评估、石灰计算、土壤数据加载、其他四个模型）
 - Consumes: `framework/config.py`
 
-- [ ] **Step 1: 迁移酸化评估模型**
+- [x] **Step 1: 迁移酸化评估模型**
 
 ```python
 # framework/domain/assessment/acidification.py
@@ -1946,7 +1946,7 @@ def prioritize_governance(assessment: Dict[str, Any], area_code: str = "lechang"
     return {"priorities": [], "total_towns": 0}
 ```
 
-- [ ] **Step 2: 迁移石灰计算模型**
+- [x] **Step 2: 迁移石灰计算模型**
 
 ```python
 # framework/domain/calculation/lime_calculator.py
@@ -1992,7 +1992,7 @@ def check_method_consistency(calculation: Dict[str, Any]) -> Dict[str, Any]:
     return {"consistency_level": consistency_level, "cv": round(cv, 2), "recommended_value": round(np.median(valid_values), 2)}
 ```
 
-- [ ] **Step 3: 迁移土壤数据加载模块**
+- [x] **Step 3: 迁移土壤数据加载模块**
 
 ```python
 # framework/domain/data/soil_data_loader.py
@@ -2051,7 +2051,7 @@ def _generate_formula_mock() -> pd.DataFrame:
     })
 ```
 
-- [ ] **Step 4: Commit**
+- [x] **Step 4: Commit**
 
 ```bash
 git add framework/domain/
@@ -2069,7 +2069,7 @@ git commit -m "feat: migrate professional models from AI_culti_demo"
 - Produces: Flask 应用实例，注册所有蓝图和扩展
 - Consumes: `framework/config.py`, `framework/models/user.py`, `framework/api/routes/`
 
-- [ ] **Step 1: 创建 Flask 应用**
+- [x] **Step 1: 创建 Flask 应用**
 
 ```python
 from flask import Flask
@@ -2108,7 +2108,7 @@ if __name__ == '__main__':
     app.run(host='0.0.0.0', port=5000)
 ```
 
-- [ ] **Step 2: Commit**
+- [x] **Step 2: Commit**
 
 ```bash
 git add framework/api/app.py
@@ -2130,7 +2130,7 @@ git commit -m "feat: create Flask application entry"
 - Produces: RESTful API 端点
 - Consumes: `framework/models/`, `framework/rag/chain.py`, `framework/agents/orchestrator.py`, `framework/upload/`
 
-- [ ] **Step 1: 创建认证路由**
+- [x] **Step 1: 创建认证路由**
 
 ```python
 # framework/api/routes/auth.py
@@ -2190,7 +2190,7 @@ def get_current_user():
     return jsonify({"status": "ok", "data": user.to_dict()})
 ```
 
-- [ ] **Step 2: 创建聊天路由**
+- [x] **Step 2: 创建聊天路由**
 
 ```python
 # framework/api/routes/chat.py
@@ -2271,7 +2271,7 @@ def chat():
     return jsonify({"status": "ok", "data": {"answer": result.get('answer', ''), "sources": result.get('sources', []), "message_id": assistant_message.id}})
 ```
 
-- [ ] **Step 3: 创建模型执行路由**
+- [x] **Step 3: 创建模型执行路由**
 
 ```python
 # framework/api/routes/models.py
@@ -2303,7 +2303,7 @@ def run_model():
     return jsonify(result)
 ```
 
-- [ ] **Step 4: 创建文档管理路由**
+- [x] **Step 4: 创建文档管理路由**
 
 ```python
 # framework/api/routes/docs.py
@@ -2383,7 +2383,7 @@ def delete_document(id):
     return jsonify({"status": "ok", "message": "文档删除成功"})
 ```
 
-- [ ] **Step 5: 创建县域诊断路由**
+- [x] **Step 5: 创建县域诊断路由**
 
 ```python
 # framework/api/routes/county.py
@@ -2417,7 +2417,7 @@ def diagnose():
     return jsonify({"status": "ok", "data": {"area": area_code, "assessment": assessment, "calculation": calculation}})
 ```
 
-- [ ] **Step 6: Commit**
+- [x] **Step 6: Commit**
 
 ```bash
 git add framework/api/routes/
