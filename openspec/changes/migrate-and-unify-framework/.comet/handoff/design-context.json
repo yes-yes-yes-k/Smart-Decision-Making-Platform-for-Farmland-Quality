@@ -1,0 +1,22 @@
+{
+  "change": "migrate-and-unify-framework",
+  "phase": "design",
+  "mode": "compact",
+  "canonical_spec": "openspec",
+  "generated_by": "comet-handoff.sh",
+  "context_hash": "afd6bc5ab11dfba8f2c50444da2ab4ef03629ea65e523f03da0fe2dff4b4ecba",
+  "files": [
+    { "path": "openspec/changes/migrate-and-unify-framework/proposal.md", "sha256": "6c5907d2c61ce94c5695c6969d05ccfdb105f5663d5fd3adcdada547f0b18d43" },
+    { "path": "openspec/changes/migrate-and-unify-framework/design.md", "sha256": "8b0a6408bbd3e08afac3826ec44e89d610c64d4b7b9254bdda4d44901098ea77" },
+    { "path": "openspec/changes/migrate-and-unify-framework/tasks.md", "sha256": "d951d6271d174a654a2e9bd24a606232ad73eeac347788624927d2efb2d14a68" },
+    { "path": "openspec/changes/migrate-and-unify-framework/specs/database-models/spec.md", "sha256": "f186f0ca779f5d14f56773223513cfe96e7d9e44ad16b738bbddb75bd582b8dd" },
+    { "path": "openspec/changes/migrate-and-unify-framework/specs/file-upload-management/spec.md", "sha256": "27718a38d28e09ccd851697269feaacb870a5425535b29bdaa7cd3e0fdce0165" },
+    { "path": "openspec/changes/migrate-and-unify-framework/specs/function-calling-system/spec.md", "sha256": "864adaa4d963cd822f65e2d3f8845aa27e4bd2c2e9b80d84e6b94f82980c9010" },
+    { "path": "openspec/changes/migrate-and-unify-framework/specs/jwt-authentication/spec.md", "sha256": "025d10c2d4821f0f6d7ca7d8cc2c810bb2938d95af3a49eb756aad2ff6115813" },
+    { "path": "openspec/changes/migrate-and-unify-framework/specs/multi-agent-orchestrator/spec.md", "sha256": "b9519fd30ac565a3790179a1e7b1ab593dc083d3ce271e90a16e9b2fc7a0b58d" },
+    { "path": "openspec/changes/migrate-and-unify-framework/specs/rag-chain/spec.md", "sha256": "19b3be75be5d299936e510b26822a832c1f68a053f91f66623ae01a56f38ccb7" },
+    { "path": "openspec/changes/migrate-and-unify-framework/specs/unified-embedding-service/spec.md", "sha256": "768f18711d724958b1ccd1a9ad3ff6b3ce4213c5e53d21df63e5dad6fc08e0e0" },
+    { "path": "openspec/changes/migrate-and-unify-framework/specs/unified-llm-service/spec.md", "sha256": "3d66948a43c49f10f9e32f82c95a01aecd2457f3afcfc76dcf5b60365bacc3e3" },
+    { "path": "openspec/changes/migrate-and-unify-framework/specs/vector-store/spec.md", "sha256": "397524436a8586b5a0118fd44d4b95ec48930fbe386d0a332db6b7f249ac705b" }
+  ]
+}
