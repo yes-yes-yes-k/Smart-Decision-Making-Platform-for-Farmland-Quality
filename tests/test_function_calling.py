@@ -53,8 +53,9 @@ def test_document_search_tool():
     """测试文档搜索工具"""
     tool = tool_registry.get("document_search")
     if tool:
-        result = tool.run("测试查询")
+        result = tool_executor.execute("document_search", {"query": "测试查询"})
         assert result is not None
+        assert "success" in result
         print("✓ 文档搜索工具正常")
     else:
         print("⚠ 文档搜索工具未注册（需要向量库支持）")

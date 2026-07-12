@@ -44,6 +44,7 @@ def create_default_admin():
     """创建默认管理员账户"""
     from flask import Flask
     import hashlib
+    import secrets
     app = Flask(__name__)
     app.config['SQLALCHEMY_DATABASE_URI'] = Config.SQLALCHEMY_DATABASE_URI
     app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
@@ -55,16 +56,19 @@ def create_default_admin():
             print("  管理员账户已存在，跳过创建")
             return
 
+        default_password = os.environ.get('DEFAULT_ADMIN_PASSWORD') or secrets.token_urlsafe(12)
         admin = User(
             username='admin',
-            password=hashlib.md5('admin123'.encode('utf-8')).hexdigest(),
+            password=hashlib.md5(default_password.encode('utf-8')).hexdigest(),
             nickname='系统管理员',
             role='admin',
             status=1,
         )
         db.session.add(admin)
         db.session.commit()
-        print("✓ 默认管理员账户创建成功 (admin/admin123)")
+        print(f"✓ 默认管理员账户创建成功 (admin/{default_password})")
+        if not os.environ.get('DEFAULT_ADMIN_PASSWORD'):
+            print("  注意: 首次登录请修改密码！")
 
 if __name__ == "__main__":
     print("=" * 50)

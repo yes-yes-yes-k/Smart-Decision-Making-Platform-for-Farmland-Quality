@@ -188,9 +188,17 @@ def rag_chat_node(state: MultiAgentState) -> MultiAgentState:
             "error": None,
         }
 
-async def _execute_model_concurrent(model_name: str, func: Callable, **kwargs) -> Tuple[str, Any]:
+async def _execute_model_concurrent(model_name: str, func: Callable, semaphore: asyncio.Semaphore, **kwargs) -> Tuple[str, Any]:
+    async with semaphore:
+        try:
+            result = func(**kwargs)
+            return model_name, {"success": True, "result": result}
+        except Exception as e:
+            return model_name, {"success": False, "error": str(e)}
+
+async def _execute_model_dependent(model_name: str, func: Callable, dep_result: dict, **kwargs) -> Tuple[str, Any]:
     try:
-        result = func(**kwargs)
+        result = func(assessment=dep_result, **kwargs)
         return model_name, {"success": True, "result": result}
     except Exception as e:
         return model_name, {"success": False, "error": str(e)}
@@ -200,44 +208,62 @@ def execute_models(state: MultiAgentState) -> MultiAgentState:
     request = state["request"]
     data = state["data"]
 
-    models_to_run = []
-    if question_type == 1:
-        models_to_run.append("acidification_assessment")
-    elif question_type == 2:
-        models_to_run.append("acidification_assessment")
-        models_to_run.append("lime_calculation")
-    elif question_type == 3:
-        models_to_run.append("nitrogen_impact")
-
     max_concurrent = Config.get_max_concurrent()
 
-    async def run_concurrent():
-        tasks = []
-        for model_name in models_to_run[:max_concurrent]:
-            if model_name == "acidification_assessment":
-                from framework.domain.assessment.acidification import assess_acidification
-                tasks.append(_execute_model_concurrent("acidification_assessment", assess_acidification, soil_data=data))
-            elif model_name == "lime_calculation":
+    async def run_models():
+        semaphore = asyncio.Semaphore(max_concurrent)
+        results = {}
+
+        independent = []
+        dependent = []
+
+        if question_type == 1:
+            independent.append("acidification_assessment")
+        elif question_type == 2:
+            independent.append("acidification_assessment")
+            dependent.append("lime_calculation")
+        elif question_type == 3:
+            dependent.append("nitrogen_impact")
+
+        if independent:
+            from framework.domain.assessment.acidification import assess_acidification
+            tasks = [_execute_model_concurrent(name, assess_acidification, semaphore, soil_data=data) for name in independent]
+            ind_results = await asyncio.gather(*tasks)
+            results.update(dict(ind_results))
+
+        if dependent:
+            dep_kwargs = {}
+            if "lime_calculation" in dependent:
                 from framework.domain.calculation.lime_calculator import calculate_lime_demand
-                tasks.append(_execute_model_concurrent("lime_calculation", calculate_lime_demand,
-                    assessment=state.get("model_results", {}).get("acidification_assessment", {}).get("result", {}),
+                assess_result = results.get("acidification_assessment", {}).get("result", {})
+                tasks = [_execute_model_dependent("lime_calculation", calculate_lime_demand, assess_result,
                     target_ph=request.get("target_ph", 6.0),
                     soil_depth=request.get("soil_depth", 20),
                     bulk_density=request.get("bulk_density", 1.2),
                     safety_factor=request.get("safety_factor", 1.3),
-                ))
-            elif model_name == "nitrogen_impact":
+                )]
+                dep_results = await asyncio.gather(*tasks)
+                results.update(dict(dep_results))
+            elif "nitrogen_impact" in dependent:
                 from framework.domain.assessment.acidification import simulate_nitrogen_impact
-                tasks.append(_execute_model_concurrent("nitrogen_impact", simulate_nitrogen_impact,
-                    assessment=state.get("model_results", {}).get("acidification_assessment", {}).get("result", {}),
+                assess_result = {}
+                if question_type == 3 and "acidification_assessment" not in results:
+                    from framework.domain.assessment.acidification import assess_acidification
+                    _, res = await _execute_model_concurrent("acidification_assessment", assess_acidification, semaphore, soil_data=data)
+                    assess_result = res.get("result", {})
+                    results["acidification_assessment"] = res
+                else:
+                    assess_result = results.get("acidification_assessment", {}).get("result", {})
+                tasks = [_execute_model_dependent("nitrogen_impact", simulate_nitrogen_impact, assess_result,
                     current_ph=request.get("current_ph", 5.5),
                     nitrogen_rates=request.get("nitrogen_rates", [0, 50, 100, 150, 200]),
-                ))
+                )]
+                dep_results = await asyncio.gather(*tasks)
+                results.update(dict(dep_results))
 
-        results = await asyncio.gather(*tasks)
-        return dict(results)
+        return results
 
-    model_results = asyncio.run(run_concurrent())
+    model_results = asyncio.run(run_models())
 
     return {
         **state,

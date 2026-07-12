@@ -1,13 +1,20 @@
 import os
+import secrets
 from typing import Optional
 
+ENV = os.environ.get('FLASK_ENV') or os.environ.get('ENV') or 'development'
+
 class Config:
-    SECRET_KEY = os.environ.get('SECRET_KEY') or 'enterprise-qa-secret-key-2024'
+    SECRET_KEY = os.environ.get('SECRET_KEY')
+    if not SECRET_KEY:
+        if ENV == 'production':
+            raise ValueError("SECRET_KEY must be set in production environment")
+        SECRET_KEY = 'dev-secret-key-change-in-production'
 
     DB_HOST = os.environ.get('DB_HOST') or 'localhost'
     DB_PORT = int(os.environ.get('DB_PORT') or 3306)
     DB_USER = os.environ.get('DB_USER') or 'root'
-    DB_PASSWORD = os.environ.get('DB_PASSWORD') or '12345678'
+    DB_PASSWORD = os.environ.get('DB_PASSWORD') or ''
     DB_NAME = os.environ.get('DB_NAME') or 'db_enterprise_qa'
 
     SQLALCHEMY_DATABASE_URI = (
@@ -21,7 +28,7 @@ class Config:
         'pool_recycle': 1800,
     }
 
-    JWT_SECRET_KEY = os.environ.get('JWT_SECRET_KEY') or 'jwt-enterprise-qa-secret-key-2024-secure'
+    JWT_SECRET_KEY = os.environ.get('JWT_SECRET_KEY') or SECRET_KEY
     JWT_ACCESS_TOKEN_EXPIRES = 24 * 60 * 60
 
     SILICONFLOW_API_KEY = os.environ.get('SILICONFLOW_API_KEY') or ''
