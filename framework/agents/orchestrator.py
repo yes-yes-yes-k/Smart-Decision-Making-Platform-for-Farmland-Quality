@@ -9,6 +9,7 @@ from .nodes import (
     route_models,
     execute_models,
     llm_generate,
+    rag_chat_node,
     aggregate_results,
     finalize,
 )
@@ -25,6 +26,7 @@ class MultiAgentOrchestrator:
         graph.add_node("identify_question", identify_question_node)
         graph.add_node("execute_models", execute_models)
         graph.add_node("llm_generate", llm_generate)
+        graph.add_node("rag_chat", rag_chat_node)
         graph.add_node("aggregate_results", aggregate_results)
         graph.add_node("finalize", finalize)
 
@@ -36,19 +38,20 @@ class MultiAgentOrchestrator:
             "identify_question",
             route_models,
             {
-                "finalize": "finalize",
+                "rag_chat": "rag_chat",
                 "execute_models": "execute_models",
             },
         )
 
         graph.add_edge("execute_models", "llm_generate")
         graph.add_edge("llm_generate", "aggregate_results")
+        graph.add_edge("rag_chat", "aggregate_results")
         graph.add_edge("aggregate_results", "finalize")
         graph.add_edge("finalize", END)
 
         return graph
 
-    def run(self, request: Dict[str, Any]) -> Dict[str, Any]:
+    def run(self, request: Dict[str, Any], conversation_history: list = None) -> Dict[str, Any]:
         if self._app is None:
             self._graph = self.build_graph()
             self._app = self._graph.compile()
@@ -58,6 +61,8 @@ class MultiAgentOrchestrator:
             "data": {},
             "model_results": {},
             "llm_response": {},
+            "rag_response": {},
+            "conversation_history": conversation_history or [],
             "status": "pending",
             "error": None,
             "question_type": None,
