@@ -17,6 +17,12 @@ try:
 except ImportError:
     EMBEDDING_AVAILABLE = False
 
+try:
+    from framework.rag.chain import rag_chain
+    RAG_AVAILABLE = True
+except ImportError:
+    RAG_AVAILABLE = False
+
 QUESTION_TYPE_1_KEYWORDS = ["酸化程度", "酸化等级", "pH分级", "酸度", "酸化现状", "土壤酸性", "酸性分级"]
 QUESTION_TYPE_2_KEYWORDS = ["治理", "调理剂", "石灰", "碱性材料", "改良", "修复", "调理", "施加", "用量"]
 QUESTION_TYPE_3_KEYWORDS = ["氮肥", "pH下降", "施氮", "酸化原因", "氮素", "化肥", "施肥"]
@@ -127,6 +133,8 @@ def initialize_state(state: MultiAgentState) -> MultiAgentState:
         "data": {},
         "model_results": {},
         "llm_response": {},
+        "rag_response": {},
+        "conversation_history": state.get("conversation_history", []),
         "question_type": None,
         "relevance": None,
     }
@@ -144,8 +152,41 @@ def identify_question_node(state: MultiAgentState) -> MultiAgentState:
 def route_models(state: MultiAgentState) -> str:
     question_type = state["question_type"]
     if question_type == 0:
-        return "finalize"
+        return "rag_chat"
     return "execute_models"
+
+def rag_chat_node(state: MultiAgentState) -> MultiAgentState:
+    question = state["request"].get("question", "")
+    conversation_history = state.get("conversation_history", [])
+
+    if not RAG_AVAILABLE:
+        return {
+            **state,
+            "rag_response": {
+                "success": False,
+                "answer": "RAG服务不可用",
+                "sources": [],
+            },
+            "error": None,
+        }
+
+    try:
+        result = rag_chain.chat(question, conversation_history=conversation_history)
+        return {
+            **state,
+            "rag_response": result,
+            "error": None,
+        }
+    except Exception as e:
+        return {
+            **state,
+            "rag_response": {
+                "success": False,
+                "answer": f"RAG处理失败: {str(e)}",
+                "sources": [],
+            },
+            "error": None,
+        }
 
 async def _execute_model_concurrent(model_name: str, func: Callable, **kwargs) -> Tuple[str, Any]:
     try:
@@ -228,19 +269,25 @@ def aggregate_results(state: MultiAgentState) -> MultiAgentState:
         relevance = state.get("relevance", 0.0)
         model_results = state.get("model_results", {})
         llm_response = state.get("llm_response", {})
+        rag_response = state.get("rag_response", {})
 
         final_result = {
             "status": "ok",
             "question": question,
             "question_type": question_type,
             "relevance": relevance,
-            "model_results": model_results,
-            "llm_response": llm_response.get("content", ""),
         }
 
         if question_type == 0:
-            final_result["status"] = "rejected"
-            final_result["message"] = "问题与耕地土壤酸化主题不相关"
+            final_result["answer"] = rag_response.get("answer", "")
+            final_result["sources"] = rag_response.get("sources", [])
+            final_result["model_results"] = {}
+            final_result["llm_response"] = ""
+        else:
+            final_result["model_results"] = model_results
+            final_result["llm_response"] = llm_response.get("content", "")
+            final_result["answer"] = llm_response.get("content", "")
+            final_result["sources"] = []
 
         return {**state, "model_results": final_result, "status": "completed", "error": None}
     except Exception as e:
