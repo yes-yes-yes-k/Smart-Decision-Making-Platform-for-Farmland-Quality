@@ -4,7 +4,7 @@ from flask_jwt_extended import jwt_required, get_jwt_identity
 from framework.models.conversation import Conversation
 from framework.models.message import Message
 from framework.models.user import db
-from framework.rag.chain import rag_chain
+from framework.agents.orchestrator import multi_agent_orchestrator
 
 chat_bp = Blueprint('chat', __name__)
 
@@ -53,6 +53,10 @@ def chat():
     data = request.get_json()
     conversation_id = data.get('conversation_id')
     message = data.get('message', '')
+    context = data.get('context', {})
+
+    if not message:
+        return jsonify({"status": "error", "message": "问题不能为空"}), 400
 
     if conversation_id:
         conversation = Conversation.query.filter_by(id=conversation_id, user_id=user_id).first()
@@ -67,10 +71,32 @@ def chat():
     db.session.add(user_message)
     db.session.commit()
 
-    result = rag_chain.chat(message)
+    history = [{"role": m.role, "content": m.content} for m in conversation.messages if m.id != user_message.id]
 
-    assistant_message = Message(conversation_id=conversation.id, role='assistant', content=result.get('answer', ''), sources=result.get('sources'))
+    orchestrator_request = {"question": message, **context}
+    result = multi_agent_orchestrator.run(orchestrator_request, conversation_history=history)
+
+    answer = result.get("answer", result.get("llm_response", ""))
+    sources = result.get("sources", [])
+    model_results = result.get("model_results", {})
+    question_type = result.get("question_type", 0)
+
+    assistant_message = Message(
+        conversation_id=conversation.id,
+        role='assistant',
+        content=answer,
+        sources=sources if sources else None,
+    )
     db.session.add(assistant_message)
     db.session.commit()
 
-    return jsonify({"status": "ok", "data": {"answer": result.get('answer', ''), "sources": result.get('sources', []), "message_id": assistant_message.id}})
+    return jsonify({
+        "status": "ok",
+        "data": {
+            "answer": answer,
+            "sources": sources,
+            "question_type": question_type,
+            "model_results": model_results,
+            "message_id": assistant_message.id,
+        }
+    })

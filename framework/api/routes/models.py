@@ -1,6 +1,5 @@
 from flask import Blueprint, request, jsonify
 from flask_jwt_extended import jwt_required
-from framework.agents.orchestrator import multi_agent_orchestrator
 
 models_bp = Blueprint('models', __name__)
 
@@ -16,14 +15,3 @@ def get_models():
         {"name": "model_6", "description": "模型6"},
     ]
     return jsonify({"status": "ok", "data": models})
-
-@models_bp.route('/run', methods=['POST'])
-@jwt_required()
-def run_model():
-    data = request.get_json()
-    question = data.get('question', '')
-    if not question:
-        return jsonify({"status": "error", "message": "问题不能为空"}), 400
-
-    result = multi_agent_orchestrator.run({"question": question})
-    return jsonify(result)
