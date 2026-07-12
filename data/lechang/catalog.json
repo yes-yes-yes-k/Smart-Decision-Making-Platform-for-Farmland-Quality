@@ -1,0 +1,134 @@
+{
+  "dataset_id": "lechang-county-demo",
+  "area": {
+    "code": "lechang",
+    "name": "乐昌市",
+    "level": "county",
+    "province": "广东省"
+  },
+  "source_root": "D:\\work\\2026\\0704\\耕地质量大模型-数据\\耕地质量大模型-数据",
+  "privacy": {
+    "soil_points_desensitized": true,
+    "notes": "三普与测土配方点位已脱敏，演示结果不应作为生产级空间真值。"
+  },
+  "assets": [
+    {
+      "asset_id": "lechang-county-boundary",
+      "name": "乐昌市行政边界",
+      "type": "vector",
+      "geometry": "polygon",
+      "path": "01_乐昌市行政边界矢量面数据\\01_乐昌市行政边界.shp",
+      "sidecars": [
+        ".cpg",
+        ".dbf",
+        ".prj",
+        ".qmd",
+        ".shx"
+      ],
+      "required_for": [
+        "overview",
+        "diagnosis"
+      ],
+      "source_kind": "raw"
+    },
+    {
+      "asset_id": "lechang-town-boundary",
+      "name": "乐昌市镇界",
+      "type": "vector",
+      "geometry": "polygon",
+      "path": "01_乐昌市行政边界矢量面数据\\02_乐昌市镇界.shp",
+      "sidecars": [
+        ".cpg",
+        ".dbf",
+        ".prj",
+        ".qmd",
+        ".shx"
+      ],
+      "required_for": [
+        "overview",
+        "diagnosis"
+      ],
+      "source_kind": "raw"
+    },
+    {
+      "asset_id": "third-survey-topsoil-points",
+      "name": "乐昌市土壤三普表层土点位数据",
+      "type": "vector_and_table",
+      "geometry": "point",
+      "path": "02_乐昌市土壤三普点数据\\01_乐昌市土壤三普表层土点位数据.shp",
+      "table_path": "02_乐昌市土壤三普点数据\\01_乐昌市土壤三普表层土点位数据.xlsx",
+      "required_for": [
+        "overview",
+        "diagnosis"
+      ],
+      "source_kind": "raw_desensitized"
+    },
+    {
+      "asset_id": "second-survey-points",
+      "name": "乐昌市二普点数据",
+      "type": "vector_and_table",
+      "geometry": "point",
+      "path": "03_乐昌市土壤二普点数据\\01_乐昌市二普点数据.shp",
+      "table_path": "03_乐昌市土壤二普点数据\\01_乐昌市二普点数据.xlsx",
+      "required_for": [
+        "diagnosis"
+      ],
+      "source_kind": "raw_desensitized"
+    },
+    {
+      "asset_id": "formula-fertilization-points",
+      "name": "乐昌市测土配方点数据",
+      "type": "vector_and_table",
+      "geometry": "point",
+      "path": "04_乐昌市测土配方点数据\\01_乐昌市测土配方点数据_打乱.shp",
+      "table_path": "04_乐昌市测土配方点数据\\01_乐昌市测土配方点数据_打乱.csv",
+      "required_for": [
+        "diagnosis"
+      ],
+      "source_kind": "raw_desensitized"
+    },
+    {
+      "asset_id": "guangdong-cropland-mask",
+      "name": "广东省耕地掩膜",
+      "type": "raster",
+      "geometry": "grid",
+      "path": "05_广东省耕地掩膜\\02_GDcropland_GLCFCS30D_90m.tif",
+      "required_for": [
+        "overview"
+      ],
+      "source_kind": "raw"
+    }
+  ],
+  "derived_layers": [
+    {
+      "layer_id": "acidification-risk",
+      "name": "酸化风险",
+      "source_assets": [
+        "third-survey-topsoil-points",
+        "formula-fertilization-points"
+      ],
+      "status": "stub",
+      "notes": "首版使用结构化规则占位，后续可替换为真实模型派生结果。"
+    },
+    {
+      "layer_id": "quality-overview",
+      "name": "耕地质量总览",
+      "source_assets": [
+        "guangdong-cropland-mask",
+        "third-survey-topsoil-points"
+      ],
+      "status": "stub",
+      "notes": "首版用于接口契约验证，不宣称生产级质量等级结果。"
+    },
+    {
+      "layer_id": "organic-matter",
+      "name": "有机质水平",
+      "source_assets": [
+        "third-survey-topsoil-points",
+        "formula-fertilization-points"
+      ],
+      "status": "stub",
+      "notes": "字段映射确认后可从样点表派生。"
+    }
+  ]
+}

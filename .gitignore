@@ -1,0 +1,12 @@
+src/ai_culti_demo/__pycache__/__init__.cpython-312.pyc
+src/ai_culti_demo/__pycache__/catalog.cpython-312.pyc
+src/ai_culti_demo/__pycache__/cli.cpython-312.pyc
+src/ai_culti_demo/__pycache__/diagnosis.cpython-312.pyc
+src/ai_culti_demo/__pycache__/http_server.cpython-312.pyc
+src/ai_culti_demo/__pycache__/overview.cpython-312.pyc
+src/ai_culti_demo/__pycache__/report.cpython-312.pyc
+src/ai_culti_demo/__pycache__/runtime.cpython-312.pyc
+src/ai_culti_demo/__pycache__/thematic_models.cpython-312.pyc
+tests/__pycache__/test_interfaces.cpython-312.pyc
+tests/__pycache__/test_thematic_models.cpython-312.pyc
+**/__pycache__/**

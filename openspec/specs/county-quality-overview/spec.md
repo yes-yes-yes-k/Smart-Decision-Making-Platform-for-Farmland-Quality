@@ -1,0 +1,30 @@
+# county-quality-overview Specification
+
+## Purpose
+TBD - created by archiving change bootstrap-lechang-county-demo. Update Purpose after archive.
+## Requirements
+### Requirement: 县域总览结构化接口
+系统 MUST 提供一个面向乐昌市的县域总览结构化接口，用于返回行政边界、耕地范围、土壤点位和核心质量相关图层的可用信息，供未来 Agent 或前端按统一契约调用。
+
+#### Scenario: 请求县域总览
+- **WHEN** 调用方请求乐昌市县域总览信息
+- **THEN** 系统 MUST 返回乐昌市范围，并至少包含行政边界图层、耕地掩膜图层和土壤样点图层的结构化描述
+
+#### Scenario: 请求专题图层清单
+- **WHEN** 调用方请求酸化风险、耕地质量等级或有机质相关专题图层
+- **THEN** 系统 MUST 返回对应专题图层的标识、名称、来源和展示所需的最小元数据
+
+### Requirement: 图层来源可追溯
+系统 MUST 对县域总览接口中返回的每个图层提供来源说明，使未来 Agent 或前端可以识别该图层来自边界数据、样点数据、派生结果或历史模型输出。
+
+#### Scenario: 查询图层来源
+- **WHEN** 调用方读取任一专题图层的详情
+- **THEN** 系统 MUST 返回该图层的来源类型、数据范围和是否为派生结果
+
+### Requirement: 总览接口结果机器可读
+系统 MUST 以机器可读格式返回总览接口结果，避免将关键图层信息仅放在自然语言文本中。
+
+#### Scenario: 解析总览接口结果
+- **WHEN** 未来 Agent 或前端解析县域总览接口返回值
+- **THEN** 系统 MUST 以稳定字段返回区域标识、图层列表和来源说明，且不依赖自然语言解析
+
