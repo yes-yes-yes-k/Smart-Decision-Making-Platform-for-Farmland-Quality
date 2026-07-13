@@ -1,5 +1,5 @@
-workflow: full
-language: en
+workflow: tweak
+language: zh-CN
 phase: open
 context_compression: off
 build_mode: null
@@ -10,7 +10,7 @@ review_mode: standard
 isolation: null
 verify_mode: null
 auto_transition: true
-base_ref: 30da580336831d3c432c89ee17781bb36c3d6901
+base_ref: 71b01a7a57692941710d6edfb2167ed78b101f98
 design_doc: null
 plan: null
 verify_result: pending

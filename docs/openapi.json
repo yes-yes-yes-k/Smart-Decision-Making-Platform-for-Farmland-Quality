@@ -3,7 +3,7 @@
   "info": {
     "title": "耕地土壤酸化治理智能问答系统 API",
     "description": "集成 RAG、Function Calling 和多智能体架构的统一框架 API，底层引擎基于 ai_culti_demo",
-    "version": "1.1.0"
+    "version": "1.2.0"
   },
   "servers": [
     {
@@ -579,6 +579,93 @@
         }
       }
     },
+    "/api/v1/models/run": {
+      "post": {
+        "tags": ["模型"],
+        "summary": "执行专题模型",
+        "description": "执行指定的专题模型，支持6个模型：spatial-structure-analysis、soil-indicator-analysis、obstacle-factor-identification、acidification-governance、organic-matter-improvement、multi-factor-collaborative-improvement",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "model_id": {
+                    "type": "string",
+                    "description": "模型ID",
+                    "example": "acidification-governance"
+                  },
+                  "area_code": {
+                    "type": "string",
+                    "description": "区域代码",
+                    "example": "lechang"
+                  },
+                  "longitude": {
+                    "type": "number",
+                    "description": "经度坐标（可选）"
+                  },
+                  "latitude": {
+                    "type": "number",
+                    "description": "纬度坐标（可选）"
+                  },
+                  "indicators": {
+                    "type": "object",
+                    "description": "指标参数（可选）"
+                  },
+                  "context": {
+                    "type": "object",
+                    "description": "上下文参数（可选）"
+                  }
+                },
+                "required": ["model_id"]
+              },
+              "example": {
+                "model_id": "acidification-governance",
+                "area_code": "lechang",
+                "target_ph": 6.0
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "成功",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "status": {
+                      "type": "string",
+                      "example": "ok"
+                    },
+                    "data": {
+                      "$ref": "#/components/schemas/ModelRunResult"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "参数错误",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/docs/": {
       "get": {
         "tags": ["文档"],
@@ -903,6 +990,60 @@
           }
         }
       }
+    },
+    "/api/v1/report/summary": {
+      "post": {
+        "tags": ["报告"],
+        "summary": "报告摘要",
+        "description": "将诊断结果或模型执行结果整理为稳定、可拆解的汇报摘要",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CountyDiagnosis"
+              },
+              "description": "诊断结果或模型执行结果（必须包含 status: ok）"
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "成功",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "status": {
+                      "type": "string",
+                      "example": "ok"
+                    },
+                    "data": {
+                      "$ref": "#/components/schemas/ReportSummary"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "参数错误",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
     }
   },
   "components": {
@@ -1173,6 +1314,153 @@
             "properties": {
               "level": {
                 "type": "string"
+              }
+            }
+          }
+        }
+      },
+      "ModelRunResult": {
+        "type": "object",
+        "properties": {
+          "status": {
+            "type": "string",
+            "example": "ok"
+          },
+          "model": {
+            "$ref": "#/components/schemas/ThematicModel"
+          },
+          "area": {
+            "type": "object",
+            "properties": {
+              "code": {
+                "type": "string"
+              },
+              "name": {
+                "type": "string"
+              }
+            }
+          },
+          "summary": {
+            "type": "string",
+            "description": "模型执行结果摘要"
+          },
+          "findings": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "title": {
+                  "type": "string"
+                },
+                "content": {
+                  "type": "string"
+                }
+              }
+            },
+            "description": "发现列表"
+          },
+          "recommendations": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "建议列表"
+          },
+          "recommended_layers": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "推荐图层"
+          },
+          "lineage": {
+            "type": "object",
+            "description": "数据溯源信息"
+          },
+          "reliability": {
+            "$ref": "#/components/schemas/Reliability"
+          },
+          "fallback": {
+            "type": "object",
+            "description": "降级策略信息"
+          }
+        }
+      },
+      "Reliability": {
+        "type": "object",
+        "properties": {
+          "level": {
+            "type": "string",
+            "example": "demo_stub"
+          },
+          "message": {
+            "type": "string",
+            "description": "可靠性说明"
+          }
+        }
+      },
+      "ReportSummary": {
+        "type": "object",
+        "properties": {
+          "status": {
+            "type": "string",
+            "example": "ok"
+          },
+          "diagnosis_id": {
+            "type": "string",
+            "description": "诊断ID"
+          },
+          "area": {
+            "type": "object",
+            "description": "区域信息"
+          },
+          "summary": {
+            "type": "string",
+            "description": "摘要内容"
+          },
+          "findings": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "title": {
+                  "type": "string"
+                },
+                "content": {
+                  "type": "string"
+                }
+              }
+            },
+            "description": "发现列表"
+          },
+          "recommendations": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "建议列表"
+          },
+          "actions": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "待执行动作"
+          },
+          "source": {
+            "type": "object",
+            "properties": {
+              "diagnosis_topic": {
+                "type": "string"
+              },
+              "recommended_layers": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              },
+              "reliability": {
+                "$ref": "#/components/schemas/Reliability"
               }
             }
           }

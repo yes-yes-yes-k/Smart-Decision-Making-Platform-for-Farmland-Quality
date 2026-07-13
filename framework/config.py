@@ -57,12 +57,18 @@ class Config:
 
 class DevelopmentConfig(Config):
     DEBUG = True
+    SQLALCHEMY_DATABASE_URI = 'sqlite:///./development.db'
 
 class ProductionConfig(Config):
     DEBUG = False
 
+class SQLiteConfig(Config):
+    DEBUG = True
+    SQLALCHEMY_DATABASE_URI = 'sqlite:///./development.db'
+
 config_map = {
     'development': DevelopmentConfig,
     'production': ProductionConfig,
-    'default': DevelopmentConfig
+    'default': DevelopmentConfig,
+    'sqlite': SQLiteConfig
 }

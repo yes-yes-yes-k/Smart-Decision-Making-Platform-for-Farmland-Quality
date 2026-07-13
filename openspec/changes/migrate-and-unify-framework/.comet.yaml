@@ -1,6 +1,10 @@
 workflow: full
 language: zh-CN
-phase: build
+phase: archive
+verify_result: pass
+verification_report: docs/superpowers/reports/2026-07-13-migrate-and-unify-framework-verify.md
+verified_at: 2026-07-13
+verify_mode: full
 context_compression: off
 build_mode: subagent-driven-development
 build_pause: null
@@ -15,7 +19,7 @@ design_doc: docs/superpowers/specs/2026-07-12-migrate-and-unify-framework-design
 plan: docs/superpowers/plans/2026-07-12-migrate-and-unify-framework.md
 verify_result: pending
 verification_report: null
-branch_status: pending
+branch_status: handled
 created_at: 2026-07-12
 verified_at: null
 archived: false

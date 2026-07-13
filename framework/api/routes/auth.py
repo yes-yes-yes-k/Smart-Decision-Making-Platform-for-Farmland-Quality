@@ -1,12 +1,9 @@
-import hashlib
 from flask import Blueprint, request, jsonify
 from flask_jwt_extended import create_access_token, jwt_required, get_jwt_identity
+from werkzeug.security import check_password_hash, generate_password_hash
 from framework.models.user import User, db
 
 auth_bp = Blueprint('auth', __name__)
-
-def md5_hash(password: str) -> str:
-    return hashlib.md5(password.encode('utf-8')).hexdigest()
 
 @auth_bp.route('/login', methods=['POST'])
 def login():
@@ -18,7 +15,7 @@ def login():
     if not username or not password:
         return jsonify({"status": "error", "message": "用户名和密码不能为空"}), 400
     user = User.query.filter_by(username=username).first()
-    if not user or user.password != md5_hash(password):
+    if not user or not check_password_hash(user.password, password):
         return jsonify({"status": "error", "message": "用户名或密码错误"}), 401
     access_token = create_access_token(identity=str(user.id))
     return jsonify({"status": "ok", "data": {"token": access_token, "user": user.to_dict()}, "message": "登录成功"})
@@ -39,7 +36,7 @@ def register():
         return jsonify({"status": "error", "message": "用户名和密码不能为空"}), 400
     if User.query.filter_by(username=username).first():
         return jsonify({"status": "error", "message": "用户名已存在"}), 400
-    new_user = User(username=username, password=md5_hash(password), nickname=data.get('nickname', username), role=data.get('role', 'user'))
+    new_user = User(username=username, password=generate_password_hash(password), nickname=data.get('nickname', username), role=data.get('role', 'user'))
     db.session.add(new_user)
     db.session.commit()
     return jsonify({"status": "ok", "data": new_user.to_dict(), "message": "用户创建成功"})

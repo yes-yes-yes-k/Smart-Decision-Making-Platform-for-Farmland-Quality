@@ -2,6 +2,7 @@
 change: multi-agent-model-framework
 design-doc: docs/superpowers/specs/2026-07-13-multi-agent-model-framework-design.md
 base-ref: 71b01a7a57692941710d6edfb2167ed78b101f98
+archived-with: 2026-07-13-multi-agent-model-framework
 ---
 
 # 多智能体专业模型框架实施计划
@@ -52,6 +53,7 @@ base-ref: 71b01a7a57692941710d6edfb2167ed78b101f98
 - `framework/agents/nodes.py` — `execute_models` 函数优先调用 `agent_manager.process`，保留原 `_execute_models_fallback` 作为兜底。
 - `framework/api/routes/chat.py` — `chat()` 端点解析 Manager 返回的结构化字段，合并到响应 JSON 中。
 
+archived-with: 2026-07-13-multi-agent-model-framework
 ---
 
 ### Task 1: BaseAgent 抽象基类与 MockDataLoader 工具
@@ -260,6 +262,7 @@ git add framework/agents/base.py framework/agents/mock_data.py tests/test_agent_
 git commit -m "feat(agents): 添加 BaseAgent 抽象基类与 MockDataLoader 工具"
 ```
 
+archived-with: 2026-07-13-multi-agent-model-framework
 ---
 
 ### Task 2: RoleRouter 角色路由器
@@ -381,6 +384,7 @@ git add framework/agents/router.py tests/test_agent_base.py
 git commit -m "feat(agents): 添加 RoleRouter 角色路由器"
 ```
 
+archived-with: 2026-07-13-multi-agent-model-framework
 ---
 
 ### Task 3: AgentManager 中心化编排器
@@ -693,6 +697,7 @@ git add framework/agents/manager.py tests/test_agent_manager.py
 git commit -m "feat(agents): 添加 AgentManager 中心化编排器（含桩智能体回退）"
 ```
 
+archived-with: 2026-07-13-multi-agent-model-framework
 ---
 
 ### Task 4: StabilityRiskAgent（模型1）
@@ -893,6 +898,7 @@ git add framework/agents/specialized/__init__.py framework/agents/specialized/st
 git commit -m "feat(agents): 实现 StabilityRiskAgent（模型1）"
 ```
 
+archived-with: 2026-07-13-multi-agent-model-framework
 ---
 
 ### Task 5: PotentialAssessmentAgent（模型2）
@@ -1106,6 +1112,7 @@ git add framework/agents/specialized/potential_agent.py framework/agents/special
 git commit -m "feat(agents): 实现 PotentialAssessmentAgent（模型2）"
 ```
 
+archived-with: 2026-07-13-multi-agent-model-framework
 ---
 
 ### Task 6: ProblemIdentificationAgent（模型3）
@@ -1305,6 +1312,7 @@ git add framework/agents/specialized/problem_agent.py framework/agents/specializ
 git commit -m "feat(agents): 实现 ProblemIdentificationAgent（模型3）"
 ```
 
+archived-with: 2026-07-13-multi-agent-model-framework
 ---
 
 ### Task 7: AcidificationRemediationAgent（模型4）
@@ -1525,6 +1533,7 @@ git add framework/agents/specialized/acidification_agent.py framework/agents/spe
 git commit -m "feat(agents): 实现 AcidificationRemediationAgent（模型4）"
 ```
 
+archived-with: 2026-07-13-multi-agent-model-framework
 ---
 
 ### Task 8: OrganicMatterAgent（模型5）
@@ -1747,6 +1756,7 @@ git add framework/agents/specialized/organic_matter_agent.py framework/agents/sp
 git commit -m "feat(agents): 实现 OrganicMatterAgent（模型5）"
 ```
 
+archived-with: 2026-07-13-multi-agent-model-framework
 ---
 
 ### Task 9: ComprehensiveImprovementAgent（模型6）
@@ -2005,6 +2015,7 @@ git add framework/agents/specialized/comprehensive_agent.py framework/agents/spe
 git commit -m "feat(agents): 实现 ComprehensiveImprovementAgent（模型6）"
 ```
 
+archived-with: 2026-07-13-multi-agent-model-framework
 ---
 
 ### Task 10: 在 LangGraph execute_models 节点集成 AgentManager
@@ -2167,6 +2178,7 @@ git add framework/agents/__init__.py framework/agents/nodes.py tests/test_agent_
 git commit -m "feat(agents): 在 execute_models 节点集成 AgentManager"
 ```
 
+archived-with: 2026-07-13-multi-agent-model-framework
 ---
 
 ### Task 11: 更新 /api/v1/chat/ 接口返回多智能体结构化结果
@@ -2314,6 +2326,7 @@ git add framework/api/routes/chat.py tests/test_agent_integration.py
 git commit -m "feat(api): /api/v1/chat/ 返回多智能体结构化结果"
 ```
 
+archived-with: 2026-07-13-multi-agent-model-framework
 ---
 
 ### Task 12: 端到端角色路由验证与回归测试
@@ -2419,6 +2432,7 @@ git add tests/test_agent_integration.py openspec/changes/multi-agent-model-frame
 git commit -m "test(agents): 端到端验证三类角色路由并完成 tasks.md 勾选"
 ```
 
+archived-with: 2026-07-13-multi-agent-model-framework
 ---
 
 ## 计划完成
@@ -2444,3 +2458,4 @@ git commit -m "test(agents): 端到端验证三类角色路由并完成 tasks.md
 3. **类型一致性：** `BaseAgent` 构造签名、`execute`/`answer_question` 返回结构、`RoleRouter` 方法名、`AgentManager.process` 返回结构、`agent_manager` 单例名在所有任务中一致；`model-1` 至 `model-6` ID 与依赖关系在 Task 3、Task 4-9、Task 12 中一致。
 
 **关于 tasks.md 3.3 的说明：** `orchestrator.py` 中的 `MultiAgentOrchestrator.run` 通过 `execute_models` 节点间接调用 AgentManager，无需修改 orchestrator 本身。如需在 Task 10 验证此点，Task 12 的 `test_e2e_*` 测试已通过 `execute_models` → `agent_manager` 链路间接覆盖。
+

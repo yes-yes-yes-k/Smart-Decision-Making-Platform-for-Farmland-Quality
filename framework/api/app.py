@@ -8,6 +8,7 @@ from framework.api.routes.chat import chat_bp
 from framework.api.routes.models import models_bp
 from framework.api.routes.docs import docs_bp
 from framework.api.routes.county import county_bp
+from framework.api.routes.report import report_bp
 
 def create_app(config_name: str = 'default') -> Flask:
     app = Flask(__name__)
@@ -22,6 +23,7 @@ def create_app(config_name: str = 'default') -> Flask:
     app.register_blueprint(models_bp, url_prefix='/api/v1/models')
     app.register_blueprint(docs_bp, url_prefix='/api/v1/docs')
     app.register_blueprint(county_bp, url_prefix='/api/v1/county')
+    app.register_blueprint(report_bp, url_prefix='/api/v1/report')
 
     @app.route('/')
     def index():

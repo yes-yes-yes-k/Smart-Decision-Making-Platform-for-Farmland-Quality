@@ -16,3 +16,28 @@ def get_models():
         ]
         return jsonify({"status": "ok", "data": models})
     return jsonify(result)
+
+@models_bp.route('/run', methods=['POST'])
+@jwt_required()
+def run_model():
+    data = request.get_json()
+    model_id = data.get('model_id')
+    if not model_id:
+        return jsonify({"status": "error", "error": {"code": "MISSING_MODEL_ID", "message": "调用专题模型时必须提供 model_id"}}), 400
+
+    payload = {"model_id": model_id}
+    if 'area_code' in data:
+        payload['area_code'] = data['area_code']
+    if 'longitude' in data:
+        payload['longitude'] = data['longitude']
+    if 'latitude' in data:
+        payload['latitude'] = data['latitude']
+    if 'indicators' in data:
+        payload['indicators'] = data['indicators']
+    if 'context' in data:
+        payload['context'] = data['context']
+
+    result = core_engine.run_thematic_model(payload)
+    if result.get('status') == 'ok':
+        return jsonify({"status": "ok", "data": result})
+    return jsonify(result)
