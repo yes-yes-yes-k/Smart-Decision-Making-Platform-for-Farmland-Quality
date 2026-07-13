@@ -103,8 +103,8 @@ def diagnose_county(payload: dict[str, Any]) -> dict[str, Any]:
         "lineage": {
             "overview_catalog": "data/lechang/catalog.json",
             "referenced_assets": [
-                "D:\\work\\AcidMap",
-                "D:\\work\\suan\\AcidificationModel\\api",
+                "external/AcidMap",
+                "external/AcidificationModel/api",
             ],
             "runtime_dependency": "none",
         },

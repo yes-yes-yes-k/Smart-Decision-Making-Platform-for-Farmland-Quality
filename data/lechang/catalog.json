@@ -6,7 +6,7 @@
     "level": "county",
     "province": "广东省"
   },
-  "source_root": "D:\\work\\2026\\0704\\耕地质量大模型-数据\\耕地质量大模型-数据",
+  "source_root": "data/lechang/source",
   "privacy": {
     "soil_points_desensitized": true,
     "notes": "三普与测土配方点位已脱敏，演示结果不应作为生产级空间真值。"
