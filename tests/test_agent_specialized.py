@@ -73,6 +73,40 @@ def test_potential_agent_target_ph_in_context():
     print("✓ PotentialAssessmentAgent 在 evidence 中暴露 target_ph")
 
 
+def test_problem_agent_execute():
+    from framework.agents.specialized.problem_agent import ProblemIdentificationAgent
+    agent = ProblemIdentificationAgent()
+    assert agent.model_id == "model-3"
+    assert agent.dependencies == ["model-2"]
+    result = agent.execute({"area_code": "lechang"})
+    assert result["status"] == "ok"
+    assert result["metadata"]["simulated"] is True
+    assert "primary_factors" in result["result"]
+    assert "secondary_factors" in result["result"]
+    assert "combinations" in result["result"]
+    print("✓ ProblemIdentificationAgent.execute 返回障碍因素结构")
+
+
+def test_problem_agent_answer_question():
+    from framework.agents.specialized.problem_agent import ProblemIdentificationAgent
+    agent = ProblemIdentificationAgent()
+    out = agent.answer_question("耕地在哪些方面有问题？", {})
+    assert out["simulated"] is True
+    assert "障碍" in out["answer"] or "问题" in out["answer"]
+    assert len(out["evidence"]) >= 1
+    print("✓ ProblemIdentificationAgent.answer_question 返回障碍识别")
+
+
+def test_problem_agent_uses_model2_target_ph():
+    """当 context 包含 model-2 结果时，应使用其 target_ph"""
+    from framework.agents.specialized.problem_agent import ProblemIdentificationAgent
+    agent = ProblemIdentificationAgent()
+    ctx = {"model-2": {"target_ph": 6.8, "answer": "...", "evidence": [], "confidence": 0.8, "simulated": True}}
+    out = agent.answer_question("主要障碍因素是什么？", ctx)
+    assert any("6.8" in str(e) for e in out["evidence"])
+    print("✓ ProblemIdentificationAgent 消费 model-2 的 target_ph")
+
+
 if __name__ == "__main__":
     test_stability_risk_agent_execute()
     test_stability_risk_agent_answer_question_overall()
@@ -80,4 +114,7 @@ if __name__ == "__main__":
     test_potential_agent_execute()
     test_potential_agent_answer_question()
     test_potential_agent_target_ph_in_context()
+    test_problem_agent_execute()
+    test_problem_agent_answer_question()
+    test_problem_agent_uses_model2_target_ph()
     print("\n所有专业智能体测试通过！")
