@@ -2,6 +2,8 @@
 comet_change: migrate-and-unify-framework
 role: technical-design
 canonical_spec: openspec
+archived-with: 2026-07-13-migrate-and-unify-framework
+status: final
 ---
 
 # 统一框架深度设计文档

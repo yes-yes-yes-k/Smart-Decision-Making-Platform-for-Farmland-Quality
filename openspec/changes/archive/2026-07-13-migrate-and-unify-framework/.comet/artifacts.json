@@ -4,5 +4,6 @@
   "openspec_tasks": "openspec/changes/migrate-and-unify-framework/tasks.md",
   "openspec_delta_spec": "openspec/changes/migrate-and-unify-framework/specs/database-models/spec.md",
   "handoff_context": "openspec/changes/migrate-and-unify-framework/.comet/handoff/design-context.json",
-  "handoff_markdown": "openspec/changes/migrate-and-unify-framework/.comet/handoff/design-context.md"
+  "handoff_markdown": "openspec/changes/migrate-and-unify-framework/.comet/handoff/design-context.md",
+  "archive_directory": "openspec/changes/archive/2026-07-13-migrate-and-unify-framework"
 }

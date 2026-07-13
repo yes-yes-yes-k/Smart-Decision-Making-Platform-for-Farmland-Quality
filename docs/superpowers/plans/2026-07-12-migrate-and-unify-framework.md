@@ -1,3 +1,7 @@
+---
+archived-with: 2026-07-13-migrate-and-unify-framework
+status: final
+---
 # 迁移与统一框架实施计划
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
