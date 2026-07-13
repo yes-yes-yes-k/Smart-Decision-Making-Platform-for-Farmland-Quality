@@ -61,6 +61,7 @@ class DevelopmentConfig(Config):
 
 class ProductionConfig(Config):
     DEBUG = False
+    SQLALCHEMY_DATABASE_URI = 'sqlite:///instance/production.db'
 
 class SQLiteConfig(Config):
     DEBUG = True
