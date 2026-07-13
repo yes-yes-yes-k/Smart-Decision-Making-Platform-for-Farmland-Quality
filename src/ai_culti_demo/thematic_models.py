@@ -130,8 +130,8 @@ def _lineage_for_model(model: ModelSpec) -> dict[str, Any]:
     return {
         "catalog": "data/lechang/catalog.json",
         "referenced_assets": [
-            "D:\\work\\AcidMap",
-            "D:\\work\\suan\\AcidificationModel\\api",
+            "external/AcidMap",
+            "external/AcidificationModel/api",
         ],
         "runtime_dependency": "none",
         "recommended_layers": model["recommended_layers"],
