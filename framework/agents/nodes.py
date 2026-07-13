@@ -23,6 +23,12 @@ try:
 except ImportError:
     RAG_AVAILABLE = False
 
+try:
+    from framework.core_engine import core_engine
+    CORE_ENGINE_AVAILABLE = True
+except ImportError:
+    CORE_ENGINE_AVAILABLE = False
+
 QUESTION_TYPE_1_KEYWORDS = ["酸化程度", "酸化等级", "pH分级", "酸度", "酸化现状", "土壤酸性", "酸性分级"]
 QUESTION_TYPE_2_KEYWORDS = ["治理", "调理剂", "石灰", "碱性材料", "改良", "修复", "调理", "施加", "用量"]
 QUESTION_TYPE_3_KEYWORDS = ["氮肥", "pH下降", "施氮", "酸化原因", "氮素", "化肥", "施肥"]
@@ -203,7 +209,54 @@ async def _execute_model_dependent(model_name: str, func: Callable, dep_result: 
     except Exception as e:
         return model_name, {"success": False, "error": str(e)}
 
+QUESTION_TYPE_TO_MODEL_ID = {
+    1: "acidification-governance",
+    2: "multi-factor-collaborative-improvement",
+    3: "organic-matter-improvement",
+}
+
 def execute_models(state: MultiAgentState) -> MultiAgentState:
+    question_type = state["question_type"]
+    request = state["request"]
+    data = state["data"]
+
+    if not CORE_ENGINE_AVAILABLE:
+        return _execute_models_fallback(state)
+
+    try:
+        model_id = QUESTION_TYPE_TO_MODEL_ID.get(question_type)
+        if not model_id:
+            return _execute_models_fallback(state)
+
+        payload = {
+            "model_id": model_id,
+            "area_code": request.get("area_code", "lechang"),
+        }
+        if "longitude" in request:
+            payload["longitude"] = request["longitude"]
+        if "latitude" in request:
+            payload["latitude"] = request["latitude"]
+        if "target_ph" in request:
+            payload["target_ph"] = request["target_ph"]
+        if "context" in request:
+            payload["context"] = request["context"]
+
+        result = core_engine.run_thematic_model(payload)
+
+        if result.get("status") == "ok":
+            model_results = {model_id: {"success": True, "result": result}}
+        else:
+            model_results = {model_id: {"success": False, "error": result.get("error", {}).get("message", "Unknown error")}}
+
+        return {
+            **state,
+            "model_results": model_results,
+            "error": None,
+        }
+    except Exception as e:
+        return _execute_models_fallback(state)
+
+def _execute_models_fallback(state: MultiAgentState) -> MultiAgentState:
     question_type = state["question_type"]
     request = state["request"]
     data = state["data"]
