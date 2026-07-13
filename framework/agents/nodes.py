@@ -216,45 +216,33 @@ QUESTION_TYPE_TO_MODEL_ID = {
 }
 
 def execute_models(state: MultiAgentState) -> MultiAgentState:
-    question_type = state["question_type"]
-    request = state["request"]
-    data = state["data"]
-
-    if not CORE_ENGINE_AVAILABLE:
-        return _execute_models_fallback(state)
-
+    # 优先调用 AgentManager 进行多智能体协作
     try:
-        model_id = QUESTION_TYPE_TO_MODEL_ID.get(question_type)
-        if not model_id:
-            return _execute_models_fallback(state)
+        from framework.agents.manager import agent_manager
 
-        payload = {
-            "model_id": model_id,
-            "area_code": request.get("area_code", "lechang"),
+        question = state["request"].get("question", "")
+        context = {
+            "area_code": state["request"].get("area_code", "lechang"),
+            "data": state.get("data", {}),
         }
-        if "longitude" in request:
-            payload["longitude"] = request["longitude"]
-        if "latitude" in request:
-            payload["latitude"] = request["latitude"]
-        if "target_ph" in request:
-            payload["target_ph"] = request["target_ph"]
-        if "context" in request:
-            payload["context"] = request["context"]
+        # 透传可能的土壤参数
+        for key in ("longitude", "latitude", "target_ph", "context"):
+            if key in state["request"]:
+                context[key] = state["request"][key]
 
-        result = core_engine.run_thematic_model(payload)
-
+        result = agent_manager.process(question, context)
         if result.get("status") == "ok":
-            model_results = {model_id: {"success": True, "result": result}}
-        else:
-            model_results = {model_id: {"success": False, "error": result.get("error", {}).get("message", "Unknown error")}}
+            return {
+                **state,
+                "model_results": result,
+                "status": "model_completed",
+                "error": None,
+            }
+    except Exception:
+        # AgentManager 失败时回退到原模型执行逻辑
+        pass
 
-        return {
-            **state,
-            "model_results": model_results,
-            "error": None,
-        }
-    except Exception as e:
-        return _execute_models_fallback(state)
+    return _execute_models_fallback(state)
 
 def _execute_models_fallback(state: MultiAgentState) -> MultiAgentState:
     question_type = state["question_type"]
