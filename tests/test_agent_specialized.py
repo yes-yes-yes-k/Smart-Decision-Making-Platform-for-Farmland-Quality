@@ -39,8 +39,45 @@ def test_stability_risk_agent_answer_question_risk():
     print("✓ StabilityRiskAgent.answer_question 识别退化风险区域")
 
 
+def test_potential_agent_execute():
+    from framework.agents.specialized.potential_agent import PotentialAssessmentAgent
+    agent = PotentialAssessmentAgent()
+    assert agent.model_id == "model-2"
+    assert agent.dependencies == []
+    result = agent.execute({"area_code": "lechang"})
+    assert result["status"] == "ok"
+    assert result["metadata"]["simulated"] is True
+    indicators = result["result"]["indicators"]
+    assert isinstance(indicators, list) and len(indicators) == 11
+    first = indicators[0]
+    assert "name" in first and "current" in first and "potential" in first and "obstacle_degree" in first
+    print("✓ PotentialAssessmentAgent.execute 返回 11 评价指标")
+
+
+def test_potential_agent_answer_question():
+    from framework.agents.specialized.potential_agent import PotentialAssessmentAgent
+    agent = PotentialAssessmentAgent()
+    out = agent.answer_question("耕地质量提升潜力如何？", {})
+    assert out["simulated"] is True
+    assert "潜力" in out["answer"] or "障碍" in out["answer"]
+    assert 0.0 <= out["confidence"] <= 1.0
+    print("✓ PotentialAssessmentAgent.answer_question 返回潜力评估")
+
+
+def test_potential_agent_target_ph_in_context():
+    """answer_question 应将 target_ph 写入 evidence 供下游使用"""
+    from framework.agents.specialized.potential_agent import PotentialAssessmentAgent
+    agent = PotentialAssessmentAgent()
+    out = agent.answer_question("如何提升耕地质量？", {"current_ph": 5.0})
+    assert any("target_ph" in str(e) for e in out["evidence"])
+    print("✓ PotentialAssessmentAgent 在 evidence 中暴露 target_ph")
+
+
 if __name__ == "__main__":
     test_stability_risk_agent_execute()
     test_stability_risk_agent_answer_question_overall()
     test_stability_risk_agent_answer_question_risk()
+    test_potential_agent_execute()
+    test_potential_agent_answer_question()
+    test_potential_agent_target_ph_in_context()
     print("\n所有专业智能体测试通过！")
