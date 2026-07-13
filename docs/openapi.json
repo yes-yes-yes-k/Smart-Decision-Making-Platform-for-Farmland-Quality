@@ -1,0 +1,1121 @@
+{
+  "openapi": "3.0.1",
+  "info": {
+    "title": "耕地土壤酸化治理智能问答系统 API",
+    "description": "集成 RAG、Function Calling 和多智能体架构的统一框架 API",
+    "version": "1.0.0"
+  },
+  "servers": [
+    {
+      "url": "http://localhost:5000",
+      "description": "本地开发环境"
+    }
+  ],
+  "security": [
+    {
+      "BearerAuth": []
+    }
+  ],
+  "paths": {
+    "/api/v1/auth/login": {
+      "post": {
+        "tags": ["认证"],
+        "summary": "用户登录",
+        "description": "用户登录获取 JWT Token",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "username": {
+                    "type": "string",
+                    "description": "用户名"
+                  },
+                  "password": {
+                    "type": "string",
+                    "description": "密码"
+                  }
+                },
+                "required": ["username", "password"]
+              },
+              "example": {
+                "username": "admin",
+                "password": "admin123"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "登录成功",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "status": {
+                      "type": "string",
+                      "example": "ok"
+                    },
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "token": {
+                          "type": "string",
+                          "example": "eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9..."
+                        },
+                        "user": {
+                          "$ref": "#/components/schemas/User"
+                        }
+                      }
+                    },
+                    "message": {
+                      "type": "string",
+                      "example": "登录成功"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "参数错误",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "认证失败",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/auth/register": {
+      "post": {
+        "tags": ["认证"],
+        "summary": "注册用户",
+        "description": "管理员创建新用户（需要 admin 权限）",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "username": {
+                    "type": "string",
+                    "description": "用户名"
+                  },
+                  "password": {
+                    "type": "string",
+                    "description": "密码"
+                  },
+                  "nickname": {
+                    "type": "string",
+                    "description": "昵称"
+                  },
+                  "role": {
+                    "type": "string",
+                    "description": "角色",
+                    "enum": ["admin", "user"]
+                  }
+                },
+                "required": ["username", "password"]
+              },
+              "example": {
+                "username": "newuser",
+                "password": "password123",
+                "nickname": "新用户",
+                "role": "user"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "创建成功",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "status": {
+                      "type": "string",
+                      "example": "ok"
+                    },
+                    "data": {
+                      "$ref": "#/components/schemas/User"
+                    },
+                    "message": {
+                      "type": "string",
+                      "example": "用户创建成功"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "权限不足",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/auth/me": {
+      "get": {
+        "tags": ["认证"],
+        "summary": "获取当前用户",
+        "description": "获取当前登录用户信息",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "成功",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "status": {
+                      "type": "string",
+                      "example": "ok"
+                    },
+                    "data": {
+                      "$ref": "#/components/schemas/User"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "用户不存在",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/chat/": {
+      "post": {
+        "tags": ["聊天"],
+        "summary": "智能问答",
+        "description": "统一智能路由入口，根据问题类型自动路由到 RAG 链或专业模型",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "message": {
+                    "type": "string",
+                    "description": "用户问题"
+                  },
+                  "conversation_id": {
+                    "type": "integer",
+                    "description": "对话ID，不传则创建新对话"
+                  },
+                  "context": {
+                    "$ref": "#/components/schemas/ChatContext"
+                  }
+                },
+                "required": ["message"]
+              },
+              "example": {
+                "message": "如何治理强酸性耕地？",
+                "conversation_id": 1,
+                "context": {
+                  "target_ph": 6.0,
+                  "soil_depth": 20,
+                  "area_code": "lechang"
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "成功",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "status": {
+                      "type": "string",
+                      "example": "ok"
+                    },
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "answer": {
+                          "type": "string",
+                          "example": "根据评估结果，建议施用石灰..."
+                        },
+                        "sources": {
+                          "type": "array",
+                          "items": {
+                            "$ref": "#/components/schemas/Source"
+                          }
+                        },
+                        "question_type": {
+                          "type": "integer",
+                          "description": "0=RAG问答, 1=酸化评估, 2=石灰计算, 3=氮肥影响"
+                        },
+                        "model_results": {
+                          "type": "object",
+                          "description": "专业模型执行结果"
+                        },
+                        "message_id": {
+                          "type": "integer"
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "参数错误",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/chat/conversations": {
+      "get": {
+        "tags": ["聊天"],
+        "summary": "获取对话列表",
+        "description": "获取当前用户的所有对话",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "成功",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "status": {
+                      "type": "string",
+                      "example": "ok"
+                    },
+                    "data": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/Conversation"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": ["聊天"],
+        "summary": "创建对话",
+        "description": "创建新对话",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "title": {
+                    "type": "string",
+                    "description": "对话标题"
+                  }
+                }
+              },
+              "example": {
+                "title": "新对话"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "成功",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "status": {
+                      "type": "string",
+                      "example": "ok"
+                    },
+                    "data": {
+                      "$ref": "#/components/schemas/Conversation"
+                    },
+                    "message": {
+                      "type": "string",
+                      "example": "对话创建成功"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/chat/conversations/{id}": {
+      "delete": {
+        "tags": ["聊天"],
+        "summary": "删除对话",
+        "description": "删除指定对话",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "成功",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "status": {
+                      "type": "string",
+                      "example": "ok"
+                    },
+                    "message": {
+                      "type": "string",
+                      "example": "对话删除成功"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "对话不存在",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/chat/conversations/{id}/messages": {
+      "get": {
+        "tags": ["聊天"],
+        "summary": "获取对话消息",
+        "description": "获取指定对话的所有消息",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "成功",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "status": {
+                      "type": "string",
+                      "example": "ok"
+                    },
+                    "data": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/Message"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "对话不存在",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/models/": {
+      "get": {
+        "tags": ["模型"],
+        "summary": "获取模型列表",
+        "description": "获取所有可用的专业模型",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "成功",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "status": {
+                      "type": "string",
+                      "example": "ok"
+                    },
+                    "data": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/Model"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/docs/": {
+      "get": {
+        "tags": ["文档"],
+        "summary": "获取文档列表",
+        "description": "获取当前用户上传的所有文档",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "成功",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "status": {
+                      "type": "string",
+                      "example": "ok"
+                    },
+                    "data": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/Document"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/docs/upload": {
+      "post": {
+        "tags": ["文档"],
+        "summary": "上传文档",
+        "description": "上传文档并自动解析为向量",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "file": {
+                    "type": "string",
+                    "format": "binary",
+                    "description": "文档文件（支持 txt, md, pdf, docx, xlsx）"
+                  }
+                },
+                "required": ["file"]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "上传成功",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "status": {
+                      "type": "string",
+                      "example": "ok"
+                    },
+                    "data": {
+                      "$ref": "#/components/schemas/Document"
+                    },
+                    "message": {
+                      "type": "string",
+                      "example": "文档上传成功"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "参数错误",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/docs/{id}": {
+      "get": {
+        "tags": ["文档"],
+        "summary": "获取文档详情",
+        "description": "获取指定文档的详细信息",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "成功",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "status": {
+                      "type": "string",
+                      "example": "ok"
+                    },
+                    "data": {
+                      "$ref": "#/components/schemas/Document"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "文档不存在",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": ["文档"],
+        "summary": "删除文档",
+        "description": "删除指定文档",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "成功",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "status": {
+                      "type": "string",
+                      "example": "ok"
+                    },
+                    "message": {
+                      "type": "string",
+                      "example": "文档删除成功"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "文档不存在",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/county/overview": {
+      "get": {
+        "tags": ["县域诊断"],
+        "summary": "获取县域概览",
+        "description": "获取指定区域的土壤酸化评估概览",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "area_code",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "example": "lechang"
+            },
+            "description": "区域代码"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "成功",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "status": {
+                      "type": "string",
+                      "example": "ok"
+                    },
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "area": {
+                          "type": "string"
+                        },
+                        "assessment": {
+                          "type": "object",
+                          "properties": {
+                            "level": {
+                              "type": "string"
+                            },
+                            "ph": {
+                              "type": "number"
+                            },
+                            "acidification_rate": {
+                              "type": "number"
+                            }
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/county/diagnose": {
+      "post": {
+        "tags": ["县域诊断"],
+        "summary": "县域诊断分析",
+        "description": "综合评估指定区域的土壤酸化状况并计算治理方案",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "area_code": {
+                    "type": "string",
+                    "description": "区域代码",
+                    "example": "lechang"
+                  },
+                  "target_ph": {
+                    "type": "number",
+                    "description": "目标pH值",
+                    "example": 6.0
+                  }
+                }
+              },
+              "example": {
+                "area_code": "lechang",
+                "target_ph": 6.0
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "成功",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "status": {
+                      "type": "string",
+                      "example": "ok"
+                    },
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "area": {
+                          "type": "string"
+                        },
+                        "assessment": {
+                          "type": "object",
+                          "properties": {
+                            "level": {
+                              "type": "string"
+                            },
+                            "ph": {
+                              "type": "number"
+                            }
+                          }
+                        },
+                        "calculation": {
+                          "type": "object",
+                          "properties": {
+                            "lime_demand": {
+                              "type": "number"
+                            },
+                            "target_ph": {
+                              "type": "number"
+                            },
+                            "safety_factor": {
+                              "type": "number"
+                            }
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "securitySchemes": {
+      "BearerAuth": {
+        "type": "http",
+        "scheme": "bearer",
+        "bearerFormat": "JWT"
+      }
+    },
+    "schemas": {
+      "User": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer"
+          },
+          "username": {
+            "type": "string"
+          },
+          "nickname": {
+            "type": "string"
+          },
+          "role": {
+            "type": "string",
+            "enum": ["admin", "user"]
+          },
+          "status": {
+            "type": "integer"
+          }
+        }
+      },
+      "Conversation": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer"
+          },
+          "title": {
+            "type": "string"
+          },
+          "user_id": {
+            "type": "integer"
+          },
+          "create_time": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "update_time": {
+            "type": "string",
+            "format": "date-time"
+          }
+        }
+      },
+      "Message": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer"
+          },
+          "conversation_id": {
+            "type": "integer"
+          },
+          "role": {
+            "type": "string",
+            "enum": ["user", "assistant"]
+          },
+          "content": {
+            "type": "string"
+          },
+          "sources": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Source"
+            }
+          },
+          "create_time": {
+            "type": "string",
+            "format": "date-time"
+          }
+        }
+      },
+      "Document": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer"
+          },
+          "doc_name": {
+            "type": "string"
+          },
+          "file_path": {
+            "type": "string"
+          },
+          "file_type": {
+            "type": "string"
+          },
+          "file_size": {
+            "type": "integer"
+          },
+          "chunk_count": {
+            "type": "integer"
+          },
+          "status": {
+            "type": "integer"
+          },
+          "category": {
+            "type": "string"
+          },
+          "create_by": {
+            "type": "integer"
+          },
+          "create_time": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "update_time": {
+            "type": "string",
+            "format": "date-time"
+          }
+        }
+      },
+      "Model": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string"
+          }
+        }
+      },
+      "Source": {
+        "type": "object",
+        "properties": {
+          "doc_name": {
+            "type": "string"
+          }
+        }
+      },
+      "ChatContext": {
+        "type": "object",
+        "properties": {
+          "target_ph": {
+            "type": "number",
+            "description": "目标pH值",
+            "example": 6.0
+          },
+          "soil_depth": {
+            "type": "number",
+            "description": "土壤深度(cm)",
+            "example": 20
+          },
+          "bulk_density": {
+            "type": "number",
+            "description": "土壤容重(g/cm³)",
+            "example": 1.2
+          },
+          "safety_factor": {
+            "type": "number",
+            "description": "安全系数",
+            "example": 1.3
+          },
+          "current_ph": {
+            "type": "number",
+            "description": "当前pH值",
+            "example": 5.5
+          },
+          "nitrogen_rates": {
+            "type": "array",
+            "items": {
+              "type": "number"
+            },
+            "description": "氮肥施用量序列(kg/ha)",
+            "example": [0, 50, 100, 150, 200]
+          },
+          "area_code": {
+            "type": "string",
+            "description": "区域代码",
+            "example": "lechang"
+          }
+        }
+      },
+      "ErrorResponse": {
+        "type": "object",
+        "properties": {
+          "status": {
+            "type": "string",
+            "example": "error"
+          },
+          "message": {
+            "type": "string"
+          }
+        }
+      }
+    }
+  }
+}
