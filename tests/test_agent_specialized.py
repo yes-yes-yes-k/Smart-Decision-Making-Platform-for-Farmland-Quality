@@ -140,6 +140,39 @@ def test_acidification_agent_answer_question_dosage():
     print("✓ AcidificationRemediationAgent 返回石灰施用量建议")
 
 
+def test_organic_matter_agent_execute():
+    from framework.agents.specialized.organic_matter_agent import OrganicMatterAgent
+    agent = OrganicMatterAgent()
+    assert agent.model_id == "model-5"
+    assert agent.dependencies == []
+    result = agent.execute({"area_code": "lechang"})
+    assert result["status"] == "ok"
+    assert result["metadata"]["simulated"] is True
+    assert "level" in result["result"]
+    assert "manure_dosage" in result["result"]
+    assert "potential_increase" in result["result"]
+    print("✓ OrganicMatterAgent.execute 返回有机质分级与施用量")
+
+
+def test_organic_matter_agent_answer_question_content():
+    from framework.agents.specialized.organic_matter_agent import OrganicMatterAgent
+    agent = OrganicMatterAgent()
+    out = agent.answer_question("全省耕地土壤有机质含量如何？", {})
+    assert out["simulated"] is True
+    assert "有机质" in out["answer"]
+    print("✓ OrganicMatterAgent 返回有机质含量评估")
+
+
+def test_organic_matter_agent_answer_question_dosage():
+    from framework.agents.specialized.organic_matter_agent import OrganicMatterAgent
+    agent = OrganicMatterAgent()
+    out = agent.answer_question("有机肥每亩施用量多少？", {})
+    assert out["simulated"] is True
+    assert "kg" in out["answer"] or "有机肥" in out["answer"]
+    assert any("manure_dosage" in str(e) or "有机肥" in str(e) for e in out["evidence"])
+    print("✓ OrganicMatterAgent 返回有机肥施用量建议")
+
+
 if __name__ == "__main__":
     test_stability_risk_agent_execute()
     test_stability_risk_agent_answer_question_overall()
@@ -153,4 +186,7 @@ if __name__ == "__main__":
     test_acidification_agent_execute()
     test_acidification_agent_answer_question_degree()
     test_acidification_agent_answer_question_dosage()
+    test_organic_matter_agent_execute()
+    test_organic_matter_agent_answer_question_content()
+    test_organic_matter_agent_answer_question_dosage()
     print("\n所有专业智能体测试通过！")
