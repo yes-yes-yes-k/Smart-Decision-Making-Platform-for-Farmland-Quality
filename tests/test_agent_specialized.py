@@ -107,6 +107,39 @@ def test_problem_agent_uses_model2_target_ph():
     print("✓ ProblemIdentificationAgent 消费 model-2 的 target_ph")
 
 
+def test_acidification_agent_execute():
+    from framework.agents.specialized.acidification_agent import AcidificationRemediationAgent
+    agent = AcidificationRemediationAgent()
+    assert agent.model_id == "model-4"
+    assert agent.dependencies == []
+    result = agent.execute({"area_code": "lechang"})
+    assert result["status"] == "ok"
+    assert result["metadata"]["simulated"] is True
+    assert "degree" in result["result"]
+    assert "lime_dosage" in result["result"]
+    assert "ph_after_remediation" in result["result"]
+    print("✓ AcidificationRemediationAgent.execute 返回酸化判定与石灰用量")
+
+
+def test_acidification_agent_answer_question_degree():
+    from framework.agents.specialized.acidification_agent import AcidificationRemediationAgent
+    agent = AcidificationRemediationAgent()
+    out = agent.answer_question("全省耕地酸化程度如何？", {})
+    assert out["simulated"] is True
+    assert "酸化" in out["answer"] or "pH" in out["answer"]
+    print("✓ AcidificationRemediationAgent 返回酸化程度")
+
+
+def test_acidification_agent_answer_question_dosage():
+    from framework.agents.specialized.acidification_agent import AcidificationRemediationAgent
+    agent = AcidificationRemediationAgent()
+    out = agent.answer_question("如何治理强酸性耕地？施加多少调理剂？", {})
+    assert out["simulated"] is True
+    assert "石灰" in out["answer"] or "kg" in out["answer"]
+    assert any("lime_dosage" in str(e) or "石灰" in str(e) for e in out["evidence"])
+    print("✓ AcidificationRemediationAgent 返回石灰施用量建议")
+
+
 if __name__ == "__main__":
     test_stability_risk_agent_execute()
     test_stability_risk_agent_answer_question_overall()
@@ -117,4 +150,7 @@ if __name__ == "__main__":
     test_problem_agent_execute()
     test_problem_agent_answer_question()
     test_problem_agent_uses_model2_target_ph()
+    test_acidification_agent_execute()
+    test_acidification_agent_answer_question_degree()
+    test_acidification_agent_answer_question_dosage()
     print("\n所有专业智能体测试通过！")
