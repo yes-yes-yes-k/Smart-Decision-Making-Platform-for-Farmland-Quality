@@ -21,11 +21,12 @@
 |------|------|
 | Web 框架 | Flask 3.0 + Flask-CORS + Flask-JWT-Extended |
 | ORM | Flask-SQLAlchemy |
-| 数据库 | 开发环境 SQLite / 生产环境 MySQL |
+| 数据库 | SQLite（开发与生产环境均使用） |
 | 向量库 | ChromaDB 0.5 |
 | LLM | SiliconFlow（DeepSeek-V4-Flash / BAAI/bge-m3） |
 | 编排 | LangChain 0.2 + LangGraph 0.1 |
 | 文档解析 | PyPDF2 / python-docx / openpyxl |
+| 生产服务器 | waitress |
 
 ## 快速开始
 
@@ -55,19 +56,14 @@ SILICONFLOW_API_KEY=your-key-here
 SILICONFLOW_CHAT_MODEL=deepseek-ai/DeepSeek-V4-Flash
 SILICONFLOW_EMBED_MODEL=BAAI/bge-m3
 
-# 数据库（生产环境）
-DB_HOST=localhost
-DB_PORT=3306
-DB_USER=root
-DB_PASSWORD=
-DB_NAME=db_enterprise_qa
-
 # 向量库
 CHROMA_PERSIST_DIR=./chroma_db
 CHROMA_COLLECTION_NAME=enterprise_kb
 ```
 
-开发环境默认使用 SQLite（`instance/development.db`），无需额外配置数据库。
+开发与生产环境均使用 SQLite，无需额外配置数据库服务。数据库文件：
+- 开发环境：`instance/development.db`
+- 生产环境：`instance/production.db`
 
 ### 初始化数据库
 
@@ -81,6 +77,8 @@ python init_db.py
 
 ### 启动服务
 
+**开发环境：**
+
 ```bash
 python start_http_server.py
 # 或指定参数
@@ -88,6 +86,16 @@ python start_http_server.py --host 0.0.0.0 --port 5000 --config development
 ```
 
 服务启动后访问 http://localhost:5000
+
+**生产环境：**
+
+```bash
+python start_production_server.py
+# 或指定参数
+python start_production_server.py --host 127.0.0.1 --port 8000 --threads 8
+```
+
+生产环境部署详见 [deploy/deployment.md](deploy/deployment.md)，支持 Windows 服务注册、日志管理、配置校验等。
 
 ## API 概览
 
@@ -169,14 +177,18 @@ agent_culti_demo/
 │   └── config.py               #   配置管理
 ├── data/lechang/               # 乐昌市样例数据
 │   └── catalog.json            #   数据资产目录
+├── deploy/                     # 生产部署
+│   ├── deployment.md           #   部署指南
+│   ├── production.env.example  #   环境变量模板
+│   └── windows-service.ps1     #   Windows 服务管理脚本
 ├── docs/                       # 文档
 │   ├── openapi.json            #   OpenAPI 3.0 规范
 │   └── superpowers/            #   设计文档与验证报告
 ├── tests/                      # 测试套件（78 个测试）
 ├── openspec/                   # OpenSpec 规范与变更归档
-├── scripts/                    # 迁移脚本
 ├── init_db.py                  # 数据库初始化
-├── start_http_server.py        # 服务启动入口
+├── start_http_server.py        # 开发环境启动入口
+├── start_production_server.py  # 生产环境启动入口
 └── pyproject.toml              # 项目配置
 ```
 
@@ -214,19 +226,46 @@ AgentManager（编排调度）
 
 ## 配置说明
 
-支持四种配置环境（[framework/config.py](framework/config.py)）：
+支持多种配置环境（[framework/config.py](framework/config.py)）：
 
 | 配置 | 数据库 | 用途 |
 |------|--------|------|
-| `development`（默认） | SQLite | 本地开发 |
-| `sqlite` | SQLite | 显式指定 SQLite |
-| `production` | MySQL | 生产部署 |
+| `development`（默认） | SQLite (`instance/development.db`) | 本地开发 |
+| `sqlite` | SQLite (`instance/development.db`) | 显式指定 SQLite |
+| `production` | SQLite (`instance/production.db`) | 生产部署 |
 
 切换配置：
 
 ```bash
 python start_http_server.py --config production
 ```
+
+## 生产部署
+
+生产环境使用 waitress WSGI 服务器，支持多线程并发、Windows 服务注册和日志管理。
+
+**快速启动：**
+
+```bash
+# 1. 配置环境变量
+copy deploy\production.env.example .env
+# 编辑 .env 填写 SECRET_KEY 和 SILICONFLOW_API_KEY
+
+# 2. 初始化数据库
+python init_db.py
+
+# 3. 启动生产服务器
+python start_production_server.py
+```
+
+**注册为 Windows 服务：**
+
+```powershell
+.\deploy\windows-service.ps1 install
+.\deploy\windows-service.ps1 start
+```
+
+完整部署步骤、故障排查和安全清单详见 [deploy/deployment.md](deploy/deployment.md)。
 
 ## 项目规范
 
@@ -240,6 +279,7 @@ python start_http_server.py --config production
 - 新框架通过 `framework/core_engine/adapter.py` 访问核心引擎
 - 专题模型在 `thematic_models.py` 中对应 question_types 1-3
 - 开发环境使用 SQLite（`instance/development.db`）
+- 生产环境使用 SQLite（`instance/production.db`）
 - API 认证头格式：`Authorization: Bearer <token>`
 
 ## License
