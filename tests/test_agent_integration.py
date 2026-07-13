@@ -58,8 +58,50 @@ def test_execute_models_writes_structured_result():
     print("✓ execute_models 写入结构化多智能体结果")
 
 
+def test_chat_api_returns_structured_multi_agent_result():
+    """通过 Flask test client 验证 /api/v1/chat/ 返回多智能体结构化结果"""
+    from framework.api.app import create_app
+
+    app = create_app()
+    app.config["TESTING"] = True
+
+    with app.app_context():
+        from framework.models.user import db, User
+        db.create_all()
+        # 注册测试用户（若已存在则复用），并签发真实 JWT 以通过装饰器鉴权
+        user = User.query.filter_by(username="tester").first()
+        if not user:
+            user = User(username="tester", password="x")
+            db.session.add(user)
+            db.session.commit()
+        user_id = user.id
+
+        from flask_jwt_extended import create_access_token
+        access_token = create_access_token(identity=str(user_id))
+
+    client = app.test_client()
+    with app.app_context():
+        resp = client.post(
+            "/api/v1/chat/",
+            json={"message": "我的田施氮肥施多少？"},
+            headers={"Authorization": f"Bearer {access_token}"},
+        )
+    assert resp.status_code == 200
+    payload = resp.get_json()
+    assert payload["status"] == "ok"
+    data = payload["data"]
+    # 多智能体结构化字段
+    assert data.get("role") == "farmer"
+    assert data.get("agents_invoked") == ["model-4", "model-5", "model-6"]
+    assert isinstance(data.get("recommendations"), list)
+    assert "answer" in data
+
+    print("✓ /api/v1/chat/ 返回多智能体结构化结果")
+
+
 if __name__ == "__main__":
     test_execute_models_invokes_agent_manager_farmer()
     test_execute_models_invokes_agent_manager_province()
     test_execute_models_writes_structured_result()
-    print("\n所有 LangGraph 集成测试通过！")
+    test_chat_api_returns_structured_multi_agent_result()
+    print("\n所有 LangGraph 与 API 集成测试通过！")

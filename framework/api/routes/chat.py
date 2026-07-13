@@ -81,22 +81,37 @@ def chat():
     model_results = result.get("model_results", {})
     question_type = result.get("question_type", 0)
 
+    # 解析 AgentManager 结构化结果（若存在）
+    agent_data = model_results.get("data", {}) if isinstance(model_results, dict) else {}
+    role = agent_data.get("role")
+    agents_invoked = agent_data.get("agents_invoked", [])
+    recommendations = agent_data.get("recommendations", [])
+    multi_agent_summary = agent_data.get("summary", "")
+
     assistant_message = Message(
         conversation_id=conversation.id,
         role='assistant',
-        content=answer,
+        content=answer or multi_agent_summary,
         sources=sources if sources else None,
     )
     db.session.add(assistant_message)
     db.session.commit()
 
+    response_data = {
+        "answer": answer or multi_agent_summary,
+        "sources": sources,
+        "question_type": question_type,
+        "model_results": model_results,
+        "message_id": assistant_message.id,
+    }
+    if role:
+        response_data["role"] = role
+    if agents_invoked:
+        response_data["agents_invoked"] = agents_invoked
+    if recommendations:
+        response_data["recommendations"] = recommendations
+
     return jsonify({
         "status": "ok",
-        "data": {
-            "answer": answer,
-            "sources": sources,
-            "question_type": question_type,
-            "model_results": model_results,
-            "message_id": assistant_message.id,
-        }
+        "data": response_data,
     })
