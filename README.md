@@ -38,7 +38,7 @@
 
 ```bash
 # 克隆仓库
-git clone <repo-url>
+git clone http://139.9.51.218:3000/Ding/agent_culti_demo.git
 cd agent_culti_demo
 
 # 安装依赖
