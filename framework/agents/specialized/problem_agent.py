@@ -69,14 +69,33 @@ class ProblemIdentificationAgent(BaseAgent):
         })
 
     def answer_question(self, question: str, context: Dict[str, Any]) -> Dict[str, Any]:
+        rag_result = self._generate_with_rag(question)
+
         result = self.execute({})["result"]
         primary = result["primary_factors"]
         secondary = result["secondary_factors"]
         combinations = result["combinations"]
 
+        model2 = context.get("model-2") if isinstance(context, dict) else None
+
+        if rag_result.get("success") and rag_result.get("answer"):
+            evidence = rag_result.get("sources", [])
+            if not evidence:
+                evidence = []
+            evidence.append({
+                "primary_factors": primary[:3],
+                "note": "参考主要障碍因素"
+            })
+            return {
+                "answer": rag_result["answer"],
+                "evidence": evidence,
+                "confidence": 0.83,
+                "simulated": False,
+                "sources": rag_result.get("sources", []),
+            }
+
         # 消费 model-2 的 target_ph
         target_ph_note = ""
-        model2 = context.get("model-2") if isinstance(context, dict) else None
         if isinstance(model2, dict) and "target_ph" in model2:
             target_ph_note = f" 结合模型2目标 pH={model2['target_ph']}，"
 

@@ -44,6 +44,11 @@ class RAGChain:
         }
 
     def _retrieve_documents(self, query: str, valid_doc_names: Optional[set]) -> Dict[str, Any]:
+        # 先检查向量库是否有文档，如果为空直接返回，避免触发 embedding 模型下载
+        stats = self.vector_store.get_collection_stats()
+        if stats.get("count", 0) == 0:
+            return {"results": [], "count": 0}
+
         filters = None
         if valid_doc_names:
             filters = {"source": {"$in": list(valid_doc_names)}}
@@ -64,14 +69,21 @@ class RAGChain:
         return "\n\n".join(context_parts)
 
     def _build_prompt(self, query: str, context: str) -> str:
-        return f"""基于以下文档内容，回答用户的问题。如果文档中没有相关信息，请根据你的知识回答，并明确说明信息来源。
+        return f"""你是耕地质量与土壤改良领域的专家。请基于以下文档内容，回答用户关于耕地质量、土壤改良、酸化治理、有机质提升等方面的问题。
 
-文档内容：
+回答要求：
+1. 优先使用文档中提供的信息回答
+2. 如果文档中有相关信息，请准确引用并回答
+3. 如果文档信息不完整，可以结合你的专业知识补充回答
+4. 回答要条理清晰、专业准确
+5. 如果文档中完全没有相关信息，请明确说明"根据现有文档无法找到相关信息"，然后基于你的专业知识给出参考回答
+
+参考文档：
 {context}
 
 用户问题：
 {query}
 
-请以自然、专业的语言回答。"""
+请以自然、专业的语言回答，字数适中，重点突出。"""
 
 rag_chain = RAGChain()

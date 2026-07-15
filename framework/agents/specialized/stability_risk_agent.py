@@ -53,9 +53,30 @@ class StabilityRiskAgent(BaseAgent):
         })
 
     def answer_question(self, question: str, context: Dict[str, Any]) -> Dict[str, Any]:
+        rag_result = self._generate_with_rag(question)
+
         counties = [dict(c) for c in MOCK_COUNTIES]
         for c in counties:
             c["stability"] = MockDataLoader.apply_threshold(c["stability_score"], STABILITY_RULES)
+
+        if rag_result.get("success") and rag_result.get("answer"):
+            evidence = rag_result.get("sources", [])
+            if not evidence:
+                evidence = []
+            total_area = sum(c["area_mu"] for c in counties)
+            stable_area = sum(c["area_mu"] for c in counties if c["stability"] == "稳定")
+            evidence.append({
+                "metric": "稳定面积占比",
+                "value": f"{stable_area/total_area*100:.1f}%",
+                "note": "参考统计值"
+            })
+            return {
+                "answer": rag_result["answer"],
+                "evidence": evidence,
+                "confidence": 0.85,
+                "simulated": False,
+                "sources": rag_result.get("sources", []),
+            }
 
         total_area = sum(c["area_mu"] for c in counties)
         stable_area = sum(c["area_mu"] for c in counties if c["stability"] == "稳定")

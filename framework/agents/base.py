@@ -1,6 +1,6 @@
 from __future__ import annotations
 from abc import ABC, abstractmethod
-from typing import Any, Dict, List
+from typing import Any, Dict, List, Optional
 
 
 class BaseAgent(ABC):
@@ -12,6 +12,97 @@ class BaseAgent(ABC):
         self.model_id = model_id
         self.domain = domain
         self.dependencies: List[str] = []
+        self._rag_chain = None
+        self._llm_service = None
+
+    def _get_rag_chain(self):
+        if self._rag_chain is None:
+            try:
+                from framework.rag.chain import rag_chain
+                self._rag_chain = rag_chain
+            except ImportError:
+                self._rag_chain = None
+        return self._rag_chain
+
+    def _get_llm_service(self):
+        if self._llm_service is None:
+            try:
+                from framework.llm.service import llm_service
+                self._llm_service = llm_service
+            except ImportError:
+                self._llm_service = None
+        return self._llm_service
+
+    def _retrieve_knowledge(self, question: str, top_k: int = 3) -> Dict[str, Any]:
+        rag = self._get_rag_chain()
+        if not rag:
+            return {"results": [], "count": 0}
+        try:
+            from framework.vector_store.chroma_store import vector_store
+            results = vector_store.search(query=question, n_results=top_k)
+            return results
+        except Exception:
+            return {"results": [], "count": 0}
+
+    def _build_rag_context(self, retrieval_results: Dict[str, Any]) -> str:
+        if retrieval_results.get("count", 0) == 0:
+            return ""
+        context_parts = []
+        for i, result in enumerate(retrieval_results.get("results", [])):
+            content = result.get("content", "")
+            metadata = result.get("metadata", {})
+            source = metadata.get("source", "unknown")
+            context_parts.append(f"文档{i+1}({source}): {content}")
+        return "\n\n".join(context_parts)
+
+    def _generate_with_rag(self, question: str, domain_context: str = "") -> Dict[str, Any]:
+        retrieval = self._retrieve_knowledge(question)
+        rag_context = self._build_rag_context(retrieval)
+
+        llm = self._get_llm_service()
+        if not llm or not llm.is_available():
+            return {"answer": "", "sources": [], "success": False}
+
+        try:
+            prompt = self._build_domain_prompt(question, rag_context, domain_context)
+            llm_result = llm.generate(prompt)
+            sources = []
+            for result in retrieval.get("results", []):
+                metadata = result.get("metadata", {})
+                sources.append({
+                    "doc_name": metadata.get("source", "unknown"),
+                    "content": result.get("content", "")[:200] + "...",
+                    "score": 1 - result.get("distance", 0),
+                })
+            return {
+                "answer": llm_result.get("content", ""),
+                "sources": sources,
+                "success": llm_result.get("success", False),
+                "retrieved_count": retrieval.get("count", 0),
+            }
+        except Exception:
+            return {"answer": "", "sources": [], "success": False}
+
+    def _build_domain_prompt(self, question: str, rag_context: str, domain_context: str) -> str:
+        domain_desc = f"你是{self.description}专家。"
+        context_parts = []
+        if rag_context:
+            context_parts.append(f"参考文档内容：\n{rag_context}")
+        if domain_context:
+            context_parts.append(f"领域参考信息：\n{domain_context}")
+
+        context_str = "\n\n".join(context_parts) if context_parts else "无参考文档。"
+
+        return f"""{domain_desc}
+
+基于以下参考信息，回答用户的问题。如果参考信息中有相关内容，请优先使用参考信息回答；如果参考信息中没有相关内容，可以结合你的专业知识回答，但请明确说明。
+
+{context_str}
+
+用户问题：
+{question}
+
+请以自然、专业的语言回答，回答要准确、有条理。"""
 
     @abstractmethod
     def execute(self, task: Dict[str, Any]) -> Dict[str, Any]:

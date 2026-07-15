@@ -74,7 +74,14 @@ def chat():
     history = [{"role": m.role, "content": m.content} for m in conversation.messages if m.id != user_message.id]
 
     orchestrator_request = {"question": message, **context}
+    import time as _time
+    _t0 = _time.time()
     result = multi_agent_orchestrator.run(orchestrator_request, conversation_history=history)
+    print(f"[chat] orchestrator.run took {_time.time()-_t0:.1f}s", flush=True)
+    print(f"[chat] result keys: {list(result.keys())}", flush=True)
+    print(f"[chat] question_type: {result.get('question_type')}", flush=True)
+    print(f"[chat] answer: {repr(result.get('answer', '')[:100])}", flush=True)
+    print(f"[chat] model_results keys: {list(result.get('model_results', {}).keys()) if isinstance(result.get('model_results'), dict) else 'N/A'}", flush=True)
 
     answer = result.get("answer", result.get("llm_response", ""))
     sources = result.get("sources", [])
