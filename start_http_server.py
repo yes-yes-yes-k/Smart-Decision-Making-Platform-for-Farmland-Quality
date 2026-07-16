@@ -10,6 +10,9 @@ if str(SRC_DIR) not in sys.path:
 
 
 def main(argv: list[str] | None = None) -> int:
+    from dotenv import load_dotenv
+    load_dotenv()
+
     parser = argparse.ArgumentParser(description="启动耕地土壤酸化治理智能问答系统")
     parser.add_argument("--host", default="0.0.0.0", help="监听地址")
     parser.add_argument("--port", type=int, default=5000, help="监听端口")
