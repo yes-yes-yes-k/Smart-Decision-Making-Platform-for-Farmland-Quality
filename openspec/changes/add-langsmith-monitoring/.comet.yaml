@@ -1,6 +1,6 @@
 workflow: full
 language: zh-CN
-phase: build
+phase: verify
 context_compression: off
 build_mode: executing-plans
 build_pause: null
@@ -8,13 +8,13 @@ subagent_dispatch: null
 tdd_mode: direct
 review_mode: off
 isolation: branch
-verify_mode: null
+verify_mode: full
 auto_transition: true
 base_ref: 35a0b535896eb864548ce08b866cee888951ed9f
 design_doc: docs/superpowers/specs/2026-07-14-langsmith-monitoring-design.md
 plan: docs/superpowers/plans/2026-07-14-langsmith-monitoring.md
 verify_result: pending
-verification_report: null
+verification_report: docs/superpowers/reports/2026-07-17-add-langsmith-monitoring-verify.md
 branch_status: pending
 created_at: 2026-07-16
 verified_at: null
