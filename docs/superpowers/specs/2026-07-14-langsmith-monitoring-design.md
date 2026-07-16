@@ -2,6 +2,8 @@
 comet_change: add-langsmith-monitoring
 role: technical-design
 canonical_spec: openspec
+archived-with: 2026-07-16-add-langsmith-monitoring
+status: final
 ---
 
 # Design Doc: LangSmith 监控智能体整体流程
@@ -134,3 +136,4 @@ LangChain tracing 机制在以下情况自动降级，不影响主流程：
 - **LLM 调用超时**：tracing 记录超时事件，不影响重试逻辑
 - **RAG 检索为空**：tracing 记录零召回结果，不影响后续 LLM 生成
 - **并发请求**：LangSmith tracing 支持并发，每个请求独立 trace
+

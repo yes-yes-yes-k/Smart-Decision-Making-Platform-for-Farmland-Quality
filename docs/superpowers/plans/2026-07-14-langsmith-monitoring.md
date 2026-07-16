@@ -2,6 +2,7 @@
 change: add-langsmith-monitoring
 design-doc: docs/superpowers/specs/2026-07-14-langsmith-monitoring-design.md
 base-ref: 35a0b535896eb864548ce08b866cee888951ed9f
+archived-with: 2026-07-16-add-langsmith-monitoring
 ---
 
 # 实施计划：LangSmith 监控智能体整体流程
@@ -96,3 +97,4 @@ base-ref: 35a0b535896eb864548ce08b866cee888951ed9f
 
 - 低风险：`load_dotenv()` 默认不覆盖已有系统环境变量
 - 低风险：LangSmith tracing 异步上报，不影响主流程
+
