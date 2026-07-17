@@ -114,7 +114,7 @@ def _identify_question_type_vector(question: str) -> tuple[int, float]:
             if similarity > max_similarity:
                 max_similarity = similarity
                 best_type = q_type
-    if max_similarity < 0.5:
+    if max_similarity < 0.75:
         return 0, max_similarity
     return best_type, max_similarity
 
@@ -129,7 +129,7 @@ def _identify_question_type_keyword(question: str) -> tuple[int, float]:
     elif any(keyword in question for keyword in QUESTION_TYPE_3_KEYWORDS):
         return 3, relevance
     else:
-        return 1, relevance
+        return 0, relevance
 
 def initialize_state(state: MultiAgentState) -> MultiAgentState:
     return {
