@@ -1,6 +1,6 @@
 ## 1. 数据模型与工具函数
 
-- [ ] 1.1 在 `framework/models/document.py` 的 `Document` 模型中新增 `file_hash` 字段（String(64), nullable=True, comment='文件内容SHA-256哈希'）
+- [x] 1.1 在 `framework/models/document.py` 的 `Document` 模型中新增 `file_hash` 字段（String(64), nullable=True, comment='文件内容SHA-256哈希'）
 - [ ] 1.2 在 `framework/upload/file_upload.py` 中新增 `compute_file_hash(file_path)` 函数，使用 `hashlib.sha256` 分块读取（8192 字节/块）计算文件哈希
 - [ ] 1.3 在 `framework/upload/file_upload.py` 的 `save_uploaded_file` 函数返回值中增加文件哈希（返回三元组：new_filename, file_path, file_hash）
 

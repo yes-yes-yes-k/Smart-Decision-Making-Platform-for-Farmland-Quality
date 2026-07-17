@@ -44,7 +44,7 @@ base-ref: b36bfdfcb6e8c28af243d8a871861d61ca2cf37c
 
 ---
 
-### Task 1: Document 模型新增 file_hash 字段
+### Task 1: Document 模型新增 file_hash 字段 ✓
 
 **Files:**
 - Modify: `framework/models/document.py`
