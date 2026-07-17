@@ -1,6 +1,7 @@
 import os
 from flask import Blueprint, request, jsonify
 from flask_jwt_extended import jwt_required, get_jwt_identity
+from framework.config import Config
 from framework.models.document import Document
 from framework.models.user import db
 from framework.upload.file_upload import allowed_file, save_uploaded_file, get_file_type
@@ -80,8 +81,26 @@ def delete_document(id):
     if not document:
         return jsonify({"status": "error", "message": "文档不存在"}), 404
 
-    vector_store.delete_by_source(document.doc_name)
-    db.session.delete(document)
-    db.session.commit()
+    # 1. 先删向量库（容错）
+    try:
+        vector_store.delete_by_source(document.doc_name)
+    except Exception as e:
+        print(f"向量库删除失败，已跳过: {e}")
+
+    # 2. 再删数据库（事务）
+    try:
+        db.session.delete(document)
+        db.session.commit()
+    except Exception as e:
+        db.session.rollback()
+        print(f"数据库删除失败: {e}")
+        return jsonify({"status": "error", "message": "文档删除失败"}), 500
+
+    # 3. 最后删物理文件（容错）
+    file_path = os.path.join(Config.UPLOAD_FOLDER, document.file_path)
+    try:
+        os.remove(file_path)
+    except Exception as e:
+        print(f"物理文件删除失败，已跳过: {e}")
 
     return jsonify({"status": "ok", "message": "文档删除成功"})

@@ -197,3 +197,115 @@ def test_upload_duplicate_deletes_physical_file(client):
     files_after = os.listdir(client._tmp_upload)
     assert len(files_after) == 1
     print("✓ 重复上传时物理文件已清理")
+
+
+def test_delete_removes_db_vector_and_file(client):
+    """正常删除：数据库记录、向量库数据、物理文件全删"""
+    token = _login(client, 'admin', 'admin123')
+    resp = _upload(client, token, 'to_delete.txt', b'content to be deleted')
+    assert resp.status_code == 200
+    doc_id = resp.get_json()['data']['id']
+    file_path_relative = resp.get_json()['data'].get('file_path')
+
+    # 确认物理文件存在
+    files_before = os.listdir(client._tmp_upload)
+    assert len(files_before) == 1
+
+    # 删除文档
+    del_resp = client.delete(
+        f'/api/v1/docs/{doc_id}',
+        headers={'Authorization': f'Bearer {token}'}
+    )
+    assert del_resp.status_code == 200
+
+    # 验证数据库记录已删除
+    from framework.models.document import Document
+    with client._app.app_context():
+        doc = Document.query.get(doc_id)
+        assert doc is None
+
+    # 验证物理文件已删除
+    files_after = os.listdir(client._tmp_upload)
+    assert len(files_after) == 0
+    print("✓ 正常删除清理三资源完成")
+
+
+def test_delete_when_physical_file_missing(client):
+    """物理文件已不存在时，DB 和向量库正常删除，返回 200"""
+    token = _login(client, 'admin', 'admin123')
+    resp = _upload(client, token, 'file_will_be_missing.txt', b'content for missing file test')
+    assert resp.status_code == 200
+    doc_id = resp.get_json()['data']['id']
+
+    # 手动删除物理文件模拟文件已不存在
+    files = os.listdir(client._tmp_upload)
+    for f in files:
+        os.remove(os.path.join(client._tmp_upload, f))
+
+    # 删除文档，应不报错
+    del_resp = client.delete(
+        f'/api/v1/docs/{doc_id}',
+        headers={'Authorization': f'Bearer {token}'}
+    )
+    assert del_resp.status_code == 200
+
+    from framework.models.document import Document
+    with client._app.app_context():
+        assert Document.query.get(doc_id) is None
+    print("✓ 物理文件已不存在时删除不报错")
+
+
+def test_delete_when_physical_file_deletion_fails(client, monkeypatch):
+    """物理文件删除失败（权限错误）时，DB 和向量库正常删除，返回 200"""
+    token = _login(client, 'admin', 'admin123')
+    resp = _upload(client, token, 'protected.txt', b'content for deletion failure test')
+    assert resp.status_code == 200
+    doc_id = resp.get_json()['data']['id']
+
+    # mock os.remove 抛出权限异常
+    import builtins
+    original_remove = os.remove
+    def fail_remove(path):
+        raise PermissionError("mock permission denied")
+    monkeypatch.setattr(os, 'remove', fail_remove)
+
+    del_resp = client.delete(
+        f'/api/v1/docs/{doc_id}',
+        headers={'Authorization': f'Bearer {token}'}
+    )
+
+    # 恢复 os.remove 以便清理
+    monkeypatch.setattr(os, 'remove', original_remove)
+
+    assert del_resp.status_code == 200
+    from framework.models.document import Document
+    with client._app.app_context():
+        assert Document.query.get(doc_id) is None
+    print("✓ 物理文件删除失败时不阻塞业务")
+
+
+def test_delete_when_vector_store_fails(client):
+    """向量库删除失败时，DB 和物理文件正常删除，返回 200"""
+    token = _login(client, 'admin', 'admin123')
+    resp = _upload(client, token, 'vector_fail_test.txt', b'content for vector store failure test')
+    assert resp.status_code == 200
+    doc_id = resp.get_json()['data']['id']
+
+    # 配置 mock 向量库删除时抛异常
+    client._mock_vs.set_fail(True)
+
+    del_resp = client.delete(
+        f'/api/v1/docs/{doc_id}',
+        headers={'Authorization': f'Bearer {token}'}
+    )
+
+    client._mock_vs.set_fail(False)
+
+    assert del_resp.status_code == 200
+    from framework.models.document import Document
+    with client._app.app_context():
+        assert Document.query.get(doc_id) is None
+    # 物理文件应已被删除
+    files_after = os.listdir(client._tmp_upload)
+    assert len(files_after) == 0
+    print("✓ 向量库删除失败时不阻塞业务")
