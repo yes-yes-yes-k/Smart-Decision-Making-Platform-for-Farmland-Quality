@@ -19,6 +19,7 @@ class RAGChain:
                 "answer": llm_response.get("content", ""),
                 "sources": [],
                 "model": llm_response.get("model", "fallback"),
+                "notice": "本地知识库中未找到相关文档，以上回答来自模型通用知识。",
             }
 
         context = self._build_context(retrieval_results["results"])
@@ -64,7 +65,7 @@ class RAGChain:
         return "\n\n".join(context_parts)
 
     def _build_prompt(self, query: str, context: str) -> str:
-        return f"""基于以下文档内容，回答用户的问题。如果文档中没有相关信息，请根据你的知识回答，并明确说明信息来源。
+        return f"""基于以下文档内容，回答用户的问题。请优先参考本地知识库中的文档内容进行回答。
 
 文档内容：
 {context}
@@ -72,6 +73,6 @@ class RAGChain:
 用户问题：
 {query}
 
-请以自然、专业的语言回答。回答时必须在引用文档内容处标注来源，格式为"根据《文档名》..."。"""
+请以自然、专业的语言回答。回答时必须在引用文档内容处标注来源，格式为"根据《文档名》..."。如果文档中没有完全匹配的信息，可结合文档相关内容进行推断，但需说明推断依据。"""
 
 rag_chain = RAGChain()
