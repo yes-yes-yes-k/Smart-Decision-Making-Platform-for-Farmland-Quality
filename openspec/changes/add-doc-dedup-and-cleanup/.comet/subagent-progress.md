@@ -161,3 +161,25 @@
 - **测试证据**: 5 passed（pytest -k "delete" 全部通过：test_upload_duplicate_deletes_physical_file, test_delete_removes_db_vector_and_file, test_delete_when_physical_file_missing, test_delete_when_physical_file_deletion_fails, test_delete_when_vector_store_fails；JUnit XML 确认 tests=5 failures=0 errors=0）。注：修复前因 __pycache__ 缓存导致 2 个测试假失败，清理缓存后全部通过。
 - **回归证据**: docs_dedup 全部 9 passed（JUnit XML 确认）；auth+upload 16 passed；agent_base+manager+specialized 33 passed；function_calling 3 passed。合计确认 61 passed, 0 failed。test_interfaces.py 与 test_thematic_models.py 存在预先存在的 collection 错误（ModuleNotFoundError: No module named 'ai_culti_demo'，与本次修改无关）。
 - **Concerns**: 无
+
+---
+
+## Task 6: 端到端验证
+
+- **状态**: DONE
+- **提交哈希**: 无（验证任务，无代码变更）
+- **验证内容**:
+  - Step 1-4（测试验证）：复用 Task 4/5 implementer 与 fix subagent 的测试证据
+    - 查重测试 5 passed（test_upload_first_occurrence_stores_hash, test_upload_duplicate_same_user_returns_409, test_upload_same_content_different_users_succeeds, test_upload_skips_historical_null_hash_documents, test_upload_duplicate_deletes_physical_file）
+    - 删除测试 4 passed（test_delete_removes_db_vector_and_file, test_delete_when_physical_file_missing, test_delete_when_physical_file_deletion_fails, test_delete_when_vector_store_fails）
+    - 全量回归 79 passed（Task 5 implementer）+ 61 passed（Task 5 fix subagent，排除 2 个预存 collection error）
+  - Step 5（数据库结构验证）：
+    - `python init_db.py` 执行成功（exit_code 0）
+    - `kb_document` 表包含 `file_hash` 列，类型 VARCHAR(64), nullable=True，符合设计文档 2.1
+    - 验证脚本输出：`VERIFICATION PASSED`
+  - Step 6：无需提交（验证未发现新问题）
+- **Minor findings 记录（从 Task 5 review 继承，留待最终审查处理）**:
+  1. tests/test_docs_dedup.py: `import builtins` 未使用（brief 原样代码）
+  2. tests/test_docs_dedup.py: `file_path_relative` 变量未使用（brief 原样代码）
+  3. framework/api/routes/docs.py: 文件末尾无换行符（既有状态）
+- **Concerns**: 无
