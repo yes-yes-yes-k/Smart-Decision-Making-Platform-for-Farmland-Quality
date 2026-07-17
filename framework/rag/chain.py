@@ -52,7 +52,7 @@ class RAGChain:
         # 收集所有 UUID 文件名，查询数据库获取中文原始名
         uuid_names = []
         for result in retrieval_results["results"]:
-            metadata = result.get("metadata", {})
+            metadata = result.get("metadata") or {}
             source = metadata.get("source", "unknown")
             if source not in uuid_names:
                 uuid_names.append(source)

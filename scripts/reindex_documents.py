@@ -45,6 +45,10 @@ def reindex_uploads():
     stats = vector_store.get_collection_stats()
     print(f"索引前向量存储文档数: {stats['count']}")
 
+    # 清空向量存储，避免残留过时文档
+    cleared = vector_store.clear()
+    print(f"已清空向量存储中的 {cleared} 条旧文档")
+
     indexed = 0
     skipped = 0
     for filename in files:
@@ -62,11 +66,12 @@ def reindex_uploads():
             continue
 
         chunks = [content[i:i+800] for i in range(0, len(content), 800)]
-        doc_name = name_mapping.get(filename, filename)
-        metadatas = [{"source": doc_name} for _ in chunks]
+        # source 使用磁盘文件名（UUID），chain.py 查询 kb_document.file_path 获取中文 doc_name
+        metadatas = [{"source": filename} for _ in chunks]
         ids = [f"{uuid.uuid4().hex}" for _ in chunks]
 
         vector_store.add_documents(chunks, metadatas, ids)
+        doc_name = name_mapping.get(filename, filename)
         print(f"  已索引: {filename} → {doc_name} ({len(chunks)} 片段)")
         indexed += 1
 

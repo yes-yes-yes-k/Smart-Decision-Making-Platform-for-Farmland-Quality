@@ -103,4 +103,22 @@ class ChromaVectorStore:
             print(f"获取统计失败: {e}")
             return {"count": 0, "name": ""}
 
+    def clear(self) -> int:
+        """清空集合中的所有文档，返回删除前的文档数"""
+        if not self._collection:
+            return 0
+        try:
+            count_before = self._collection.count()
+            if count_before == 0:
+                return 0
+            # 获取所有 id 然后删除
+            all_data = self._collection.get()
+            ids = all_data.get("ids", [])
+            if ids:
+                self._collection.delete(ids=ids)
+            return count_before
+        except Exception as e:
+            print(f"清空集合失败: {e}")
+            return 0
+
 vector_store = ChromaVectorStore()
