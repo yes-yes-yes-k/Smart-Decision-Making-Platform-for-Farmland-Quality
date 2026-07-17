@@ -81,6 +81,9 @@ def delete_document(id):
     if not document:
         return jsonify({"status": "error", "message": "文档不存在"}), 404
 
+    # 在数据库删除前保存物理文件路径，避免 commit 后访问 detached 对象
+    file_path = os.path.join(Config.UPLOAD_FOLDER, document.file_path)
+
     # 1. 先删向量库（容错）
     try:
         vector_store.delete_by_source(document.doc_name)
@@ -97,7 +100,6 @@ def delete_document(id):
         return jsonify({"status": "error", "message": "文档删除失败"}), 500
 
     # 3. 最后删物理文件（容错）
-    file_path = os.path.join(Config.UPLOAD_FOLDER, document.file_path)
     try:
         os.remove(file_path)
     except Exception as e:
