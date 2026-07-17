@@ -31,6 +31,16 @@ def upload_document():
     new_filename, file_path, file_hash = save_uploaded_file(file)
     file_type = get_file_type(file.filename)
 
+    # 查重：同用户下相同 file_hash 视为重复
+    existing = Document.query.filter_by(file_hash=file_hash, create_by=user_id).first()
+    if existing:
+        os.remove(file_path)
+        return jsonify({
+            "status": "error",
+            "message": "文档内容已存在",
+            "existing_document_id": existing.id
+        }), 409
+
     content = parse_document(file_path, file_type)
     chunks = []
     if content:
@@ -45,6 +55,7 @@ def upload_document():
         file_size=os.path.getsize(file_path),
         chunk_count=len(chunks) if content else 0,
         status=1,
+        file_hash=file_hash,
         create_by=user_id,
     )
     db.session.add(document)
