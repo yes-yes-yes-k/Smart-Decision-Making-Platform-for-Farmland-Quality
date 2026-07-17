@@ -2,6 +2,7 @@
 change: add-doc-dedup-and-cleanup
 design-doc: docs/superpowers/specs/2026-07-17-doc-dedup-and-cleanup-design.md
 base-ref: b36bfdfcb6e8c28af243d8a871861d61ca2cf37c
+archived-with: 2026-07-17-add-doc-dedup-and-cleanup
 ---
 
 # 文档上传查重与删除清理 实施计划
@@ -29,6 +30,7 @@ base-ref: b36bfdfcb6e8c28af243d8a871861d61ca2cf37c
 - 测试运行命令：`python -m pytest tests/ -q`（项目既有约定）
 - 数据库变更通过 `init_db.py` 的 `db.drop_all()` + `db.create_all()` 应用，无需单独迁移脚本（init_db.py 既有机制）
 
+archived-with: 2026-07-17-add-doc-dedup-and-cleanup
 ---
 
 ## 任务概览
@@ -42,6 +44,7 @@ base-ref: b36bfdfcb6e8c28af243d8a871861d61ca2cf37c
 | Task 5 | 3.1, 3.2, 3.3 | 删除接口物理文件清理 |
 | Task 6 | 4.1, 4.2, 4.3 | 端到端验证 |
 
+archived-with: 2026-07-17-add-doc-dedup-and-cleanup
 ---
 
 ### Task 1: Document 模型新增 file_hash 字段 ✓
@@ -162,6 +165,7 @@ git add framework/models/document.py tests/test_upload.py
 git commit -m "feat(document): 新增 file_hash 字段存储文件内容SHA-256哈希"
 ```
 
+archived-with: 2026-07-17-add-doc-dedup-and-cleanup
 ---
 
 ### Task 2: 新增 compute_file_hash 函数 ✓
@@ -314,6 +318,7 @@ git add framework/upload/file_upload.py tests/test_upload.py
 git commit -m "feat(file-upload): 新增 compute_file_hash 分块计算SHA-256哈希"
 ```
 
+archived-with: 2026-07-17-add-doc-dedup-and-cleanup
 ---
 
 ### Task 3: save_uploaded_file 返回三元组 ✓
@@ -414,6 +419,7 @@ git add framework/upload/file_upload.py framework/api/routes/docs.py tests/test_
 git commit -m "feat(file-upload): save_uploaded_file 返回三元组含文件哈希"
 ```
 
+archived-with: 2026-07-17-add-doc-dedup-and-cleanup
 ---
 
 ### Task 4: 上传接口查重逻辑 ✓
@@ -725,6 +731,7 @@ git add framework/api/routes/docs.py tests/test_docs_dedup.py
 git commit -m "feat(docs): 上传接口增加基于SHA-256的内容查重，重复返回409"
 ```
 
+archived-with: 2026-07-17-add-doc-dedup-and-cleanup
 ---
 
 ### Task 5: 删除接口物理文件清理 ✓
@@ -941,6 +948,7 @@ git add framework/api/routes/docs.py tests/test_docs_dedup.py
 git commit -m "feat(docs): 删除接口按容错顺序清理向量库、数据库、物理文件"
 ```
 
+archived-with: 2026-07-17-add-doc-dedup-and-cleanup
 ---
 
 ### Task 6: 端到端验证 ✓
@@ -992,6 +1000,7 @@ git add -A
 git commit -m "test: 端到端验证文档查重与删除清理功能"
 ```
 
+archived-with: 2026-07-17-add-doc-dedup-and-cleanup
 ---
 
 ## 执行顺序
@@ -1009,3 +1018,4 @@ Task 1-3 为基础设施（模型字段、哈希函数、返回值），互相�
 | 删除顺序与 tasks.md 3.1 描述不同 | 以设计文档 2.4 为准（向量库→DB→物理文件），设计文档提供明确数据一致性 rationale，delta spec 场景与此顺序一致 |
 | 历史文档 `file_hash=NULL` | 查重查询 `filter_by(file_hash=file_hash)` 中 `file_hash` 为非 NULL 哈希值，NULL 记录不匹配，自动跳过 |
 | 数据库 schema 变更 | `init_db.py` 使用 `db.drop_all()` + `db.create_all()`，重新运行即可应用新 schema，无需迁移脚本 |
+

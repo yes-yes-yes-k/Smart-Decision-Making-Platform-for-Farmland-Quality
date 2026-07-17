@@ -2,6 +2,8 @@
 comet_change: add-doc-dedup-and-cleanup
 role: technical-design
 canonical_spec: openspec
+archived-with: 2026-07-17-add-doc-dedup-and-cleanup
+status: final
 ---
 
 # 技术设计文档：文档上传查重与删除清理
@@ -160,3 +162,4 @@ except: log error
 ## 6. Spec Patch
 
 本次设计在 delta spec 的 MODIFIED Requirements 中补充了「向量库删除失败」场景，明确删除流程中向量库删除失败时的容错行为。
+

@@ -18,7 +18,7 @@ verification_report: docs/superpowers/reports/2026-07-17-add-doc-dedup-and-clean
 branch_status: handled
 created_at: 2026-07-17
 verified_at: 2026-07-17
-archived: false
+archived: true
 direct_override: null
 handoff_context: openspec/changes/add-doc-dedup-and-cleanup/.comet/handoff/design-context.json
 handoff_hash: b019314a54fa9ace672b3cf6d94e8ece170a5756d84221f991ad77c66be5c637
