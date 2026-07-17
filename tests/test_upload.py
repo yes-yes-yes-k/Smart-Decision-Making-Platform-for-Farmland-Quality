@@ -67,6 +67,7 @@ def test_document_model_fields():
     assert hasattr(Document, 'status')
     assert hasattr(Document, 'category')
     assert hasattr(Document, 'create_by')
+    assert hasattr(Document, 'file_hash')
     print("✓ 文档模型字段定义正确")
 
 def test_document_to_dict():
@@ -81,12 +82,14 @@ def test_document_to_dict():
     doc.status = 1
     doc.category = "report"
     doc.create_by = 1
+    doc.file_hash = "abc123def456"
 
     result = doc.to_dict()
     assert result["doc_name"] == "test.pdf"
     assert result["file_type"] == "pdf"
     assert result["file_size"] == 1024
     assert result["chunk_count"] == 5
+    assert result["file_hash"] == "abc123def456"
     print("✓ 文档模型 to_dict 方法正常")
 
 if __name__ == "__main__":
