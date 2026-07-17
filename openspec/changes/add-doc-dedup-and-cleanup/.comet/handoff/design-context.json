@@ -1,0 +1,14 @@
+{
+  "change": "add-doc-dedup-and-cleanup",
+  "phase": "design",
+  "mode": "compact",
+  "canonical_spec": "openspec",
+  "generated_by": "comet-handoff.sh",
+  "context_hash": "b019314a54fa9ace672b3cf6d94e8ece170a5756d84221f991ad77c66be5c637",
+  "files": [
+    { "path": "openspec/changes/add-doc-dedup-and-cleanup/proposal.md", "sha256": "9ed6fb23458465a389040ba0c74130277ae83d0a20d3abe5d67a539ca8fd110e" },
+    { "path": "openspec/changes/add-doc-dedup-and-cleanup/design.md", "sha256": "8223e591c2148c948b38bff583b58e6a9d3def1c8898939416ccfc34cb01f4de" },
+    { "path": "openspec/changes/add-doc-dedup-and-cleanup/tasks.md", "sha256": "5a85f704eaec27ae1b68a14f89c5368811f98f39d27142ff7a4bedc3d38e9c9f" },
+    { "path": "openspec/changes/add-doc-dedup-and-cleanup/specs/file-upload-management/spec.md", "sha256": "4d0e5312e7b88b701ec9e584a8cd02f798b83991a955d439efedac8798c7a594" }
+  ]
+}
