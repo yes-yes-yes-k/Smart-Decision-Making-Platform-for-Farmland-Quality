@@ -14,8 +14,8 @@ base_ref: ad01cf0bc35da66e221e79d859d7d6f1910ca9ef
 design_doc: null
 plan: null
 verify_result: pending
-verification_report: null
-branch_status: pending
+verification_report: docs/superpowers/reports/2026-07-17-fix-rag-response-extra-data-verify.md
+branch_status: handled
 created_at: 2026-07-17
 verified_at: null
 archived: false
