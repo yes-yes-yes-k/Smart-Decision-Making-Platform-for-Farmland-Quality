@@ -1,0 +1,186 @@
+﻿=== COMMITS ===
+f01423a feat(docs): 鍒犻櫎鎺ュ彛鎸夊閿欓『搴忔竻鐞嗗悜閲忓簱銆佹暟鎹簱銆佺墿鐞嗘枃浠?
+
+=== STAT ===
+ framework/api/routes/docs.py |  25 ++++++++--
+ tests/test_docs_dedup.py     | 112 +++++++++++++++++++++++++++++++++++++++++++
+ 2 files changed, 134 insertions(+), 3 deletions(-)
+
+=== DIFF ===
+diff --git a/framework/api/routes/docs.py b/framework/api/routes/docs.py
+index 8ee080e..1c475d4 100644
+--- a/framework/api/routes/docs.py
++++ b/framework/api/routes/docs.py
+@@ -1,13 +1,14 @@
+ import os
+ from flask import Blueprint, request, jsonify
+ from flask_jwt_extended import jwt_required, get_jwt_identity
++from framework.config import Config
+ from framework.models.document import Document
+ from framework.models.user import db
+ from framework.upload.file_upload import allowed_file, save_uploaded_file, get_file_type
+ from framework.upload.document_parser import parse_document
+ from framework.vector_store.chroma_store import vector_store
+ 
+ docs_bp = Blueprint('docs', __name__)
+ 
+ @docs_bp.route('/', methods=['GET'])
+ @jwt_required()
+@@ -73,15 +74,33 @@ def get_document(id):
+     return jsonify({"status": "ok", "data": document.to_dict()})
+ 
+ @docs_bp.route('/<int:id>', methods=['DELETE'])
+ @jwt_required()
+ def delete_document(id):
+     user_id = get_jwt_identity()
+     document = Document.query.filter_by(id=id, create_by=user_id).first()
+     if not document:
+         return jsonify({"status": "error", "message": "鏂囨。涓嶅瓨鍦?}), 404
+ 
+-    vector_store.delete_by_source(document.doc_name)
+-    db.session.delete(document)
+-    db.session.commit()
++    # 1. 鍏堝垹鍚戦噺搴擄紙瀹归敊锛?+    try:
++        vector_store.delete_by_source(document.doc_name)
++    except Exception as e:
++        print(f"鍚戦噺搴撳垹闄ゅけ璐ワ紝宸茶烦杩? {e}")
++
++    # 2. 鍐嶅垹鏁版嵁搴擄紙浜嬪姟锛?+    try:
++        db.session.delete(document)
++        db.session.commit()
++    except Exception as e:
++        db.session.rollback()
++        print(f"鏁版嵁搴撳垹闄ゅけ璐? {e}")
++        return jsonify({"status": "error", "message": "鏂囨。鍒犻櫎澶辫触"}), 500
++
++    # 3. 鏈€鍚庡垹鐗╃悊鏂囦欢锛堝閿欙級
++    file_path = os.path.join(Config.UPLOAD_FOLDER, document.file_path)
++    try:
++        os.remove(file_path)
++    except Exception as e:
++        print(f"鐗╃悊鏂囦欢鍒犻櫎澶辫触锛屽凡璺宠繃: {e}")
+ 
+     return jsonify({"status": "ok", "message": "鏂囨。鍒犻櫎鎴愬姛"})
+\ No newline at end of file
+diff --git a/tests/test_docs_dedup.py b/tests/test_docs_dedup.py
+index 2335975..e373d48 100644
+--- a/tests/test_docs_dedup.py
++++ b/tests/test_docs_dedup.py
+@@ -190,10 +190,122 @@ def test_upload_duplicate_deletes_physical_file(client):
+     token = _login(client, 'admin', 'admin123')
+     _upload(client, token, 'keep.txt', b'keep this content')
+ 
+     resp = _upload(client, token, 'dup.txt', b'keep this content')
+     assert resp.status_code == 409
+ 
+     # uploads 鐩綍涓簲鍙湁棣栨涓婁紶鐨勬枃浠讹紝鏃犻噸澶嶆枃浠?     files_after = os.listdir(client._tmp_upload)
+     assert len(files_after) == 1
+     print("鉁?閲嶅涓婁紶鏃剁墿鐞嗘枃浠跺凡娓呯悊")
++
++
++def test_delete_removes_db_vector_and_file(client):
++    """姝ｅ父鍒犻櫎锛氭暟鎹簱璁板綍銆佸悜閲忓簱鏁版嵁銆佺墿鐞嗘枃浠跺叏鍒?""
++    token = _login(client, 'admin', 'admin123')
++    resp = _upload(client, token, 'to_delete.txt', b'content to be deleted')
++    assert resp.status_code == 200
++    doc_id = resp.get_json()['data']['id']
++    file_path_relative = resp.get_json()['data'].get('file_path')
++
++    # 纭鐗╃悊鏂囦欢瀛樺湪
++    files_before = os.listdir(client._tmp_upload)
++    assert len(files_before) == 1
++
++    # 鍒犻櫎鏂囨。
++    del_resp = client.delete(
++        f'/api/v1/docs/{doc_id}',
++        headers={'Authorization': f'Bearer {token}'}
++    )
++    assert del_resp.status_code == 200
++
++    # 楠岃瘉鏁版嵁搴撹褰曞凡鍒犻櫎
++    from framework.models.document import Document
++    with client._app.app_context():
++        doc = Document.query.get(doc_id)
++        assert doc is None
++
++    # 楠岃瘉鐗╃悊鏂囦欢宸插垹闄?+    files_after = os.listdir(client._tmp_upload)
++    assert len(files_after) == 0
++    print("鉁?姝ｅ父鍒犻櫎娓呯悊涓夎祫婧愬畬鎴?)
++
++
++def test_delete_when_physical_file_missing(client):
++    """鐗╃悊鏂囦欢宸蹭笉瀛樺湪鏃讹紝DB 鍜屽悜閲忓簱姝ｅ父鍒犻櫎锛岃繑鍥?200"""
++    token = _login(client, 'admin', 'admin123')
++    resp = _upload(client, token, 'file_will_be_missing.txt', b'content for missing file test')
++    assert resp.status_code == 200
++    doc_id = resp.get_json()['data']['id']
++
++    # 鎵嬪姩鍒犻櫎鐗╃悊鏂囦欢妯℃嫙鏂囦欢宸蹭笉瀛樺湪
++    files = os.listdir(client._tmp_upload)
++    for f in files:
++        os.remove(os.path.join(client._tmp_upload, f))
++
++    # 鍒犻櫎鏂囨。锛屽簲涓嶆姤閿?+    del_resp = client.delete(
++        f'/api/v1/docs/{doc_id}',
++        headers={'Authorization': f'Bearer {token}'}
++    )
++    assert del_resp.status_code == 200
++
++    from framework.models.document import Document
++    with client._app.app_context():
++        assert Document.query.get(doc_id) is None
++    print("鉁?鐗╃悊鏂囦欢宸蹭笉瀛樺湪鏃跺垹闄や笉鎶ラ敊")
++
++
++def test_delete_when_physical_file_deletion_fails(client, monkeypatch):
++    """鐗╃悊鏂囦欢鍒犻櫎澶辫触锛堟潈闄愰敊璇級鏃讹紝DB 鍜屽悜閲忓簱姝ｅ父鍒犻櫎锛岃繑鍥?200"""
++    token = _login(client, 'admin', 'admin123')
++    resp = _upload(client, token, 'protected.txt', b'content for deletion failure test')
++    assert resp.status_code == 200
++    doc_id = resp.get_json()['data']['id']
++
++    # mock os.remove 鎶涘嚭鏉冮檺寮傚父
++    import builtins
++    original_remove = os.remove
++    def fail_remove(path):
++        raise PermissionError("mock permission denied")
++    monkeypatch.setattr(os, 'remove', fail_remove)
++
++    del_resp = client.delete(
++        f'/api/v1/docs/{doc_id}',
++        headers={'Authorization': f'Bearer {token}'}
++    )
++
++    # 鎭㈠ os.remove 浠ヤ究娓呯悊
++    monkeypatch.setattr(os, 'remove', original_remove)
++
++    assert del_resp.status_code == 200
++    from framework.models.document import Document
++    with client._app.app_context():
++        assert Document.query.get(doc_id) is None
++    print("鉁?鐗╃悊鏂囦欢鍒犻櫎澶辫触鏃朵笉闃诲涓氬姟")
++
++
++def test_delete_when_vector_store_fails(client):
++    """鍚戦噺搴撳垹闄ゅけ璐ユ椂锛孌B 鍜岀墿鐞嗘枃浠舵甯稿垹闄わ紝杩斿洖 200"""
++    token = _login(client, 'admin', 'admin123')
++    resp = _upload(client, token, 'vector_fail_test.txt', b'content for vector store failure test')
++    assert resp.status_code == 200
++    doc_id = resp.get_json()['data']['id']
++
++    # 閰嶇疆 mock 鍚戦噺搴撳垹闄ゆ椂鎶涘紓甯?+    client._mock_vs.set_fail(True)
++
++    del_resp = client.delete(
++        f'/api/v1/docs/{doc_id}',
++        headers={'Authorization': f'Bearer {token}'}
++    )
++
++    client._mock_vs.set_fail(False)
++
++    assert del_resp.status_code == 200
++    from framework.models.document import Document
++    with client._app.app_context():
++        assert Document.query.get(doc_id) is None
++    # 鐗╃悊鏂囦欢搴斿凡琚垹闄?+    files_after = os.listdir(client._tmp_upload)
++    assert len(files_after) == 0
++    print("鉁?鍚戦噺搴撳垹闄ゅけ璐ユ椂涓嶉樆濉炰笟鍔?)

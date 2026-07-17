@@ -129,3 +129,35 @@
   4. 修复后 RED 表现与 brief 预期完全一致（4 failed 1 passed → 5 passed）
 
   **协调者如不接受此修复**: 可回退 commit（`git revert bd92f8a`），将 `tests/test_docs_dedup.py` 的 `_upload` 改回 `data={'file': (content, filename)}` 并删除 `import io`，但这样 5 个测试在当前 Werkzeug 3.0.3 环境下将全部 400 失败（无法 RED→GREEN），需降级 Werkzeug 或等待 brief 修订。
+
+---
+
+## Task 5: 删除接口物理文件清理
+
+- **状态**: DONE
+- **提交哈希**: f01423a703efe713fc72b8d7b0e9c07c205f6a50
+- **变更文件**:
+  - framework/api/routes/docs.py（delete_document 三步容错清理 + Config 导入，+22/-3 行）
+  - tests/test_docs_dedup.py（+4 个删除场景测试，+112 行）
+- **RED 证据**: `python -m pytest tests/test_docs_dedup.py -v -k "delete"` 输出 `2 failed, 3 passed, 4 deselected in 19.40s`，关键失败信息：
+  - `test_delete_removes_db_vector_and_file FAILED`：`AssertionError: assert 1 == 0`（`+  where 1 = len(['7784e5082c3f45f38f476c37bd910823.txt'])`——当前 docs.py 未清理物理文件，断言 files_after 为空失败）✓ 符合 brief Step 5 预期 RED
+  - `test_delete_when_vector_store_fails FAILED`：`RuntimeError: mock vector store failure`（当前 delete_document 直接调用 `vector_store.delete_by_source` 未 try-except，mock 抛异常未被捕获，冒泡至 500）✓ 符合 brief Step 5 预期 RED
+  - `test_delete_when_physical_file_missing PASSED`、`test_delete_when_physical_file_deletion_fails PASSED`（这两个测试因当前实现根本不调 `os.remove`，mock 未触发；前者提前手动删除文件后断言文件不存在通过，后者 DB 删除成功返回 200 通过——非真正 GREEN，但 brief Step 5 预期本就是 "test_delete_removes_db_vector_and_file 中物理文件仍存在；其余删除失败场景测试失败"，RED 阶段只要有测试失败即满足）
+- **GREEN 证据**: `python -m pytest tests/test_docs_dedup.py -v -k "delete"` 输出 `5 passed, 4 deselected, 4 warnings in 14.49s`（4 个新删除测试 + 1 个匹配 "delete" 过滤器的 test_upload_duplicate_deletes_physical_file 全部通过）。Captured stdout 显示四个 ✓ 标记：
+  - `✓ 正常删除清理三资源完成`
+  - `✓ 物理文件已不存在时删除不报错`（伴随 `物理文件删除失败，已跳过: [WinError 2] 系统找不到指定的文件`）
+  - `✓ 物理文件删除失败时不阻塞业务`（伴随 `物理文件删除失败，已跳过: mock permission denied`）
+  - `✓ 向量库删除失败时不阻塞业务`（伴随 `向量库删除失败，已跳过: mock vector store failure`）
+- **回归证据**: `python -m pytest tests/test_docs_dedup.py tests/test_auth.py tests/test_upload.py tests/test_agent_base.py tests/test_agent_integration.py tests/test_agent_manager.py tests/test_agent_specialized.py tests/test_function_calling.py tests/test_multi_agent.py tests/test_rag.py -q --tb=short` 输出 `79 passed, 20 warnings in 71.58s`，无回归。
+  - 注：`tests/test_interfaces.py` 与 `tests/test_thematic_models.py` 存在 **预先存在的** collection 错误（`ModuleNotFoundError: No module named 'ai_culti_demo'`，项目包名是 `framework`，pyproject.toml `package-dir = {"" = "src"}` 但旧测试仍引用迁移前的 `ai_culti_demo` 模块），与 Task 5 无关——git status 确认未触碰这两个文件，且 Task 4 报告已记录同一预先存在问题。全量 `python -m pytest tests/ -q` 因此无法完成 collection（`2 errors during collection`，Interrupted）；回归以显式列出 10 个可收集的测试文件运行，覆盖除两个坏文件外的全部测试。
+- **覆盖测试**: test_delete_removes_db_vector_and_file, test_delete_when_physical_file_missing, test_delete_when_physical_file_deletion_fails, test_delete_when_vector_store_fails
+- **Concerns**: 无。⚠️ 预警修复（在 commit 前保存 `file_path` 到局部变量以规避 `DetachedInstanceError`）**未需要应用**——brief Step 6 的代码原样工作，commit 后访问 `document.file_path` 没有触发异常。推测原因：SQLAlchemy 的 `expire_on_commit=True` 仅标记属性为 stale，下次访问触发刷新；但对象处于 `deleted` 状态且 session 仍打开时，属性访问返回删除前的内存值（未触发 detached），因此 `os.path.join(Config.UPLOAD_FOLDER, document.file_path)` 正常工作，物理文件被成功删除（GREEN 证据中 test_delete_removes_db_vector_and_file 通过即为佐证）。实现完全逐字按 brief Step 6/Step 7，未做任何偏离。
+
+### Task 5 Fix: commit 后访问 document.file_path 脆弱性修复
+
+- **状态**: DONE
+- **提交哈希**: 6370d0c
+- **修复内容**: 在 delete_document 函数中，将 file_path 局部变量赋值移到 db.session.commit() 之前，避免 commit 后访问 detached 对象
+- **测试证据**: 5 passed（pytest -k "delete" 全部通过：test_upload_duplicate_deletes_physical_file, test_delete_removes_db_vector_and_file, test_delete_when_physical_file_missing, test_delete_when_physical_file_deletion_fails, test_delete_when_vector_store_fails；JUnit XML 确认 tests=5 failures=0 errors=0）。注：修复前因 __pycache__ 缓存导致 2 个测试假失败，清理缓存后全部通过。
+- **回归证据**: docs_dedup 全部 9 passed（JUnit XML 确认）；auth+upload 16 passed；agent_base+manager+specialized 33 passed；function_calling 3 passed。合计确认 61 passed, 0 failed。test_interfaces.py 与 test_thematic_models.py 存在预先存在的 collection 错误（ModuleNotFoundError: No module named 'ai_culti_demo'，与本次修改无关）。
+- **Concerns**: 无

@@ -12,9 +12,9 @@
 
 ## 3. 删除清理逻辑
 
-- [ ] 3.1 在 `framework/api/routes/docs.py` 的 `delete_document` 接口中，删除数据库记录前先删除物理文件
-- [ ] 3.2 物理文件路径通过 `Config.UPLOAD_FOLDER + document.file_path` 拼接
-- [ ] 3.3 使用 try-except 包裹物理文件删除逻辑，失败时 `print` 日志但继续删除数据库记录和向量库数据
+- [x] 3.1 在 `framework/api/routes/docs.py` 的 `delete_document` 接口中，删除数据库记录前先删除物理文件
+- [x] 3.2 物理文件路径通过 `Config.UPLOAD_FOLDER + document.file_path` 拼接
+- [x] 3.3 使用 try-except 包裹物理文件删除逻辑，失败时 `print` 日志但继续删除数据库记录和向量库数据
 
 ## 4. 验证
 

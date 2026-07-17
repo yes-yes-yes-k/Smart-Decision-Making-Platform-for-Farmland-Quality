@@ -727,7 +727,7 @@ git commit -m "feat(docs): 上传接口增加基于SHA-256的内容查重，重�
 
 ---
 
-### Task 5: 删除接口物理文件清理
+### Task 5: 删除接口物理文件清理 ✓
 
 **Files:**
 - Modify: `framework/api/routes/docs.py`（`delete_document` 函数）
