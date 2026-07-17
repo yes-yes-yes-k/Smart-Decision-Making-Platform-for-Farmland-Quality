@@ -70,3 +70,19 @@
 - **修复内容**: test_compute_file_hash_small_file 文件写入从 'w' 文本模式改为 'wb' 二进制模式，消除 Windows \n→\r\n 翻译
 - **GREEN 证据**: 3 passed in 0.19s
 - **Concerns**: 无
+
+---
+
+## Task 3: save_uploaded_file 返回三元组 + docs.py 解包适配
+
+- **状态**: DONE
+- **提交哈希**: 8949b1fd12e77f909dcef2005d36618508c00e5f
+- **变更文件**:
+  - framework/upload/file_upload.py（save_uploaded_file 返回三元组）
+  - framework/api/routes/docs.py（upload_document 解包适配，第 31 行）
+  - tests/test_upload.py（+test_save_uploaded_file_returns_triple）
+- **RED 证据**: `python -m pytest tests/test_upload.py::test_save_uploaded_file_returns_triple -v` 输出 `1 failed in 1.18s`，关键失败信息：`ValueError: not enough values to unpack (expected 3, got 2)`（在 `new_filename, file_path, file_hash = save_uploaded_file(MockFile())` 处触发，当前 save_uploaded_file 只返回二元组）；测试因主断言失败后 finally 清理时残留文件导致二次 `OSError: [WinError 145] 目录不是空的`，根本原因是函数返回值 arity 不匹配，与预期 RED 表现一致。
+- **GREEN 证据**: `python -m pytest tests/test_upload.py::test_save_uploaded_file_returns_triple -v` 输出 `1 passed in 0.15s`。
+- **回归证据**: `python -m pytest tests/test_upload.py -v` 输出 `10 passed in 1.89s`（test_allowed_file, test_get_file_type, test_parse_txt, test_parse_md, test_document_model_fields, test_document_to_dict, test_compute_file_hash_empty_file, test_compute_file_hash_small_file, test_compute_file_hash_large_file_chunked, test_save_uploaded_file_returns_triple 全部通过）。
+- **覆盖测试**: tests/test_upload.py::test_save_uploaded_file_returns_triple
+- **Concerns**: 无（save_uploaded_file 在 file.save(file_path) 后调用 compute_file_hash 计算哈希，SHA-256 分块流式与 Task 2 一致；docs.py 仅解包适配，未引入查重逻辑，Document 构造未动，符合 Task 3 边界，查重与 file_hash 落库留待 Task 4）。

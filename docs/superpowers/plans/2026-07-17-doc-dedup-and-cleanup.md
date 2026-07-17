@@ -316,7 +316,7 @@ git commit -m "feat(file-upload): 新增 compute_file_hash 分块计算SHA-256�
 
 ---
 
-### Task 3: save_uploaded_file 返回三元组
+### Task 3: save_uploaded_file 返回三元组 ✓
 
 **Files:**
 - Modify: `framework/upload/file_upload.py`
