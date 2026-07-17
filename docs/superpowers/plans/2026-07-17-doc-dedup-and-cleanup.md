@@ -416,7 +416,7 @@ git commit -m "feat(file-upload): save_uploaded_file 返回三元组含文件哈
 
 ---
 
-### Task 4: 上传接口查重逻辑
+### Task 4: 上传接口查重逻辑 ✓
 
 **Files:**
 - Modify: `framework/api/routes/docs.py`（`upload_document` 函数）

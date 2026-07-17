@@ -1,0 +1,259 @@
+﻿=== COMMITS ===
+bd92f8a feat(docs): 涓婁紶鎺ュ彛澧炲姞鍩轰簬SHA-256鐨勫唴瀹规煡閲嶏紝閲嶅杩斿洖409
+
+=== STAT ===
+ framework/api/routes/docs.py |  11 +++
+ tests/test_docs_dedup.py     | 199 +++++++++++++++++++++++++++++++++++++++++++
+ 2 files changed, 210 insertions(+)
+
+=== DIFF ===
+diff --git a/framework/api/routes/docs.py b/framework/api/routes/docs.py
+index de364f1..8ee080e 100644
+--- a/framework/api/routes/docs.py
++++ b/framework/api/routes/docs.py
+@@ -24,34 +24,45 @@ def upload_document():
+         return jsonify({"status": "error", "message": "鏈€夋嫨鏂囦欢"}), 400
+     file = request.files['file']
+     if file.filename == '':
+         return jsonify({"status": "error", "message": "鏈€夋嫨鏂囦欢"}), 400
+     if not allowed_file(file.filename):
+         return jsonify({"status": "error", "message": "涓嶆敮鎸佺殑鏂囦欢绫诲瀷"}), 400
+ 
+     new_filename, file_path, file_hash = save_uploaded_file(file)
+     file_type = get_file_type(file.filename)
+ 
++    # 鏌ラ噸锛氬悓鐢ㄦ埛涓嬬浉鍚?file_hash 瑙嗕负閲嶅
++    existing = Document.query.filter_by(file_hash=file_hash, create_by=user_id).first()
++    if existing:
++        os.remove(file_path)
++        return jsonify({
++            "status": "error",
++            "message": "鏂囨。鍐呭宸插瓨鍦?,
++            "existing_document_id": existing.id
++        }), 409
++
+     content = parse_document(file_path, file_type)
+     chunks = []
+     if content:
+         chunks = [content[i:i+800] for i in range(0, len(content), 800)]
+         metadatas = [{"source": file.filename} for _ in chunks]
+         vector_store.add_documents(chunks, metadatas)
+ 
+     document = Document(
+         doc_name=file.filename,
+         file_path=new_filename,
+         file_type=file_type,
+         file_size=os.path.getsize(file_path),
+         chunk_count=len(chunks) if content else 0,
+         status=1,
++        file_hash=file_hash,
+         create_by=user_id,
+     )
+     db.session.add(document)
+     db.session.commit()
+ 
+     return jsonify({"status": "ok", "data": document.to_dict(), "message": "鏂囨。涓婁紶鎴愬姛"})
+ 
+ @docs_bp.route('/<int:id>', methods=['GET'])
+ @jwt_required()
+ def get_document(id):
+diff --git a/tests/test_docs_dedup.py b/tests/test_docs_dedup.py
+new file mode 100644
+index 0000000..2335975
+--- /dev/null
++++ b/tests/test_docs_dedup.py
+@@ -0,0 +1,199 @@
++"""娴嬭瘯鏂囨。涓婁紶鏌ラ噸涓庡垹闄ゆ竻鐞嗗姛鑳?""
++import sys
++import os
++import io
++import shutil
++import tempfile
++sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
++
++import pytest
++from framework.api.app import create_app
++from framework.models.user import db, User
++from framework.config import Config, SQLiteConfig
++from werkzeug.security import generate_password_hash
++
++
++class MockVectorStore:
++    """妯℃嫙鍚戦噺搴擄紝閬垮厤娴嬭瘯渚濊禆 ChromaDB 纾佺洏鎿嶄綔"""
++    def __init__(self):
++        self._should_fail = False
++
++    def add_documents(self, texts, metadatas=None, ids=None):
++        if self._should_fail:
++            raise RuntimeError("mock vector store failure")
++        return len(texts) if texts else 0
++
++    def delete_by_source(self, source_doc_name):
++        if self._should_fail:
++            raise RuntimeError("mock vector store failure")
++        return 0
++
++    def set_fail(self, should_fail):
++        self._should_fail = should_fail
++
++
++@pytest.fixture
++def client(monkeypatch):
++    """鍒涘缓娴嬭瘯瀹㈡埛绔紝浣跨敤 SQLite 涓存椂鏂囦欢鏁版嵁搴擄紝mock 鍚戦噺搴?""
++    tmp_upload = tempfile.mkdtemp(prefix="test_upload_")
++    tmp_db_dir = tempfile.mkdtemp(prefix="test_db_")
++    tmp_db_path = os.path.join(tmp_db_dir, "test.db")
++
++    original_folder = Config.UPLOAD_FOLDER
++    original_db_uri = SQLiteConfig.SQLALCHEMY_DATABASE_URI
++    Config.UPLOAD_FOLDER = tmp_upload
++    # 鍦?create_app 涔嬪墠瑕嗙洊 SQLiteConfig 鐨?URI锛岀‘淇濆紩鎿庣粦瀹氬埌涓存椂鏂囦欢
++    SQLiteConfig.SQLALCHEMY_DATABASE_URI = f'sqlite:///{tmp_db_path}'
++
++    app = create_app('sqlite')
++    app.config['TESTING'] = True
++
++    mock_vs = MockVectorStore()
++    monkeypatch.setattr('framework.api.routes.docs.vector_store', mock_vs)
++
++    with app.app_context():
++        db.drop_all()
++        db.create_all()
++        admin = User(
++            username='admin',
++            password=generate_password_hash('admin123'),
++            nickname='绠＄悊鍛?,
++            role='admin',
++            status=1
++        )
++        user2 = User(
++            username='user2',
++            password=generate_password_hash('user1234'),
++            nickname='鐢ㄦ埛2',
++            role='user',
++            status=1
++        )
++        db.session.add(admin)
++        db.session.add(user2)
++        db.session.commit()
++        admin_id = admin.id
++        user2_id = user2.id
++
++    client = app.test_client()
++
++    # 鏆撮湶 app銆乵ock_vs 鍜岀敤鎴?ID 渚涙祴璇曚娇鐢?+    client._app = app
++    client._mock_vs = mock_vs
++    client._admin_id = admin_id
++    client._user2_id = user2_id
++    client._tmp_upload = tmp_upload
++
++    yield client
++
++    Config.UPLOAD_FOLDER = original_folder
++    SQLiteConfig.SQLALCHEMY_DATABASE_URI = original_db_uri
++    shutil.rmtree(tmp_upload, ignore_errors=True)
++    shutil.rmtree(tmp_db_dir, ignore_errors=True)
++
++
++def _login(client, username, password):
++    """鐧诲綍鑾峰彇 JWT token"""
++    resp = client.post('/api/v1/auth/login', json={
++        'username': username,
++        'password': password
++    })
++    assert resp.status_code == 200
++    return resp.get_json()['data']['token']
++
++
++def _upload(client, token, filename, content):
++    """涓婁紶鏂囦欢杈呭姪鍑芥暟"""
++    resp = client.post(
++        '/api/v1/docs/upload',
++        headers={'Authorization': f'Bearer {token}'},
++        data={'file': (io.BytesIO(content), filename)},
++        content_type='multipart/form-data'
++    )
++    return resp
++
++
++def test_upload_first_occurrence_stores_hash(client):
++    """棣栨涓婁紶鎴愬姛锛宖ile_hash 宸茶褰?""
++    token = _login(client, 'admin', 'admin123')
++    resp = _upload(client, token, 'first.txt', b'unique content for first upload')
++
++    assert resp.status_code == 200
++    data = resp.get_json()
++    assert data['status'] == 'ok'
++    assert data['data']['file_hash'] is not None
++    assert len(data['data']['file_hash']) == 64
++    print("鉁?棣栨涓婁紶鎴愬姛锛宖ile_hash 宸茶褰?)
++
++
++def test_upload_duplicate_same_user_returns_409(client):
++    """鍚岀敤鎴蜂笂浼犻噸澶嶅唴瀹癸紙涓嶅悓鏂囦欢鍚嶏級杩斿洖 409 Conflict"""
++    token = _login(client, 'admin', 'admin123')
++
++    # 棣栨涓婁紶
++    resp1 = _upload(client, token, 'original.txt', b'duplicate detection test content')
++    assert resp1.status_code == 200
++    existing_id = resp1.get_json()['data']['id']
++
++    # 鍚岀敤鎴峰啀娆′笂浼犵浉鍚屽唴瀹癸紝涓嶅悓鏂囦欢鍚?+    resp2 = _upload(client, token, 'renamed_copy.txt', b'duplicate detection test content')
++
++    assert resp2.status_code == 409
++    data = resp2.get_json()
++    assert data['status'] == 'error'
++    assert data['existing_document_id'] == existing_id
++    print("鉁?鍚岀敤鎴烽噸澶嶄笂浼犺繑鍥?409 Conflict")
++
++
++def test_upload_same_content_different_users_succeeds(client):
++    """璺ㄧ敤鎴蜂笂浼犵浉鍚屽唴瀹硅繑鍥?200 鎴愬姛"""
++    token1 = _login(client, 'admin', 'admin123')
++    token2 = _login(client, 'user2', 'user1234')
++
++    resp1 = _upload(client, token1, 'user1_doc.txt', b'shared content across users')
++    assert resp1.status_code == 200
++
++    resp2 = _upload(client, token2, 'user2_doc.txt', b'shared content across users')
++    assert resp2.status_code == 200
++    assert resp2.get_json()['data']['id'] != resp1.get_json()['data']['id']
++    print("鉁?璺ㄧ敤鎴风浉鍚屽唴瀹逛笂浼犳垚鍔?)
++
++
++def test_upload_skips_historical_null_hash_documents(client):
++    """鍘嗗彶鏂囨。 file_hash=NULL 涓嶅弬涓庢煡閲嶏紝涓婁紶涓嶅悓鍐呭搴旀垚鍔?""
++    from framework.models.document import Document
++    token = _login(client, 'admin', 'admin123')
++
++    # 鐩存帴鍚戞暟鎹簱鎻掑叆涓€鏉″巻鍙叉枃妗ｏ紙file_hash=NULL锛?+    with client._app.app_context():
++        legacy_doc = Document(
++            doc_name='legacy.txt',
++            file_path='legacy_file.txt',
++            file_type='txt',
++            file_size=100,
++            chunk_count=1,
++            status=1,
++            file_hash=None,
++            create_by=client._admin_id,
++        )
++        db.session.add(legacy_doc)
++        db.session.commit()
++
++    # 涓婁紶涓嶅悓鍐呭鐨勬柊鏂囨。锛屽簲鎴愬姛锛堜笉琚巻鍙?NULL hash 鏂囨。骞叉壈锛?+    resp = _upload(client, token, 'new_content.txt', b'brand new content different from legacy')
++    assert resp.status_code == 200
++    assert resp.get_json()['data']['file_hash'] is not None
++    print("鉁?鍘嗗彶鏂囨。 file_hash=NULL 涓嶅弬涓庢煡閲?)
++
++
++def test_upload_duplicate_deletes_physical_file(client):
++    """妫€娴嬪埌閲嶅鏃讹紝鍒氫繚瀛樼殑鐗╃悊鏂囦欢搴旇鍒犻櫎"""
++    token = _login(client, 'admin', 'admin123')
++    _upload(client, token, 'keep.txt', b'keep this content')
++
++    resp = _upload(client, token, 'dup.txt', b'keep this content')
++    assert resp.status_code == 409
++
++    # uploads 鐩綍涓簲鍙湁棣栨涓婁紶鐨勬枃浠讹紝鏃犻噸澶嶆枃浠?+    files_after = os.listdir(client._tmp_upload)
++    assert len(files_after) == 1
++    print("鉁?閲嶅涓婁紶鏃剁墿鐞嗘枃浠跺凡娓呯悊")

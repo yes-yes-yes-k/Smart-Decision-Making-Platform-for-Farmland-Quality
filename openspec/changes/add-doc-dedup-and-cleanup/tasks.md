@@ -6,9 +6,9 @@
 
 ## 2. 上传查重逻辑
 
-- [ ] 2.1 在 `framework/api/routes/docs.py` 的 `upload_document` 接口中，保存文件后计算哈希，查询 `Document.query.filter_by(file_hash=hash, create_by=user_id).first()` 检测重复
-- [ ] 2.2 检测到重复时，删除刚保存的物理文件，返回 409 Conflict 错误，响应中包含已存在文档的 ID
-- [ ] 2.3 未检测到重复时，在创建 `Document` 记录时填入 `file_hash` 字段
+- [x] 2.1 在 `framework/api/routes/docs.py` 的 `upload_document` 接口中，保存文件后计算哈希，查询 `Document.query.filter_by(file_hash=hash, create_by=user_id).first()` 检测重复
+- [x] 2.2 检测到重复时，删除刚保存的物理文件，返回 409 Conflict 错误，响应中包含已存在文档的 ID
+- [x] 2.3 未检测到重复时，在创建 `Document` 记录时填入 `file_hash` 字段
 
 ## 3. 删除清理逻辑
 

@@ -86,3 +86,46 @@
 - **回归证据**: `python -m pytest tests/test_upload.py -v` 输出 `10 passed in 1.89s`（test_allowed_file, test_get_file_type, test_parse_txt, test_parse_md, test_document_model_fields, test_document_to_dict, test_compute_file_hash_empty_file, test_compute_file_hash_small_file, test_compute_file_hash_large_file_chunked, test_save_uploaded_file_returns_triple 全部通过）。
 - **覆盖测试**: tests/test_upload.py::test_save_uploaded_file_returns_triple
 - **Concerns**: 无（save_uploaded_file 在 file.save(file_path) 后调用 compute_file_hash 计算哈希，SHA-256 分块流式与 Task 2 一致；docs.py 仅解包适配，未引入查重逻辑，Document 构造未动，符合 Task 3 边界，查重与 file_hash 落库留待 Task 4）。
+
+---
+
+## Task 4: 上传接口查重逻辑
+
+- **状态**: DONE_WITH_CONCERNS（需协调者复核一处测试基础设施可移植性修复，详见 Concerns）
+- **提交哈希**: bd92f8a8d124d367149b98460c5040f95e229508
+- **变更文件**:
+  - framework/api/routes/docs.py（+11 行：upload_document 在 save_uploaded_file 之后插入查重逻辑——`Document.query.filter_by(file_hash=file_hash, create_by=user_id).first()`，重复则 `os.remove(file_path)` 并返回 409 + `existing_document_id`；Document 构造加入 `file_hash=file_hash`。逐字按 brief Step 8 实现）
+  - tests/test_docs_dedup.py（新建，+199 行：含 MockVectorStore 类、client fixture、_login/_upload 辅助、5 个测试用例。逐字按 brief Step 1-6 实现，唯一偏离见 Concerns）
+- **RED 证据**: `python -m pytest tests/test_docs_dedup.py -v --tb=short` 输出 `4 failed, 1 passed in 20.52s`，关键失败信息与 brief Step 7 预期完全一致：
+  - `test_upload_first_occurrence_stores_hash`: `assert None is not None`（file_hash 为 None，当前 docs.py 未写入）✓ 符合 brief 预期 RED
+  - `test_upload_duplicate_same_user_returns_409`: `assert 200 == 409`（当前无查重逻辑，第二次上传返回 200）✓ 符合 brief 预期 RED
+  - `test_upload_skips_historical_null_hash_documents`: `assert None is not None`（file_hash 为 None）✓ 符合预期 RED
+  - `test_upload_duplicate_deletes_physical_file`: `assert 200 == 409`（无查重逻辑）✓ 符合预期 RED
+  - `test_upload_same_content_different_users_succeeds`: PASSED（跨用户上传本就应成功，无查重时不影响）✓ 符合预期 RED
+- **GREEN 证据**: `python -m pytest tests/test_docs_dedup.py -v --tb=short` 输出 `5 passed in 16.61s`（5 个测试全部通过）。
+- **回归证据**:
+  - 快速测试组（8 文件：test_upload/test_docs_dedup/test_auth/test_agent_base/test_agent_manager/test_agent_specialized/test_function_calling/test_multi_agent）: `63 passed, 2 warnings in 22.53s`
+  - 慢速测试组（test_rag + test_agent_integration，含真实 LLM/ChromaDB 调用）: `12 passed, 14 warnings in 56.97s`
+  - 合计 **75 passed, 0 failed**，无回归。
+  - 注：`tests/test_interfaces.py` 与 `tests/test_thematic_models.py` 存在 **预先存在的** collection 错误（`ModuleNotFoundError: No module named 'ai_culti_demo'`，项目包名是 `framework`），与 Task 4 无关，git status 确认未触碰这两个文件。全量 `python -m pytest tests/ -q` 因此无法完成 collection；回归以 `--ignore` 排除这两个预先存在的坏文件后运行。
+- **覆盖测试**: test_upload_first_occurrence_stores_hash, test_upload_duplicate_same_user_returns_409, test_upload_same_content_different_users_succeeds, test_upload_skips_historical_null_hash_documents, test_upload_duplicate_deletes_physical_file
+- **Concerns**:
+
+  ### 测试基础设施可移植性修复（与 Task 2 同模式的可移植性偏离，需协调者复核）
+
+  **偏离内容**: brief Step 1 的 `_upload` 辅助函数中，将 `data={'file': (content, filename)}` 改为 `data={'file': (io.BytesIO(content), filename)}`，并在文件顶部新增 `import io`。其余所有代码（fixture、测试函数、断言值、HTTP 状态码、响应体字段名、函数签名、变量名）均逐字按 brief 实现，未做任何其他修改。
+
+  **根因（已用独立 debug 脚本验证，100% 确认）**:
+  - 项目安装的是 **Werkzeug 3.0.3 + Flask 3.0.3**（pyproject.toml 指定 `Flask = "^3.0.0"`）。
+  - Werkzeug 3.x 的 test client 对文件上传元组 `(first, filename)` 要求 `first` 是**文件类对象**（有 `read()` 方法，如 `BytesIO`/文件对象），**不再接受裸 bytes**。
+  - brief 的 `data={'file': (content, filename)}` 中 `content` 是 `b'...'` 裸 bytes，在 Werkzeug 3.0 下被当作普通表单字段，`request.files` 为空 → upload_document 返回 400 "未选择文件"。
+  - 验证命令（独立 debug 脚本，已删除）：裸 bytes 元组 → 400 "未选择文件"；`io.BytesIO(content)` 元组 → 200 OK（file_hash=None，即 brief 预期的 RED 表现）。
+  - brief Step 7 预期 RED 表现（"file_hash 为 None"、"返回 200 而非 409"）本身证明 brief 作者预期上传应成功（200），而非 400——作者大概率在更老版本 Werkzeug 上验证过，未考虑 3.x 的行为变化。
+
+  **为何选择自行修复而非 BLOCK**: 与 Task 2 完全同构——brief 测试代码在当前运行环境（Windows + Werkzeug 3.0.3）不可移植，函数实现（docs.py 的 upload_document）本身正确。Task 2 的修复（`'w'`→`'wb'` 消除 Windows 换行翻译）已由协调者授权并提交（c2e834d），建立了同模式修复的先例。本次修复同样：
+  1. 不动被测函数（docs.py 按 brief Step 8 逐字实现，diff 仅 +11 行查重逻辑）
+  2. 不动任何断言值、HTTP 状态码、响应体字段名、函数签名、变量名
+  3. 仅改测试基础设施中"如何把 bytes 包成文件传给 test client"这一行
+  4. 修复后 RED 表现与 brief 预期完全一致（4 failed 1 passed → 5 passed）
+
+  **协调者如不接受此修复**: 可回退 commit（`git revert bd92f8a`），将 `tests/test_docs_dedup.py` 的 `_upload` 改回 `data={'file': (content, filename)}` 并删除 `import io`，但这样 5 个测试在当前 Werkzeug 3.0.3 环境下将全部 400 失败（无法 RED→GREEN），需降级 Werkzeug 或等待 brief 修订。
