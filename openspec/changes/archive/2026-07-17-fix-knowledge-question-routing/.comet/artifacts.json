@@ -1,5 +1,6 @@
 {
   "openspec_proposal": "openspec/changes/fix-knowledge-question-routing/proposal.md",
   "openspec_design": "openspec/changes/fix-knowledge-question-routing/design.md",
-  "openspec_tasks": "openspec/changes/fix-knowledge-question-routing/tasks.md"
+  "openspec_tasks": "openspec/changes/fix-knowledge-question-routing/tasks.md",
+  "archive_directory": "openspec/changes/archive/2026-07-17-fix-knowledge-question-routing"
 }
