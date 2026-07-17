@@ -54,7 +54,7 @@ base-ref: b36bfdfcb6e8c28af243d8a871861d61ca2cf37c
 - Consumes: 无
 - Produces: `Document.file_hash` 字段（`db.Column(db.String(64), nullable=True)`）；`Document.to_dict()` 返回值新增 `file_hash` 键。后续 Task 4 上传接口写入此字段，Task 4 查重查询 `filter_by(file_hash=...)` 依赖此字段。
 
-- [ ] **Step 1: 编写失败测试（模型字段定义）**
+- [x] **Step 1: 编写失败测试（模型字段定义）**
 
 在 `tests/test_upload.py` 的 `test_document_model_fields` 函数中追加 `file_hash` 字段断言：
 
@@ -75,7 +75,7 @@ def test_document_model_fields():
     print("✓ 文档模型字段定义正确")
 ```
 
-- [ ] **Step 2: 编写失败测试（to_dict 包含 file_hash）**
+- [x] **Step 2: 编写失败测试（to_dict 包含 file_hash）**
 
 在 `tests/test_upload.py` 的 `test_document_to_dict` 函数中追加 `file_hash` 断言：
 
@@ -103,12 +103,12 @@ def test_document_to_dict():
     print("✓ 文档模型 to_dict 方法正常")
 ```
 
-- [ ] **Step 3: 运行测试确认失败**
+- [x] **Step 3: 运行测试确认失败**
 
 Run: `python -m pytest tests/test_upload.py::test_document_model_fields tests/test_upload.py::test_document_to_dict -v`
 Expected: FAIL，`assert hasattr(Document, 'file_hash')` 为 False，且 `to_dict()` 无 `file_hash` 键
 
-- [ ] **Step 4: 实现 file_hash 字段与 to_dict 更新**
+- [x] **Step 4: 实现 file_hash 字段与 to_dict 更新**
 
 修改 `framework/models/document.py`，在 `create_by` 字段后新增 `file_hash` 字段，并在 `to_dict` 中加入 `file_hash`：
 
@@ -150,12 +150,12 @@ class Document(db.Model):
         }
 ```
 
-- [ ] **Step 5: 运行测试确认通过**
+- [x] **Step 5: 运行测试确认通过**
 
 Run: `python -m pytest tests/test_upload.py::test_document_model_fields tests/test_upload.py::test_document_to_dict -v`
 Expected: PASS
 
-- [ ] **Step 6: 提交**
+- [x] **Step 6: 提交**
 
 ```bash
 git add framework/models/document.py tests/test_upload.py
@@ -174,7 +174,7 @@ git commit -m "feat(document): 新增 file_hash 字段存储文件内容SHA-256�
 - Consumes: 无
 - Produces: `compute_file_hash(file_path: str, chunk_size: int = 8192) -> str` 函数。Task 3 的 `save_uploaded_file` 内部调用此函数；Task 4 上传接口间接依赖（通过 `save_uploaded_file` 返回值）。
 
-- [ ] **Step 1: 编写失败测试（空文件哈希）**
+- [x] **Step 1: 编写失败测试（空文件哈希）**
 
 在 `tests/test_upload.py` 末尾（`if __name__` 之前）新增测试函数：
 
@@ -195,7 +195,7 @@ def test_compute_file_hash_empty_file():
     os.remove(test_file)
 ```
 
-- [ ] **Step 2: 编写失败测试（小文件正确性与一致性）**
+- [x] **Step 2: 编写失败测试（小文件正确性与一致性）**
 
 ```python
 def test_compute_file_hash_small_file():
@@ -222,7 +222,7 @@ def test_compute_file_hash_small_file():
     os.remove(test_file2)
 ```
 
-- [ ] **Step 3: 编写失败测试（大文件分块读取正确性）**
+- [x] **Step 3: 编写失败测试（大文件分块读取正确性）**
 
 ```python
 def test_compute_file_hash_large_file_chunked():
@@ -246,12 +246,12 @@ def test_compute_file_hash_large_file_chunked():
     os.remove(test_file)
 ```
 
-- [ ] **Step 4: 运行测试确认失败**
+- [x] **Step 4: 运行测试确认失败**
 
 Run: `python -m pytest tests/test_upload.py::test_compute_file_hash_empty_file tests/test_upload.py::test_compute_file_hash_small_file tests/test_upload.py::test_compute_file_hash_large_file_chunked -v`
 Expected: FAIL，`ImportError: cannot import name 'compute_file_hash'`
 
-- [ ] **Step 5: 实现 compute_file_hash 函数**
+- [x] **Step 5: 实现 compute_file_hash 函数**
 
 在 `framework/upload/file_upload.py` 顶部新增 `import hashlib`，并在 `save_uploaded_file` 函数之前新增 `compute_file_hash` 函数：
 
@@ -302,12 +302,12 @@ def get_file_type(filename: str) -> str:
     return type_map.get(extension, 'other')
 ```
 
-- [ ] **Step 6: 运行测试确认通过**
+- [x] **Step 6: 运行测试确认通过**
 
 Run: `python -m pytest tests/test_upload.py::test_compute_file_hash_empty_file tests/test_upload.py::test_compute_file_hash_small_file tests/test_upload.py::test_compute_file_hash_large_file_chunked -v`
 Expected: PASS（3 个测试全部通过）
 
-- [ ] **Step 7: 提交**
+- [x] **Step 7: 提交**
 
 ```bash
 git add framework/upload/file_upload.py tests/test_upload.py
@@ -327,7 +327,7 @@ git commit -m "feat(file-upload): 新增 compute_file_hash 分块计算SHA-256�
 - Consumes: Task 2 的 `compute_file_hash(file_path) -> str`
 - Produces: `save_uploaded_file(file) -> tuple[str, str, str]`，返回 `(new_filename, file_path, file_hash)`。Task 4 上传接口依赖此三元组获取 `file_hash` 进行查重。
 
-- [ ] **Step 1: 编写失败测试（返回三元组且哈希正确）**
+- [x] **Step 1: 编写失败测试（返回三元组且哈希正确）**
 
 在 `tests/test_upload.py` 末尾新增测试函数。使用临时 mock 文件对象模拟 Flask 的 `file.save()`：
 
@@ -364,12 +364,12 @@ def test_save_uploaded_file_returns_triple():
         os.rmdir(tmp_dir)
 ```
 
-- [ ] **Step 2: 运行测试确认失败**
+- [x] **Step 2: 运行测试确认失败**
 
 Run: `python -m pytest tests/test_upload.py::test_save_uploaded_file_returns_triple -v`
 Expected: FAIL，`ValueError: too many values to unpack`（当前只返回二元组）
 
-- [ ] **Step 3: 修改 save_uploaded_file 返回三元组**
+- [x] **Step 3: 修改 save_uploaded_file 返回三元组**
 
 修改 `framework/upload/file_upload.py` 的 `save_uploaded_file` 函数，在保存文件后调用 `compute_file_hash` 并返回三元组：
 
@@ -388,7 +388,7 @@ def save_uploaded_file(file) -> tuple[str, str, str]:
     return new_filename, file_path, file_hash
 ```
 
-- [ ] **Step 4: 适配调用方 docs.py 解包（仅解包，不含查重逻辑）**
+- [x] **Step 4: 适配调用方 docs.py 解包（仅解包，不含查重逻辑）**
 
 修改 `framework/api/routes/docs.py` 的 `upload_document` 函数第 31 行，将二元组解包改为三元组解包：
 
@@ -397,17 +397,17 @@ def save_uploaded_file(file) -> tuple[str, str, str]:
     file_type = get_file_type(file.filename)
 ```
 
-- [ ] **Step 5: 运行测试确认通过**
+- [x] **Step 5: 运行测试确认通过**
 
 Run: `python -m pytest tests/test_upload.py::test_save_uploaded_file_returns_triple -v`
 Expected: PASS
 
-- [ ] **Step 6: 运行全量测试确认无回归**
+- [x] **Step 6: 运行全量测试确认无回归**
 
 Run: `python -m pytest tests/test_upload.py -v`
 Expected: PASS（所有 test_upload.py 测试通过）
 
-- [ ] **Step 7: 提交**
+- [x] **Step 7: 提交**
 
 ```bash
 git add framework/upload/file_upload.py framework/api/routes/docs.py tests/test_upload.py
@@ -426,7 +426,7 @@ git commit -m "feat(file-upload): save_uploaded_file 返回三元组含文件哈
 - Consumes: Task 1 的 `Document.file_hash` 字段；Task 3 的 `save_uploaded_file` 三元组返回值 `(new_filename, file_path, file_hash)`
 - Produces: 上传接口在检测到同用户同哈希重复时返回 409 Conflict，响应体包含 `existing_document_id`；非重复时 `Document` 记录写入 `file_hash` 字段。
 
-- [ ] **Step 1: 创建集成测试文件与测试辅助**
+- [x] **Step 1: 创建集成测试文件与测试辅助**
 
 创建 `tests/test_docs_dedup.py`，包含测试辅助函数（创建 Flask 测试 app、mock vector_store、注册用户获取 JWT token）：
 
@@ -544,7 +544,7 @@ def _upload(client, token, filename, content):
     return resp
 ```
 
-- [ ] **Step 2: 编写失败测试（首次上传成功且 file_hash 已记录）**
+- [x] **Step 2: 编写失败测试（首次上传成功且 file_hash 已记录）**
 
 在 `tests/test_docs_dedup.py` 追加测试：
 
@@ -562,7 +562,7 @@ def test_upload_first_occurrence_stores_hash(client):
     print("✓ 首次上传成功，file_hash 已记录")
 ```
 
-- [ ] **Step 3: 编写失败测试（同用户重复内容返回 409）**
+- [x] **Step 3: 编写失败测试（同用户重复内容返回 409）**
 
 ```python
 def test_upload_duplicate_same_user_returns_409(client):
@@ -584,7 +584,7 @@ def test_upload_duplicate_same_user_returns_409(client):
     print("✓ 同用户重复上传返回 409 Conflict")
 ```
 
-- [ ] **Step 4: 编写失败测试（跨用户相同内容上传成功）**
+- [x] **Step 4: 编写失败测试（跨用户相同内容上传成功）**
 
 ```python
 def test_upload_same_content_different_users_succeeds(client):
@@ -601,7 +601,7 @@ def test_upload_same_content_different_users_succeeds(client):
     print("✓ 跨用户相同内容上传成功")
 ```
 
-- [ ] **Step 5: 编写失败测试（历史文档 file_hash=NULL 不参与查重）**
+- [x] **Step 5: 编写失败测试（历史文档 file_hash=NULL 不参与查重）**
 
 在 `tests/test_docs_dedup.py` 追加测试。模拟历史文档（file_hash 为 NULL）存在时，上传新内容不应被误判为重复：
 
@@ -633,7 +633,7 @@ def test_upload_skips_historical_null_hash_documents(client):
     print("✓ 历史文档 file_hash=NULL 不参与查重")
 ```
 
-- [ ] **Step 6: 编写失败测试（重复上传后物理文件已删除）**
+- [x] **Step 6: 编写失败测试（重复上传后物理文件已删除）**
 
 ```python
 def test_upload_duplicate_deletes_physical_file(client):
@@ -650,12 +650,12 @@ def test_upload_duplicate_deletes_physical_file(client):
     print("✓ 重复上传时物理文件已清理")
 ```
 
-- [ ] **Step 7: 运行测试确认失败**
+- [x] **Step 7: 运行测试确认失败**
 
 Run: `python -m pytest tests/test_docs_dedup.py -v`
 Expected: FAIL，`test_upload_first_occurrence_stores_hash` 中 `file_hash` 为 None（当前 docs.py 未写入 file_hash）；`test_upload_duplicate_same_user_returns_409` 返回 200 而非 409（当前无查重逻辑）
 
-- [ ] **Step 8: 实现上传查重逻辑**
+- [x] **Step 8: 实现上传查重逻辑**
 
 修改 `framework/api/routes/docs.py` 的 `upload_document` 函数，在 `save_uploaded_file` 之后、`parse_document` 之前插入查重逻辑，并在创建 `Document` 时写入 `file_hash`：
 
@@ -708,17 +708,17 @@ def upload_document():
     return jsonify({"status": "ok", "data": document.to_dict(), "message": "文档上传成功"})
 ```
 
-- [ ] **Step 9: 运行测试确认通过**
+- [x] **Step 9: 运行测试确认通过**
 
 Run: `python -m pytest tests/test_docs_dedup.py -v`
 Expected: PASS（5 个测试全部通过）
 
-- [ ] **Step 10: 运行全量测试确认无回归**
+- [x] **Step 10: 运行全量测试确认无回归**
 
 Run: `python -m pytest tests/ -q`
 Expected: PASS（所有测试通过，无回归）
 
-- [ ] **Step 11: 提交**
+- [x] **Step 11: 提交**
 
 ```bash
 git add framework/api/routes/docs.py tests/test_docs_dedup.py
@@ -739,7 +739,7 @@ git commit -m "feat(docs): 上传接口增加基于SHA-256的内容查重，重�
 
 **删除顺序说明（设计文档 2.4）：** 先删向量库（容错）→ 再删数据库（事务）→ 最后删物理文件（容错）。此顺序确保数据库一致性优先：若物理文件删除失败，DB 和向量库已清理，系统仍一致，仅泄漏一个磁盘文件。
 
-- [ ] **Step 1: 编写失败测试（正常删除清理三资源）**
+- [x] **Step 1: 编写失败测试（正常删除清理三资源）**
 
 在 `tests/test_docs_dedup.py` 追加测试：
 
@@ -775,7 +775,7 @@ def test_delete_removes_db_vector_and_file(client):
     print("✓ 正常删除清理三资源完成")
 ```
 
-- [ ] **Step 2: 编写失败测试（物理文件已不存在时不报错）**
+- [x] **Step 2: 编写失败测试（物理文件已不存在时不报错）**
 
 ```python
 def test_delete_when_physical_file_missing(client):
@@ -803,7 +803,7 @@ def test_delete_when_physical_file_missing(client):
     print("✓ 物理文件已不存在时删除不报错")
 ```
 
-- [ ] **Step 3: 编写失败测试（物理文件删除失败时不阻塞）**
+- [x] **Step 3: 编写失败测试（物理文件删除失败时不阻塞）**
 
 ```python
 def test_delete_when_physical_file_deletion_fails(client, monkeypatch):
@@ -835,7 +835,7 @@ def test_delete_when_physical_file_deletion_fails(client, monkeypatch):
     print("✓ 物理文件删除失败时不阻塞业务")
 ```
 
-- [ ] **Step 4: 编写失败测试（向量库删除失败时不阻塞）**
+- [x] **Step 4: 编写失败测试（向量库删除失败时不阻塞）**
 
 ```python
 def test_delete_when_vector_store_fails(client):
@@ -865,12 +865,12 @@ def test_delete_when_vector_store_fails(client):
     print("✓ 向量库删除失败时不阻塞业务")
 ```
 
-- [ ] **Step 5: 运行测试确认失败**
+- [x] **Step 5: 运行测试确认失败**
 
 Run: `python -m pytest tests/test_docs_dedup.py -v -k "delete"`
 Expected: FAIL，`test_delete_removes_db_vector_and_file` 中物理文件仍存在（当前 docs.py 未清理物理文件）；其余删除失败场景测试失败
 
-- [ ] **Step 6: 实现删除清理逻辑**
+- [x] **Step 6: 实现删除清理逻辑**
 
 修改 `framework/api/routes/docs.py` 的 `delete_document` 函数，按设计文档 2.4 顺序清理三资源，每步容错：
 
@@ -908,7 +908,7 @@ def delete_document(id):
     return jsonify({"status": "ok", "message": "文档删除成功"})
 ```
 
-- [ ] **Step 7: 在 docs.py 顶部补充 Config 导入**
+- [x] **Step 7: 在 docs.py 顶部补充 Config 导入**
 
 确认 `framework/api/routes/docs.py` 顶部导入 `Config`（当前文件未导入）。修改导入段：
 
@@ -924,17 +924,17 @@ from framework.upload.document_parser import parse_document
 from framework.vector_store.chroma_store import vector_store
 ```
 
-- [ ] **Step 8: 运行删除测试确认通过**
+- [x] **Step 8: 运行删除测试确认通过**
 
 Run: `python -m pytest tests/test_docs_dedup.py -v -k "delete"`
 Expected: PASS（4 个删除测试全部通过）
 
-- [ ] **Step 9: 运行全量测试确认无回归**
+- [x] **Step 9: 运行全量测试确认无回归**
 
 Run: `python -m pytest tests/ -q`
 Expected: PASS（所有测试通过，无回归）
 
-- [ ] **Step 10: 提交**
+- [x] **Step 10: 提交**
 
 ```bash
 git add framework/api/routes/docs.py tests/test_docs_dedup.py
@@ -952,27 +952,27 @@ git commit -m "feat(docs): 删除接口按容错顺序清理向量库、数据�
 - Consumes: Task 1-5 的全部实现
 - Produces: 验证报告（对应 tasks.md 4.1, 4.2, 4.3）
 
-- [ ] **Step 1: 验证上传查重返回 409（tasks.md 4.1）**
+- [x] **Step 1: 验证上传查重返回 409（tasks.md 4.1）**
 
 Run: `python -m pytest tests/test_docs_dedup.py::test_upload_duplicate_same_user_returns_409 tests/test_docs_dedup.py::test_upload_same_content_different_users_succeeds tests/test_docs_dedup.py::test_upload_first_occurrence_stores_hash tests/test_docs_dedup.py::test_upload_duplicate_deletes_physical_file tests/test_docs_dedup.py::test_upload_skips_historical_null_hash_documents -v`
 Expected: PASS（5 个查重相关测试通过，覆盖：同用户重复 409、跨用户成功、首次上传记录 hash、重复时物理文件清理、历史 NULL hash 不参与查重）
 
-- [ ] **Step 2: 验证删除清理物理文件（tasks.md 4.2）**
+- [x] **Step 2: 验证删除清理物理文件（tasks.md 4.2）**
 
 Run: `python -m pytest tests/test_docs_dedup.py::test_delete_removes_db_vector_and_file -v`
 Expected: PASS（验证删除后 `uploads/` 目录中物理文件已被删除）
 
-- [ ] **Step 3: 验证物理文件已不存在时不报错（tasks.md 4.3）**
+- [x] **Step 3: 验证物理文件已不存在时不报错（tasks.md 4.3）**
 
 Run: `python -m pytest tests/test_docs_dedup.py::test_delete_when_physical_file_missing tests/test_docs_dedup.py::test_delete_when_physical_file_deletion_fails tests/test_docs_dedup.py::test_delete_when_vector_store_fails -v`
 Expected: PASS（3 个容错场景测试通过：文件缺失、文件删除失败、向量库删除失败）
 
-- [ ] **Step 4: 运行全量测试套件确认无回归**
+- [x] **Step 4: 运行全量测试套件确认无回归**
 
 Run: `python -m pytest tests/ -q`
 Expected: PASS（所有测试通过，无回归）
 
-- [ ] **Step 5: 数据库结构验证（init_db.py 重建）**
+- [x] **Step 5: 数据库结构验证（init_db.py 重建）**
 
 Run: `python init_db.py`
 Expected: 输出 `[初始化] 数据库表结构创建完成`，无报错。`kb_document` 表包含 `file_hash` 列。
@@ -981,7 +981,7 @@ Expected: 输出 `[初始化] 数据库表结构创建完成`，无报错。`kb_
 Run: `python -c "from framework.api.app import create_app; from framework.models.user import db; from sqlalchemy import inspect; app=create_app('sqlite'); app.app_context().push(); db.create_all(); cols=[c['name'] for c in inspect(db.engine).get_columns('kb_document')]; print('file_hash' in cols)"`
 Expected: `True`
 
-- [ ] **Step 6: 提交验证结果（如有变更）**
+- [x] **Step 6: 提交验证结果（如有变更）**
 
 若验证过程中发现并修复了问题，提交修复。若无变更则跳过此步。
 
