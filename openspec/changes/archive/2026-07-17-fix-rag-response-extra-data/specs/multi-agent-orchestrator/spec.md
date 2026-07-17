@@ -14,10 +14,18 @@ The system SHALL ensure that the `/api/v1/chat/` response only includes model re
 
 ## MODIFIED Requirements
 
-### Requirement: Aggregate results from concurrent models
-The system SHALL aggregate and return combined results without exposing internal execution structures to API consumers.
+### Requirement: Multi-Agent Orchestration
+The system SHALL provide a multi-agent orchestrator that supports concurrent execution of up to six professional models.
 
-#### Scenario: Aggregate results exclude internal details
+#### Scenario: Execute multiple models concurrently
+- **WHEN** a request is submitted that requires multiple models
+- **THEN** the system SHALL execute the models concurrently
+
+#### Scenario: Coordinate model execution order
+- **WHEN** models have dependencies on each other
+- **THEN** the system SHALL execute them in the correct order
+
+#### Scenario: Aggregate results from concurrent models
 - **WHEN** all concurrent models complete
 - **THEN** the system SHALL aggregate their outputs into a caller-facing format
 - **AND** SHALL NOT forward raw agent metadata such as `details`, `confidence`, or internal `evidence` arrays as part of the public chat response

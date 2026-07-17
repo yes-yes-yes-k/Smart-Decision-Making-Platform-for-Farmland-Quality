@@ -16,7 +16,8 @@ The system SHALL provide a multi-agent orchestrator that supports concurrent exe
 
 #### Scenario: Aggregate results from concurrent models
 - **WHEN** all concurrent models complete
-- **THEN** the system SHALL aggregate and return combined results
+- **THEN** the system SHALL aggregate their outputs into a caller-facing format
+- **AND** SHALL NOT forward raw agent metadata such as `details`, `confidence`, or internal `evidence` arrays as part of the public chat response
 
 ### Requirement: LangGraph Integration
 The system SHALL use LangGraph as the workflow orchestration engine.
@@ -58,4 +59,16 @@ The system SHALL handle errors during workflow execution gracefully.
 #### Scenario: Complete workflow failure
 - **WHEN** all models fail
 - **THEN** the system SHALL return an error status with details
+
+### Requirement: Chat API Response Model Results Format
+The system SHALL ensure that the `/api/v1/chat/` response only includes model results relevant to the caller and SHALL NOT expose internal orchestrator or AgentManager execution details inside `data.model_results`.
+
+#### Scenario: RAG question returns no model_results
+- **WHEN** a question is routed to the RAG chain (`question_type == 0`)
+- **THEN** the response `data` SHALL NOT contain a `model_results` field
+
+#### Scenario: Multi-agent question returns simplified model_results
+- **WHEN** a question is routed to multi-agent models (`question_type != 0`)
+- **THEN** the response `data.model_results` SHALL only contain the per-model outcome summary agreed in the API contract
+- **AND** SHALL NOT contain the raw `data` or `details` fields from AgentManager
 
