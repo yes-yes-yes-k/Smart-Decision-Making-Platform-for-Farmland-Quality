@@ -164,7 +164,7 @@ git commit -m "feat(document): 新增 file_hash 字段存储文件内容SHA-256�
 
 ---
 
-### Task 2: 新增 compute_file_hash 函数
+### Task 2: 新增 compute_file_hash 函数 ✓
 
 **Files:**
 - Modify: `framework/upload/file_upload.py`
