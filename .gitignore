@@ -14,3 +14,5 @@ tests/__pycache__/test_thematic_models.cpython-312.pyc
 .env.*
 chroma_db/chroma.sqlite3
 instance/development.db
+uploads/
+response.json
