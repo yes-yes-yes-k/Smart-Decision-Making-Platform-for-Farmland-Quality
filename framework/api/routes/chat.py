@@ -101,7 +101,6 @@ def chat():
         "answer": answer or multi_agent_summary,
         "sources": sources,
         "question_type": question_type,
-        "model_results": model_results,
         "message_id": assistant_message.id,
     }
     if role:
@@ -110,6 +109,13 @@ def chat():
         response_data["agents_invoked"] = agents_invoked
     if recommendations:
         response_data["recommendations"] = recommendations
+
+    # Only include model_results for legacy thematic-model paths that return
+    # the per-model contract format. Omit it for RAG (question_type == 0) and
+    # for multi-agent results, because the relevant fields are already exposed
+    # at the top level (agents_invoked, role, recommendations, summary).
+    if question_type != 0 and isinstance(model_results, dict) and "data" not in model_results:
+        response_data["model_results"] = model_results
 
     return jsonify({
         "status": "ok",
