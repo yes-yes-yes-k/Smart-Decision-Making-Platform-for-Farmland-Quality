@@ -92,6 +92,64 @@ def test_document_to_dict():
     assert result["file_hash"] == "abc123def456"
     print("✓ 文档模型 to_dict 方法正常")
 
+def test_compute_file_hash_empty_file():
+    """测试空文件的SHA-256哈希"""
+    import hashlib
+    from framework.upload.file_upload import compute_file_hash
+    test_file = os.path.join(os.path.dirname(__file__), "test_empty_hash.txt")
+    with open(test_file, 'w', encoding='utf-8') as f:
+        f.write("")
+
+    result = compute_file_hash(test_file)
+    expected = hashlib.sha256(b"").hexdigest()
+    assert result == expected
+    assert result == "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    print("✓ 空文件哈希正确")
+    os.remove(test_file)
+
+def test_compute_file_hash_small_file():
+    """测试小文件SHA-256哈希正确性与一致性"""
+    import hashlib
+    from framework.upload.file_upload import compute_file_hash
+    content = "这是测试文本内容，用于验证哈希计算。\n第二行内容。"
+    test_file = os.path.join(os.path.dirname(__file__), "test_small_hash.txt")
+    with open(test_file, 'wb') as f:
+        f.write(content.encode('utf-8'))
+
+    result = compute_file_hash(test_file)
+    expected = hashlib.sha256(content.encode('utf-8')).hexdigest()
+    assert result == expected
+
+    # 相同内容不同文件名，哈希应一致
+    test_file2 = os.path.join(os.path.dirname(__file__), "test_small_hash_copy.txt")
+    with open(test_file2, 'wb') as f:
+        f.write(content.encode('utf-8'))
+    result2 = compute_file_hash(test_file2)
+    assert result == result2
+    print("✓ 小文件哈希正确且一致")
+    os.remove(test_file)
+    os.remove(test_file2)
+
+def test_compute_file_hash_large_file_chunked():
+    """测试大文件分块读取哈希正确性（超过8192字节触发多次分块）"""
+    import hashlib
+    from framework.upload.file_upload import compute_file_hash
+    # 生成 20000 字节内容，确保超过 chunk_size=8192 触发多次分块
+    content = "A" * 20000
+    test_file = os.path.join(os.path.dirname(__file__), "test_large_hash.txt")
+    with open(test_file, 'w', encoding='utf-8') as f:
+        f.write(content)
+
+    result = compute_file_hash(test_file)
+    expected = hashlib.sha256(content.encode('utf-8')).hexdigest()
+    assert result == expected
+
+    # 验证自定义 chunk_size 不影响结果
+    result_custom_chunk = compute_file_hash(test_file, chunk_size=1024)
+    assert result == result_custom_chunk
+    print("✓ 大文件分块哈希正确")
+    os.remove(test_file)
+
 if __name__ == "__main__":
     test_allowed_file()
     test_get_file_type()
