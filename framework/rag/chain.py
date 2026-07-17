@@ -30,11 +30,9 @@ class RAGChain:
         sources = []
         for result in retrieval_results["results"]:
             metadata = result.get("metadata", {})
-            sources.append({
-                "doc_name": metadata.get("source", "unknown"),
-                "content": result.get("content", "")[:200] + "...",
-                "score": 1 - result.get("distance", 0),
-            })
+            doc_name = metadata.get("source", "unknown")
+            if not any(s["doc_name"] == doc_name for s in sources):
+                sources.append({"doc_name": doc_name})
 
         return {
             "success": llm_response.get("success", False),

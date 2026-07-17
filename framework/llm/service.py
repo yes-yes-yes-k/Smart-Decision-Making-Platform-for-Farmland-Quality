@@ -30,7 +30,7 @@ class LLMService:
                     base_url=api_base,
                     temperature=0.3,
                     max_tokens=2048,
-                    timeout=30,
+                    timeout=60,
                 )
                 self._initialized = True
                 print(f"[LLM] 初始化成功 - 模型: {Config.SILICONFLOW_CHAT_MODEL}")
@@ -73,7 +73,7 @@ class LLMService:
     def _get_fallback_response(self, prompt: str) -> Dict[str, Any]:
         return {
             "success": False,
-            "content": "",
+            "content": "抱歉，AI服务暂时不可用，请稍后重试。",
             "model": "fallback",
             "type": "fallback",
             "message": "LLM服务不可用，将使用规则输出",
