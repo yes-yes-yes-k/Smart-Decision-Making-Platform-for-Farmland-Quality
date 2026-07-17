@@ -28,7 +28,7 @@ def upload_document():
     if not allowed_file(file.filename):
         return jsonify({"status": "error", "message": "不支持的文件类型"}), 400
 
-    new_filename, file_path = save_uploaded_file(file)
+    new_filename, file_path, file_hash = save_uploaded_file(file)
     file_type = get_file_type(file.filename)
 
     content = parse_document(file_path, file_type)

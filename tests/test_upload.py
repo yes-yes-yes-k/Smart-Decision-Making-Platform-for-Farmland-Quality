@@ -150,6 +150,37 @@ def test_compute_file_hash_large_file_chunked():
     print("✓ 大文件分块哈希正确")
     os.remove(test_file)
 
+def test_save_uploaded_file_returns_triple():
+    """测试 save_uploaded_file 返回三元组且哈希正确"""
+    import tempfile
+    import hashlib
+    from framework.config import Config
+    from framework.upload.file_upload import save_uploaded_file
+
+    # 使用临时目录作为 UPLOAD_FOLDER
+    original_folder = Config.UPLOAD_FOLDER
+    tmp_dir = tempfile.mkdtemp()
+    Config.UPLOAD_FOLDER = tmp_dir
+
+    content = b"test content for save_uploaded_file triple return"
+
+    class MockFile:
+        filename = "test_triple.txt"
+        def save(self, path):
+            with open(path, 'wb') as f:
+                f.write(content)
+
+    try:
+        new_filename, file_path, file_hash = save_uploaded_file(MockFile())
+        assert new_filename.endswith(".txt")
+        assert os.path.exists(file_path)
+        assert file_hash == hashlib.sha256(content).hexdigest()
+        print("✓ save_uploaded_file 返回三元组且哈希正确")
+        os.remove(file_path)
+    finally:
+        Config.UPLOAD_FOLDER = original_folder
+        os.rmdir(tmp_dir)
+
 if __name__ == "__main__":
     test_allowed_file()
     test_get_file_type()

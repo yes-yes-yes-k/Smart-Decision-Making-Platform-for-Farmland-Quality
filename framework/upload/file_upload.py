@@ -19,7 +19,7 @@ def compute_file_hash(file_path: str, chunk_size: int = 8192) -> str:
             sha256.update(chunk)
     return sha256.hexdigest()
 
-def save_uploaded_file(file) -> tuple[str, str]:
+def save_uploaded_file(file) -> tuple[str, str, str]:
     os.makedirs(Config.UPLOAD_FOLDER, exist_ok=True)
 
     filename = file.filename
@@ -28,8 +28,9 @@ def save_uploaded_file(file) -> tuple[str, str]:
     file_path = os.path.join(Config.UPLOAD_FOLDER, new_filename)
 
     file.save(file_path)
+    file_hash = compute_file_hash(file_path)
 
-    return new_filename, file_path
+    return new_filename, file_path, file_hash
 
 def get_file_type(filename: str) -> str:
     extension = filename.rsplit('.', 1)[1].lower() if '.' in filename else ''
