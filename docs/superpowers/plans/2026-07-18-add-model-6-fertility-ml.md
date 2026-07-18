@@ -139,7 +139,7 @@ git commit -m "feat(fertility): 迁移训练数据资产并声明 scikit-learn/j
 - Consumes: `data/fertility/ML-data-SOC-RF_Manual_splits.xlsx`、`data/fertility/ML-data-Dose-RF-Manual_splits.xlsx`（Task 1 产物）
 - Produces: 4 个模型产物文件。Task 3 `model_6.py` 运行时通过 `joblib.load()` 加载 `.joblib` 文件，通过 `json.load()` 加载 `metadata.json` 文件。metadata schema 必须包含 `feature_names`（list[str]，保留含空格形式）、`feature_means`（dict[str, float]）、`metrics.test_r2`（float）、`hyperparameters`（dict）、`model_type`、`trained_at`、`model_version`。
 
-- [ ] **Step 1: 创建训练脚本 `scripts/train_fertility_models.py`**
+- [x] **Step 1: 创建训练脚本 `scripts/train_fertility_models.py`**
 
 ```python
 """训练 SOC 和 Dose ExtraTreesRegressor 模型并保存为 .joblib 文件。
@@ -297,7 +297,7 @@ if __name__ == "__main__":
     main()
 ```
 
-- [ ] **Step 2: 运行训练脚本生成模型文件**
+- [x] **Step 2: 运行训练脚本生成模型文件**
 
 ```bash
 python scripts/train_fertility_models.py --data-dir data/fertility --output-dir data/fertility/models
@@ -305,7 +305,7 @@ python scripts/train_fertility_models.py --data-dir data/fertility --output-dir 
 
 Expected: 控制台输出 SOC 和 Dose 的 5CV R²、Test R²、RMSE 与超参数；无报错。
 
-- [ ] **Step 3: 验证 4 个产物文件已生成**
+- [x] **Step 3: 验证 4 个产物文件已生成**
 
 ```powershell
 Get-Item data\fertility\models\* | Select-Object Name, @{N='SizeKB';E={[math]::Round($_.Length/1KB,1)}}
@@ -313,7 +313,7 @@ Get-Item data\fertility\models\* | Select-Object Name, @{N='SizeKB';E={[math]::R
 
 Expected: 列出 `soc_etr_model.joblib`、`soc_metadata.json`、`dose_etr_model.joblib`、`dose_metadata.json` 4 个文件。
 
-- [ ] **Step 4: 验证 metadata.json 内容完整**
+- [x] **Step 4: 验证 metadata.json 内容完整**
 
 ```bash
 python -c "import json; m=json.load(open('data/fertility/models/soc_metadata.json',encoding='utf-8')); print(m['model_type'], m['model_version'], m['metrics']['test_r2'], len(m['feature_names']), m['feature_names'])"
@@ -321,7 +321,7 @@ python -c "import json; m=json.load(open('data/fertility/models/soc_metadata.jso
 
 Expected: 输出 `ExtraTreesRegressor ETR_v1_20260713 0.9096 10 ['pH', 'SOCbe', 'TN ', 'TP ', 'TK ', 'AP', 'AK', 'Gap', 'Dose', 'Fertilizer type']`（test_r2 值可能略有差异但应接近 0.91）。
 
-- [ ] **Step 5: 提交**
+- [x] **Step 5: 提交**
 
 ```bash
 git add scripts/train_fertility_models.py data/fertility/models/

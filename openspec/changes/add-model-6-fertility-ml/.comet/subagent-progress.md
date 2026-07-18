@@ -19,8 +19,8 @@
 | Task | 标题 | 状态 | 审查-修复轮次 | 风险信号命中 | 唯一文本（plan） |
 |------|------|------|---------------|---------------|------------------|
 | 1 | 数据资产迁移与依赖声明 | done | 1/1 (Approved) | 数据迁移(轻度)+DONE_WITH_CONCERNS | `Step 1: 创建数据目录并复制训练数据文件` |
-| 2 | 训练脚本与模型生成 | implementing | 0/1 | 待自报 | `Step 1: 创建训练脚本 scripts/train_fertility_models.py` |
-| 3 | model_6.py 真实 ML 实现 | pending | 0/1 | 待自报 | `Step 1: 创建 framework/domain/other_models/model_6.py` |
+| 2 | 训练脚本与模型生成 | done | 0/0 (skip - 无风险信号) | 无（0/7 信号命中） | `Step 1: 创建训练脚本 scripts/train_fertility_models.py` |
+| 3 | model_6.py 真实 ML 实现 | dispatching | 0/1 | 待自报 | `Step 1: 创建 framework/domain/other_models/model_6.py` |
 | 4 | FertilityMLAgent 智能体 | pending | 0/1 | 待自报 | `Step 1: 创建 framework/agents/specialized/fertility_ml_agent.py` |
 | 5 | AgentManager 集成与按需过滤 | pending | 0/1 | 待自报 | `Step 1: 修改 framework/agents/manager.py 的 _load_real_agents` |
 | 6 | ComprehensiveImprovementAgent 清理 | pending | 0/1 | 待自报 | `Step 1: 删除 framework/agents/specialized/comprehensive_agent.py` |
@@ -29,7 +29,7 @@
 
 ## 当前 Task
 
-- **Task**: 2
+- **Task**: 3
 - **阶段**: dispatching
 - **派发时间**: 2026-07-18
 - **风险信号**: 待自报

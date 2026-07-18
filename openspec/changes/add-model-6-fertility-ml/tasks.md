@@ -9,12 +9,12 @@
 
 ## 2. 训练脚本与模型生成
 
-- [ ] 2.1 新建 `scripts/train_fertility_models.py`，将两个 Jupyter notebook（SOC + Dose）的 ETR 7 步网格搜索流程转换为独立 Python CLI 脚本
-- [ ] 2.2 脚本参数化：支持 `--data-dir data/fertility`（默认值）和 `--output-dir data/fertility/models` 参数；使用项目相对路径替代 notebook 中的绝对路径 `C:\Users\26379\Desktop\...`
-- [ ] 2.3 在训练完成后保存两个 `.joblib` 文件：`data/fertility/models/soc_etr_model.joblib` 与 `data/fertility/models/dose_etr_model.joblib`
-- [ ] 2.4 同时保存两个元数据 JSON 文件：`soc_metadata.json` 与 `dose_metadata.json`，包含字段 `model_type`、`trained_at`（ISO 8601 时间戳）、`model_version`（"ETR_v1_20260713"）、`hyperparameters`（7 个超参数）、`metrics`（cv_r2、test_r2、test_rmse）、`feature_names`、`feature_means`（每列均值，用于运行时填充）
-- [ ] 2.5 训练脚本输出日志：打印每个模型的 5CV R²、测试集 R²、RMSE 与最优超参数组合；缺失训练数据文件时输出明确错误信息并以非零退出码退出
-- [ ] 2.6 运行训练脚本，确认 `data/fertility/models/` 下生成 4 个文件（2 个 joblib + 2 个 json）且元数据内容完整
+- [x] 2.1 新建 `scripts/train_fertility_models.py`，将两个 Jupyter notebook（SOC + Dose）的 ETR 7 步网格搜索流程转换为独立 Python CLI 脚本
+- [x] 2.2 脚本参数化：支持 `--data-dir data/fertility`（默认值）和 `--output-dir data/fertility/models` 参数；使用项目相对路径替代 notebook 中的绝对路径 `C:\Users\26379\Desktop\...`
+- [x] 2.3 在训练完成后保存两个 `.joblib` 文件：`data/fertility/models/soc_etr_model.joblib` 与 `data/fertility/models/dose_etr_model.joblib`
+- [x] 2.4 同时保存两个元数据 JSON 文件：`soc_metadata.json` 与 `dose_metadata.json`，包含字段 `model_type`、`trained_at`（ISO 8601 时间戳）、`model_version`（"ETR_v1_20260713"）、`hyperparameters`（7 个超参数）、`metrics`（cv_r2、test_r2、test_rmse）、`feature_names`、`feature_means`（每列均值，用于运行时填充）
+- [x] 2.5 训练脚本输出日志：打印每个模型的 5CV R²、测试集 R²、RMSE 与最优超参数组合；缺失训练数据文件时输出明确错误信息并以非零退出码退出
+- [x] 2.6 运行训练脚本，确认 `data/fertility/models/` 下生成 4 个文件（2 个 joblib + 2 个 json）且元数据内容完整
 
 ## 3. model_6.py 真实 ML 实现替换
 
