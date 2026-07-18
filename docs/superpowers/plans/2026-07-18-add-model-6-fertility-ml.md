@@ -66,7 +66,7 @@ base-ref: 44f423f8efbe18941fe740a56f2cbe0c0c87b2e2
 - Consumes: 无
 - Produces: `data/fertility/` 目录含 3 个 xlsx 训练数据文件；`pyproject.toml` 新增 `scikit-learn` 与 `joblib` 依赖。Task 2 训练脚本读取这些 xlsx 文件，Task 3 model_6.py 加载 `data/fertility/models/` 下的产物。
 
-- [ ] **Step 1: 创建数据目录并复制训练数据文件**
+- [x] **Step 1: 创建数据目录并复制训练数据文件**
 
 在 PowerShell 中执行：
 
@@ -77,7 +77,7 @@ Copy-Item "F:\BaiduNetdiskDownload\SOC（土壤有机碳）和Dose（施用量�
 Copy-Item "F:\BaiduNetdiskDownload\SOC（土壤有机碳）和Dose（施用量）预测模型\变量注释.xlsx" "data\fertility\"
 ```
 
-- [ ] **Step 2: 验证文件已复制且大小 <10MB**
+- [x] **Step 2: 验证文件已复制且大小 <10MB**
 
 ```powershell
 Get-Item data\fertility\*.xlsx | Select-Object Name, @{N='SizeMB';E={[math]::Round($_.Length/1MB,2)}}
@@ -85,7 +85,7 @@ Get-Item data\fertility\*.xlsx | Select-Object Name, @{N='SizeMB';E={[math]::Rou
 
 Expected: 3 个文件均列出，SizeMB 均 < 10。
 
-- [ ] **Step 3: 更新 `.gitignore` 确保 `data/fertility/` 不被忽略**
+- [x] **Step 3: 更新 `.gitignore` 确保 `data/fertility/` 不被忽略**
 
 在 `.gitignore` 末尾追加：
 
@@ -108,7 +108,7 @@ scikit-learn = "^1.3.0"
 joblib = "^1.3.0"
 ```
 
-- [ ] **Step 5: 安装依赖并验证**
+- [x] **Step 5: 安装依赖并验证**
 
 ```bash
 pip install -e .
