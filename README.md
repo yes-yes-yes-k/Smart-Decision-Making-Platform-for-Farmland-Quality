@@ -65,6 +65,22 @@ CHROMA_COLLECTION_NAME=enterprise_kb
 - 开发环境：`instance/development.db`
 - 生产环境：`instance/production.db`
 
+### LangSmith 监控（可选）
+
+通过 LangSmith 追踪多智能体全链路执行（LangGraph 节点、智能体调用、LLM 调用、RAG 检索）：
+
+```bash
+# .env 中配置（生产环境默认开启，开发环境默认关闭）
+LANGCHAIN_TRACING_V2=true
+LANGCHAIN_API_KEY=your-langsmith-api-key
+LANGCHAIN_ENDPOINT=https://api.smith.langchain.com
+LANGCHAIN_PROJECT=agent-culti-demo
+```
+
+- 未设置 `LANGCHAIN_API_KEY` 时 tracing 静默关闭，不影响系统运行
+- 开发环境不设置 `LANGCHAIN_TRACING_V2` 即可关闭 tracing
+- 配置后在 [LangSmith 平台](https://smith.langchain.com)查看完整 trace
+
 ### 初始化数据库
 
 ```bash

@@ -1,0 +1,14 @@
+{
+  "change": "add-langsmith-monitoring",
+  "phase": "design",
+  "mode": "compact",
+  "canonical_spec": "openspec",
+  "generated_by": "comet-handoff.sh",
+  "context_hash": "9d6ad374fa028d05b77d782d46dc6c652678ff1ce869085ef4df0401af755827",
+  "files": [
+    { "path": "openspec/changes/add-langsmith-monitoring/proposal.md", "sha256": "5fa3c691ed6fb37b40969c66006ce76ad7aa5eb7e137759ce902190e82b1f337" },
+    { "path": "openspec/changes/add-langsmith-monitoring/design.md", "sha256": "6d7df22c4fb870b05baecd92ff498b4b2cdbf8edcf06bd5cb48560448f544749" },
+    { "path": "openspec/changes/add-langsmith-monitoring/tasks.md", "sha256": "a5676d7828aaed84850c128e7365da4bf6b2c19366360e45908b4d9a2af79e84" },
+    { "path": "openspec/changes/add-langsmith-monitoring/specs/langsmith-monitoring/spec.md", "sha256": "4f38df2ec2ecdb948562b70a8f1d9a09171fc98815a2222abef6b3445f911713" }
+  ]
+}

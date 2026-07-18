@@ -16,6 +16,12 @@ class LLMService:
         api_key = os.environ.get("SILICONFLOW_KEY") or os.environ.get("SILICONFLOW_API_KEY") or Config.SILICONFLOW_API_KEY
         api_base = os.environ.get("SILICONFLOW_API_BASE") or os.environ.get("SILICONFLOW_BASE_URL") or Config.SILICONFLOW_BASE_URL
 
+        tracing_enabled = os.environ.get("LANGCHAIN_TRACING_V2")
+        langsmith_key = os.environ.get("LANGCHAIN_API_KEY")
+        langsmith_project = os.environ.get("LANGCHAIN_PROJECT")
+        
+        print(f"[LLM] 初始化中 - Tracing V2: {tracing_enabled}, API Key: {'已配置' if langsmith_key else '未配置'}, Project: {langsmith_project}")
+
         if api_key:
             try:
                 self._client = ChatOpenAI(
@@ -27,6 +33,7 @@ class LLMService:
                     timeout=30,
                 )
                 self._initialized = True
+                print(f"[LLM] 初始化成功 - 模型: {Config.SILICONFLOW_CHAT_MODEL}")
             except Exception as e:
                 print(f"LLM初始化失败，将使用降级模式: {e}")
                 self._initialized = False

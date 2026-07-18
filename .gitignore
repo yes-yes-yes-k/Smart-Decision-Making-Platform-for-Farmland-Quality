@@ -10,3 +10,7 @@ src/ai_culti_demo/__pycache__/thematic_models.cpython-312.pyc
 tests/__pycache__/test_interfaces.cpython-312.pyc
 tests/__pycache__/test_thematic_models.cpython-312.pyc
 **/__pycache__/**
+.env
+.env.*
+chroma_db/chroma.sqlite3
+instance/development.db

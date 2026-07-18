@@ -151,6 +151,40 @@ curl -X POST http://127.0.0.1:8000/api/v1/auth/login `
   -d '{"username":"admin","password":"admin123"}'
 ```
 
+## LangSmith 监控
+
+生产环境默认启用 LangSmith 追踪，可视化多智能体全链路执行。
+
+### 配置
+
+`.env` 文件中已包含 LangSmith 配置（见 `deploy/production.env.example`）：
+
+| 环境变量 | 说明 | 默认值 |
+|---------|------|--------|
+| `LANGCHAIN_TRACING_V2` | tracing 开关（`true` 启用） | `true`（生产环境） |
+| `LANGCHAIN_API_KEY` | LangSmith API Key | 需填写 |
+| `LANGCHAIN_ENDPOINT` | LangSmith API 端点 | `https://api.smith.langchain.com` |
+| `LANGCHAIN_PROJECT` | LangSmith 项目名称 | `agent-culti-demo` |
+
+### 查看 Trace
+
+1. 登录 [LangSmith 平台](https://smith.langchain.com)
+2. 进入项目 `agent-culti-demo`
+3. 查看每次 `/api/v1/chat/` 请求的完整 trace，包括：
+   - LangGraph 各节点执行顺序和耗时
+   - 专业智能体调用详情
+   - LLM 调用的 token 用量和响应延迟
+   - RAG 检索的召回结果和耗时
+
+### 关闭 Tracing
+
+如需临时关闭 tracing（如调试或性能测试）：
+
+```ini
+# .env 中注释或删除
+# LANGCHAIN_TRACING_V2=true
+```
+
 ## 服务管理速查
 
 ```powershell
@@ -205,6 +239,15 @@ sqlalchemy.exc.OperationalError: (sqlite3.OperationalError) unable to open datab
 1. 确认 `chroma_db/` 目录有写入权限
 2. 如果从开发环境迁移，确认 `chroma_db/` 目录已完整复制
 3. 首次部署可删除 `chroma_db/` 目录让程序自动重建
+
+### LangSmith tracing 不生效
+
+**解决**：
+1. 确认 `.env` 中 `LANGCHAIN_TRACING_V2=true`
+2. 确认 `LANGCHAIN_API_KEY` 已填写有效值
+3. 确认 `.env` 文件被加载（`start_production_server.py` 和 `start_http_server.py` 均已调用 `load_dotenv()`）
+4. 检查网络是否能访问 `https://api.smith.langchain.com`
+5. 未设置 API Key 时 tracing 静默关闭，不会报错——这是正常行为
 
 ## 安全清单
 
