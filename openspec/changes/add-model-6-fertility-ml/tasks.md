@@ -50,9 +50,9 @@
 
 ## 6. ComprehensiveImprovementAgent 清理
 
-- [ ] 6.1 删除 `framework/agents/specialized/comprehensive_agent.py` 文件
-- [ ] 6.2 使用 Grep 搜索整个仓库，确认无残留对 `ComprehensiveImprovementAgent` 或 `comprehensive_agent` 的引用（应在 `__init__.py`、`manager.py`、tests 中已被前面步骤替换）
-- [ ] 6.3 检查 `docs/api.md`、`docs/api-contract.md`、`docs/agent-integration.md` 等文档中是否提及 `ComprehensiveImprovementAgent`，若需要则更新为 `FertilityMLAgent`（仅限本次范围触及的部分，避免范围蔓延）
+- [x] 6.1 删除 `framework/agents/specialized/comprehensive_agent.py` 文件
+- [x] 6.2 使用 Grep 搜索整个仓库，确认无残留对 `ComprehensiveImprovementAgent` 或 `comprehensive_agent` 的引用（应在 `__init__.py`、`manager.py`、tests 中已被前面步骤替换）
+- [x] 6.3 检查 `docs/api.md`、`docs/api-contract.md`、`docs/agent-integration.md` 等文档中是否提及 `ComprehensiveImprovementAgent`，若需要则更新为 `FertilityMLAgent`（仅限本次范围触及的部分，避免范围蔓延）
 
 ## 7. 测试更新
 

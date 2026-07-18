@@ -22,17 +22,34 @@
 | 2 | 训练脚本与模型生成 | done | 0/0 (skip - 无风险信号) | 无（0/7 信号命中） | `Step 1: 创建训练脚本 scripts/train_fertility_models.py` |
 | 3 | model_6.py 真实 ML 实现 | done | 1/1 (Approved, 8 Minor plan-mandated) | diff>200+并发+跨模块(弱) | `Step 1: 创建 framework/domain/other_models/model_6.py` |
 | 4 | FertilityMLAgent 智能体 | done | 1/1 (Approved, 6 Minor 5 plan-mandated) | diff>200+跨模块(弱)+API(弱) | `Step 1: 创建 framework/agents/specialized/fertility_ml_agent.py` |
-| 5 | AgentManager 集成与按需过滤 | dispatching | 0/1 | 待自报 | `Step 1: 修改 framework/agents/manager.py 的 _load_real_agents` |
-| 6 | ComprehensiveImprovementAgent 清理 | pending | 0/1 | 待自报 | `Step 1: 删除 framework/agents/specialized/comprehensive_agent.py` |
+| 5 | AgentManager 集成与按需过滤 | done | 1/1 (Approved, 2 Minor plan-mandated) | DONE_WITH_CONCERNS+API(弱)+brief 矛盾 | `Step 1: 修改 framework/agents/manager.py 的 _load_real_agents` |
+| 6 | ComprehensiveImprovementAgent 清理 | done | 0/0 (skip - 无风险信号) | 无（0/7 信号命中） | `Step 1: 删除 framework/agents/specialized/comprehensive_agent.py` |
 | 7 | 测试套件整合与全量验证 | pending | 0/1 | 待自报 | `Step 1: 运行全量测试套件` |
 | 8 | 端到端集成验证 | pending | 0/1 | 待自报 | `Step 1: 端到端场景验证` |
 
 ## 当前 Task
 
-- **Task**: 5
-- **阶段**: dispatching
-- **派发时间**: 2026-07-18
+- **Task**: 7
+- **阶段**: pending
+- **派发时间**: 待定
 - **风险信号**: 待自报
+
+## Task 5 完成摘要
+
+- **Implementer**: 报告 DONE_WITH_CONCERNS（brief 内部矛盾：新测试 `test_topological_sort_model6_no_dep` 与既有测试 `test_manager_process_farmer_returns_structured_result` 通过同一 `_topological_sort` 调用产生方向相反断言）
+- **Reviewer**: Approved with fix（方案 A——修改新测试输入参数 `["model-4","model-5","model-6"]` → `["model-6","model-4","model-5"]`，断言保持不变，保留区分新旧行为的能力）
+- **Fix 后测试**: 12 PASS / 0 FAIL（5 既有 + 7 新增）
+- **Commit**: `5c8447e`（amend 到 `175e7e3`，commit message 保持原话 `feat(manager): AgentManager 集成 FertilityMLAgent 并新增按需过滤`）
+- **风险信号自报**: DONE_WITH_CONCERNS（是）+ 公共 API 契约变更（弱是，新增 `_should_execute_agent` 方法）+ diff>200 行（否，~86 行）
+
+## Task 6 完成摘要
+
+- **Implementer**: 直接 DONE（0/7 风险信号全部"否"），无需 reviewer
+- **Diff**: 3 files changed, 186 deletions, 0 additions（纯删除）
+- **Commit**: `9feeb53`
+- **验证**: 模块导入 OK + 测试套件 33 PASS（12 manager + 21 specialized 含 6 个 FertilityMLAgent）
+- **残留引用**: `framework/` 和 `tests/` 中无残留；归档/规划文档中的引用符合预期不需修改
+- **风险信号自报**: 全部"否"（跨模块/安全/并发/数据/API/DONE_WITH_CONCERNS/diff>200 全部否）
 
 ## Minor Findings 累积清单（供最终 whole-branch review 三角洲）
 
@@ -48,6 +65,9 @@
 ### Task 5 — AgentManager 集成与按需过滤（2 个 Minor，全部 plan-mandated）
 1. brief Step 5 Expected 预测 `test_manager_topological_sort_farmer` 会 FAIL，但实际 PASS（plan 对后序 DFS 行为预判错误）
 2. brief BASE 快照中 `_StubAgent.answer_question` 的 `evidence` 字段与实际 `af6fb2e` 微小差异（`[]` vs `[{"source":"stub",...}]`）
+
+### Task 6 — ComprehensiveImprovementAgent 清理（1 个 Minor，spec drift）
+1. 主 spec `openspec/specs/role-based-routing/spec.md:19` 仍引用 `ComprehensiveImprovementAgent`（农户角色路由场景），未在 Task 6 范围内同步。建议在最终 whole-branch review 或 comet-archive 的 delta→main spec 同步阶段处理。
 
 ### Task 4 — FertilityMLAgent（6 个 Minor，5 plan-mandated + 1 可选）
 1. **`List` 未使用**：import 了 `List` 但未在代码中使用（plan-mandated）

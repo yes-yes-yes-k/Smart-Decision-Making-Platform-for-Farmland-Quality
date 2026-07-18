@@ -1526,7 +1526,7 @@ __all__ = [
 ]
 ```
 
-- [ ] **Step 2: 从 `tests/test_agent_specialized.py` 移除 comprehensive 测试函数**
+- [x] **Step 2: 从 `tests/test_agent_specialized.py` 移除 comprehensive 测试函数**
 
 删除以下三个测试函数（以及 `if __name__` 块中对它们的调用）：
 - `test_comprehensive_agent_execute`
@@ -1542,7 +1542,7 @@ __all__ = [
 framework/agents/specialized/comprehensive_agent.py
 ```
 
-- [ ] **Step 4: 搜索仓库确认无残留引用**
+- [x] **Step 4: 搜索仓库确认无残留引用**
 
 ```bash
 python -c "import subprocess; r=subprocess.run(['git','grep','-l','ComprehensiveImprovement'],capture_output=True,text=True); print(r.stdout or '无残留引用'); print(r.stderr)"
@@ -1552,7 +1552,7 @@ Expected: 输出"无残留引用"或仅在 `openspec/changes/` 归档文档中�
 
 如果发现代码或测试中有残留，逐一修复。
 
-- [ ] **Step 5: 验证模块导入正常**
+- [x] **Step 5: 验证模块导入正常**
 
 ```bash
 python -c "from framework.agents.specialized import FertilityMLAgent; print('OK')"
@@ -1561,7 +1561,7 @@ python -c "from framework.agents.manager import AgentManager; m=AgentManager(); 
 
 Expected: 第一行输出 `OK`；第二行输出 `FertilityMLAgent`。
 
-- [ ] **Step 6: 提交**
+- [x] **Step 6: 提交**
 
 ```bash
 git add framework/agents/specialized/__init__.py framework/agents/specialized/comprehensive_agent.py tests/test_agent_specialized.py
