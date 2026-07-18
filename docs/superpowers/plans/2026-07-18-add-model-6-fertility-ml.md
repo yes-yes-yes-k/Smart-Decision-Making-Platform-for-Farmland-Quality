@@ -891,7 +891,7 @@ git commit -m "feat(model-6): 实现 model_6_execution ML 预测引擎（惰性�
 - Consumes: `model_6_execution`（Task 3 产物）；`BaseAgent`（既有）；`MockDataLoader.mark_simulated`（既有）
 - Produces: `FertilityMLAgent(BaseAgent)` 类，`model_id="model-6"`，`domain="fertility_ml"`，`dependencies=[]`。`execute(task)` 返回 `{status, result, metadata}` 结构；`answer_question(question, context)` 返回 `{answer, evidence, sources}` 结构，按 Dose/SOC/综合 三分支格式化。Task 5 `AgentManager._load_real_agents` 导入并实例化此类。
 
-- [ ] **Step 1: 在 `tests/test_agent_specialized.py` 末尾（`if __name__` 之前）新增 FertilityMLAgent 测试**
+- [x] **Step 1: 在 `tests/test_agent_specialized.py` 末尾（`if __name__` 之前）新增 FertilityMLAgent 测试**
 
 ```python
 def test_fertility_ml_agent_execute_structure(monkeypatch):
@@ -1063,7 +1063,7 @@ def test_fertility_ml_agent_answer_rejected_status(monkeypatch):
 
 注意：直接运行脚本时 `monkeypatch` 参数传 `None` 会导致错误，因此 `if __name__` 块中仅保留原有 comprehensive 测试调用（这些将在 Task 6/7 中移除）。**新增的 FertilityMLAgent 测试仅通过 pytest 运行。**
 
-- [ ] **Step 2: 运行测试确认失败**
+- [x] **Step 2: 运行测试确认失败**
 
 ```bash
 python -m pytest tests/test_agent_specialized.py -v -k "fertility_ml"
@@ -1071,7 +1071,7 @@ python -m pytest tests/test_agent_specialized.py -v -k "fertility_ml"
 
 Expected: FAIL，`ModuleNotFoundError: No module named 'framework.agents.specialized.fertility_ml_agent'`。
 
-- [ ] **Step 3: 创建 `framework/agents/specialized/fertility_ml_agent.py`**
+- [x] **Step 3: 创建 `framework/agents/specialized/fertility_ml_agent.py`**
 
 ```python
 from __future__ import annotations
@@ -1230,7 +1230,7 @@ class FertilityMLAgent(BaseAgent):
         })
 ```
 
-- [ ] **Step 4: 更新 `framework/agents/specialized/__init__.py`**
+- [x] **Step 4: 更新 `framework/agents/specialized/__init__.py`**
 
 将文件内容替换为（在 `comprehensive_agent` 导入保留的情况下新增 `fertility_ml_agent` 导入——Task 6 会移除 comprehensive）：
 
@@ -1254,7 +1254,7 @@ __all__ = [
 ]
 ```
 
-- [ ] **Step 5: 运行 FertilityMLAgent 测试确认通过**
+- [x] **Step 5: 运行 FertilityMLAgent 测试确认通过**
 
 ```bash
 python -m pytest tests/test_agent_specialized.py -v -k "fertility_ml"
@@ -1262,7 +1262,7 @@ python -m pytest tests/test_agent_specialized.py -v -k "fertility_ml"
 
 Expected: 6 个测试全部 PASS。
 
-- [ ] **Step 6: 提交**
+- [x] **Step 6: 提交**
 
 ```bash
 git add framework/agents/specialized/fertility_ml_agent.py framework/agents/specialized/__init__.py tests/test_agent_specialized.py

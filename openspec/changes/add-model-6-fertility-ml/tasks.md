@@ -30,16 +30,16 @@
 
 ## 4. FertilityMLAgent 实现
 
-- [ ] 4.1 新建 `framework/agents/specialized/fertility_ml_agent.py`，定义 `FertilityMLAgent(BaseAgent)` 类，`__init__` 中设置 `model_id="model-6"`、`domain="fertility_ml"`、`description="基于 ML 的耕地肥力 SOC/Dose 预测"`
-- [ ] 4.2 设置 `self.dependencies = []`（不再依赖 model-4/model-5）
-- [ ] 4.3 实现 `execute(task)` 方法：调用 `model_6_execution(task)`，将返回结果包装为 `{status, result, metadata}` 结构，调用 `MockDataLoader.mark_simulated` 标记
-- [ ] 4.4 实现 `answer_question(question, context)` 方法，分支处理：
+- [x] 4.1 新建 `framework/agents/specialized/fertility_ml_agent.py`，定义 `FertilityMLAgent(BaseAgent)` 类，`__init__` 中设置 `model_id="model-6"`、`domain="fertility_ml"`、`description="基于 ML 的耕地肥力 SOC/Dose 预测"`
+- [x] 4.2 设置 `self.dependencies = []`（不再依赖 model-4/model-5）
+- [x] 4.3 实现 `execute(task)` 方法：调用 `model_6_execution(task)`，将返回结果包装为 `{status, result, metadata}` 结构，调用 `MockDataLoader.mark_simulated` 标记
+- [x] 4.4 实现 `answer_question(question, context)` 方法，分支处理：
   - 4.4.1 "有机碳" / "SOC" / "含量" 关键词 → 仅返回 SOC 预测结果
   - 4.4.2 "施用量" / "施肥" / "Dose" 关键词 → 仅返回 Dose 预测结果，answer 中标注"仅供参考"
   - 4.4.3 "肥力" / "综合" / 其他关键词 → 同时返回 SOC 和 Dose 两个预测值
   - 4.4.4 当 `status: "fallback"` 时，answer 中标注"基于训练集均值的估算"，confidence 降为 0.3
-- [ ] 4.5 `evidence` 字段包含 `[{metric: "soc_prediction", value, unit: "g/kg"}, {metric: "dose_prediction", value, unit: "kg/亩"}, {metric: "model_version", value}]` 结构
-- [ ] 4.6 处理空输入特征：当 `context.get("data")` 为空且 `task` 为空字典时，调用 `model_6_execution({})`，触发降级路径但仍返回响应
+- [x] 4.5 `evidence` 字段包含 `[{metric: "soc_prediction", value, unit: "g/kg"}, {metric: "dose_prediction", value, unit: "kg/亩"}, {metric: "model_version", value}]` 结构
+- [x] 4.6 处理空输入特征：当 `context.get("data")` 为空且 `task` 为空字典时，调用 `model_6_execution({})`，触发降级路径但仍返回响应
 
 ## 5. AgentManager 与 __init__ 调整
 

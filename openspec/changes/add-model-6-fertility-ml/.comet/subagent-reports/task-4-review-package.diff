@@ -1,0 +1,371 @@
+﻿=== COMMITS ===
+ad98800 feat(agent): 瀹炵幇 FertilityMLAgent锛圖ose/SOC/缁煎悎涓夊垎鏀棶绛?fallback/rejected 鏍煎紡鍖栵級
+=== STAT ===
+ framework/agents/specialized/__init__.py           |   2 +
+ framework/agents/specialized/fertility_ml_agent.py | 154 ++++++++++++++++++++
+ tests/test_agent_specialized.py                    | 161 +++++++++++++++++++++
+ 3 files changed, 317 insertions(+)
+=== DIFF (with 10 lines context) ===
+diff --git a/framework/agents/specialized/__init__.py b/framework/agents/specialized/__init__.py
+index 4e16e67..3ba4c9e 100644
+--- a/framework/agents/specialized/__init__.py
++++ b/framework/agents/specialized/__init__.py
+@@ -1,15 +1,17 @@
+ from .stability_risk_agent import StabilityRiskAgent
+ from .potential_agent import PotentialAssessmentAgent
+ from .problem_agent import ProblemIdentificationAgent
+ from .acidification_agent import AcidificationRemediationAgent
+ from .organic_matter_agent import OrganicMatterAgent
+ from .comprehensive_agent import ComprehensiveImprovementAgent
++from .fertility_ml_agent import FertilityMLAgent
+ 
+ __all__ = [
+     "StabilityRiskAgent",
+     "PotentialAssessmentAgent",
+     "ProblemIdentificationAgent",
+     "AcidificationRemediationAgent",
+     "OrganicMatterAgent",
+     "ComprehensiveImprovementAgent",
++    "FertilityMLAgent",
+ ]
+diff --git a/framework/agents/specialized/fertility_ml_agent.py b/framework/agents/specialized/fertility_ml_agent.py
+new file mode 100644
+index 0000000..4b0cf54
+--- /dev/null
++++ b/framework/agents/specialized/fertility_ml_agent.py
+@@ -0,0 +1,154 @@
++from __future__ import annotations
++from typing import Any, Dict, List
++
++from ..base import BaseAgent
++from ..mock_data import MockDataLoader
++from ...domain.other_models.model_6 import model_6_execution
++
++
++# 鑲ュ姏鐩稿叧鍏抽敭璇嶏紙涓?AgentManager.FERTILITY_KEYWORDS 淇濇寔涓€鑷达級
++FERTILITY_KEYWORDS = [
++    "鏈夋満纰?, "SOC", "soc",
++    "鏂界敤閲?, "鏂借偉閲?, "鏂借偉", "Dose", "dose", "鍓傞噺", "鏂藉灏戣偉",
++    "鑲ュ姏", "缁煎悎鑲ュ姏",
++    "绉哥", "鏈夋満鑲?, "鍩硅偉",
++]
++
++# Dose 鍏抽敭璇嶏紙浼樺厛绾?1锛?+DOSE_KEYWORDS = ["鏂界敤閲?, "鏂借偉閲?, "Dose", "鍓傞噺", "鏂藉灏戣偉", "鏂借偉"]
++
++# SOC 鍏抽敭璇嶏紙浼樺厛绾?2锛?+SOC_KEYWORDS = ["鏈夋満纰?, "SOC"]
++
++
++class FertilityMLAgent(BaseAgent):
++    """妯″瀷6锛氬熀浜?ML 鐨勮€曞湴鑲ュ姏 SOC/Dose 棰勬祴銆?""
++
++    def __init__(self):
++        super().__init__(
++            name="FertilityMLAgent",
++            description="鍩轰簬 ML 鐨勮€曞湴鑲ュ姏 SOC/Dose 棰勬祴",
++            model_id="model-6",
++            domain="fertility_ml",
++        )
++        self.dependencies = []  # 鐙珛 ML 妯″瀷锛屼笉渚濊禆 model-4/5
++
++    def execute(self, task: Dict[str, Any]) -> Dict[str, Any]:
++        """璋冪敤 model_6_execution 鎵ц ML 棰勬祴锛屽寘瑁呬负涓夊眰缁撴瀯銆?""
++        result = model_6_execution(task or {})
++        return MockDataLoader.mark_simulated({
++            "status": result["status"],
++            "result": {
++                "soc_prediction": result["soc_prediction"],
++                "soc_confidence": result["soc_confidence"],
++                "dose_prediction": result["dose_prediction"],
++                "dose_confidence": result["dose_confidence"],
++                "dose_warning": result["dose_warning"],
++                "imputed_features": result["imputed_features"],
++                "imputation_applied": result["imputation_applied"],
++            },
++            "metadata": {
++                "model_version": result["model_version"],
++                "fallback_reason": result.get("fallback_reason"),
++                "reason": result.get("reason"),
++                "out_of_range_features": result.get("out_of_range_features"),
++            },
++        })
++
++    def answer_question(self, question: str, context: Dict[str, Any]) -> Dict[str, Any]:
++        """鎸夊叧閿瘝浼樺厛绾у鐞嗛棶绛旓細Dose > SOC > 缁煎悎/榛樿銆?""
++        exec_result = self.execute(
++            context.get("data", {}) or context.get("task", {}) or {}
++        )
++        pred = exec_result["result"]
++
++        q_lower = question.lower()
++
++        # 浼樺厛绾?1锛氭槑纭棶 Dose / 鏂界敤閲?+        if any(kw.lower() in q_lower for kw in DOSE_KEYWORDS):
++            return self._format_dose_only(pred, exec_result)
++
++        # 浼樺厛绾?2锛氭槑纭棶 SOC / 鏈夋満纰?+        if any(kw.lower() in q_lower for kw in SOC_KEYWORDS):
++            return self._format_soc_only(pred, exec_result)
++
++        # 浼樺厛绾?3锛氳偉鍔?/ 缁煎悎 / 鍏朵粬
++        return self._format_both(pred, exec_result)
++
++    def _format_rejected(self, exec_result: Dict[str, Any]) -> Dict[str, Any]:
++        """瓒婄晫鎷掔粷鐨勭粺涓€鏍煎紡鍖?""
++        oor = exec_result["metadata"].get("out_of_range_features", [])
++        oor_text = "; ".join([
++            f"{f['feature']}={f['value']}锛堝悎娉曡寖鍥?{f['valid_range'][0]}-{f['valid_range'][1]}锛?
++            for f in oor
++        ])
++        return MockDataLoader.mark_simulated({
++            "answer": f"杈撳叆鍊煎紓甯革紝鏃犳硶棰勬祴銆傝秺鐣岀壒寰侊細{oor_text}銆傝妫€鏌ヨ緭鍏ュ悗閲嶈瘯銆?,
++            "evidence": [],
++            "sources": [],
++        })
++
++    def _format_soc_only(self, pred: Dict[str, Any], exec_result: Dict[str, Any]) -> Dict[str, Any]:
++        if exec_result["status"] == "rejected":
++            return self._format_rejected(exec_result)
++
++        if exec_result["status"] == "fallback":
++            confidence_text = "锛堟ā鍨嬩笉鍙敤锛岃繑鍥炶缁冮泦鍧囧€间及绠楋級"
++        else:
++            confidence_text = f"锛堢疆淇″害 {pred['soc_confidence']:.0%}锛?
++
++        return MockDataLoader.mark_simulated({
++            "answer": f"鍩轰簬 ML 棰勬祴锛屾偍鐨勫湡澹ゆ湁鏈虹⒊锛圫OC锛夐娴嬪€肩害 {pred['soc_prediction']:.2f} g/kg{confidence_text}",
++            "evidence": [
++                {"metric": "soc_prediction", "value": pred["soc_prediction"], "unit": "g/kg"},
++                {"metric": "soc_confidence", "value": pred["soc_confidence"]},
++            ],
++            "sources": [],
++        })
++
++    def _format_dose_only(self, pred: Dict[str, Any], exec_result: Dict[str, Any]) -> Dict[str, Any]:
++        if exec_result["status"] == "rejected":
++            return self._format_rejected(exec_result)
++
++        if exec_result["status"] == "fallback":
++            confidence_text = "锛堟ā鍨嬩笉鍙敤锛岃繑鍥炶缁冮泦鍧囧€间及绠楋級"
++        else:
++            confidence_text = f"锛堢疆淇″害 {pred['dose_confidence']:.0%}锛寋pred['dose_warning']}锛?
++
++        return MockDataLoader.mark_simulated({
++            "answer": f"鍩轰簬 ML 棰勬祴锛屽缓璁柦鑲ラ噺绾?{pred['dose_prediction']:.2f} t/ha{confidence_text}",
++            "evidence": [
++                {"metric": "dose_prediction", "value": pred["dose_prediction"], "unit": "t/ha"},
++                {"metric": "dose_confidence", "value": pred["dose_confidence"]},
++            ],
++            "sources": [],
++        })
++
++    def _format_both(self, pred: Dict[str, Any], exec_result: Dict[str, Any]) -> Dict[str, Any]:
++        if exec_result["status"] == "rejected":
++            return self._format_rejected(exec_result)
++
++        imputation_note = (
++            "\n锛堟敞锛氶儴鍒嗙壒寰佺敤璁粌闆嗗潎鍊煎～鍏咃紝宸叉爣娉ㄤ簬 imputed_features锛?
++            if pred["imputation_applied"] else ""
++        )
++        fallback_note = (
++            "\n锛堟ā鍨嬩笉鍙敤锛屼互涓婁负璁粌闆嗗潎鍊间及绠楋級"
++            if exec_result["status"] == "fallback" else ""
++        )
++
++        return MockDataLoader.mark_simulated({
++            "answer": (
++                f"鍩轰簬 ML 棰勬祴鐨勭患鍚堣偉鍔涜瘖鏂細\n"
++                f"- SOC锛堝湡澹ゆ湁鏈虹⒊锛夛細{pred['soc_prediction']:.2f} g/kg锛堢疆淇″害 {pred['soc_confidence']:.0%}锛塡n"
++                f"- Dose锛堟柦鑲ラ噺锛夛細{pred['dose_prediction']:.2f} t/ha锛堢疆淇″害 {pred['dose_confidence']:.0%}锛寋pred['dose_warning']}锛?
++                f"{imputation_note}{fallback_note}"
++            ),
++            "evidence": [
++                {"metric": "soc_prediction", "value": pred["soc_prediction"], "unit": "g/kg"},
++                {"metric": "soc_confidence", "value": pred["soc_confidence"]},
++                {"metric": "dose_prediction", "value": pred["dose_prediction"], "unit": "t/ha"},
++                {"metric": "dose_confidence", "value": pred["dose_confidence"]},
++            ],
++            "sources": [],
++        })
+diff --git a/tests/test_agent_specialized.py b/tests/test_agent_specialized.py
+index b3af6a7..3162805 100644
+--- a/tests/test_agent_specialized.py
++++ b/tests/test_agent_specialized.py
+@@ -206,20 +206,181 @@ def test_comprehensive_agent_consumes_upstream_results():
+         "model-5": {"answer": "鏈夋満璐ㄧ瓑绾т负涓?, "evidence": [{"metric": "manure_dosage", "value": 1000.0}],
+                     "confidence": 0.82, "simulated": True},
+     }
+     out = agent.answer_question("濡備綍缁煎悎鏀硅壇锛?, ctx)
+     # 搴斿湪 evidence 鎴?priority_measures 涓彁鍙婁笂娓稿缓璁?     flat = str(out["evidence"]) + str(out.get("priority_measures", []))
+     assert "100.0" in flat or "鐭崇伆" in flat or "1000.0" in flat or "鏈夋満鑲? in flat
+     print("鉁?ComprehensiveImprovementAgent 娑堣垂 model-4 鍜?model-5 缁撴灉")
+ 
+ 
++def test_fertility_ml_agent_execute_structure(monkeypatch):
++    """execute 杩斿洖缁撴瀯鍖呭惈 status/result/metadata 涓夊眰"""
++    from framework.agents.specialized.fertility_ml_agent import FertilityMLAgent
++    from framework.domain.other_models import model_6
++    # mock model_6_execution 杩斿洖 success
++    monkeypatch.setattr(
++        "framework.agents.specialized.fertility_ml_agent.model_6_execution",
++        lambda data: {
++            "status": "success",
++            "soc_prediction": 12.5,
++            "soc_confidence": 0.91,
++            "dose_prediction": 150.0,
++            "dose_confidence": 0.47,
++            "dose_warning": "Dose 妯″瀷 R虏=0.47锛岄娴嬬粨鏋滀粎渚涘弬鑰?,
++            "imputed_features": [],
++            "imputation_applied": False,
++            "model_version": "ETR_v1_20260713",
++        }
++    )
++    agent = FertilityMLAgent()
++    assert agent.model_id == "model-6"
++    assert agent.dependencies == []
++    result = agent.execute({"pH": 6.5})
++    assert "status" in result
++    assert "result" in result
++    assert "metadata" in result
++    assert result["result"]["soc_prediction"] == 12.5
++    print("鉁?FertilityMLAgent.execute 杩斿洖涓夊眰缁撴瀯")
++
++
++def test_fertility_ml_agent_answer_dose_keywords(monkeypatch):
++    """闂?鏂界敤閲? 鈫?浠呰繑鍥?Dose 棰勬祴"""
++    from framework.agents.specialized.fertility_ml_agent import FertilityMLAgent
++    monkeypatch.setattr(
++        "framework.agents.specialized.fertility_ml_agent.model_6_execution",
++        lambda data: {
++            "status": "success",
++            "soc_prediction": 12.5,
++            "soc_confidence": 0.91,
++            "dose_prediction": 150.0,
++            "dose_confidence": 0.47,
++            "dose_warning": "Dose 妯″瀷 R虏=0.47",
++            "imputed_features": [],
++            "imputation_applied": False,
++            "model_version": "ETR_v1_20260713",
++        }
++    )
++    agent = FertilityMLAgent()
++    out = agent.answer_question("鎴戣繖鍧楀湴闇€瑕佹柦澶氬皯鑲ワ紵", {"data": {"pH": 6.5}})
++    assert "鏂借偉" in out["answer"] or "t/ha" in out["answer"]
++    # evidence 搴斿寘鍚?dose_prediction 浣嗕笉搴斿寘鍚?soc_prediction
++    metrics = [e.get("metric") for e in out["evidence"]]
++    assert "dose_prediction" in metrics
++    assert "soc_prediction" not in metrics
++    print("鉁?FertilityMLAgent 鏂界敤閲忛棶棰樿繑鍥?Dose 棰勬祴")
++
++
++def test_fertility_ml_agent_answer_soc_keywords(monkeypatch):
++    """闂?鏈夋満纰? 鈫?浠呰繑鍥?SOC 棰勬祴"""
++    from framework.agents.specialized.fertility_ml_agent import FertilityMLAgent
++    monkeypatch.setattr(
++        "framework.agents.specialized.fertility_ml_agent.model_6_execution",
++        lambda data: {
++            "status": "success",
++            "soc_prediction": 12.5,
++            "soc_confidence": 0.91,
++            "dose_prediction": 150.0,
++            "dose_confidence": 0.47,
++            "dose_warning": "Dose 妯″瀷 R虏=0.47",
++            "imputed_features": [],
++            "imputation_applied": False,
++            "model_version": "ETR_v1_20260713",
++        }
++    )
++    agent = FertilityMLAgent()
++    out = agent.answer_question("鎴戠殑鐢版湁鏈虹⒊鍚噺澶氬皯锛?, {"data": {"pH": 6.5}})
++    assert "SOC" in out["answer"] or "鏈夋満纰? in out["answer"]
++    metrics = [e.get("metric") for e in out["evidence"]]
++    assert "soc_prediction" in metrics
++    assert "dose_prediction" not in metrics
++    print("鉁?FertilityMLAgent 鏈夋満纰抽棶棰樿繑鍥?SOC 棰勬祴")
++
++
++def test_fertility_ml_agent_answer_fertility_keywords(monkeypatch):
++    """闂?鑲ュ姏' 鈫?杩斿洖 SOC + Dose 缁煎悎璇婃柇"""
++    from framework.agents.specialized.fertility_ml_agent import FertilityMLAgent
++    monkeypatch.setattr(
++        "framework.agents.specialized.fertility_ml_agent.model_6_execution",
++        lambda data: {
++            "status": "success",
++            "soc_prediction": 12.5,
++            "soc_confidence": 0.91,
++            "dose_prediction": 150.0,
++            "dose_confidence": 0.47,
++            "dose_warning": "Dose 妯″瀷 R虏=0.47",
++            "imputed_features": [],
++            "imputation_applied": False,
++            "model_version": "ETR_v1_20260713",
++        }
++    )
++    agent = FertilityMLAgent()
++    out = agent.answer_question("鎴戠殑鐢拌偉鍔涙€庝箞鏍凤紵", {"data": {"pH": 6.5}})
++    metrics = [e.get("metric") for e in out["evidence"]]
++    assert "soc_prediction" in metrics
++    assert "dose_prediction" in metrics
++    print("鉁?FertilityMLAgent 鑲ュ姏闂杩斿洖缁煎悎璇婃柇")
++
++
++def test_fertility_ml_agent_answer_fallback_status(monkeypatch):
++    """status=fallback 鈫?answer 鏍囨敞'妯″瀷涓嶅彲鐢?"""
++    from framework.agents.specialized.fertility_ml_agent import FertilityMLAgent
++    monkeypatch.setattr(
++        "framework.agents.specialized.fertility_ml_agent.model_6_execution",
++        lambda data: {
++            "status": "fallback",
++            "soc_prediction": 12.0,
++            "soc_confidence": 0.3,
++            "dose_prediction": 100.0,
++            "dose_confidence": 0.3,
++            "dose_warning": "妯″瀷涓嶅彲鐢紝杩斿洖璁粌闆嗗潎鍊间及绠?,
++            "imputed_features": [],
++            "imputation_applied": False,
++            "model_version": "ETR_v1_20260713",
++            "fallback_reason": "model_file_missing",
++        }
++    )
++    agent = FertilityMLAgent()
++    out = agent.answer_question("鎴戠殑鐢拌偉鍔涙€庝箞鏍凤紵", {"data": {}})
++    assert "妯″瀷涓嶅彲鐢? in out["answer"] or "璁粌闆嗗潎鍊? in out["answer"]
++    print("鉁?FertilityMLAgent fallback 鏃舵爣娉ㄦā鍨嬩笉鍙敤")
++
++
++def test_fertility_ml_agent_answer_rejected_status(monkeypatch):
++    """status=rejected 鈫?answer 鏍囨敞瓒婄晫鐗瑰緛"""
++    from framework.agents.specialized.fertility_ml_agent import FertilityMLAgent
++    monkeypatch.setattr(
++        "framework.agents.specialized.fertility_ml_agent.model_6_execution",
++        lambda data: {
++            "status": "rejected",
++            "reason": "input_out_of_range",
++            "out_of_range_features": [
++                {"feature": "pH", "value": 99.0, "valid_range": [3.0, 11.0]}
++            ],
++            "soc_prediction": None,
++            "soc_confidence": 0.0,
++            "dose_prediction": None,
++            "dose_confidence": 0.0,
++            "dose_warning": "杈撳叆鍊艰秺鐣岋紝鏈墽琛岄娴?,
++            "imputed_features": [],
++            "imputation_applied": False,
++            "model_version": "ETR_v1_20260713",
++        }
++    )
++    agent = FertilityMLAgent()
++    out = agent.answer_question("鎴戠殑鐢拌偉鍔涙€庝箞鏍凤紵", {"data": {"pH": 99.0}})
++    assert "瓒婄晫" in out["answer"] or "寮傚父" in out["answer"]
++    assert "pH" in out["answer"]
++    assert out["evidence"] == []
++    print("鉁?FertilityMLAgent rejected 鏃舵爣娉ㄨ秺鐣岀壒寰?)
++
++
+ if __name__ == "__main__":
+     test_stability_risk_agent_execute()
+     test_stability_risk_agent_answer_question_overall()
+     test_stability_risk_agent_answer_question_risk()
+     test_potential_agent_execute()
+     test_potential_agent_answer_question()
+     test_potential_agent_target_ph_in_context()
+     test_problem_agent_execute()
+     test_problem_agent_answer_question()
+     test_problem_agent_uses_model2_target_ph()
