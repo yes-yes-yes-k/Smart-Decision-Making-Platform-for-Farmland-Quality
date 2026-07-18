@@ -5,6 +5,15 @@ from .base import BaseAgent
 from .router import RoleRouter
 
 
+# 肥力相关关键词（与 FertilityMLAgent.FERTILITY_KEYWORDS 保持一致）
+FERTILITY_KEYWORDS = [
+    "有机碳", "SOC", "soc",
+    "施用量", "施肥量", "施肥", "Dose", "dose", "剂量", "施多少肥",
+    "肥力", "综合肥力",
+    "秸秆", "有机肥", "培肥",
+]
+
+
 class _StubAgent(BaseAgent):
     """桩智能体，在专业智能体实现前用于 Manager 单元测试。"""
 
@@ -43,7 +52,7 @@ class AgentManager:
             ("model-3", "ProblemIdentificationAgent", "耕地质量主要问题精准识别", "problem"),
             ("model-4", "AcidificationRemediationAgent", "耕地土壤酸化改良", "acidification"),
             ("model-5", "OrganicMatterAgent", "耕地土壤有机质培肥提升", "organic_matter"),
-            ("model-6", "ComprehensiveImprovementAgent", "耕地综合地力改良提升", "comprehensive"),
+            ("model-6", "FertilityMLAgent", "耕地肥力 SOC/Dose ML 预测", "fertility_ml"),
         ]
 
         real_agents = self._load_real_agents()
@@ -59,7 +68,7 @@ class AgentManager:
         self.agents["model-3"].dependencies = ["model-2"]
         self.agents["model-4"].dependencies = []
         self.agents["model-5"].dependencies = []
-        self.agents["model-6"].dependencies = ["model-4", "model-5"]
+        self.agents["model-6"].dependencies = []
 
     def _load_real_agents(self) -> Dict[str, BaseAgent]:
         """尝试加载专业智能体实现，失败时返回空字典。"""
@@ -90,8 +99,8 @@ class AgentManager:
         except ImportError:
             pass
         try:
-            from .specialized.comprehensive_agent import ComprehensiveImprovementAgent
-            real["model-6"] = ComprehensiveImprovementAgent()
+            from .specialized.fertility_ml_agent import FertilityMLAgent
+            real["model-6"] = FertilityMLAgent()
         except ImportError:
             pass
         return real
@@ -115,6 +124,19 @@ class AgentManager:
         results: Dict[str, Dict[str, Any]] = {}
 
         for agent_id in ordered:
+            # 按需过滤：非肥力问题跳过 model-6
+            if not self._should_execute_agent(agent_id, question):
+                results[agent_id] = {
+                    "status": "skipped",
+                    "reason": "question_not_related",
+                    "answer": "",
+                    "evidence": [],
+                    "confidence": 0.0,
+                    "simulated": True,
+                }
+                accumulated[agent_id] = results[agent_id]
+                continue
+
             agent = self.agents[agent_id]
             try:
                 result = agent.answer_question(question, accumulated)
@@ -151,6 +173,13 @@ class AgentManager:
             visit(agent_id)
 
         return order
+
+    def _should_execute_agent(self, agent_id: str, question: str) -> bool:
+        """问题感知过滤：model-6 仅在肥力相关问题时执行。"""
+        if agent_id == "model-6":
+            q_lower = (question or "").lower()
+            return any(kw.lower() in q_lower for kw in FERTILITY_KEYWORDS)
+        return True
 
     def _summarize(
         self,

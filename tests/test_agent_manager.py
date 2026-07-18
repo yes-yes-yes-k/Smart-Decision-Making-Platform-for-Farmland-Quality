@@ -60,6 +60,74 @@ def test_manager_process_unknown_question_defaults_farmer():
     print("✓ 未知问题默认路由到 farmer")
 
 
+def test_should_execute_model6_fertility_question():
+    """问'肥力' → _should_execute_agent('model-6', ...) = True"""
+    from framework.agents.manager import AgentManager, FERTILITY_KEYWORDS
+    mgr = AgentManager()
+    assert mgr._should_execute_agent("model-6", "我的田肥力怎么样？") is True
+    assert mgr._should_execute_agent("model-6", "有机碳含量多少？") is True
+    assert mgr._should_execute_agent("model-6", "需要施多少肥？") is True
+    print("✓ 肥力相关问题触发 model-6 执行")
+
+
+def test_should_skip_model6_non_fertility_question():
+    """问'pH' → _should_execute_agent('model-6', ...) = False"""
+    from framework.agents.manager import AgentManager
+    mgr = AgentManager()
+    assert mgr._should_execute_agent("model-6", "我的田pH如何？") is False
+    assert mgr._should_execute_agent("model-6", "你好") is False
+    print("✓ 非肥力问题跳过 model-6")
+
+
+def test_should_execute_other_agents_always():
+    """非 model-6 的 agent 始终执行"""
+    from framework.agents.manager import AgentManager
+    mgr = AgentManager()
+    assert mgr._should_execute_agent("model-4", "任何问题") is True
+    assert mgr._should_execute_agent("model-5", "任何问题") is True
+    print("✓ 非 model-6 agent 始终执行")
+
+
+def test_model6_dependencies_empty():
+    """model-6 dependencies=[]，不依赖 model-4/5"""
+    from framework.agents.manager import AgentManager
+    mgr = AgentManager()
+    assert mgr.agents["model-6"].dependencies == []
+    print("✓ model-6 依赖为空")
+
+
+def test_topological_sort_model6_no_dep():
+    """model-6 dependencies=[]，拓扑排序不强制 model-6 在最后"""
+    from framework.agents.manager import AgentManager
+    mgr = AgentManager()
+    ordered = mgr._topological_sort(["model-6", "model-4", "model-5"])
+    assert set(ordered) == {"model-4", "model-5", "model-6"}
+    # model-6 不再依赖 model-4/5，不强制排最后
+    assert ordered[-1] != "model-6" or len(ordered) == 1
+    print("✓ model-6 在拓扑排序中无依赖约束")
+
+
+def test_model6_skipped_in_details_for_non_fertility():
+    """非肥力问题 → details['model-6'] 含 skipped 状态"""
+    from framework.agents.manager import AgentManager
+    mgr = AgentManager()
+    result = mgr.process("我的田pH如何？", {})
+    details = result["data"]["details"]
+    # model-6 应被跳过（status 标记或 skipped 标记）
+    m6 = details.get("model-6", {})
+    assert m6.get("status") == "skipped" or m6.get("simulated") is True
+    print("✓ 非肥力问题 model-6 被跳过")
+
+
+def test_manager_loads_fertility_ml_agent():
+    """_load_real_agents 加载 FertilityMLAgent"""
+    from framework.agents.manager import AgentManager
+    mgr = AgentManager()
+    agent = mgr.agents["model-6"]
+    assert agent.__class__.__name__ == "FertilityMLAgent"
+    print("✓ AgentManager 加载 FertilityMLAgent")
+
+
 if __name__ == "__main__":
     test_manager_register_six_agents()
     test_manager_topological_sort_province()
