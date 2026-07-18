@@ -1,11 +1,11 @@
 ## 1. 数据准备与依赖声明
 
-- [ ] 1.1 创建 `data/fertility/` 目录，从 `F:\BaiduNetdiskDownload\SOC（土壤有机碳）和Dose（施用量）预测模型\` 复制 `ML-data-SOC-RF_Manual_splits.xlsx`、`ML-data-Dose-RF_Manual_splits.xlsx`、`变量注释.xlsx` 三个训练数据文件
-- [ ] 1.2 创建 `data/fertility/models/` 子目录用于存放训练产物
-- [ ] 1.3 检查 `.gitignore`，确认 `data/fertility/` 不在忽略规则中（如被通用规则忽略需添加例外 `!data/fertility/`）
-- [ ] 1.4 修改 `pyproject.toml`，在 `[project.dependencies]` 中新增 `scikit-learn = "^1.3.0"` 与 `joblib = "^1.3.0"` 两行
-- [ ] 1.5 运行 `pip install -e .` 验证依赖可正常安装，执行 `python -c "import sklearn; import joblib; print(sklearn.__version__, joblib.__version__)"` 确认版本号
-- [ ] 1.6 使用 PowerShell `Get-Item ... | Select-Object Length` 检查三个 xlsx 文件大小，确认均 <10MB（直接入 git）
+- [x] 1.1 创建 `data/fertility/` 目录，从 `F:\BaiduNetdiskDownload\SOC（土壤有机碳）和Dose（施用量）预测模型\` 复制 `ML-data-SOC-RF_Manual_splits.xlsx`、`ML-data-Dose-RF_Manual_splits.xlsx`、`变量注释.xlsx` 三个训练数据文件
+- [x] 1.2 创建 `data/fertility/models/` 子目录用于存放训练产物
+- [x] 1.3 检查 `.gitignore`，确认 `data/fertility/` 不在忽略规则中（如被通用规则忽略需添加例外 `!data/fertility/`）
+- [x] 1.4 修改 `pyproject.toml`，在 `[project.dependencies]` 中新增 `scikit-learn = "^1.3.0"` 与 `joblib = "^1.3.0"` 两行
+- [x] 1.5 运行 `pip install -e .` 验证依赖可正常安装，执行 `python -c "import sklearn; import joblib; print(sklearn.__version__, joblib.__version__)"` 确认版本号
+- [x] 1.6 使用 PowerShell `Get-Item ... | Select-Object Length` 检查三个 xlsx 文件大小，确认均 <10MB（直接入 git）
 
 ## 2. 训练脚本与模型生成
 

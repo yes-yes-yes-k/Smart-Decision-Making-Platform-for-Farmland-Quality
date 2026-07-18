@@ -99,7 +99,7 @@ Expected: 3 个文件均列出，SizeMB 均 < 10。
 *.pkl.bak
 ```
 
-- [ ] **Step 4: 修改 `pyproject.toml` 新增依赖**
+- [x] **Step 4: 修改 `pyproject.toml` 新增依赖**
 
 在 `[project.dependencies]` 的 `waitress = "^3.0.0"` 行后追加两行：
 
@@ -117,7 +117,7 @@ python -c "import sklearn; import joblib; print(sklearn.__version__, joblib.__ve
 
 Expected: 输出两个版本号，均 >= 1.3.0，无 ImportError。
 
-- [ ] **Step 6: 提交**
+- [x] **Step 6: 提交**
 
 ```bash
 git add data/fertility/ .gitignore pyproject.toml
