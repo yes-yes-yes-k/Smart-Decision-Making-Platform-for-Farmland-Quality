@@ -26,19 +26,18 @@ def test_manager_topological_sort_province():
 
 
 def test_manager_topological_sort_farmer():
-    """farmer 角色 [model-4, model-5, model-6]，model-6 依赖 model-4 和 model-5，
-    因此 model-6 应排在最后。"""
+    """farmer 角色 [model-4, model-5, model-6]，model-6 依赖为空，
+    三个 agent 均无互相依赖，拓扑排序包含全部三个。"""
     mgr = AgentManager()
     ordered = mgr._topological_sort(["model-4", "model-5", "model-6"])
-    assert ordered[-1] == "model-6"
     assert set(ordered) == {"model-4", "model-5", "model-6"}
-    print("✓ 拓扑排序将依赖项放在被依赖项之后")
+    print("✓ 拓扑排序包含 farmer 角色全部三个智能体")
 
 
 def test_manager_process_farmer_returns_structured_result():
     """process 返回符合 API 规范的结构化字典"""
     mgr = AgentManager()
-    result = mgr.process("我的田施氮肥施多少", {"area_code": "lechang"})
+    result = mgr.process("我的田施肥施多少", {"area_code": "lechang"})
     assert result["status"] == "ok"
     data = result["data"]
     assert data["role"] == "farmer"

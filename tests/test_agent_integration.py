@@ -93,7 +93,9 @@ def test_chat_api_returns_structured_multi_agent_result():
     # 多智能体结构化字段
     assert data.get("role") == "farmer"
     assert data.get("agents_invoked") == ["model-4", "model-5", "model-6"]
-    assert isinstance(data.get("recommendations"), list)
+    # recommendations 字段仅在非空时写入响应（chat.py:111-112），
+    # 因此使用默认值 [] 兼容 model-6 被跳过且 model-4/5 else 分支无 recommendation 的场景
+    assert isinstance(data.get("recommendations", []), list)
     assert "answer" in data
 
     print("✓ /api/v1/chat/ 返回多智能体结构化结果")
@@ -127,22 +129,22 @@ def test_e2e_county_role_routing():
 
 def test_e2e_farmer_role_routing():
     """农户种植端问题应路由到 model-4 + model-5 + model-6，model-6 排在最后"""
-    state = _make_state("我的田施氮肥施多少？这块地质量怎么样？")
+    state = _make_state("我的田施肥施多少？施石灰多少？")
     result = execute_models(state)
     data = result["model_results"]["data"]
     assert data["role"] == "farmer"
     assert data["agents_invoked"] == ["model-4", "model-5", "model-6"]
     # model-6 应排在最后
     assert data["agents_invoked"][-1] == "model-6"
-    # model-6 应消费了 model-4 与 model-5 的结果
+    # model-6 为独立 ML 预测（不依赖 model-4/5），evidence 含 ML 预测 metric
     m6_evidence = str(data["details"]["model-6"]["evidence"])
-    assert "model-4" in m6_evidence or "model-5" in m6_evidence or "石灰" in m6_evidence or "有机肥" in m6_evidence
-    print("✓ 农户种植端路由正确（model-4 + model-5 + model-6，依赖传递正确）")
+    assert "dose_prediction" in m6_evidence or "soc_prediction" in m6_evidence
+    print("✓ 农户种植端路由正确（model-4 + model-5 + model-6，model-6 ML 预测生效）")
 
 
 def test_e2e_recommendations_aggregated():
     """汇总的 recommendations 应来自各智能体 evidence 中的 recommendation/source"""
-    state = _make_state("我的田怎么改良？")
+    state = _make_state("我的田施有机肥多少？")
     result = execute_models(state)
     data = result["model_results"]["data"]
     assert isinstance(data["recommendations"], list)
