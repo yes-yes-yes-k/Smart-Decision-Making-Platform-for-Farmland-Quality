@@ -43,7 +43,7 @@
 
 ## 5. AgentManager 与 __init__ 调整
 
-- [ ] 5.1 修改 `framework/agents/specialized/__init__.py`：移除 `from .comprehensive_agent import ComprehensiveImprovementAgent`，新增 `from .fertility_ml_agent import FertilityMLAgent`；更新 `__all__` 列表
+- [x] 5.1 修改 `framework/agents/specialized/__init__.py`：移除 `from .comprehensive_agent import ComprehensiveImprovementAgent`，新增 `from .fertility_ml_agent import FertilityMLAgent`；更新 `__all__` 列表
 - [x] 5.2 修改 `framework/agents/manager.py` 的 `_load_real_agents`：将 `from .specialized.comprehensive_agent import ComprehensiveImprovementAgent` 替换为 `from .specialized.fertility_ml_agent import FertilityMLAgent`，`real["model-6"] = FertilityMLAgent()`
 - [x] 5.3 修改 `framework/agents/manager.py` 的 `_register_agents` 中 specs 列表：model-6 的 class_name 改为 `"FertilityMLAgent"`、description 改为 `"耕地肥力 SOC/Dose ML 预测"`、domain 改为 `"fertility_ml"`
 - [x] 5.4 修改 `framework/agents/manager.py` 中 `self.agents["model-6"].dependencies = ["model-4", "model-5"]` 为 `self.agents["model-6"].dependencies = []`

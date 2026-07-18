@@ -1281,7 +1281,7 @@ git commit -m "feat(agent): 实现 FertilityMLAgent（Dose/SOC/综合三分支�
 - Consumes: `FertilityMLAgent`（Task 4 产物）；`FERTILITY_KEYWORDS` 关键词列表（与 Task 4 一致）
 - Produces: `AgentManager._should_execute_agent(agent_id, question) -> bool` 方法；`_load_real_agents` 中 model-6 加载 `FertilityMLAgent`；`_register_agents` 中 model-6 specs 更新；`process` 方法在执行前过滤；`_summarize` 中 model-6 skipped 状态处理。Task 7 测试套件依赖这些变更。
 
-- [ ] **Step 1: 在 `tests/test_agent_manager.py` 末尾（`if __name__` 之前）新增过滤测试**
+- [x] **Step 1: 在 `tests/test_agent_manager.py` 末尾（`if __name__` 之前）新增过滤测试**
 
 ```python
 def test_should_execute_model6_fertility_question():
@@ -1352,7 +1352,7 @@ def test_manager_loads_fertility_ml_agent():
     print("✓ AgentManager 加载 FertilityMLAgent")
 ```
 
-- [ ] **Step 2: 运行测试确认失败**
+- [x] **Step 2: 运行测试确认失败**
 
 ```bash
 python -m pytest tests/test_agent_manager.py -v -k "should_execute or should_skip or dependencies_empty or topological_sort_model6 or skipped_in_details or loads_fertility"
@@ -1360,7 +1360,7 @@ python -m pytest tests/test_agent_manager.py -v -k "should_execute or should_ski
 
 Expected: FAIL，`_should_execute_agent` 方法不存在、`dependencies` 仍为 `["model-4", "model-5"]`、model-6 仍是 `ComprehensiveImprovementAgent`。
 
-- [ ] **Step 3: 修改 `framework/agents/manager.py`**
+- [x] **Step 3: 修改 `framework/agents/manager.py`**
 
 在文件顶部 `from .base import BaseAgent` 后新增关键词常量：
 
@@ -1470,7 +1470,7 @@ FERTILITY_KEYWORDS = [
         return results
 ```
 
-- [ ] **Step 4: 运行新增测试确认通过**
+- [x] **Step 4: 运行新增测试确认通过**
 
 ```bash
 python -m pytest tests/test_agent_manager.py -v -k "should_execute or should_skip or dependencies_empty or topological_sort_model6 or skipped_in_details or loads_fertility"
@@ -1506,7 +1506,7 @@ git commit -m "feat(manager): AgentManager 集成 FertilityMLAgent 并新增按�
 - Consumes: Task 4 已新增 `FertilityMLAgent` 导入与测试，Task 5 已修改 `manager.py` 不再引用 `ComprehensiveImprovementAgent`
 - Produces: 仓库中无 `ComprehensiveImprovementAgent` 残留引用。`__init__.py` 仅导出 6 个有效 agent（含 `FertilityMLAgent`，不含 `ComprehensiveImprovementAgent`）。
 
-- [ ] **Step 1: 从 `framework/agents/specialized/__init__.py` 移除 comprehensive 导入**
+- [x] **Step 1: 从 `framework/agents/specialized/__init__.py` 移除 comprehensive 导入**
 
 ```python
 from .stability_risk_agent import StabilityRiskAgent
@@ -1535,7 +1535,7 @@ __all__ = [
 
 同时从 `if __name__ == "__main__":` 块中移除对这三个函数的调用。
 
-- [ ] **Step 3: 删除 `framework/agents/specialized/comprehensive_agent.py` 文件**
+- [x] **Step 3: 删除 `framework/agents/specialized/comprehensive_agent.py` 文件**
 
 使用 DeleteFile 工具删除：
 ```
