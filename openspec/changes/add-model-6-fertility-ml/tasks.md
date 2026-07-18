@@ -56,15 +56,15 @@
 
 ## 7. 测试更新
 
-- [ ] 7.1 修改 `tests/test_agent_specialized.py`：移除 `ComprehensiveImprovementAgent` 测试用例，新增 `FertilityMLAgent` 测试用例覆盖：完整特征预测、部分特征缺失、fallback 场景、answer_question 三个分支
-- [ ] 7.2 修改 `tests/test_agent_manager.py`：更新 model-6 相关断言，验证 `_load_real_agents` 加载 `FertilityMLAgent`，验证 `dependencies = []`，验证 `_topological_sort` 中 model-6 不再依赖 model-4/5
-- [ ] 7.3 新建 `tests/test_fertility_ml_prediction.py`（或在 test_agent_specialized.py 内追加）：单元测试 `model_6_execution` 函数
+- [x] 7.1 修改 `tests/test_agent_specialized.py`：移除 `ComprehensiveImprovementAgent` 测试用例，新增 `FertilityMLAgent` 测试用例覆盖：完整特征预测、部分特征缺失、fallback 场景、answer_question 三个分支
+- [x] 7.2 修改 `tests/test_agent_manager.py`：更新 model-6 相关断言，验证 `_load_real_agents` 加载 `FertilityMLAgent`，验证 `dependencies = []`，验证 `_topological_sort` 中 model-6 不再依赖 model-4/5
+- [x] 7.3 新建 `tests/test_fertility_ml_prediction.py`（或在 test_agent_specialized.py 内追加）：单元测试 `model_6_execution` 函数
   - 7.3.1 完整 10 特征输入 → 验证 `soc_prediction` 是 float、`soc_confidence` 是 0.91、`status` 是 "success"
   - 7.3.2 部分特征输入 → 验证 `imputed_features` 列出被填充的特征、`imputation_applied: true`
   - 7.3.3 空字典输入 → 验证降级到均值、`status: "fallback"`
   - 7.3.4 mock sklearn 不可用 → 验证 `fallback_reason: "sklearn_missing"`
   - 7.3.5 mock 模型文件缺失 → 验证 `fallback_reason: "model_file_missing"`
-- [ ] 7.4 运行 `python -m pytest tests/ -v` 验证全部测试通过（不破坏现有 test_agent_base、test_agent_integration、test_multi_agent 等用例）
+- [x] 7.4 运行 `python -m pytest tests/ -v` 验证全部测试通过（不破坏现有 test_agent_base、test_agent_integration、test_multi_agent 等用例）
 
 ## 8. 端到端集成验证
 

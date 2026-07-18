@@ -1581,7 +1581,7 @@ git commit -m "refactor(agent): 删除 ComprehensiveImprovementAgent 占位实�
 - Consumes: Task 3-6 的所有实现产物
 - Produces: 全量测试通过，无破坏既有用例。`test_agent_manager.py` 中 `test_manager_topological_sort_farmer` 断言更新为 model-6 无依赖。
 
-- [ ] **Step 1: 修复 `tests/test_agent_manager.py` 中 `test_manager_topological_sort_farmer`**
+- [x] **Step 1: 修复 `tests/test_agent_manager.py` 中 `test_manager_topological_sort_farmer`**
 
 原断言 `assert ordered[-1] == "model-6"` 不再成立（model-6 依赖为空）。修改为：
 
@@ -1595,7 +1595,7 @@ def test_manager_topological_sort_farmer():
     print("✓ 拓扑排序包含 farmer 角色全部三个智能体")
 ```
 
-- [ ] **Step 2: 修复 `tests/test_agent_manager.py` 中 `test_manager_process_farmer_returns_structured_result`**
+- [x] **Step 2: 修复 `tests/test_agent_manager.py` 中 `test_manager_process_farmer_returns_structured_result`**
 
 原断言 `assert payload.get("simulated") is True` 对所有 agent 强制要求 simulated 标记。model-6 在非肥力问题时返回 skipped 状态（含 simulated），在肥力问题时 FertilityMLAgent 也通过 `mark_simulated` 添加标记。但为稳健起见，将断言修改为仅检查非 skipped 的 agent：
 
@@ -1623,7 +1623,7 @@ def test_manager_process_farmer_returns_structured_result():
     result = mgr.process("我的田施肥施多少", {"area_code": "lechang"})
 ```
 
-- [ ] **Step 3: 运行全量测试套件**
+- [x] **Step 3: 运行全量测试套件**
 
 ```bash
 python -m pytest tests/ -v
@@ -1636,7 +1636,7 @@ Expected: 所有测试 PASS（集成测试可能 SKIP）。重点关注：
 - `test_fertility_ml_prediction.py`：13 个单元测试 PASS，3 个集成测试 PASS 或 SKIP
 - `test_agent_integration.py`、`test_multi_agent.py`：如有 model-6 相关断言可能需要调整
 
-- [ ] **Step 4: 如有其他测试文件因 model-6 变更失败，逐一修复**
+- [x] **Step 4: 如有其他测试文件因 model-6 变更失败，逐一修复**
 
 检查 `test_agent_integration.py` 和 `test_multi_agent.py` 中是否有对 `ComprehensiveImprovementAgent` 或 `details["model-6"]` 旧结构的断言。如果有，更新为新的 FertilityMLAgent 结构。
 
@@ -1646,7 +1646,7 @@ python -m pytest tests/test_agent_integration.py tests/test_multi_agent.py -v
 
 Expected: PASS 或明确标识需修复的测试。
 
-- [ ] **Step 5: 提交**
+- [x] **Step 5: 提交**
 
 ```bash
 git add tests/test_agent_manager.py tests/test_agent_integration.py tests/test_multi_agent.py
