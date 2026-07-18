@@ -1,0 +1,15 @@
+{
+  "change": "add-model-6-fertility-ml",
+  "phase": "design",
+  "mode": "compact",
+  "canonical_spec": "openspec",
+  "generated_by": "comet-handoff.sh",
+  "context_hash": "098b00b985b21328c5970b899b5597aa297916fef86edad839ebe8fe0c854f05",
+  "files": [
+    { "path": "openspec/changes/add-model-6-fertility-ml/proposal.md", "sha256": "3f89fa2a3aa7d23368cf7b235fea0a30a9a9ed91e72c112e98482188cf3ccac6" },
+    { "path": "openspec/changes/add-model-6-fertility-ml/design.md", "sha256": "01daeac23c8cc658f729650a4079b0f4cb20e8c76c0f9444dc2e06818fb91012" },
+    { "path": "openspec/changes/add-model-6-fertility-ml/tasks.md", "sha256": "00169c006b451a3a4195b26cc98432574cb7e1a752d94fa1dd0e97d65db0c8d2" },
+    { "path": "openspec/changes/add-model-6-fertility-ml/specs/fertility-ml-prediction/spec.md", "sha256": "0965c78d49caf610fcdaf6809e95fe2fbb426815678b015bbff393805062a180" },
+    { "path": "openspec/changes/add-model-6-fertility-ml/specs/professional-model-agents/spec.md", "sha256": "82f93629b78df49de0b2f9544886dae23118f8bb4db3ddc27dae898efd6a9792" }
+  ]
+}
