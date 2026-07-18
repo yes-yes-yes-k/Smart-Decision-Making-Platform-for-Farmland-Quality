@@ -45,6 +45,10 @@
 4. **测试断言过弱**：`test_feature_name_with_trailing_space` 检查 `"TN" not in ...`，但 `imputed_features` 含 `"TN "`（带空格），断言无法区分匹配成功与失败。
 5-8. 其余 4 个 Minor（详见 task-3-review.md）
 
+### Task 5 — AgentManager 集成与按需过滤（2 个 Minor，全部 plan-mandated）
+1. brief Step 5 Expected 预测 `test_manager_topological_sort_farmer` 会 FAIL，但实际 PASS（plan 对后序 DFS 行为预判错误）
+2. brief BASE 快照中 `_StubAgent.answer_question` 的 `evidence` 字段与实际 `af6fb2e` 微小差异（`[]` vs `[{"source":"stub",...}]`）
+
 ### Task 4 — FertilityMLAgent（6 个 Minor，5 plan-mandated + 1 可选）
 1. **`List` 未使用**：import 了 `List` 但未在代码中使用（plan-mandated）
 2. **`FERTILITY_KEYWORDS` 未使用**：定义了模块级常量但 FertilityMLAgent 内部只用 `DOSE_KEYWORDS`/`SOC_KEYWORDS`，留给 Task 5 `AgentManager` 使用（plan-mandated，前向承诺）

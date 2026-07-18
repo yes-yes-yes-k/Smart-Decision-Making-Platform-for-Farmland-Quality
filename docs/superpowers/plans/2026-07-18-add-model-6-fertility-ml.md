@@ -1478,7 +1478,7 @@ python -m pytest tests/test_agent_manager.py -v -k "should_execute or should_ski
 
 Expected: 7 个测试全部 PASS。
 
-- [ ] **Step 5: 运行既有 AgentManager 测试确认兼容**
+- [x] **Step 5: 运行既有 AgentManager 测试确认兼容**
 
 ```bash
 python -m pytest tests/test_agent_manager.py -v
@@ -1486,7 +1486,7 @@ python -m pytest tests/test_agent_manager.py -v
 
 Expected: 既有 `test_manager_topological_sort_farmer` 可能失败（原断言 `ordered[-1] == "model-6"` 不再成立），这将在 Task 7 中修复。其他测试应 PASS。
 
-- [ ] **Step 6: 提交**
+- [x] **Step 6: 提交**
 
 ```bash
 git add framework/agents/manager.py tests/test_agent_manager.py
