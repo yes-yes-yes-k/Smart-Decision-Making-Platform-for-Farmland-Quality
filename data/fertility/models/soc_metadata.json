@@ -1,0 +1,46 @@
+{
+  "model_type": "ExtraTreesRegressor",
+  "trained_at": "2026-07-18T15:35:06",
+  "model_version": "ETR_v1_20260713",
+  "hyperparameters": {
+    "n_estimators": 30,
+    "max_depth": 10,
+    "min_samples_split": 2,
+    "min_samples_leaf": 1,
+    "max_features": null,
+    "criterion": "squared_error",
+    "random_state": 0
+  },
+  "metrics": {
+    "cv_r2": 0.8916,
+    "cv_rmse": 2.1028,
+    "test_r2": 0.9096,
+    "test_rmse": 2.2352
+  },
+  "feature_names": [
+    "pH",
+    "SOCbe",
+    "TN ",
+    "TP ",
+    "TK ",
+    "AP",
+    "AK",
+    "Gap",
+    "Dose",
+    "Fertilizer type"
+  ],
+  "feature_means": {
+    "pH": 7.1498557692307685,
+    "SOCbe": 11.153789235580321,
+    "TN ": 1.1664134615384616,
+    "TP ": 0.9668749999999998,
+    "TK ": 19.257692307692306,
+    "AP": 26.134278846153844,
+    "AK": 196.65947115384614,
+    "Gap": 4.97128460878877,
+    "Dose": 308.77846153846156,
+    "Fertilizer type": 1.6346153846153846
+  },
+  "training_samples": 52,
+  "test_samples": 13
+}
