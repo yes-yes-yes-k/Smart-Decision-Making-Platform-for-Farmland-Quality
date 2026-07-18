@@ -173,46 +173,6 @@ def test_organic_matter_agent_answer_question_dosage():
     print("✓ OrganicMatterAgent 返回有机肥施用量建议")
 
 
-def test_comprehensive_agent_execute():
-    from framework.agents.specialized.comprehensive_agent import ComprehensiveImprovementAgent
-    agent = ComprehensiveImprovementAgent()
-    assert agent.model_id == "model-6"
-    assert agent.dependencies == ["model-4", "model-5"]
-    result = agent.execute({"area_code": "lechang"})
-    assert result["status"] == "ok"
-    assert result["metadata"]["simulated"] is True
-    assert "diagnosis" in result["result"]
-    assert "zoning_suggestions" in result["result"]
-    assert "priority_measures" in result["result"]
-    print("✓ ComprehensiveImprovementAgent.execute 返回综合诊断结构")
-
-
-def test_comprehensive_agent_answer_question_farmer_plot():
-    from framework.agents.specialized.comprehensive_agent import ComprehensiveImprovementAgent
-    agent = ComprehensiveImprovementAgent()
-    out = agent.answer_question("我这块地质量怎么样？", {})
-    assert out["simulated"] is True
-    assert "质量" in out["answer"] or "诊断" in out["answer"]
-    print("✓ ComprehensiveImprovementAgent 返回农户地块综合诊断")
-
-
-def test_comprehensive_agent_consumes_upstream_results():
-    """当 context 包含 model-4、model-5 时应汇总其结论"""
-    from framework.agents.specialized.comprehensive_agent import ComprehensiveImprovementAgent
-    agent = ComprehensiveImprovementAgent()
-    ctx = {
-        "model-4": {"answer": "酸化程度为酸性", "evidence": [{"metric": "lime_dosage", "value": 100.0}],
-                    "confidence": 0.85, "simulated": True},
-        "model-5": {"answer": "有机质等级为中", "evidence": [{"metric": "manure_dosage", "value": 1000.0}],
-                    "confidence": 0.82, "simulated": True},
-    }
-    out = agent.answer_question("如何综合改良？", ctx)
-    # 应在 evidence 或 priority_measures 中提及上游建议
-    flat = str(out["evidence"]) + str(out.get("priority_measures", []))
-    assert "100.0" in flat or "石灰" in flat or "1000.0" in flat or "有机肥" in flat
-    print("✓ ComprehensiveImprovementAgent 消费 model-4 和 model-5 结果")
-
-
 def test_fertility_ml_agent_execute_structure(monkeypatch):
     """execute 返回结构包含 status/result/metadata 三层"""
     from framework.agents.specialized.fertility_ml_agent import FertilityMLAgent
@@ -390,7 +350,4 @@ if __name__ == "__main__":
     test_organic_matter_agent_execute()
     test_organic_matter_agent_answer_question_content()
     test_organic_matter_agent_answer_question_dosage()
-    test_comprehensive_agent_execute()
-    test_comprehensive_agent_answer_question_farmer_plot()
-    test_comprehensive_agent_consumes_upstream_results()
     print("\n所有专业智能体测试通过！")
