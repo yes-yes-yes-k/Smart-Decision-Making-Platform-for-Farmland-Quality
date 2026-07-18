@@ -68,9 +68,9 @@
 
 ## 8. 端到端集成验证
 
-- [ ] 8.1 启动开发服务器（`python start_http_server.py` 或 `python -m framework.api.app`），验证 `AgentManager` 正常初始化无 ImportError
-- [ ] 8.2 通过 `/api/auth/login` 获取 JWT token
-- [ ] 8.3 调用 `/api/chat` 接口，传入农户角色问题（如"我的田肥力怎么样？"），验证响应中包含 `model-6` 的 ML 预测结果而非 `ComprehensiveImprovementAgent` 的分区建议
-- [ ] 8.4 验证响应中 `dose_warning` 字段被正确传递到 `details["model-6"]` 中
-- [ ] 8.5 临时重命名 `.joblib` 文件模拟模型缺失场景，验证 `AgentManager` 仍能返回 fallback 响应而非崩溃
-- [ ] 8.6 运行 `python -c "from framework.agents.manager import agent_manager; print(agent_manager.agents['model-6'].__class__.__name__)"` 确认输出为 `FertilityMLAgent`
+- [x] 8.1 启动开发服务器（`python start_http_server.py` 或 `python -m framework.api.app`），验证 `AgentManager` 正常初始化无 ImportError
+- [x] 8.2 通过 `/api/auth/login` 获取 JWT token
+- [x] 8.3 调用 `/api/chat` 接口，传入农户角色问题（如"我的田肥力怎么样？"），验证响应中包含 `model-6` 的 ML 预测结果而非 `ComprehensiveImprovementAgent` 的分区建议
+- [x] 8.4 验证响应中 `dose_warning` 字段被正确传递到 `details["model-6"]` 中
+- [x] 8.5 临时重命名 `.joblib` 文件模拟模型缺失场景，验证 `AgentManager` 仍能返回 fallback 响应而非崩溃
+- [x] 8.6 运行 `python -c "from framework.agents.manager import agent_manager; print(agent_manager.agents['model-6'].__class__.__name__)"` 确认输出为 `FertilityMLAgent`

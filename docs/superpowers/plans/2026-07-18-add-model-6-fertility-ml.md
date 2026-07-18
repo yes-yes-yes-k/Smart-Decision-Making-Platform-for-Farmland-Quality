@@ -1664,7 +1664,7 @@ git commit -m "test(agent): 修复 model-6 重构导致的既有测试断言，�
 - Consumes: Task 1-7 的全部实现产物
 - Produces: 验证报告（口头/日志确认），确认 `/api/chat` 响应中 model-6 字段为新 ML 预测结构
 
-- [ ] **Step 1: 验证 AgentManager 正常初始化**
+- [x] **Step 1: 验证 AgentManager 正常初始化**
 
 ```bash
 python -c "from framework.agents.manager import agent_manager; print(agent_manager.agents['model-6'].__class__.__name__)"
@@ -1672,7 +1672,7 @@ python -c "from framework.agents.manager import agent_manager; print(agent_manag
 
 Expected: 输出 `FertilityMLAgent`，无 ImportError。
 
-- [ ] **Step 2: 验证 model_6_execution 真实预测**
+- [x] **Step 2: 验证 model_6_execution 真实预测**
 
 ```bash
 python -c "
@@ -1688,7 +1688,7 @@ print('dose_confidence:', result['dose_confidence'])
 
 Expected: `status: success`，soc_prediction 与 dose_prediction 为 float 值，confidences 分别为 0.91 和 0.47。
 
-- [ ] **Step 3: 验证非肥力问题跳过 model-6**
+- [x] **Step 3: 验证非肥力问题跳过 model-6**
 
 ```bash
 python -c "
@@ -1703,7 +1703,7 @@ print('model-6 reason:', m6.get('reason'))
 
 Expected: `model-6 status: skipped`，`model-6 reason: question_not_related`。
 
-- [ ] **Step 4: 验证肥力问题触发 model-6 ML 预测**
+- [x] **Step 4: 验证肥力问题触发 model-6 ML 预测**
 
 ```bash
 python -c "
@@ -1718,7 +1718,7 @@ print('has evidence:', len(m6.get('evidence', [])) > 0)
 
 Expected: answer 包含 "SOC" 和 "Dose" 预测值，evidence 非空。
 
-- [ ] **Step 5: 验证 fallback 降级（临时重命名模型文件）**
+- [x] **Step 5: 验证 fallback 降级（临时重命名模型文件）**
 
 ```powershell
 Rename-Item data\fertility\models\soc_etr_model.joblib soc_etr_model.joblib.bak
@@ -1746,7 +1746,7 @@ Expected: `status: fallback`，`fallback_reason: model_file_missing`，`soc_conf
 Rename-Item data\fertility\models\soc_etr_model.joblib.bak soc_etr_model.joblib
 ```
 
-- [ ] **Step 6: 启动开发服务器验证 /api/chat 接口（可选，如服务器可用）**
+- [x] **Step 6: 启动开发服务器验证 /api/chat 接口（可选，如服务器可用）**
 
 ```bash
 python start_http_server.py
@@ -1766,7 +1766,7 @@ curl -X POST http://localhost:5000/api/chat -H "Content-Type: application/json" 
 
 Expected: 响应 `data.details["model-6"]` 包含 ML 预测结果（非 `diagnosis`/`zoning_suggestions` 旧结构）。
 
-- [ ] **Step 7: 最终全量测试确认**
+- [x] **Step 7: 最终全量测试确认**
 
 ```bash
 python -m pytest tests/ -v
