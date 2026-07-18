@@ -18,15 +18,15 @@
 
 ## 3. model_6.py 真实 ML 实现替换
 
-- [ ] 3.1 重写 `framework/domain/other_models/model_6.py`，保持函数签名 `model_6_execution(input_data: Dict[str, Any]) -> Dict[str, Any]` 不变
-- [ ] 3.2 模块顶层 try/except 导入 sklearn 与 joblib，捕获 `ImportError` 时设置 `_SKLEARN_AVAILABLE = False`，模块仍可正常导入
-- [ ] 3.3 模块加载时通过惰性单例模式加载两个 `.joblib` 模型文件与对应 `metadata.json`（包含 feature_names、feature_means）；模型文件缺失时不抛异常，记录 `_MODEL_LOADED = False`
-- [ ] 3.4 实现 `_prepare_features(input_data, feature_names, feature_means)` 内部函数：从 input_data 提取特征，缺失字段用 feature_means 填充，返回 `(feature_df, imputed_features_list)` 二元组
-- [ ] 3.5 实现 SOC 预测：构建 10 特征输入（pH/SOCbe/TN/TP/TK/AP/AK/Gap/Dose/Fertilizer type），调用 `soc_model.predict()` 返回 `soc_prediction` float 值
-- [ ] 3.6 实现 Dose 预测：构建 9 特征输入（去掉 Dose 自身），调用 `dose_model.predict()` 返回 `dose_prediction` float 值
-- [ ] 3.7 主函数 `model_6_execution` 返回完整字典：`status`（"success"/"fallback"）、`soc_prediction`、`soc_confidence`（0.91 或 0.3）、`dose_prediction`、`dose_confidence`（0.47 或 0.3）、`dose_warning`、`imputed_features`、`imputation_applied`、`model_version`、`fallback_reason`（fallback 时填充）
-- [ ] 3.8 实现降级分支：当 `_SKLEARN_AVAILABLE = False` 返回 `fallback_reason: "sklearn_missing"`；当模型文件未加载返回 `fallback_reason: "model_file_missing"`；两种情况都返回训练集 SOC/Dose 均值作为占位预测，confidence 降为 0.3
-- [ ] 3.9 验证 `framework/domain/other_models/__init__.py` 中的 `from .model_6 import model_6_execution` 仍然可用（向后兼容）
+- [x] 3.1 重写 `framework/domain/other_models/model_6.py`，保持函数签名 `model_6_execution(input_data: Dict[str, Any]) -> Dict[str, Any]` 不变
+- [x] 3.2 模块顶层 try/except 导入 sklearn 与 joblib，捕获 `ImportError` 时设置 `_SKLEARN_AVAILABLE = False`，模块仍可正常导入
+- [x] 3.3 模块加载时通过惰性单例模式加载两个 `.joblib` 模型文件与对应 `metadata.json`（包含 feature_names、feature_means）；模型文件缺失时不抛异常，记录 `_MODEL_LOADED = False`
+- [x] 3.4 实现 `_prepare_features(input_data, feature_names, feature_means)` 内部函数：从 input_data 提取特征，缺失字段用 feature_means 填充，返回 `(feature_df, imputed_features_list)` 二元组
+- [x] 3.5 实现 SOC 预测：构建 10 特征输入（pH/SOCbe/TN/TP/TK/AP/AK/Gap/Dose/Fertilizer type），调用 `soc_model.predict()` 返回 `soc_prediction` float 值
+- [x] 3.6 实现 Dose 预测：构建 9 特征输入（去掉 Dose 自身），调用 `dose_model.predict()` 返回 `dose_prediction` float 值
+- [x] 3.7 主函数 `model_6_execution` 返回完整字典：`status`（"success"/"fallback"）、`soc_prediction`、`soc_confidence`（0.91 或 0.3）、`dose_prediction`、`dose_confidence`（0.47 或 0.3）、`dose_warning`、`imputed_features`、`imputation_applied`、`model_version`、`fallback_reason`（fallback 时填充）
+- [x] 3.8 实现降级分支：当 `_SKLEARN_AVAILABLE = False` 返回 `fallback_reason: "sklearn_missing"`；当模型文件未加载返回 `fallback_reason: "model_file_missing"`；两种情况都返回训练集 SOC/Dose 均值作为占位预测，confidence 降为 0.3
+- [x] 3.9 验证 `framework/domain/other_models/__init__.py` 中的 `from .model_6 import model_6_execution` 仍然可用（向后兼容）
 
 ## 4. FertilityMLAgent 实现
 

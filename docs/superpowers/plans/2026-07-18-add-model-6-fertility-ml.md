@@ -340,7 +340,7 @@ git commit -m "feat(fertility): 训练 SOC/Dose ETR 模型并生成 joblib 与 m
 - Consumes: `data/fertility/models/*.joblib` 与 `*.json`（Task 2 产物）；`pandas`（已声明依赖）；`sklearn`/`joblib`（Task 1 新增依赖）
 - Produces: `model_6_execution(input_data: Dict[str, Any]) -> Dict[str, Any]` 函数，返回字典含字段：`status`("success"|"fallback"|"rejected")、`soc_prediction`、`soc_confidence`、`dose_prediction`、`dose_confidence`、`dose_warning`、`imputed_features`、`imputation_applied`、`model_version`，fallback 时额外含 `fallback_reason`，rejected 时额外含 `reason` 与 `out_of_range_features`。Task 4 `FertilityMLAgent` 调用此函数；`framework/domain/other_models/__init__.py` 的 `from .model_6 import model_6_execution` 保持不变。
 
-- [ ] **Step 1: 创建测试文件 `tests/test_fertility_ml_prediction.py`**
+- [x] **Step 1: 创建测试文件 `tests/test_fertility_ml_prediction.py`**
 
 ```python
 """测试 model_6_execution ML 预测引擎。
@@ -598,7 +598,7 @@ class TestModel6Integration:
         assert _DOSE_META_PATH.exists()
 ```
 
-- [ ] **Step 2: 运行测试确认失败**
+- [x] **Step 2: 运行测试确认失败**
 
 ```bash
 python -m pytest tests/test_fertility_ml_prediction.py -v -k "not Integration"
@@ -606,7 +606,7 @@ python -m pytest tests/test_fertility_ml_prediction.py -v -k "not Integration"
 
 Expected: FAIL，`model_6_execution` 返回的 stub 字典不含 `soc_prediction`、`soc_confidence` 等字段，断言失败。
 
-- [ ] **Step 3: 实现 `framework/domain/other_models/model_6.py` 完整重写**
+- [x] **Step 3: 实现 `framework/domain/other_models/model_6.py` 完整重写**
 
 ```python
 from __future__ import annotations
@@ -847,7 +847,7 @@ def model_6_execution(input_data: Dict[str, Any]) -> Dict[str, Any]:
         return _fallback_response(input_data or {}, reason="unexpected_error")
 ```
 
-- [ ] **Step 4: 运行单元测试确认通过**
+- [x] **Step 4: 运行单元测试确认通过**
 
 ```bash
 python -m pytest tests/test_fertility_ml_prediction.py -v -k "not Integration"
@@ -855,7 +855,7 @@ python -m pytest tests/test_fertility_ml_prediction.py -v -k "not Integration"
 
 Expected: 13 个单元测试全部 PASS（含 `test_backward_compat_import`）。
 
-- [ ] **Step 5: 运行集成测试（如有真实模型文件）**
+- [x] **Step 5: 运行集成测试（如有真实模型文件）**
 
 ```bash
 python -m pytest tests/test_fertility_ml_prediction.py -v -k "Integration"
@@ -863,7 +863,7 @@ python -m pytest tests/test_fertility_ml_prediction.py -v -k "Integration"
 
 Expected: 3 个集成测试 PASS（如果 sklearn 与模型文件可用）；否则 SKIP。
 
-- [ ] **Step 6: 验证 `__init__.py` 向后兼容**
+- [x] **Step 6: 验证 `__init__.py` 向后兼容**
 
 ```bash
 python -c "from framework.domain.other_models import model_6_execution; print(callable(model_6_execution))"
@@ -871,7 +871,7 @@ python -c "from framework.domain.other_models import model_6_execution; print(ca
 
 Expected: 输出 `True`。
 
-- [ ] **Step 7: 提交**
+- [x] **Step 7: 提交**
 
 ```bash
 git add framework/domain/other_models/model_6.py tests/test_fertility_ml_prediction.py

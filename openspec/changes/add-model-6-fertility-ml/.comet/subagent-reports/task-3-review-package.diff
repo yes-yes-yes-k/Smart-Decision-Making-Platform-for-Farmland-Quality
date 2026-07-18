@@ -1,0 +1,487 @@
+﻿=== COMMITS ===
+4cc5f4f feat(model-6): 瀹炵幇 model_6_execution ML 棰勬祴寮曟搸锛堟儼鎬у姞杞?涓夊眰寮傚父闃茬嚎+鑼冨洿鏍￠獙锛?
+=== STAT ===
+ framework/domain/other_models/model_6.py | 238 +++++++++++++++++++++++++++++-
+ tests/test_fertility_ml_prediction.py    | 242 +++++++++++++++++++++++++++++++
+ 2 files changed, 474 insertions(+), 6 deletions(-)
+=== DIFF (with 10 lines context) ===
+diff --git a/framework/domain/other_models/model_6.py b/framework/domain/other_models/model_6.py
+index 1724ada..de33072 100644
+--- a/framework/domain/other_models/model_6.py
++++ b/framework/domain/other_models/model_6.py
+@@ -1,10 +1,236 @@
+ from __future__ import annotations
+-from typing import Any, Dict
++import json
++import logging
++import threading
++from pathlib import Path
++from typing import Any, Dict, List, Tuple
+ 
+-def model_6_execution(input_data: Dict[str, Any]) -> Dict[str, Any]:
++import pandas as pd
++
++logger = logging.getLogger(__name__)
++
++# ---- 妯″瀷鏂囦欢璺緞锛堥」鐩浉瀵癸級----
++# model_6.py 浣嶄簬 framework/domain/other_models/model_6.py
++# parents[0]=other_models, [1]=domain, [2]=framework, [3]=椤圭洰鏍?+_MODELS_DIR = Path(__file__).resolve().parents[3] / "data" / "fertility" / "models"
++_SOC_MODEL_PATH = _MODELS_DIR / "soc_etr_model.joblib"
++_SOC_META_PATH = _MODELS_DIR / "soc_metadata.json"
++_DOSE_MODEL_PATH = _MODELS_DIR / "dose_etr_model.joblib"
++_DOSE_META_PATH = _MODELS_DIR / "dose_metadata.json"
++
++# ---- 灏濊瘯瀵煎叆 sklearn / joblib ----
++try:
++    import joblib
++    _SKLEARN_AVAILABLE = True
++except ImportError:
++    _SKLEARN_AVAILABLE = False
++
++logger.info("model_6 module imported, sklearn_available=%s", _SKLEARN_AVAILABLE)
++
++# ---- 鎯版€у崟渚嬬姸鎬?----
++_SOC_MODEL = None
++_DOSE_MODEL = None
++_SOC_META = None
++_DOSE_META = None
++_SOC_LOAD_FAILED = False
++_DOSE_LOAD_FAILED = False
++_LOAD_LOCK = threading.Lock()
++
++_MODEL_VERSION = "ETR_v1_20260713"
++
++# ---- 鐗瑰緛鍚堟硶鑼冨洿 ----
++FEATURE_RANGES = {
++    "pH":              (3.0,    11.0),
++    "SOCbe":           (0.0,    100.0),
++    "TN":              (0.0,    10.0),
++    "TP":              (0.0,    10.0),
++    "TK":              (0.0,    100.0),
++    "AP":              (0.0,    200.0),
++    "AK":              (0.0,    500.0),
++    "Gap":             (-10.0,  50.0),
++    "Dose":            (0.0,    1000.0),
++    "Fertilizer type": (1,      2),
++}
++
++
++def _prepare_features(
++    input_data: Dict[str, Any],
++    feature_names: List[str],
++    feature_means: Dict[str, float],
++) -> Tuple[pd.DataFrame, List[str], List[Dict[str, Any]]]:
++    """鍑嗗鐗瑰緛 DataFrame锛岃繑鍥?(df, imputed_list, out_of_range_list)銆?+
++    - input_data 鐨?key 鍋?strip() 瑙勮寖鍖栵紙鍏煎 "TN " / "TN"锛?+    - 缂哄け/杞崲澶辫触鐨勫瓧娈电敤 feature_means 濉厖锛屽姞鍏?imputed_list
++    - 瓒婄晫瀛楁鍔犲叆 out_of_range_list锛屽悓鏃剁敤鍧囧€煎～鍏?+    """
++    normalized = {
++        k.strip(): v for k, v in (input_data or {}).items() if v is not None
++    }
++    row: Dict[str, Any] = {}
++    imputed: List[str] = []
++    out_of_range: List[Dict[str, Any]] = []
++
++    for fname in feature_names:
++        fname_stripped = fname.strip()
++        if fname_stripped in normalized:
++            try:
++                value = float(normalized[fname_stripped])
++                lo, hi = FEATURE_RANGES.get(fname_stripped, (None, None))
++                if lo is not None and (value < lo or value > hi):
++                    out_of_range.append({
++                        "feature": fname,
++                        "value": value,
++                        "valid_range": [lo, hi],
++                    })
++                    row[fname] = feature_means[fname]
++                    imputed.append(fname)
++                else:
++                    row[fname] = value
++                continue
++            except (ValueError, TypeError):
++                pass
++        row[fname] = feature_means[fname]
++        imputed.append(fname)
++
++    return pd.DataFrame([row], columns=feature_names), imputed, out_of_range
++
++
++def _load_model_and_meta(model_path: Path, meta_path: Path):
++    """鍔犺浇 .joblib 妯″瀷涓?metadata.json"""
++    model = joblib.load(model_path)
++    with open(meta_path, "r", encoding="utf-8") as f:
++        meta = json.load(f)
++    return model, meta
++
++
++def _ensure_models_loaded() -> bool:
++    """鎯版€у姞杞芥ā鍨嬶紝double-checked locking 淇濊瘉绾跨▼瀹夊叏銆傝繑鍥炴槸鍚﹀姞杞芥垚鍔熴€?""
++    global _SOC_MODEL, _DOSE_MODEL, _SOC_META, _DOSE_META
++    global _SOC_LOAD_FAILED, _DOSE_LOAD_FAILED
++
++    if _SOC_LOAD_FAILED or _DOSE_LOAD_FAILED:
++        return False
++
++    if _SOC_MODEL is None and not _SOC_LOAD_FAILED:
++        with _LOAD_LOCK:
++            if _SOC_MODEL is None and not _SOC_LOAD_FAILED:
++                try:
++                    _SOC_MODEL, _SOC_META = _load_model_and_meta(
++                        _SOC_MODEL_PATH, _SOC_META_PATH
++                    )
++                    logger.info(
++                        "SOC model loaded, feature_names=%s, test_r2=%.4f",
++                        _SOC_META["feature_names"],
++                        _SOC_META["metrics"]["test_r2"],
++                    )
++                except Exception:
++                    _SOC_LOAD_FAILED = True
++                    logger.exception("Failed to load SOC model")
++
++    if _DOSE_MODEL is None and not _DOSE_LOAD_FAILED:
++        with _LOAD_LOCK:
++            if _DOSE_MODEL is None and not _DOSE_LOAD_FAILED:
++                try:
++                    _DOSE_MODEL, _DOSE_META = _load_model_and_meta(
++                        _DOSE_MODEL_PATH, _DOSE_META_PATH
++                    )
++                    logger.info(
++                        "Dose model loaded, feature_names=%s, test_r2=%.4f",
++                        _DOSE_META["feature_names"],
++                        _DOSE_META["metrics"]["test_r2"],
++                    )
++                except Exception:
++                    _DOSE_LOAD_FAILED = True
++                    logger.exception("Failed to load Dose model")
++
++    if _SOC_LOAD_FAILED or _DOSE_LOAD_FAILED:
++        return False
++    return True
++
++
++def _fallback_response(input_data: Dict[str, Any], reason: str) -> Dict[str, Any]:
++    """鏋勯€?fallback 鍝嶅簲锛屼娇鐢ㄨ缁冮泦鍧囧€间綔涓虹矖浼般€?""
+     return {
+-        "model_name": "model_6",
+-        "result": {},
+-        "status": "success",
+-        "message": "妯″瀷6鎵ц鎴愬姛锛堝崰浣嶅疄鐜帮級",
++        "status": "fallback",
++        "soc_prediction": _SOC_META["feature_means"].get("SOCbe", 12.0) if _SOC_META else 12.0,
++        "soc_confidence": 0.3,
++        "dose_prediction": _DOSE_META["feature_means"].get("Dose", 100.0) if _DOSE_META else 100.0,
++        "dose_confidence": 0.3,
++        "dose_warning": "妯″瀷涓嶅彲鐢紝杩斿洖璁粌闆嗗潎鍊间及绠? if reason != "input_out_of_range" else "杈撳叆鍊艰秺鐣岋紝鏈墽琛岄娴?,
++        "imputed_features": [],
++        "imputation_applied": False,
++        "model_version": _MODEL_VERSION,
++        "fallback_reason": reason,
+     }
++
++
++def model_6_execution(input_data: Dict[str, Any]) -> Dict[str, Any]:
++    """SOC + Dose ML 棰勬祴涓诲叆鍙ｃ€?+
++    杈撳叆锛氱壒寰佸瓧鍏革紙key 鍙惈/涓嶅惈灏鹃殢绌烘牸锛屽彲缂哄瓧娈碉級
++    杈撳嚭锛氶娴嬬粨鏋滃瓧鍏革紝鍚?status/soc_prediction/dose_prediction 绛夊瓧娈?+    """
++    try:
++        # 1. 妫€鏌?sklearn 鍙敤鎬?+        if not _SKLEARN_AVAILABLE:
++            return _fallback_response(input_data or {}, reason="sklearn_missing")
++
++        # 2. 妫€鏌ユā鍨嬪姞杞界姸鎬侊紙棣栨瑙﹀彂鍔犺浇锛?+        if not _ensure_models_loaded():
++            return _fallback_response(input_data or {}, reason="model_file_missing")
++
++        # 3. 鍑嗗 SOC 鐗瑰緛锛?0 鍥犲瓙锛?+        soc_df, soc_imputed, soc_oor = _prepare_features(
++            input_data or {}, _SOC_META["feature_names"], _SOC_META["feature_means"]
++        )
++
++        # 4. 鍑嗗 Dose 鐗瑰緛锛? 鍥犲瓙锛屽幓鎺?Dose 鑷韩锛?+        dose_input = {
++            k: v for k, v in (input_data or {}).items() if k.strip() != "Dose"
++        }
++        dose_df, dose_imputed, dose_oor = _prepare_features(
++            dose_input, _DOSE_META["feature_names"], _DOSE_META["feature_means"]
++        )
++
++        # 5. 鑼冨洿鏍￠獙锛氫换涓€瓒婄晫鍗虫嫆缁?+        all_oor = soc_oor + dose_oor
++        if all_oor:
++            return {
++                "status": "rejected",
++                "reason": "input_out_of_range",
++                "out_of_range_features": all_oor,
++                "soc_prediction": None,
++                "soc_confidence": 0.0,
++                "dose_prediction": None,
++                "dose_confidence": 0.0,
++                "dose_warning": "杈撳叆鍊艰秺鐣岋紝鏈墽琛岄娴?,
++                "imputed_features": [],
++                "imputation_applied": False,
++                "model_version": _MODEL_VERSION,
++            }
++
++        # 6. 鎵ц棰勬祴
++        soc_pred = float(_SOC_MODEL.predict(soc_df)[0])
++        dose_pred = float(_DOSE_MODEL.predict(dose_df)[0])
++
++        logger.info(
++            "model_6_execution success: SOC=%.4f, Dose=%.4f", soc_pred, dose_pred
++        )
++
++        # 7. 鏋勯€犲搷搴?+        return {
++            "status": "success",
++            "soc_prediction": round(soc_pred, 4),
++            "soc_confidence": round(_SOC_META["metrics"]["test_r2"], 2),
++            "dose_prediction": round(dose_pred, 4),
++            "dose_confidence": round(_DOSE_META["metrics"]["test_r2"], 2),
++            "dose_warning": "Dose 妯″瀷 R虏=0.47锛岄娴嬬粨鏋滀粎渚涘弬鑰冿紝寤鸿缁撳悎鐢伴棿璇曢獙鏍″噯",
++            "imputed_features": sorted(set(soc_imputed + dose_imputed)),
++            "imputation_applied": bool(soc_imputed or dose_imputed),
++            "model_version": _MODEL_VERSION,
++        }
++
++    except Exception as e:
++        logger.exception(f"model_6_execution unexpected error: {e}")
++        return _fallback_response(input_data or {}, reason="unexpected_error")
+diff --git a/tests/test_fertility_ml_prediction.py b/tests/test_fertility_ml_prediction.py
+new file mode 100644
+index 0000000..1053b17
+--- /dev/null
++++ b/tests/test_fertility_ml_prediction.py
+@@ -0,0 +1,242 @@
++"""娴嬭瘯 model_6_execution ML 棰勬祴寮曟搸銆?+
++鍗曞厓娴嬭瘯鍏ㄩ儴浣跨敤 monkeypatch mock sklearn/joblib/妯″瀷鏂囦欢锛孋I 闆朵緷璧栥€?+闆嗘垚娴嬭瘯浣跨敤鐪熷疄妯″瀷鏂囦欢锛岄€氳繃 skipif 鍦?sklearn/妯″瀷涓嶅彲鐢ㄦ椂璺宠繃銆?+"""
++import sys
++import os
++sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
++
++import pytest
++
++
++# ---- 娴嬭瘯鐢?mock 鏁版嵁 ----
++
++class FakeModel:
++    """妯℃嫙 sklearn ExtraTreesRegressor 鐨?predict 琛屼负"""
++    def predict(self, df):
++        return [42.0]
++
++
++FAKE_SOC_META = {
++    "model_type": "ExtraTreesRegressor",
++    "model_version": "ETR_v1_20260713",
++    "feature_names": ["pH", "SOCbe", "TN ", "TP ", "TK ", "AP", "AK", "Gap", "Dose", "Fertilizer type"],
++    "feature_means": {
++        "pH": 7.0, "SOCbe": 12.0, "TN ": 0.8, "TP ": 0.5, "TK ": 30.0,
++        "AP": 50.0, "AK": 100.0, "Gap": 10.0, "Dose": 100.0, "Fertilizer type": 1.5,
++    },
++    "metrics": {"cv_r2": 0.89, "cv_rmse": 2.15, "test_r2": 0.91, "test_rmse": 2.24},
++}
++
++FAKE_DOSE_META = {
++    "model_type": "ExtraTreesRegressor",
++    "model_version": "ETR_v1_20260713",
++    "feature_names": ["pH", "SOCbe", "TN ", "TP ", "TK ", "AP", "AK", "Gap", "Fertilizer type"],
++    "feature_means": {
++        "pH": 7.0, "SOCbe": 12.0, "TN ": 0.8, "TP ": 0.5, "TK ": 30.0,
++        "AP": 50.0, "AK": 100.0, "Gap": 10.0, "Fertilizer type": 1.5,
++    },
++    "metrics": {"cv_r2": 0.43, "cv_rmse": 55.0, "test_r2": 0.47, "test_rmse": 50.0},
++}
++
++FULL_VALID_INPUT = {
++    "pH": 6.5, "SOCbe": 15.0, "TN": 1.2, "TP": 0.8, "TK": 25.0,
++    "AP": 30.0, "AK": 80.0, "Gap": 5.0, "Dose": 200.0, "Fertilizer type": 1,
++}
++
++
++def _setup_mock_models(monkeypatch):
++    """灏?model_6 妯″潡鐨勭姸鎬佸彉閲忚缃负 mock 鍊硷紝妯℃嫙妯″瀷宸插姞杞?""
++    from framework.domain.other_models import model_6
++    monkeypatch.setattr(model_6, "_SKLEARN_AVAILABLE", True)
++    monkeypatch.setattr(model_6, "_SOC_MODEL", FakeModel())
++    monkeypatch.setattr(model_6, "_DOSE_MODEL", FakeModel())
++    monkeypatch.setattr(model_6, "_SOC_META", FAKE_SOC_META)
++    monkeypatch.setattr(model_6, "_DOSE_META", FAKE_DOSE_META)
++    monkeypatch.setattr(model_6, "_SOC_LOAD_FAILED", False)
++    monkeypatch.setattr(model_6, "_DOSE_LOAD_FAILED", False)
++
++
++# ---- 鍗曞厓娴嬭瘯 ----
++
++class TestModel6Execution:
++    def test_success_full_features(self, monkeypatch):
++        """瀹屾暣 10 鐗瑰緛 鈫?status=success"""
++        _setup_mock_models(monkeypatch)
++        from framework.domain.other_models.model_6 import model_6_execution
++        result = model_6_execution(FULL_VALID_INPUT)
++        assert result["status"] == "success"
++        assert result["soc_prediction"] == 42.0
++        assert result["dose_prediction"] == 42.0
++        assert result["soc_confidence"] == 0.91
++        assert result["dose_confidence"] == 0.47
++        assert "dose_warning" in result
++        assert result["imputation_applied"] is False
++        assert result["imputed_features"] == []
++        assert result["model_version"] == "ETR_v1_20260713"
++
++    def test_success_partial_features_imputation(self, monkeypatch):
++        """閮ㄥ垎鐗瑰緛缂哄け 鈫?imputation_applied=true, imputed_features 闈炵┖"""
++        _setup_mock_models(monkeypatch)
++        from framework.domain.other_models.model_6 import model_6_execution
++        partial = {"pH": 6.5, "SOCbe": 15.0, "TN": 1.2}
++        result = model_6_execution(partial)
++        assert result["status"] == "success"
++        assert result["imputation_applied"] is True
++        assert len(result["imputed_features"]) > 0
++
++    def test_fallback_sklearn_missing(self, monkeypatch):
++        """sklearn 涓嶅彲鐢?鈫?status=fallback, fallback_reason=sklearn_missing"""
++        from framework.domain.other_models import model_6
++        monkeypatch.setattr(model_6, "_SKLEARN_AVAILABLE", False)
++        result = model_6.model_6_execution(FULL_VALID_INPUT)
++        assert result["status"] == "fallback"
++        assert result["fallback_reason"] == "sklearn_missing"
++        assert result["soc_confidence"] == 0.3
++        assert result["dose_confidence"] == 0.3
++
++    def test_fallback_model_file_missing(self, monkeypatch):
++        """妯″瀷鏂囦欢缂哄け 鈫?status=fallback, fallback_reason=model_file_missing"""
++        from framework.domain.other_models import model_6
++        monkeypatch.setattr(model_6, "_SKLEARN_AVAILABLE", True)
++        monkeypatch.setattr(model_6, "_SOC_MODEL", None)
++        monkeypatch.setattr(model_6, "_DOSE_MODEL", None)
++        monkeypatch.setattr(model_6, "_SOC_META", None)
++        monkeypatch.setattr(model_6, "_DOSE_META", None)
++        monkeypatch.setattr(model_6, "_SOC_LOAD_FAILED", True)
++        monkeypatch.setattr(model_6, "_DOSE_LOAD_FAILED", True)
++        result = model_6.model_6_execution(FULL_VALID_INPUT)
++        assert result["status"] == "fallback"
++        assert result["fallback_reason"] == "model_file_missing"
++        assert result["soc_confidence"] == 0.3
++
++    def test_rejected_out_of_range_ph(self, monkeypatch):
++        """pH=99 鈫?status=rejected, out_of_range_features 鍖呭惈 pH"""
++        _setup_mock_models(monkeypatch)
++        from framework.domain.other_models.model_6 import model_6_execution
++        bad_input = dict(FULL_VALID_INPUT, pH=99.0)
++        result = model_6_execution(bad_input)
++        assert result["status"] == "rejected"
++        assert result["reason"] == "input_out_of_range"
++        assert result["soc_prediction"] is None
++        assert result["dose_prediction"] is None
++        oor_features = [f["feature"] for f in result["out_of_range_features"]]
++        assert "pH" in oor_features
++
++    def test_rejected_fertilizer_type_invalid(self, monkeypatch):
++        """Fertilizer type=3 鈫?status=rejected"""
++        _setup_mock_models(monkeypatch)
++        from framework.domain.other_models.model_6 import model_6_execution
++        bad_input = dict(FULL_VALID_INPUT, **{"Fertilizer type": 3})
++        result = model_6_execution(bad_input)
++        assert result["status"] == "rejected"
++        oor_features = [f["feature"] for f in result["out_of_range_features"]]
++        assert "Fertilizer type" in oor_features
++
++    def test_empty_input_uses_all_means(self, monkeypatch):
++        """绌哄瓧鍏?鈫?鍏ㄩ儴鐗瑰緛鐢ㄥ潎鍊煎～鍏咃紝imputed_features 闈炵┖"""
++        _setup_mock_models(monkeypatch)
++        from framework.domain.other_models.model_6 import model_6_execution
++        result = model_6_execution({})
++        assert result["status"] == "success"
++        assert result["imputation_applied"] is True
++        # SOC 10 鐗瑰緛鍏ㄩ儴濉厖
++        assert len(result["imputed_features"]) >= 10
++
++    def test_none_input_coerced_to_empty(self, monkeypatch):
++        """None 杈撳叆 鈫?coerce 涓?{} 鍚庤蛋绌哄瓧鍏歌矾寰?""
++        _setup_mock_models(monkeypatch)
++        from framework.domain.other_models.model_6 import model_6_execution
++        result = model_6_execution(None)
++        assert result["status"] == "success"
++        assert result["imputation_applied"] is True
++
++    def test_string_numeric_coercion(self, monkeypatch):
++        """'1.5' 瀛楃涓?鈫?float 杞崲鎴愬姛锛屾甯搁娴?""
++        _setup_mock_models(monkeypatch)
++        from framework.domain.other_models.model_6 import model_6_execution
++        str_input = {k: str(v) for k, v in FULL_VALID_INPUT.items()}
++        result = model_6_execution(str_input)
++        assert result["status"] == "success"
++        assert result["imputation_applied"] is False
++
++    def test_string_non_numeric_uses_mean(self, monkeypatch):
++        """'abc' 瀛楃涓?鈫?杞崲澶辫触锛岀敤鍧囧€煎～鍏?""
++        _setup_mock_models(monkeypatch)
++        from framework.domain.other_models.model_6 import model_6_execution
++        bad_str_input = dict(FULL_VALID_INPUT, pH="abc")
++        result = model_6_execution(bad_str_input)
++        assert result["status"] == "success"
++        assert result["imputation_applied"] is True
++        assert "pH" in result["imputed_features"]
++
++    def test_feature_name_with_trailing_space(self, monkeypatch):
++        """鐢ㄦ埛浼?'TN'锛屾ā鍨?feature_names 鍚?'TN ' 鈫?姝ｇ‘鍖归厤"""
++        _setup_mock_models(monkeypatch)
++        from framework.domain.other_models.model_6 import model_6_execution
++        result = model_6_execution(FULL_VALID_INPUT)
++        assert result["status"] == "success"
++        # TN 鏈濉厖璇存槑姝ｇ‘鍖归厤浜?'TN ' 鈫?'TN'
++        assert "TN" not in result["imputed_features"]
++
++    def test_unexpected_error_fallback(self, monkeypatch):
++        """model.predict 鎶涘紓甯?鈫?status=fallback, fallback_reason=unexpected_error"""
++        _setup_mock_models(monkeypatch)
++        from framework.domain.other_models import model_6
++
++        class CrashModel:
++            def predict(self, df):
++                raise RuntimeError("predict crashed")
++        monkeypatch.setattr(model_6, "_SOC_MODEL", CrashModel())
++        result = model_6.model_6_execution(FULL_VALID_INPUT)
++        assert result["status"] == "fallback"
++        assert result["fallback_reason"] == "unexpected_error"
++
++    def test_backward_compat_import(self):
++        """__init__.py 鐨?from .model_6 import model_6_execution 浠嶅彲鐢?""
++        from framework.domain.other_models import model_6_execution
++        assert callable(model_6_execution)
++
++
++# ---- 闆嗘垚娴嬭瘯锛堢湡瀹炴ā鍨嬶紝鍙烦杩囷級----
++
++def _check_integration_available():
++    try:
++        from framework.domain.other_models import model_6
++        return (
++            model_6._SKLEARN_AVAILABLE
++            and model_6._ensure_models_loaded()
++        )
++    except Exception:
++        return False
++
++
++@pytest.mark.skipif(
++    not _check_integration_available(),
++    reason="sklearn 鎴栨ā鍨嬫枃浠朵笉鍙敤"
++)
++class TestModel6Integration:
++    def test_real_soc_prediction_in_range(self):
++        """鐪熷疄棰勬祴锛氬吀鍨嬪湡澹ゆ牱鏈?鈫?SOC 鍦?0-50 g/kg 鍚堢悊鑼冨洿"""
++        from framework.domain.other_models.model_6 import model_6_execution
++        result = model_6_execution(FULL_VALID_INPUT)
++        assert result["status"] == "success"
++        assert 0.0 <= result["soc_prediction"] <= 50.0
++
++    def test_real_dose_prediction_in_range(self):
++        """鐪熷疄棰勬祴锛欴ose 鍦?0-1000 t/ha 鍚堢悊鑼冨洿"""
++        from framework.domain.other_models.model_6 import model_6_execution
++        result = model_6_execution(FULL_VALID_INPUT)
++        assert result["status"] == "success"
++        assert 0.0 <= result["dose_prediction"] <= 1000.0
++
++    def test_real_model_files_exist(self):
++        """楠岃瘉 .joblib 涓?metadata.json 鏂囦欢瀛樺湪涓斿彲鍔犺浇"""
++        from framework.domain.other_models.model_6 import (
++            _SOC_MODEL_PATH, _SOC_META_PATH, _DOSE_MODEL_PATH, _DOSE_META_PATH
++        )
++        assert _SOC_MODEL_PATH.exists()
++        assert _SOC_META_PATH.exists()
++        assert _DOSE_MODEL_PATH.exists()
++        assert _DOSE_META_PATH.exists()
