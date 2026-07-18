@@ -17,3 +17,10 @@ instance/
 uploads/
 response.json
 .vscode/
+
+# Fertility ML 训练数据与模型文件（入库，不忽略）
+!data/fertility/
+!data/fertility/**
+
+# 忽略训练过程临时文件
+*.pkl.bak
