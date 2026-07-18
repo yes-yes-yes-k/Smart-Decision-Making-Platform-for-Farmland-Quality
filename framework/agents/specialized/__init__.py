@@ -4,6 +4,7 @@ from .problem_agent import ProblemIdentificationAgent
 from .acidification_agent import AcidificationRemediationAgent
 from .organic_matter_agent import OrganicMatterAgent
 from .comprehensive_agent import ComprehensiveImprovementAgent
+from .fertility_ml_agent import FertilityMLAgent
 
 __all__ = [
     "StabilityRiskAgent",
@@ -12,4 +13,5 @@ __all__ = [
     "AcidificationRemediationAgent",
     "OrganicMatterAgent",
     "ComprehensiveImprovementAgent",
+    "FertilityMLAgent",
 ]

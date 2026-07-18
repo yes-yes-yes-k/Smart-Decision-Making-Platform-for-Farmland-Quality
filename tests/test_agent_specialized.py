@@ -213,6 +213,167 @@ def test_comprehensive_agent_consumes_upstream_results():
     print("✓ ComprehensiveImprovementAgent 消费 model-4 和 model-5 结果")
 
 
+def test_fertility_ml_agent_execute_structure(monkeypatch):
+    """execute 返回结构包含 status/result/metadata 三层"""
+    from framework.agents.specialized.fertility_ml_agent import FertilityMLAgent
+    from framework.domain.other_models import model_6
+    # mock model_6_execution 返回 success
+    monkeypatch.setattr(
+        "framework.agents.specialized.fertility_ml_agent.model_6_execution",
+        lambda data: {
+            "status": "success",
+            "soc_prediction": 12.5,
+            "soc_confidence": 0.91,
+            "dose_prediction": 150.0,
+            "dose_confidence": 0.47,
+            "dose_warning": "Dose 模型 R²=0.47，预测结果仅供参考",
+            "imputed_features": [],
+            "imputation_applied": False,
+            "model_version": "ETR_v1_20260713",
+        }
+    )
+    agent = FertilityMLAgent()
+    assert agent.model_id == "model-6"
+    assert agent.dependencies == []
+    result = agent.execute({"pH": 6.5})
+    assert "status" in result
+    assert "result" in result
+    assert "metadata" in result
+    assert result["result"]["soc_prediction"] == 12.5
+    print("✓ FertilityMLAgent.execute 返回三层结构")
+
+
+def test_fertility_ml_agent_answer_dose_keywords(monkeypatch):
+    """问'施用量' → 仅返回 Dose 预测"""
+    from framework.agents.specialized.fertility_ml_agent import FertilityMLAgent
+    monkeypatch.setattr(
+        "framework.agents.specialized.fertility_ml_agent.model_6_execution",
+        lambda data: {
+            "status": "success",
+            "soc_prediction": 12.5,
+            "soc_confidence": 0.91,
+            "dose_prediction": 150.0,
+            "dose_confidence": 0.47,
+            "dose_warning": "Dose 模型 R²=0.47",
+            "imputed_features": [],
+            "imputation_applied": False,
+            "model_version": "ETR_v1_20260713",
+        }
+    )
+    agent = FertilityMLAgent()
+    out = agent.answer_question("我这块地需要施多少肥？", {"data": {"pH": 6.5}})
+    assert "施肥" in out["answer"] or "t/ha" in out["answer"]
+    # evidence 应包含 dose_prediction 但不应包含 soc_prediction
+    metrics = [e.get("metric") for e in out["evidence"]]
+    assert "dose_prediction" in metrics
+    assert "soc_prediction" not in metrics
+    print("✓ FertilityMLAgent 施用量问题返回 Dose 预测")
+
+
+def test_fertility_ml_agent_answer_soc_keywords(monkeypatch):
+    """问'有机碳' → 仅返回 SOC 预测"""
+    from framework.agents.specialized.fertility_ml_agent import FertilityMLAgent
+    monkeypatch.setattr(
+        "framework.agents.specialized.fertility_ml_agent.model_6_execution",
+        lambda data: {
+            "status": "success",
+            "soc_prediction": 12.5,
+            "soc_confidence": 0.91,
+            "dose_prediction": 150.0,
+            "dose_confidence": 0.47,
+            "dose_warning": "Dose 模型 R²=0.47",
+            "imputed_features": [],
+            "imputation_applied": False,
+            "model_version": "ETR_v1_20260713",
+        }
+    )
+    agent = FertilityMLAgent()
+    out = agent.answer_question("我的田有机碳含量多少？", {"data": {"pH": 6.5}})
+    assert "SOC" in out["answer"] or "有机碳" in out["answer"]
+    metrics = [e.get("metric") for e in out["evidence"]]
+    assert "soc_prediction" in metrics
+    assert "dose_prediction" not in metrics
+    print("✓ FertilityMLAgent 有机碳问题返回 SOC 预测")
+
+
+def test_fertility_ml_agent_answer_fertility_keywords(monkeypatch):
+    """问'肥力' → 返回 SOC + Dose 综合诊断"""
+    from framework.agents.specialized.fertility_ml_agent import FertilityMLAgent
+    monkeypatch.setattr(
+        "framework.agents.specialized.fertility_ml_agent.model_6_execution",
+        lambda data: {
+            "status": "success",
+            "soc_prediction": 12.5,
+            "soc_confidence": 0.91,
+            "dose_prediction": 150.0,
+            "dose_confidence": 0.47,
+            "dose_warning": "Dose 模型 R²=0.47",
+            "imputed_features": [],
+            "imputation_applied": False,
+            "model_version": "ETR_v1_20260713",
+        }
+    )
+    agent = FertilityMLAgent()
+    out = agent.answer_question("我的田肥力怎么样？", {"data": {"pH": 6.5}})
+    metrics = [e.get("metric") for e in out["evidence"]]
+    assert "soc_prediction" in metrics
+    assert "dose_prediction" in metrics
+    print("✓ FertilityMLAgent 肥力问题返回综合诊断")
+
+
+def test_fertility_ml_agent_answer_fallback_status(monkeypatch):
+    """status=fallback → answer 标注'模型不可用'"""
+    from framework.agents.specialized.fertility_ml_agent import FertilityMLAgent
+    monkeypatch.setattr(
+        "framework.agents.specialized.fertility_ml_agent.model_6_execution",
+        lambda data: {
+            "status": "fallback",
+            "soc_prediction": 12.0,
+            "soc_confidence": 0.3,
+            "dose_prediction": 100.0,
+            "dose_confidence": 0.3,
+            "dose_warning": "模型不可用，返回训练集均值估算",
+            "imputed_features": [],
+            "imputation_applied": False,
+            "model_version": "ETR_v1_20260713",
+            "fallback_reason": "model_file_missing",
+        }
+    )
+    agent = FertilityMLAgent()
+    out = agent.answer_question("我的田肥力怎么样？", {"data": {}})
+    assert "模型不可用" in out["answer"] or "训练集均值" in out["answer"]
+    print("✓ FertilityMLAgent fallback 时标注模型不可用")
+
+
+def test_fertility_ml_agent_answer_rejected_status(monkeypatch):
+    """status=rejected → answer 标注越界特征"""
+    from framework.agents.specialized.fertility_ml_agent import FertilityMLAgent
+    monkeypatch.setattr(
+        "framework.agents.specialized.fertility_ml_agent.model_6_execution",
+        lambda data: {
+            "status": "rejected",
+            "reason": "input_out_of_range",
+            "out_of_range_features": [
+                {"feature": "pH", "value": 99.0, "valid_range": [3.0, 11.0]}
+            ],
+            "soc_prediction": None,
+            "soc_confidence": 0.0,
+            "dose_prediction": None,
+            "dose_confidence": 0.0,
+            "dose_warning": "输入值越界，未执行预测",
+            "imputed_features": [],
+            "imputation_applied": False,
+            "model_version": "ETR_v1_20260713",
+        }
+    )
+    agent = FertilityMLAgent()
+    out = agent.answer_question("我的田肥力怎么样？", {"data": {"pH": 99.0}})
+    assert "越界" in out["answer"] or "异常" in out["answer"]
+    assert "pH" in out["answer"]
+    assert out["evidence"] == []
+    print("✓ FertilityMLAgent rejected 时标注越界特征")
+
+
 if __name__ == "__main__":
     test_stability_risk_agent_execute()
     test_stability_risk_agent_answer_question_overall()
