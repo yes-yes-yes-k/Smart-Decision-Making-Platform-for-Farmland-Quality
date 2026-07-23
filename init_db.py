@@ -10,6 +10,7 @@ if str(SRC_DIR) not in sys.path:
 from werkzeug.security import generate_password_hash
 from framework.api.app import create_app
 from framework.models.user import db, User
+import framework.models  # noqa: F401  触发 soil_data 等模型注册，使 db.create_all() 发现新表
 
 app = create_app()
 
