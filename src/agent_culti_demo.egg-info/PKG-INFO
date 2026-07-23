@@ -1,0 +1,22 @@
+Metadata-Version: 2.4
+Name: agent_culti_demo
+Version: 0.1.0
+Summary: Unified framework for RAG, Function Calling, and Multi-Agent architecture
+Requires-Python: >=3.10
+Requires-Dist: Flask<4.0.0,>=3.0.0
+Requires-Dist: Flask-SQLAlchemy<4.0.0,>=3.1.0
+Requires-Dist: Flask-JWT-Extended<5.0.0,>=4.6.0
+Requires-Dist: Flask-CORS<5.0.0,>=4.0.0
+Requires-Dist: pymysql<2.0.0,>=1.1.0
+Requires-Dist: langchain>=0.3.0
+Requires-Dist: langchain-openai>=0.3.0
+Requires-Dist: langgraph>=0.2.0
+Requires-Dist: langchain-core>=1.0.0
+Requires-Dist: chromadb<0.6.0,>=0.5.0
+Requires-Dist: pandas<3.0.0,>=2.2.0
+Requires-Dist: numpy<2.0.0,>=1.26.0
+Requires-Dist: python-dotenv<2.0.0,>=1.0.0
+Requires-Dist: python-docx<2.0.0,>=1.1.0
+Requires-Dist: PyPDF2<4.0.0,>=3.0.0
+Requires-Dist: openpyxl<4.0.0,>=3.1.0
+Requires-Dist: waitress<4.0.0,>=3.0.0

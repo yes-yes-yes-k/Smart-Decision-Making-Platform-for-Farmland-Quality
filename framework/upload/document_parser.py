@@ -13,6 +13,10 @@ def parse_document(file_path: str, file_type: str) -> Optional[str]:
         return _parse_docx(file_path)
     elif file_type == 'xlsx':
         return _parse_excel(file_path)
+    elif file_type == 'csv':
+        return _parse_csv(file_path)
+    elif file_type == 'dat':
+        return _parse_dat(file_path)
     else:
         return None
 
@@ -44,5 +48,20 @@ def _parse_excel(file_path: str) -> str:
         import pandas as pd
         df = pd.read_excel(file_path)
         return df.to_string()
+    except Exception:
+        return ""
+
+def _parse_csv(file_path: str) -> str:
+    try:
+        import pandas as pd
+        df = pd.read_csv(file_path)
+        return df.to_string()
+    except Exception:
+        return ""
+
+def _parse_dat(file_path: str) -> str:
+    try:
+        with open(file_path, 'r', encoding='utf-8', errors='ignore') as f:
+            return f.read()
     except Exception:
         return ""

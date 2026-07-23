@@ -98,8 +98,27 @@ class ComprehensiveImprovementAgent(BaseAgent):
         })
 
     def answer_question(self, question: str, context: Dict[str, Any]) -> Dict[str, Any]:
+        rag_result = self._generate_with_rag(question)
+
         upstream = _extract_upstream_summary(context)
         priority_measures = _match_measures(upstream)
+
+        if rag_result.get("success") and rag_result.get("answer"):
+            evidence = rag_result.get("sources", [])
+            if not evidence:
+                evidence = []
+            evidence.extend([
+                {"priority_measure": m["name"], "priority": m["priority"]}
+                for m in priority_measures[:3]
+            ])
+            return {
+                "answer": rag_result["answer"],
+                "evidence": evidence,
+                "confidence": 0.82,
+                "simulated": False,
+                "sources": rag_result.get("sources", []),
+                "priority_measures": priority_measures,
+            }
 
         if "质量怎么样" in question or "地块" in question or "诊断" in question:
             acid_summary = (upstream.get("acidification") or {}).get("answer", "未触发酸化模型")

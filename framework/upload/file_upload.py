@@ -2,7 +2,7 @@ import os
 import uuid
 from framework.config import Config
 
-ALLOWED_EXTENSIONS = {'txt', 'md', 'pdf', 'docx', 'xlsx', 'xls'}
+ALLOWED_EXTENSIONS = {'txt', 'md', 'pdf', 'docx', 'xlsx', 'xls', 'csv', 'dat'}
 
 def allowed_file(filename: str) -> bool:
     return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
@@ -28,5 +28,7 @@ def get_file_type(filename: str) -> str:
         'docx': 'docx',
         'xlsx': 'xlsx',
         'xls': 'xlsx',
+        'csv': 'csv',
+        'dat': 'dat',
     }
     return type_map.get(extension, 'other')

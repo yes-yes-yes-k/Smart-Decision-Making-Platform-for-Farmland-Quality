@@ -29,21 +29,30 @@ try:
 except ImportError:
     CORE_ENGINE_AVAILABLE = False
 
-QUESTION_TYPE_1_KEYWORDS = ["酸化程度", "酸化等级", "pH分级", "酸度", "酸化现状", "土壤酸性", "酸性分级"]
-QUESTION_TYPE_2_KEYWORDS = ["治理", "调理剂", "石灰", "碱性材料", "改良", "修复", "调理", "施加", "用量"]
-QUESTION_TYPE_3_KEYWORDS = ["氮肥", "pH下降", "施氮", "酸化原因", "氮素", "化肥", "施肥"]
+QUESTION_TYPE_1_KEYWORDS = ["酸化程度", "酸化等级", "pH分级", "酸度", "酸化现状", "土壤酸性", "酸性分级", "土壤pH", "pH值"]
+QUESTION_TYPE_2_KEYWORDS = ["治理", "调理剂", "石灰", "碱性材料", "改良", "修复", "调理", "施加", "用量", "怎么治", "怎么办", "如何改"]
+QUESTION_TYPE_3_KEYWORDS = ["氮肥", "pH下降", "施氮", "酸化原因", "氮素", "化肥", "施肥", "氮"]
 
 RELEVANCE_KEYWORDS = [
     "酸化", "pH", "土壤", "耕地", "治理", "改良", "氮肥", "施肥",
     "调理剂", "石灰", "碱性", "酸性", "交换性酸", "CEC", "阳离子交换量",
     "土壤质量", "农业", "农田", "养分", "种植", "作物", "水稻", "小麦",
-    "玉米", "肥料", "有机质", "酸碱度", "酸性土", "碱性土", "改良剂"
+    "玉米", "肥料", "有机质", "酸碱度", "酸性土", "碱性土", "改良剂",
+    "耕地质量", "地力", "土壤肥力", "培肥", "有机肥", "绿肥", "秸秆还田",
+    "稳定性", "退化", "风险", "潜力", "障碍", "问题", "诊断", "综合",
+    "提升", "质量等级", "评价", "评估", "监测"
 ]
 
 REFERENCE_QUESTIONS: Dict[int, List[str]] = {
-    1: ["全省耕地酸化程度如何", "土壤pH分布情况", "酸化等级面积统计", "耕地酸性现状评估"],
-    2: ["如何治理强酸性耕地", "石灰施用量计算", "土壤改良方案", "酸性土壤调理方法"],
-    3: ["施氮肥会导致土壤pH下降多少", "氮肥对土壤酸化的影响", "不同施氮量对pH的影响"],
+    1: ["全省耕地酸化程度如何", "土壤pH分布情况", "酸化等级面积统计", "耕地酸性现状评估",
+        "土壤酸化情况怎么样", "耕地pH值是多少", "酸性土壤占比"],
+    2: ["如何治理强酸性耕地", "石灰施用量计算", "土壤改良方案", "酸性土壤调理方法",
+        "酸化土壤怎么改良", "耕地质量如何提升", "土壤改良措施有哪些"],
+    3: ["施氮肥会导致土壤pH下降多少", "氮肥对土壤酸化的影响", "不同施氮量对pH的影响",
+        "施肥过量会导致酸化吗", "氮肥用量与土壤酸度的关系"],
+    4: ["耕地有机质含量如何", "有机质怎么提升", "有机肥施用量", "土壤培肥措施"],
+    5: ["耕地质量稳定性怎么样", "退化风险有哪些", "哪些地方耕地质量在下降"],
+    6: ["耕地质量提升潜力多大", "主要障碍因素是什么", "耕地质量问题诊断"],
 }
 
 REFERENCE_VECTORS: Dict[int, List[List[float]]] = {}
@@ -103,6 +112,8 @@ def identify_question_type(question: str) -> tuple[int, float]:
         return _identify_question_type_keyword(question)
 
 def _identify_question_type_vector(question: str) -> tuple[int, float]:
+    keyword_relevance = _check_relevance_keyword(question)
+
     query_vector = embedding_service.embed_query(question)
     if not query_vector:
         return _identify_question_type_keyword(question)
@@ -114,22 +125,27 @@ def _identify_question_type_vector(question: str) -> tuple[int, float]:
             if similarity > max_similarity:
                 max_similarity = similarity
                 best_type = q_type
-    if max_similarity < 0.5:
+
+    if keyword_relevance < 0.2:
         return 0, max_similarity
+
+    if max_similarity < 0.55:
+        if keyword_relevance >= 0.3:
+            return 2, keyword_relevance
+        return 0, max_similarity
+
     return best_type, max_similarity
 
 def _identify_question_type_keyword(question: str) -> tuple[int, float]:
     relevance = _check_relevance_keyword(question)
-    if relevance < 0.3:
+    if relevance < 0.2:
         return 0, relevance
     if any(keyword in question for keyword in QUESTION_TYPE_1_KEYWORDS):
         return 1, relevance
-    elif any(keyword in question for keyword in QUESTION_TYPE_2_KEYWORDS):
-        return 2, relevance
     elif any(keyword in question for keyword in QUESTION_TYPE_3_KEYWORDS):
         return 3, relevance
     else:
-        return 1, relevance
+        return 2, relevance
 
 def initialize_state(state: MultiAgentState) -> MultiAgentState:
     return {
@@ -353,8 +369,34 @@ def aggregate_results(state: MultiAgentState) -> MultiAgentState:
         else:
             final_result["model_results"] = model_results
             final_result["llm_response"] = llm_response.get("content", "")
-            final_result["answer"] = llm_response.get("content", "")
-            final_result["sources"] = []
+
+            agent_data = model_results.get("data", {}) if isinstance(model_results, dict) else {}
+            agent_summary = agent_data.get("summary", "")
+            agent_details = agent_data.get("details", {}) if isinstance(agent_data, dict) else {}
+
+            all_sources = []
+            if isinstance(agent_details, dict):
+                for agent_id, detail in agent_details.items():
+                    if isinstance(detail, dict):
+                        sources = detail.get("sources", [])
+                        if sources:
+                            all_sources.extend(sources)
+                        evidence = detail.get("evidence", [])
+                        if evidence and not sources:
+                            for ev in evidence:
+                                if isinstance(ev, dict) and ev.get("doc_name"):
+                                    all_sources.append(ev)
+
+            if llm_response.get("content"):
+                final_result["answer"] = llm_response.get("content", "")
+            elif agent_summary:
+                final_result["answer"] = agent_summary
+            else:
+                final_result["answer"] = llm_response.get("content", "")
+
+            final_result["sources"] = all_sources if all_sources else []
+            if not final_result["sources"] and rag_response.get("sources"):
+                final_result["sources"] = rag_response.get("sources", [])
 
         return {**state, "model_results": final_result, "status": "completed", "error": None}
     except Exception as e:

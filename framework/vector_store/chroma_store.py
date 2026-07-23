@@ -1,10 +1,17 @@
 from __future__ import annotations
 import os
+import uuid
 from typing import Optional, List, Dict, Any
 import chromadb
 from chromadb.config import Settings
+from chromadb.api.types import Documents, EmbeddingFunction, Embeddings
 from framework.config import Config
 from framework.embedding.service import embedding_service
+
+class SiliconFlowEmbeddingFunction(EmbeddingFunction):
+    """使用 Silicon Flow API 生成嵌入向量，避免本地下载 ONNX 模型"""
+    def __call__(self, input: Documents) -> Embeddings:
+        return embedding_service.embed_documents(input)
 
 class ChromaVectorStore:
     def __init__(self):
@@ -26,7 +33,10 @@ class ChromaVectorStore:
                     allow_reset=False,
                 )
             )
-            self._collection = self._client.get_or_create_collection(name=collection_name)
+            self._collection = self._client.get_or_create_collection(
+                name=collection_name,
+                embedding_function=SiliconFlowEmbeddingFunction()
+            )
         except Exception as e:
             print(f"Chroma初始化失败: {e}")
 
@@ -35,10 +45,13 @@ class ChromaVectorStore:
             return 0
 
         try:
+            if ids is None:
+                doc_id = str(uuid.uuid4())[:8]
+                ids = [f"doc_{doc_id}_{i}" for i in range(len(texts))]
             self._collection.add(
                 documents=texts,
                 metadatas=metadatas or [],
-                ids=ids or [f"doc_{i}" for i in range(len(texts))]
+                ids=ids
             )
             return len(texts)
         except Exception as e:

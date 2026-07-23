@@ -77,6 +77,8 @@ class PotentialAssessmentAgent(BaseAgent):
         })
 
     def answer_question(self, question: str, context: Dict[str, Any]) -> Dict[str, Any]:
+        rag_result = self._generate_with_rag(question)
+
         indicators = [dict(i) for i in MOCK_INDICATORS]
         for ind in indicators:
             lower_is_better = ind["name"] in ("容重",)
@@ -94,6 +96,24 @@ class PotentialAssessmentAgent(BaseAgent):
         target_ph = ph_indicator["potential"] if ph_indicator else 6.5
 
         top_obstacles = sorted(indicators, key=lambda x: x["obstacle_degree"], reverse=True)[:3]
+
+        if rag_result.get("success") and rag_result.get("answer"):
+            evidence = rag_result.get("sources", [])
+            if not evidence:
+                evidence = []
+            evidence.append({
+                "potential_level": overall_level,
+                "avg_obstacle_degree": avg_obstacle,
+                "note": "参考评估值"
+            })
+            return {
+                "answer": rag_result["answer"],
+                "evidence": evidence,
+                "confidence": 0.82,
+                "simulated": False,
+                "sources": rag_result.get("sources", []),
+                "target_ph": target_ph,
+            }
 
         answer = (
             f"耕地质量提升潜力等级为 {overall_level}，"

@@ -68,11 +68,36 @@ class AcidificationRemediationAgent(BaseAgent):
         })
 
     def answer_question(self, question: str, context: Dict[str, Any]) -> Dict[str, Any]:
+        rag_result = self._generate_with_rag(question)
+
         inputs = {}
         if isinstance(context.get("data"), dict):
             inputs.update(context["data"])
         inputs.update({k: v for k, v in context.items() if k in MOCK_INPUTS})
         computed = self._compute(inputs)
+
+        if rag_result.get("success") and rag_result.get("answer"):
+            evidence = rag_result.get("sources", [])
+            if not evidence:
+                evidence = []
+            evidence.append({
+                "metric": "ph",
+                "value": computed["ph"],
+                "note": "参考计算值"
+            })
+            evidence.append({
+                "metric": "lime_dosage",
+                "value": computed["lime_dosage"],
+                "unit": "kg/亩",
+                "note": "参考施用量"
+            })
+            return {
+                "answer": rag_result["answer"],
+                "evidence": evidence,
+                "confidence": 0.85,
+                "simulated": False,
+                "sources": rag_result.get("sources", []),
+            }
 
         if "治理" in question or "施加" in question or "调理剂" in question or "石灰" in question:
             answer = (
