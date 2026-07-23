@@ -1,0 +1,15 @@
+{
+  "change": "import-lechang-soil-data",
+  "phase": "design",
+  "mode": "compact",
+  "canonical_spec": "openspec",
+  "generated_by": "comet-handoff.sh",
+  "context_hash": "2403d36852be322be8040526fad7a0dd29a960f88627b1543f00a57e43adbe2e",
+  "files": [
+    { "path": "openspec/changes/import-lechang-soil-data/proposal.md", "sha256": "938983bb98057efe62547f516ff1c22e7e29eb5f18f0ac1d7a16fdcfcaf84cb6" },
+    { "path": "openspec/changes/import-lechang-soil-data/design.md", "sha256": "f322ab36301be4dfcdc9de1994888b07f47ae73ea0d40c2818add0d4893747c8" },
+    { "path": "openspec/changes/import-lechang-soil-data/tasks.md", "sha256": "f586fe450fbc8423e034e58daa2b8d461b78399e9484ce965d774a27b30a443d" },
+    { "path": "openspec/changes/import-lechang-soil-data/specs/database-models/spec.md", "sha256": "87e20d59fa5dcc90eba21ec665acea74bc046ab77b4a19c45488e0bee036fde4" },
+    { "path": "openspec/changes/import-lechang-soil-data/specs/soil-data-ingestion/spec.md", "sha256": "f5c85a35c9bd91c35c80a40c2b00b984c8e4a557cfa07577d45f0a057e7b9720" }
+  ]
+}
