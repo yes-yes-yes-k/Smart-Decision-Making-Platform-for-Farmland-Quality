@@ -28,6 +28,10 @@ def load_soil_data(area_code: str = "lechang") -> Dict[str, Any]:
     """从数据库读取土壤数据，DB 为空或查询失败时降级 mock。
 
     返回结构保持不变：{"third_survey": DataFrame, "formula_fertilization": DataFrame}
+
+    .. deprecated:: area_code
+        ``area_code`` 已废弃——当前实现直接查询全表，DB 不按区域过滤，参数保留
+        仅为签名兼容，将在未来接线时移除。调用方不应依赖此参数产生任何过滤效果。
     """
     try:
         from framework.models.soil_data import ThirdSurveyTopsoil, FormulaFertilization

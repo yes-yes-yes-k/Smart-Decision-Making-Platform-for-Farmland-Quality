@@ -304,9 +304,16 @@ def run_import(area: str = "lechang", data_dir: Optional[str] = None,
     results: Dict[str, int] = {}
     for source_name, (model_class, patterns) in DATA_SOURCES.items():
         files = _resolve_files(patterns, data_dir)
-        results[source_name] = import_one_source(
-            model_class, COLUMN_MAPS[source_name], files, dry_run=dry_run
-        )
+        # 单数据源失败隔离：_prepare_dataframe 等步骤可能因列名漂移抛异常（如
+        # colinfo[col] KeyError），此处捕获并继续后续数据源，避免一个源中断全量导入。
+        try:
+            results[source_name] = import_one_source(
+                model_class, COLUMN_MAPS[source_name], files, dry_run=dry_run
+            )
+        except Exception:  # noqa: BLE001
+            logger.exception("导入数据源 %s 失败", source_name)
+            results[source_name] = 0
+            continue
     return results
 
 

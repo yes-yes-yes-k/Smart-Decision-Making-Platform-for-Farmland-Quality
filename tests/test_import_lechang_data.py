@@ -115,5 +115,66 @@ class ImportEncryptedSkipTests(unittest.TestCase):
         self.assertEqual(n, 0)
 
 
+class ReservedWordRoundTripTests(unittest.TestCase):
+    """保留字字段（as_ ↔ 列 as）写入-读取全链路回归测试。
+
+    防止 _prepare_dataframe 末尾的「列名 -> 属性名」rename 步骤被回退导致
+    bulk_insert_mappings 静默写入 NULL（曾导致 As 列 632/649 非空值全部丢失）。
+    """
+
+    def setUp(self):
+        self.app = _make_app()
+        self.ctx = self.app.app_context()
+        self.ctx.push()
+
+    def tearDown(self):
+        db.session.remove()
+        self.ctx.pop()
+
+    def test_reserved_word_field_round_trip(self):
+        from scripts.import_lechang_data import _prepare_dataframe, COLUMN_MAPS
+        from framework.models.soil_data import ThirdSurveyTopsoil
+        from framework.domain.data.soil_data_loader import _query_to_dataframe
+
+        # 构造含中文源列 "As"（COLUMN_MAPS 映射到 DB 列名 "as"，经 _prepare_dataframe
+        # 翻成属性名 as_）的源 DataFrame。含一个 None 哨兵以验证 NULL 路径不影响其余值。
+        source_df = pd.DataFrame({
+            "ID": ["AS-001", "AS-002", "AS-003"],
+            "As": [12.5, 33.1, None],
+        })
+
+        # === 写入侧 ===
+        prepared = _prepare_dataframe(
+            source_df, COLUMN_MAPS["third_survey_topsoil"], ThirdSurveyTopsoil
+        )
+        # _prepare_dataframe 应将 DB 列名 as 翻为属性名 as_
+        self.assertIn("as_", prepared.columns)
+        self.assertNotIn("as", prepared.columns)
+
+        records = prepared.to_dict(orient="records")
+        for rec in records:
+            rec.pop("id", None)
+        db.session.query(ThirdSurveyTopsoil).delete()
+        if records:
+            db.session.bulk_insert_mappings(ThirdSurveyTopsoil, records)
+        db.session.commit()
+
+        # === 读取侧 ===
+        out_df = _query_to_dataframe(ThirdSurveyTopsoil)
+        # _query_to_dataframe 用 attr.key 读，应返回属性名 as_
+        self.assertIn("as_", out_df.columns)
+        self.assertEqual(len(out_df), 3)
+
+        as_values = out_df["as_"].tolist()
+        # 非空值不能为 None/NaN（捕获 rename 被回退导致全表 NULL 的回归）
+        self.assertFalse(pd.isna(as_values[0]))
+        self.assertFalse(pd.isna(as_values[1]))
+        # 值匹配源
+        self.assertAlmostEqual(as_values[0], 12.5)
+        self.assertAlmostEqual(as_values[1], 33.1)
+        # None 哨兵应保持 NULL（pandas 将 None 列读回为 NaN，用 isna 判定）
+        self.assertTrue(pd.isna(as_values[2]))
+
+
 if __name__ == "__main__":
     unittest.main()

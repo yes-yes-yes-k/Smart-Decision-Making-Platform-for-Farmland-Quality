@@ -39,4 +39,4 @@
 
 #### Scenario: 返回数据字段一致
 - **WHEN** `load_soil_data()` 从 DB 读取数据
-- **THEN** 返回的字典 SHALL 包含 `third_survey` 和 `formula_fertilization` 键，结构与原有 mock 返回值兼容
+- **THEN** 返回的字典 SHALL 包含 `third_survey` 和 `formula_fertilization` 键；顶层键与原有 mock 返回值兼容，但列名不兼容——DB 路径返回模型英文属性名（如 `ph`/`som`/`as_`），mock 降级返回中文列名（如 `pH`/`有机质`/`容重`）。下游接线应以 DB schema（模型英文属性名）为准，不应假设与 mock 列名一致
