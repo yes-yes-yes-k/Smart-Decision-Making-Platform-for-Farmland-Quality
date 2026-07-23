@@ -22,11 +22,15 @@ from typing import Dict, List, Optional, Type
 import pandas as pd
 from sqlalchemy import inspect as sa_inspect
 
-# 确保 src 在 sys.path（与 init_db.py 一致）
+# 确保 PROJECT_ROOT 与 src 在 sys.path。
+# 注意：framework 包位于 PROJECT_ROOT（不在 src 下），而 init_db.py 之所以能导入
+# framework 是因为 Python 自动把脚本所在目录（项目根）加入 sys.path[0]；本脚本位于
+# scripts/ 子目录，自动加入的是 scripts/，故需显式把 PROJECT_ROOT 加入 sys.path。
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
 SRC_DIR = PROJECT_ROOT / "src"
-if str(SRC_DIR) not in sys.path:
-    sys.path.insert(0, str(SRC_DIR))
+for _p in (str(PROJECT_ROOT), str(SRC_DIR)):
+    if _p not in sys.path:
+        sys.path.insert(0, _p)
 
 from framework.api.app import create_app  # noqa: E402
 from framework.models.user import db  # noqa: E402
@@ -198,7 +202,21 @@ def _resolve_files(patterns: List[str], data_dir: str) -> List[str]:
 
 
 def _prepare_dataframe(df: pd.DataFrame, column_map: Dict[str, str], model_class) -> pd.DataFrame:
-    """strip 列名 -> rename -> datetime 转 ISO -> 仅保留模型字段列。"""
+    """strip 列名 -> rename -> datetime 转 ISO -> 仅保留模型字段列 -> 数值列强转 + NaN→None + 列名转属性名。
+
+    源 Excel 的数值列常含字符串哨兵（如 '/' 表示未测/低于检出限）或字符串数字
+    （如 '2.83'），直接 bulk_insert_mappings 会让 SQLAlchemy 的 to_float 处理器
+    抛 ValueError。此处对模型中 Float/Integer 类型的列用 pd.to_numeric(errors='coerce')
+    强转：'/' → NaN → None（NULL），'2.83' → 2.83。所有列的 NaN 统一转 None，
+    以便 SQLite 存为 NULL（模型字段均允许 NULL）。
+
+    保留字字段关键修正：COLUMN_MAPS 的值使用 DB 列名（如 "as"、"yield"），
+    但 ``bulk_insert_mappings`` 按 **属性名**（attr.key）查找字典 key。当属性名 ≠
+    列名时（``as_`` ↔ 列 ``as``、``yield_`` ↔ 列 ``yield``），列名 key 会被忽略，
+    导致该字段静默写入 NULL（实测 As 列 632/649 非空值全部丢失）。因此在末尾用
+    mapper.column_attrs 把 df 列名从「列名」翻成「属性名」，确保 bulk_insert_mappings
+    能正确匹配属性。
+    """
     # 1. 列名 strip（处理 " Ni" / "TK "）
     df = df.rename(columns={c: str(c).strip() for c in df.columns})
     # 2. 映射表 key 也 strip，构造实际 rename
@@ -208,10 +226,28 @@ def _prepare_dataframe(df: pd.DataFrame, column_map: Dict[str, str], model_class
     for col in df.columns:
         if pd.api.types.is_datetime64_any_dtype(df[col]):
             df[col] = df[col].dt.strftime("%Y-%m-%d %H:%M:%S")
-    # 4. 仅保留模型定义的字段，丢弃未映射列
-    model_fields = {c.name for c in model_class.__table__.columns}
-    keep = [c for c in df.columns if c in model_fields]
-    return df[keep].copy()
+    # 4. 构建 列名 -> (属性名, Column) 映射（来自 mapper，正确处理保留字属性名）
+    mapper = sa_inspect(model_class)
+    colinfo: Dict[str, tuple] = {}  # colname -> (attr_key, Column)
+    for attr in mapper.column_attrs:
+        cols = attr.columns
+        if cols:
+            colinfo[cols[0].name] = (attr.key, cols[0])
+    # 5. 仅保留模型定义的字段（按列名匹配），丢弃未映射列
+    keep = [c for c in df.columns if c in colinfo]
+    df = df[keep].copy()
+    # 6. 数值列（Float/Integer）强转：字符串哨兵/字符串数字 -> 数值或 NaN
+    for col in df.columns:
+        col_type = colinfo[col][1].type
+        if isinstance(col_type, (db.Float, db.Integer)):
+            df[col] = pd.to_numeric(df[col], errors="coerce")
+    # 7. 列名 -> 属性名（保留字关键步骤：as -> as_，yield -> yield_）
+    rename_to_attr = {c: colinfo[c][0] for c in df.columns if colinfo[c][0] != c}
+    if rename_to_attr:
+        df = df.rename(columns=rename_to_attr)
+    # 8. 所有 NaN -> None（SQLAlchemy bulk_insert_mappings 将 None 绑定为 NULL）
+    df = df.astype(object).where(pd.notna(df), None)
+    return df
 
 
 def import_one_source(model_class, column_map: Dict[str, str], file_paths: List[str],
