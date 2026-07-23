@@ -4,5 +4,6 @@
   "openspec_tasks": "openspec/changes/add-model-6-fertility-ml/tasks.md",
   "openspec_delta_spec": "openspec/changes/add-model-6-fertility-ml/specs/fertility-ml-prediction/spec.md",
   "handoff_context": "openspec/changes/add-model-6-fertility-ml/.comet/handoff/design-context.json",
-  "handoff_markdown": "openspec/changes/add-model-6-fertility-ml/.comet/handoff/design-context.md"
+  "handoff_markdown": "openspec/changes/add-model-6-fertility-ml/.comet/handoff/design-context.md",
+  "archive_directory": "openspec/changes/archive/2026-07-23-add-model-6-fertility-ml"
 }

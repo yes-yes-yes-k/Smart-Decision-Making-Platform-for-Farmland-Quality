@@ -1,4 +1,4 @@
-## MODIFIED Requirements
+## ADDED Requirements
 
 ### Requirement: FertilityMLAgent 智能体
 系统 SHALL 实现 `FertilityMLAgent` 智能体，对应模型6「耕地肥力机器学习预测模型」，负责调用预训练的 ExtraTreesRegressor 模型对 SOC（土壤有机碳）和 Dose（施用量）进行预测，并通过 `framework/agents/manager.py` 注册为 `model-6`。该智能体不再依赖其他模型结果，作为独立的计算单元接入 farmer 角色路由。

@@ -2,6 +2,7 @@
 change: add-model-6-fertility-ml
 design-doc: docs/superpowers/specs/2026-07-18-add-model-6-fertility-ml-design.md
 base-ref: 44f423f8efbe18941fe740a56f2cbe0c0c87b2e2
+archived-with: 2026-07-23-add-model-6-fertility-ml
 ---
 
 # Model-6 耕地肥力 ML 预测 实施计划
@@ -34,6 +35,7 @@ base-ref: 44f423f8efbe18941fe740a56f2cbe0c0c87b2e2
 - `pyproject.toml` 使用 Poetry 风格版本号 `^1.3.0`（与现有 `pandas = "^2.2.0"` 一致）
 - 训练数据来源：`F:\BaiduNetdiskDownload\SOC（土壤有机碳）和Dose（施用量）预测模型\`
 
+archived-with: 2026-07-23-add-model-6-fertility-ml
 ---
 
 ## 任务概览
@@ -49,6 +51,7 @@ base-ref: 44f423f8efbe18941fe740a56f2cbe0c0c87b2e2
 | Task 7 | 7.1-7.4 | 测试套件整合与全量验证 |
 | Task 8 | 8.1-8.6 | 端到端集成验证 |
 
+archived-with: 2026-07-23-add-model-6-fertility-ml
 ---
 
 ### Task 1: 数据资产迁移与依赖声明
@@ -124,6 +127,7 @@ git add data/fertility/ .gitignore pyproject.toml
 git commit -m "feat(fertility): 迁移训练数据资产并声明 scikit-learn/joblib 依赖"
 ```
 
+archived-with: 2026-07-23-add-model-6-fertility-ml
 ---
 
 ### Task 2: 训练脚本与模型生成
@@ -328,6 +332,7 @@ git add scripts/train_fertility_models.py data/fertility/models/
 git commit -m "feat(fertility): 训练 SOC/Dose ETR 模型并生成 joblib 与 metadata 产物"
 ```
 
+archived-with: 2026-07-23-add-model-6-fertility-ml
 ---
 
 ### Task 3: model_6.py 真实 ML 实现
@@ -878,6 +883,7 @@ git add framework/domain/other_models/model_6.py tests/test_fertility_ml_predict
 git commit -m "feat(model-6): 实现 model_6_execution ML 预测引擎（惰性加载+三层异常防线+范围校验）"
 ```
 
+archived-with: 2026-07-23-add-model-6-fertility-ml
 ---
 
 ### Task 4: FertilityMLAgent 智能体
@@ -1269,6 +1275,7 @@ git add framework/agents/specialized/fertility_ml_agent.py framework/agents/spec
 git commit -m "feat(agent): 实现 FertilityMLAgent（Dose/SOC/综合三分支问答+fallback/rejected 格式化）"
 ```
 
+archived-with: 2026-07-23-add-model-6-fertility-ml
 ---
 
 ### Task 5: AgentManager 集成与按需过滤
@@ -1493,6 +1500,7 @@ git add framework/agents/manager.py tests/test_agent_manager.py
 git commit -m "feat(manager): AgentManager 集成 FertilityMLAgent 并新增按需过滤"
 ```
 
+archived-with: 2026-07-23-add-model-6-fertility-ml
 ---
 
 ### Task 6: ComprehensiveImprovementAgent 清理
@@ -1568,6 +1576,7 @@ git add framework/agents/specialized/__init__.py framework/agents/specialized/co
 git commit -m "refactor(agent): 删除 ComprehensiveImprovementAgent 占位实现，清理残留引用"
 ```
 
+archived-with: 2026-07-23-add-model-6-fertility-ml
 ---
 
 ### Task 7: 测试套件整合与全量验证
@@ -1653,6 +1662,7 @@ git add tests/test_agent_manager.py tests/test_agent_integration.py tests/test_m
 git commit -m "test(agent): 修复 model-6 重构导致的既有测试断言，全量测试通过"
 ```
 
+archived-with: 2026-07-23-add-model-6-fertility-ml
 ---
 
 ### Task 8: 端到端集成验证
@@ -1774,6 +1784,7 @@ python -m pytest tests/ -v
 
 Expected: 所有测试 PASS 或 SKIP（集成测试），无 FAIL。
 
+archived-with: 2026-07-23-add-model-6-fertility-ml
 ---
 
 ## Self-Review 检查清单
@@ -1818,3 +1829,4 @@ Expected: 所有测试 PASS 或 SKIP（集成测试），无 FAIL。
 - metadata schema 字段：Task 2 生成 `feature_names`/`feature_means`/`metrics.test_r2`，Task 3 读取这些字段 ✓
 - `_prepare_features` 返回三元组 `(df, imputed, out_of_range)`：Task 3 定义并使用 ✓
 - `_fallback_response(input_data, reason)` 返回字典含 `fallback_reason`：Task 3 定义，Task 4 读取 `result.get("fallback_reason")` ✓
+

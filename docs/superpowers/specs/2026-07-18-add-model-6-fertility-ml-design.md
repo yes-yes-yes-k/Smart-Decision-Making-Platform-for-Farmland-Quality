@@ -2,6 +2,8 @@
 comet_change: add-model-6-fertility-ml
 role: technical-design
 canonical_spec: openspec
+archived-with: 2026-07-23-add-model-6-fertility-ml
+status: final
 ---
 
 # Design Doc: add-model-6-fertility-ml
@@ -868,3 +870,4 @@ python -m pytest tests/test_fertility_ml_prediction.py -v -k "Integration"
 | Dose 模型 R²=0.47 低质量 | `dose_warning` 明文标注；`dose_confidence` 字段透传 |
 | 训练数据仅 52 样本，泛化能力有限 | metadata 记录 `training_samples`；未来如有更多数据可重训 |
 | 模型文件被误删 | fallback 机制兜底；metadata 与 model 配套校验 |
+
