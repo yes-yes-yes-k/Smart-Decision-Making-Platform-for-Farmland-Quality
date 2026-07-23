@@ -31,7 +31,8 @@ except ImportError:
 
 QUESTION_TYPE_1_KEYWORDS = ["酸化程度", "酸化等级", "pH分级", "酸度", "酸化现状", "土壤酸性", "酸性分级"]
 QUESTION_TYPE_2_KEYWORDS = ["治理", "调理剂", "石灰", "碱性材料", "改良", "修复", "调理", "施加", "用量"]
-QUESTION_TYPE_3_KEYWORDS = ["氮肥", "pH下降", "施氮", "酸化原因", "氮素", "化肥", "施肥"]
+QUESTION_TYPE_3_KEYWORDS = ["氮肥", "pH下降", "施氮", "酸化原因", "氮素", "化肥"]
+QUESTION_TYPE_4_KEYWORDS = ["有机肥", "施肥", "施用量", "肥力", "有机碳", "SOC", "soc", "Dose", "dose"]
 
 RELEVANCE_KEYWORDS = [
     "酸化", "pH", "土壤", "耕地", "治理", "改良", "氮肥", "施肥",
@@ -44,6 +45,7 @@ REFERENCE_QUESTIONS: Dict[int, List[str]] = {
     1: ["全省耕地酸化程度如何", "土壤pH分布情况", "酸化等级面积统计", "耕地酸性现状评估"],
     2: ["如何治理强酸性耕地", "石灰施用量计算", "土壤改良方案", "酸性土壤调理方法"],
     3: ["施氮肥会导致土壤pH下降多少", "氮肥对土壤酸化的影响", "不同施氮量对pH的影响"],
+    4: ["土壤有机碳含量预测", "施肥量推荐", "综合肥力评估", "耕地肥力诊断", "我的田施有机肥多少", "土壤有机碳含量多少", "施用量预测", "SOC预测", "Dose预测"],
 }
 
 REFERENCE_VECTORS: Dict[int, List[List[float]]] = {}
@@ -114,7 +116,7 @@ def _identify_question_type_vector(question: str) -> tuple[int, float]:
             if similarity > max_similarity:
                 max_similarity = similarity
                 best_type = q_type
-    if max_similarity < 0.75:
+    if max_similarity < 0.70:
         return 0, max_similarity
     return best_type, max_similarity
 
@@ -128,6 +130,8 @@ def _identify_question_type_keyword(question: str) -> tuple[int, float]:
         return 2, relevance
     elif any(keyword in question for keyword in QUESTION_TYPE_3_KEYWORDS):
         return 3, relevance
+    elif any(keyword in question for keyword in QUESTION_TYPE_4_KEYWORDS):
+        return 4, relevance
     else:
         return 0, relevance
 
@@ -319,7 +323,7 @@ def llm_generate(state: MultiAgentState) -> MultiAgentState:
     question = state["request"].get("question", "")
     question_type = state.get("question_type", 1)
 
-    if not question or question_type not in [1, 2, 3]:
+    if not question or question_type not in [1, 2, 3, 4]:
         return {**state, "llm_response": {}, "error": None}
 
     try:
