@@ -1,28 +1,52 @@
 from __future__ import annotations
-import os
+import logging
 from typing import Any, Dict
-import pandas as pd
+
 import numpy as np
+import pandas as pd
+
+logger = logging.getLogger(__name__)
+
+
+def _query_to_dataframe(model_class) -> pd.DataFrame:
+    """将 SQLAlchemy 模型查询结果转为 DataFrame，列名为模型字段名。
+
+    遍历 ``mapper.column_attrs`` 取 ``attr.key``（Python 属性名），而非
+    ``Column.name``（DB 列名），以正确处理保留字字段（如 ``as_`` 映射到列 ``as``、
+    ``yield_`` 映射到列 ``yield``）——此环境下 ``Column.key`` 默认等于 ``name``，
+    无法区分，必须走 mapper。
+    """
+    columns = [attr.key for attr in model_class.__mapper__.column_attrs]
+    rows = [
+        {col: getattr(instance, col) for col in columns}
+        for instance in model_class.query.all()
+    ]
+    return pd.DataFrame(rows, columns=columns)
+
 
 def load_soil_data(area_code: str = "lechang") -> Dict[str, Any]:
-    data_dir = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(__file__))), "data", area_code)
-    if not os.path.exists(data_dir):
-        return _generate_mock_data()
+    """从数据库读取土壤数据，DB 为空或查询失败时降级 mock。
+
+    返回结构保持不变：{"third_survey": DataFrame, "formula_fertilization": DataFrame}
+    """
     try:
-        third_survey_data = _load_third_survey_data(data_dir)
-        formula_data = _generate_formula_mock()
-        return {"third_survey": third_survey_data, "formula_fertilization": formula_data}
-    except Exception:
+        from framework.models.soil_data import ThirdSurveyTopsoil, FormulaFertilization
+
+        third_survey_df = _query_to_dataframe(ThirdSurveyTopsoil)
+        formula_df = _query_to_dataframe(FormulaFertilization)
+
+        if third_survey_df.empty and formula_df.empty:
+            logger.warning("DB 土壤数据表为空，降级到 mock 数据")
+            return _generate_mock_data()
+        return {"third_survey": third_survey_df, "formula_fertilization": formula_df}
+    except Exception as e:
+        logger.warning("从 DB 读取土壤数据失败，降级到 mock: %s", e)
         return _generate_mock_data()
 
-def _load_third_survey_data(data_dir: str) -> pd.DataFrame:
-    topsoil_path = os.path.join(data_dir, "01_乐昌市土壤三普表层土点位数据_fake.xlsx")
-    if os.path.exists(topsoil_path):
-        return pd.read_excel(topsoil_path)
-    return pd.DataFrame()
 
 def _generate_mock_data() -> Dict[str, Any]:
     return {"third_survey": _generate_third_survey_mock(), "formula_fertilization": _generate_formula_mock()}
+
 
 def _generate_third_survey_mock() -> pd.DataFrame:
     np.random.seed(42)
@@ -37,6 +61,7 @@ def _generate_third_survey_mock() -> pd.DataFrame:
         "容重": np.random.uniform(1.0, 1.4, n_points).round(2),
         "有机质": np.random.uniform(10.0, 30.0, n_points).round(2),
     })
+
 
 def _generate_formula_mock() -> pd.DataFrame:
     np.random.seed(123)
