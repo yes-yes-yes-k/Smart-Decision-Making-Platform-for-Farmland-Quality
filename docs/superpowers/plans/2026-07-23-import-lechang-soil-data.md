@@ -1,4 +1,4 @@
----
+﻿---
 change: import-lechang-soil-data
 design-doc: docs/superpowers/specs/2026-07-23-import-lechang-soil-data-design.md
 base-ref: d480d687c0a826fa724e42b64ee63b0c109e8621
@@ -6,7 +6,7 @@ base-ref: d480d687c0a826fa724e42b64ee63b0c109e8621
 
 # 乐昌土壤数据导入 实施计划
 
-> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
+> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [x]`) syntax for tracking.
 
 **Goal:** 将 `data/lechang/` 下的乐昌土壤数据批量导入数据库，建立 8 张表的 SQLAlchemy 模型底座，并改造 `soil_data_loader.py` 从 DB 读取真实数据（保留 mock 降级）。
 
@@ -54,7 +54,7 @@ base-ref: d480d687c0a826fa724e42b64ee63b0c109e8621
 - Consumes: `framework/models/user.py` 的 `db`（SQLAlchemy 实例）
 - Produces: 8 个模型类（`ThirdSurveyTopsoil`、`ThirdSurveyProfile`、`ThirdSurveySiteCondition`、`ThirdSurveyBulkDensity`、`SecondSurveyPoint`、`FormulaFertilization`、`AgriChemicalization`、`GrainYield`），表名分别为 `third_survey_topsoils`、`third_survey_profiles`、`third_survey_site_conditions`、`third_survey_bulk_densities`、`second_survey_points`、`formula_fertilizations`、`agri_chemicalizations`、`grain_yields`。每个模型有自增 `id` 主键，其余字段 nullable。
 
-- [ ] **Step 1: 写失败测试**
+- [x] **Step 1: 写失败测试**
 
 创建 `tests/test_soil_data_models.py`：
 
@@ -127,12 +127,12 @@ if __name__ == "__main__":
     unittest.main()
 ```
 
-- [ ] **Step 2: 运行测试验证失败**
+- [x] **Step 2: 运行测试验证失败**
 
 Run: `python -m pytest tests/test_soil_data_models.py -v`
 Expected: FAIL，错误为 `ModuleNotFoundError: No module named 'framework.models.soil_data'`
 
-- [ ] **Step 3: 创建模型文件**
+- [x] **Step 3: 创建模型文件**
 
 创建 `framework/models/soil_data.py`：
 
@@ -389,7 +389,7 @@ class GrainYield(db.Model):
 
 说明：`as` / `yield` 是 Python 与 SQL 保留字，用 `db.Column("as", ...)` 形式指定真实列名，属性名加下划线后缀（`as_` / `yield_`）。导入脚本 `bulk_insert_mappings` 使用列名键（`"as"`、`"yield"`），与数据库列名一致。
 
-- [ ] **Step 4: 注册模型**
+- [x] **Step 4: 注册模型**
 
 修改 `framework/models/__init__.py`，在末尾追加：
 
@@ -406,7 +406,7 @@ from .soil_data import (
 )
 ```
 
-- [ ] **Step 5: 更新 init_db.py 触发模型注册**
+- [x] **Step 5: 更新 init_db.py 触发模型注册**
 
 修改 `init_db.py`，在 `from framework.models.user import db, User` 之后插入一行注册新模型。原第 12 行：
 
@@ -421,12 +421,12 @@ from framework.models.user import db, User
 import framework.models  # noqa: F401  触发 soil_data 等模型注册，使 db.create_all() 发现新表
 ```
 
-- [ ] **Step 6: 运行测试验证通过**
+- [x] **Step 6: 运行测试验证通过**
 
 Run: `python -m pytest tests/test_soil_data_models.py -v`
 Expected: 4 passed
 
-- [ ] **Step 7: Commit**
+- [x] **Step 7: Commit**
 
 ```bash
 git add framework/models/soil_data.py framework/models/__init__.py init_db.py tests/test_soil_data_models.py
@@ -449,7 +449,7 @@ git commit -m "feat(soil): 新增 8 个乐昌土壤数据 SQLAlchemy 模型并�
   - `main()`：解析 `--area` / `--dry-run`，建 app 并在 `app_context` 内调 `run_import`。
   - `_prepare_dataframe(df, column_map, model_class) -> pd.DataFrame`：strip 列名、rename、datetime 转 ISO、仅保留模型字段列。
 
-- [ ] **Step 1: 写失败测试**
+- [x] **Step 1: 写失败测试**
 
 创建 `tests/test_import_lechang_data.py`：
 
@@ -575,12 +575,12 @@ if __name__ == "__main__":
     unittest.main()
 ```
 
-- [ ] **Step 2: 运行测试验证失败**
+- [x] **Step 2: 运行测试验证失败**
 
 Run: `python -m pytest tests/test_import_lechang_data.py -v`
 Expected: FAIL，错误为 `ModuleNotFoundError: No module named 'scripts.import_lechang_data'`
 
-- [ ] **Step 3: 创建导入脚本**
+- [x] **Step 3: 创建导入脚本**
 
 创建 `scripts/import_lechang_data.py`：
 
@@ -889,12 +889,12 @@ if __name__ == "__main__":
     main()
 ```
 
-- [ ] **Step 4: 运行测试验证通过**
+- [x] **Step 4: 运行测试验证通过**
 
 Run: `python -m pytest tests/test_import_lechang_data.py -v`
 Expected: 5 passed（prepare ×2、idempotent ×1、encrypted ×1、missing ×1）
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add scripts/import_lechang_data.py tests/test_import_lechang_data.py
@@ -913,7 +913,7 @@ git commit -m "feat(import): 新增乐昌土壤数据幂等导入脚本（列名
 - Consumes: Task 1 的 `ThirdSurveyTopsoil`、`FormulaFertilization`，`framework.models.user.db`
 - Produces: `load_soil_data(area_code="lechang") -> Dict[str, Any]`，返回结构保持 `{"third_survey": DataFrame, "formula_fertilization": DataFrame}` 不变；DB 空或查询失败时降级 `_generate_mock_data()`。新增私有 `_query_to_dataframe(model_class) -> pd.DataFrame`。
 
-- [ ] **Step 1: 写失败测试**
+- [x] **Step 1: 写失败测试**
 
 创建 `tests/test_soil_data_loader_db.py`：
 
@@ -983,12 +983,12 @@ if __name__ == "__main__":
     unittest.main()
 ```
 
-- [ ] **Step 2: 运行测试验证失败**
+- [x] **Step 2: 运行测试验证失败**
 
 Run: `python -m pytest tests/test_soil_data_loader_db.py -v`
 Expected: `test_returns_real_data_when_db_populated` FAIL（当前 loader 从文件/mock 读取，空 DB 不会返回真实数据；`test_falls_back_to_mock_when_db_empty` 可能通过，但前者会因读不到真实数据失败）
 
-- [ ] **Step 3: 改造 loader**
+- [x] **Step 3: 改造 loader**
 
 将 `framework/domain/data/soil_data_loader.py` 整体替换为：
 
@@ -1070,17 +1070,17 @@ def _generate_formula_mock() -> pd.DataFrame:
 
 注意：改造移除了旧的文件读取逻辑（`_load_third_survey_data`）与 `os`/文件依赖，因当前无消费者且 Design Doc 明确从 DB 读取。`_generate_mock_data` 等三个 mock 函数完整保留作为降级。
 
-- [ ] **Step 4: 运行测试验证通过**
+- [x] **Step 4: 运行测试验证通过**
 
 Run: `python -m pytest tests/test_soil_data_loader_db.py -v`
 Expected: 3 passed
 
-- [ ] **Step 5: 确认未破坏现有测试**
+- [x] **Step 5: 确认未破坏现有测试**
 
 Run: `python -m pytest tests/ -v -k "not (soil or import)"`
 Expected: 现有测试全部通过（loader 无消费者，移除文件读取不影响其他模块）
 
-- [ ] **Step 6: Commit**
+- [x] **Step 6: Commit**
 
 ```bash
 git add framework/domain/data/soil_data_loader.py tests/test_soil_data_loader_db.py
@@ -1100,12 +1100,12 @@ git commit -m "refactor(loader): soil_data_loader 改为从 DB 读取，DB 空�
 
 > 说明：tasks.md 5.4「验证模型 4/5/6 能读到真实乐昌数据」与 Design Doc 的 Non-Goal（本次不接线 agent）冲突。遵循 Design Doc（事实源），本 Task 只验证 `load_soil_data()` 返回真实数据，不验证 agent 接线。
 
-- [ ] **Step 1: 重建数据库建表**
+- [x] **Step 1: 重建数据库建表**
 
 Run: `python init_db.py`
 Expected: 输出 `[初始化] 数据库表结构创建完成`，`development.db` 含 8 张新表（third_survey_topsoils 等）。
 
-- [ ] **Step 2: 运行导入脚本（首次）**
+- [x] **Step 2: 运行导入脚本（首次）**
 
 Run: `python scripts/import_lechang_data.py --area lechang`
 Expected:
@@ -1120,7 +1120,7 @@ Expected:
 - grain_yield: 0 行（日志含 `文件已加密，跳过` warning ×5）
 - 行数与源文件"行数 - 1"一致（表头扣除）；若源文件实际表头/数据行略有差异，以实际为准，但应为非零正数。
 
-- [ ] **Step 3: 验证 load_soil_data 返回真实数据**
+- [x] **Step 3: 验证 load_soil_data 返回真实数据**
 
 Run:
 ```bash
@@ -1131,7 +1131,7 @@ Expected:
 - `formula rows:` 非 1256（真实数据，非 mock）
 - 行数与 Step 2 导入一致。
 
-- [ ] **Step 4: 验证幂等（重复导入无重复）**
+- [x] **Step 4: 验证幂等（重复导入无重复）**
 
 Run:
 ```bash
@@ -1139,12 +1139,12 @@ python -c "import sys; sys.path.insert(0,'src'); from framework.api.app import c
 ```
 Expected: `before:` 与 `after:` 行数一致，输出 `idempotent OK`。
 
-- [ ] **Step 5: 运行全量测试确保不破坏现有功能**
+- [x] **Step 5: 运行全量测试确保不破坏现有功能**
 
 Run: `python -m pytest tests/ -v`
 Expected: 全部通过（含本计划新增 3 个测试文件 + 现有测试）。
 
-- [ ] **Step 6: Commit 集成验证记录**
+- [x] **Step 6: Commit 集成验证记录**
 
 ```bash
 git add -A
