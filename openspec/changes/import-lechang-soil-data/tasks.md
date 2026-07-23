@@ -10,12 +10,12 @@
 
 ## 2. 数据导入脚本
 
-- [ ] 2.1 创建 `scripts/import_lechang_data.py` 导入脚本骨架
-- [ ] 2.2 实现各数据源的 Excel 读取逻辑（含 .xls 格式兼容，需 xlrd 引擎）
-- [ ] 2.3 实现中文列名到英文字段名的硬编码映射表
-- [ ] 2.4 实现幂等导入逻辑（先 DELETE 后 INSERT，按数据源逐表处理）
-- [ ] 2.5 添加导入日志：记录各表导入行数、跳过的缺失文件 warning、脱敏数据标注
-- [ ] 2.6 添加命令行参数支持：`--area lechang`（默认）、`--dry-run` 预览模式
+- [x] 2.1 创建 `scripts/import_lechang_data.py` 导入脚本骨架
+- [x] 2.2 实现各数据源的 Excel 读取逻辑（含 .xls 格式兼容，需 xlrd 引擎）
+- [x] 2.3 实现中文列名到英文字段名的硬编码映射表
+- [x] 2.4 实现幂等导入逻辑（先 DELETE 后 INSERT，按数据源逐表处理）
+- [x] 2.5 添加导入日志：记录各表导入行数、跳过的缺失文件 warning、脱敏数据标注
+- [x] 2.6 添加命令行参数支持：`--area lechang`（默认）、`--dry-run` 预览模式
 
 ## 3. soil_data_loader 改造
 
@@ -26,7 +26,7 @@
 ## 4. 测试
 
 - [x] 4.1 创建 `tests/test_soil_data_models.py` 测试模型定义和建表
-- [ ] 4.2 创建 `tests/test_import_lechang_data.py` 测试导入脚本的幂等性和列名映射
+- [x] 4.2 创建 `tests/test_import_lechang_data.py` 测试导入脚本的幂等性和列名映射
 - [ ] 4.3 创建 `tests/test_soil_data_loader_db.py` 测试从 DB 读取和 mock fallback 降级
 - [ ] 4.4 运行全量测试确保不破坏现有功能
 
