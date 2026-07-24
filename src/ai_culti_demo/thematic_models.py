@@ -5,6 +5,18 @@ from typing import Any
 from .overview import get_county_overview
 from .farmland_diagnosis import query_parcel, query_acidification, DiagnosisStorage
 
+try:
+    from .farmland_stability import StabilityStorage, get_parcel_result
+    STABILITY_MODEL_AVAILABLE = True
+except ImportError:
+    STABILITY_MODEL_AVAILABLE = False
+
+try:
+    from .farmland_grade_eval import run_grade_evaluation
+    GRADE_EVAL_MODEL_AVAILABLE = True
+except ImportError:
+    GRADE_EVAL_MODEL_AVAILABLE = False
+
 
 ModelSpec = dict[str, Any]
 
@@ -93,6 +105,42 @@ MODEL_SPECS: dict[str, ModelSpec] = {
             "将提升建议拆分为核验、培肥和持续监测三类动作。",
         ],
         "fallback_fields": ["longitude", "latitude"],
+    },
+    "stability-risk-evaluation": {
+        "model_id": "stability-risk-evaluation",
+        "name": "耕地质量稳定性与退化风险评价模型",
+        "purpose": "基于3期历史数据，通过九模块综合评价耕地质量稳定性和退化风险，包括等级边界安全度、指标支撑均衡度、关键指标临界度、空间邻域一致性、历史变化趋势、掉级风险、关键因子退化风险、退化空间集聚风险和持续低质风险。",
+        "minimum_inputs": ["parcel_id"],
+        "recommended_layers": ["quality-overview", "degradation-risk"],
+        "findings": [
+            {"title": "稳定性评价", "content": "通过九模块综合评价耕地质量的稳定性状况。"},
+            {"title": "退化风险", "content": "评估掉级风险、关键因子退化风险、退化空间集聚风险和持续低质风险。"},
+            {"title": "历史趋势", "content": "基于2018/2021/2024三期数据评估历史变化趋势。"},
+        ],
+        "recommendations": [
+            "先运行离线预计算处理shapefile数据，再进行在线查询。",
+            "支持按module参数查询特定模块结果。",
+        ],
+        "fallback_fields": ["longitude", "latitude", "parcel_id"],
+        "real_model": "farmland_stability",
+    },
+    "quality-grade-evaluation": {
+        "model_id": "quality-grade-evaluation",
+        "name": "耕地质量等级评价模型",
+        "purpose": "通过Fortran exe进行耕地质量等级评价，输出12指标原始值/隶属度、综合指数、质量等级和障碍度排序。",
+        "minimum_inputs": ["parcel_code"],
+        "recommended_layers": ["quality-overview", "obstacle-degree"],
+        "findings": [
+            {"title": "指标评价", "content": "输出12个评价指标的原始值、隶属度和权重。"},
+            {"title": "综合评价", "content": "计算综合指数和质量等级。"},
+            {"title": "障碍度排序", "content": "按障碍度对指标进行排序。"},
+        ],
+        "recommendations": [
+            "确保exe和dat文件已部署到指定目录。",
+            "输入有效的地块代码进行查询。",
+        ],
+        "fallback_fields": ["longitude", "latitude", "parcel_code"],
+        "real_model": "farmland_grade_eval",
     },
     "multi-factor-collaborative-improvement": {
         "model_id": "multi-factor-collaborative-improvement",
@@ -352,6 +400,114 @@ def _run_real_acidification_model(payload: dict[str, Any], model: ModelSpec) -> 
     }
 
 
+def _run_real_stability_model(payload: dict[str, Any], model: ModelSpec) -> dict[str, Any]:
+    """调用实际的稳定性风险评价模型"""
+    parcel_id = payload.get("parcel_id")
+    module = payload.get("module")
+    db_path = payload.get("db_path")
+
+    if not parcel_id:
+        return {
+            "status": "error",
+            "error": {
+                "code": "MISSING_PARCEL_ID",
+                "message": "调用稳定性风险模型时必须提供 parcel_id",
+            },
+        }
+
+    storage = StabilityStorage(db_path)
+
+    if not storage.is_ready():
+        return {
+            "status": "error",
+            "error": {
+                "code": "STABILITY_NOT_READY",
+                "message": "稳定性风险数据尚未就绪，请先运行离线预计算流程",
+            },
+        }
+
+    result = storage.get_result(parcel_id, module)
+
+    if result is None:
+        return {
+            "status": "error",
+            "error": {
+                "code": "PARCEL_NOT_FOUND",
+                "message": f"未找到地块 {parcel_id} 的稳定性风险数据",
+            },
+        }
+
+    return {
+        "status": "ok",
+        "model": _base_model_descriptor(model),
+        "area": {"name": "地块稳定性评价", "code": parcel_id},
+        "summary": f"{model['name']} 已返回实际评价结果。地块ID：{parcel_id}",
+        "findings": [
+            {"title": "质量等级", "content": f"等级：{result.get('grade', '未知')}"},
+            {"title": "综合得分", "content": f"综合指数：{result.get('score', '未知')}"},
+            {"title": "九模块评价", "content": "已完成等级边界安全度、指标支撑均衡度、关键指标临界度、空间邻域一致性、历史变化趋势、掉级风险、关键因子退化风险、退化空间集聚风险和持续低质风险评价"},
+        ],
+        "recommended_layers": model["recommended_layers"],
+        "recommendations": [
+            "结合障碍诊断模型制定综合治理方案",
+            "关注持续低质风险较高的区域",
+        ],
+        "lineage": _lineage_for_model(model),
+        "reliability": {
+            "level": "real_model",
+            "message": "当前结果来自实际耕地质量稳定性与退化风险评价模型计算。",
+        },
+        "fallback": {"used": False, "fields": [], "strategy": "已使用实际模型计算"},
+        "stability_detail": result,
+    }
+
+
+def _run_real_grade_model(payload: dict[str, Any], model: ModelSpec) -> dict[str, Any]:
+    """调用实际的耕地质量等级评价exe"""
+    parcel_code = payload.get("parcel_code")
+    exe_path = payload.get("exe_path")
+    dat_path = payload.get("dat_path")
+
+    if not parcel_code:
+        return {
+            "status": "error",
+            "error": {
+                "code": "MISSING_PARCEL_CODE",
+                "message": "调用质量等级评价模型时必须提供 parcel_code",
+            },
+        }
+
+    result = run_grade_evaluation(parcel_code, exe_path, dat_path)
+
+    if result["status"] == "error":
+        return result
+
+    return {
+        "status": "ok",
+        "model": _base_model_descriptor(model),
+        "area": {"name": "地块质量等级评价", "code": parcel_code},
+        "summary": f"{model['name']} 已返回实际评价结果。质量等级：{result.get('quality_grade', '未知')}",
+        "findings": [
+            {"title": "质量等级", "content": f"等级：{result.get('quality_grade', '未知')}"},
+            {"title": "综合指数", "content": f"{result.get('composite_index', '未知')}"},
+            {"title": "指标评价", "content": f"共{len(result.get('indicators', []))}个指标的原始值、隶属度和权重"},
+            {"title": "障碍度排序", "content": "; ".join([f"{o['indicator']}({o['degree']})" for o in result.get('obstacle_degree', [])]) or "无"},
+        ],
+        "recommended_layers": model["recommended_layers"],
+        "recommendations": [
+            "结合稳定性风险评价制定综合提升方案",
+            "关注障碍度较高的指标",
+        ],
+        "lineage": _lineage_for_model(model),
+        "reliability": {
+            "level": "real_model",
+            "message": "当前结果来自实际耕地质量等级评价模型（Fortran exe）计算。",
+        },
+        "fallback": {"used": False, "fields": [], "strategy": "已使用实际模型计算"},
+        "grade_detail": result,
+    }
+
+
 def run_thematic_model(payload: dict[str, Any]) -> dict[str, Any]:
     """执行单个模拟专题模型。"""
 
@@ -378,11 +534,15 @@ def run_thematic_model(payload: dict[str, Any]) -> dict[str, Any]:
 
     # 检查是否有实际模型实现
     real_model = model.get("real_model")
-    if real_model and payload.get("parcel_id"):
-        if real_model == "farmland_diagnosis":
+    if real_model:
+        if real_model == "farmland_diagnosis" and payload.get("parcel_id"):
             return _run_real_diagnosis_model(payload, model)
-        elif real_model == "farmland_acidification":
+        elif real_model == "farmland_acidification" and payload.get("parcel_id"):
             return _run_real_acidification_model(payload, model)
+        elif real_model == "farmland_stability" and payload.get("parcel_id"):
+            return _run_real_stability_model(payload, model)
+        elif real_model == "farmland_grade_eval" and payload.get("parcel_code"):
+            return _run_real_grade_model(payload, model)
 
     area_code = payload.get("area_code", "lechang")
     overview = get_county_overview(area_code)

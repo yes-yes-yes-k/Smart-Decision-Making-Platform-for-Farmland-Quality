@@ -32,6 +32,10 @@ except ImportError:
 QUESTION_TYPE_1_KEYWORDS = [
     "等级稳定", "稳定性", "稳不稳", "稳定吗", "稳定性较弱", "退化风险",
     "关注清单", "重点关注", "临界状态", "风险类型", "等级整体", "掉级",
+    # 模型1 稳定性风险关键词
+    "稳定性评价", "等级边界安全度", "指标支撑均衡度", "关键指标临界度",
+    "空间邻域一致性", "历史变化趋势", "掉级风险", "关键因子退化",
+    "退化空间集聚", "持续低质风险",
 ]
 QUESTION_TYPE_2_KEYWORDS = [
     "酸化程度", "酸化等级", "酸化现状", "酸化严重", "酸化了", "酸化治理",
@@ -49,6 +53,11 @@ QUESTION_TYPE_3_KEYWORDS = [
 QUESTION_TYPE_4_KEYWORDS = [
     "有机质", "有机肥", "秸秆", "肥力", "综合地力", "有机碳", "SOC", "soc",
     "施用量", "施肥量", "Dose", "dose", "培肥", "综合肥力",
+]
+QUESTION_TYPE_5_KEYWORDS = [
+    # exe 质量等级评价关键词
+    "质量等级", "等级评价", "综合指数", "指标隶属度", "障碍度排序",
+    "耕地质量等级", "质量评价", "等级评定", "指标权重",
 ]
 
 RELEVANCE_KEYWORDS = [
@@ -375,7 +384,7 @@ def llm_generate(state: MultiAgentState) -> MultiAgentState:
     question = state["request"].get("question", "")
     question_type = state.get("question_type", 1)
 
-    if not question or question_type not in [1, 2, 3, 4]:
+    if not question or question_type not in [1, 2, 3, 4, 5]:
         return {**state, "llm_response": {}, "error": None}
 
     try:
