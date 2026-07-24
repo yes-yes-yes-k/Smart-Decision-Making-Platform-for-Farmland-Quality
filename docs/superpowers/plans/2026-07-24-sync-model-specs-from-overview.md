@@ -122,7 +122,7 @@ git commit -m "docs(sync-models): 校对 professional-model-agents delta spec �
 - Consumes: D1（model 6 名称回退为「耕地综合地力改良提升模型」）、D2、D3
 - Produces: 模型 4-6 requirement 完整，model 6 名称已回退且标注内部实现来源
 
-- [ ] **Step 1: 校对模型 4 AcidificationRemediationAgent requirement**
+- [x] **Step 1: 校对模型 4 AcidificationRemediationAgent requirement**
 
 确认模型 4 requirement 包含：
 - 标题行含「耕地土壤酸化改良模型」
@@ -130,7 +130,7 @@ git commit -m "docs(sync-models): 校对 professional-model-agents delta spec �
 - **模型输出**含：土壤酸化程度级别、土壤本底酸量、农业活动产酸量、碱性调理剂施用量、木本泥炭施用量
 - 4 个 scenario：酸化程度判定（引用 GB/T 42817-2023）、调理剂施用量计算（引用 GB/T 42817-2023 与 NY/T 443-2019）、不同土地利用类型酸化、农户酸化判断
 
-- [ ] **Step 2: 校对模型 5 OrganicMatterAgent requirement**
+- [x] **Step 2: 校对模型 5 OrganicMatterAgent requirement**
 
 确认模型 5 requirement 包含：
 - 标题行含「耕地土壤有机质培肥提升模型」
@@ -138,7 +138,7 @@ git commit -m "docs(sync-models): 校对 professional-model-agents delta spec �
 - **模型输出**含：有机肥/秸秆、有机肥施用量、秸秆施用量
 - 4 个 scenario：有机质含量评估、有机肥施用量计算、有机质低值区域识别、有机质低值原因
 
-- [ ] **Step 3: 校对模型 6 名称回退（D1）**
+- [x] **Step 3: 校对模型 6 名称回退（D1）**
 
 确认模型 6 requirement 的标题行与描述使用「耕地综合地力改良提升模型」（xlsx 版），而非「耕地肥力机器学习预测模型」。若仍为旧名，执行修正。
 
@@ -158,17 +158,12 @@ git commit -m "docs(sync-models): 校对 professional-model-agents delta spec �
 
 若标注缺失，补全"（xlsx 未填写，保留现有实现）"。
 
-- [ ] **Step 4: 验证 model 6 名称已回退**
+- [x] **Step 4: 验证 model 6 名称已回退**
 
 Run: `python -c "p='openspec/changes/sync-model-specs-from-overview/specs/professional-model-agents/spec.md'; s=open(p,encoding='utf-8').read(); assert '耕地综合地力改良提升模型' in s; assert '耕地肥力机器学习预测模型' not in s; print('OK')"`
 Expected: 输出 `OK`
 
-- [ ] **Step 5: Commit**
-
-```bash
-git add openspec/changes/sync-model-specs-from-overview/specs/professional-model-agents/spec.md
-git commit -m "docs(sync-models): 校对 delta spec 模型4-6，确认 model6 名称回退为综合地力改良提升模型(D1)"
-```
+- [x] **Step 5: Commit** — 7298ceb
 
 ---
 
