@@ -4,10 +4,10 @@
 系统 SHALL 根据用户问题识别问题类型（question_type），路由到对应的专业模型。问题类型关键词 SHALL 覆盖 `专业模型总览表(2).xlsx` 中 3 角色（省市管理端、县域执行端、农户种植端）的经典问题。
 
 问题类型与模型映射：
-- TYPE_1（酸化程度/退化风险）→ StabilityRiskAgent (model-1)
-- TYPE_2（治理/石灰/改良方案）→ AcidificationRemediationAgent (model-4)
-- TYPE_3（氮肥/化肥/酸化原因）→ ProblemIdentificationAgent (model-3) / PotentialAssessmentAgent (model-2)
-- TYPE_4（有机肥/施肥/肥力/有机碳）→ FertilityMLAgent (model-6) / OrganicMatterAgent (model-5)
+- TYPE_1（等级稳定性/退化风险）→ StabilityRiskAgent (model-1)
+- TYPE_2（酸化程度/调理剂/改良方案）→ AcidificationRemediationAgent (model-4)
+- TYPE_3（潜力/障碍因素/主要问题）→ ProblemIdentificationAgent (model-3) / PotentialAssessmentAgent (model-2)
+- TYPE_4（有机质/有机肥/肥力/有机碳）→ FertilityMLAgent (model-6) / OrganicMatterAgent (model-5)
 
 #### Scenario: 识别省市管理端问题
 - **WHEN** 用户询问"查询区域内耕地质量等级整体稳定吗？"（省市管理端经典问题）
