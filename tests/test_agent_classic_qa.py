@@ -234,6 +234,54 @@ def test_fertility_ml_dose_query(monkeypatch):
     assert "t/ha" in out["answer"]
 
 
+def test_router_province_agents():
+    """省市管理端 → model-1, model-3"""
+    from framework.agents.router import RoleRouter
+    router = RoleRouter()
+    role = router.identify_role("查询区域内耕地质量等级整体稳定吗？全省情况")
+    assert role == "province"
+    agents = router.get_agents_for_role("province")
+    assert "model-1" in agents and "model-3" in agents
+    assert "model-4" not in agents and "model-6" not in agents
+
+
+def test_router_county_agents():
+    """县域执行端 → model-1, model-3, model-2"""
+    from framework.agents.router import RoleRouter
+    router = RoleRouter()
+    role = router.identify_role("本县哪些乡镇等级稳定性较弱？")
+    assert role == "county"
+    agents = router.get_agents_for_role("county")
+    assert "model-1" in agents and "model-2" in agents and "model-3" in agents
+
+
+def test_router_farmer_agents():
+    """农户种植端 → model-4, model-5, model-6（xlsx 农户端）"""
+    from framework.agents.router import RoleRouter
+    router = RoleRouter()
+    role = router.identify_role("我的田酸化了，我要施加多少碱性调理剂？")
+    assert role == "farmer"
+    agents = router.get_agents_for_role("farmer")
+    assert "model-4" in agents and "model-5" in agents and "model-6" in agents
+
+
+def test_router_unknown_role_fallback_farmer():
+    """未知角色回退 farmer"""
+    from framework.agents.router import RoleRouter
+    router = RoleRouter()
+    agents = router.get_agents_for_role("unknown_role")
+    assert "model-4" in agents and "model-5" in agents and "model-6" in agents
+
+
+def test_router_xlsx_three_ends_coverage():
+    """xlsx 三端角色关键词覆盖：province/county/farmer 各至少一个关键词命中"""
+    from framework.agents.router import RoleRouter
+    router = RoleRouter()
+    assert router.identify_role("全省耕地酸化程度") == "province"
+    assert router.identify_role("本县乡镇片区任务") == "county"
+    assert router.identify_role("我的田这块地施多少") == "farmer"
+
+
 if __name__ == "__main__":
     test_stability_overall_province()
     test_stability_weak_county_list()
@@ -256,4 +304,9 @@ if __name__ == "__main__":
     test_fertility_ml_overall_diagnosis(None)
     test_fertility_ml_soc_query(None)
     test_fertility_ml_dose_query(None)
+    test_router_province_agents()
+    test_router_county_agents()
+    test_router_farmer_agents()
+    test_router_unknown_role_fallback_farmer()
+    test_router_xlsx_three_ends_coverage()
     print("\nmodel-1/2/3/4/5/6 经典 Q&A 测试通过！")
