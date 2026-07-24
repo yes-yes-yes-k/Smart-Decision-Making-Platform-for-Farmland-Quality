@@ -3,19 +3,30 @@ from __future__ import annotations
 from typing import Any
 
 from .overview import get_county_overview
-from .farmland_diagnosis import query_parcel, query_acidification, DiagnosisStorage
+
+try:
+    from .farmland_diagnosis import query_parcel, query_acidification, DiagnosisStorage
+    DIAGNOSIS_MODEL_AVAILABLE = True
+except ImportError:
+    DIAGNOSIS_MODEL_AVAILABLE = False
+    query_parcel = None
+    query_acidification = None
+    DiagnosisStorage = None
 
 try:
     from .farmland_stability import StabilityStorage, get_parcel_result
     STABILITY_MODEL_AVAILABLE = True
 except ImportError:
     STABILITY_MODEL_AVAILABLE = False
+    StabilityStorage = None
+    get_parcel_result = None
 
 try:
     from .farmland_grade_eval import run_grade_evaluation
     GRADE_EVAL_MODEL_AVAILABLE = True
 except ImportError:
     GRADE_EVAL_MODEL_AVAILABLE = False
+    run_grade_evaluation = None
 
 
 ModelSpec = dict[str, Any]
@@ -535,9 +546,9 @@ def run_thematic_model(payload: dict[str, Any]) -> dict[str, Any]:
     # 检查是否有实际模型实现
     real_model = model.get("real_model")
     if real_model:
-        if real_model == "farmland_diagnosis" and payload.get("parcel_id"):
+        if real_model == "farmland_diagnosis" and payload.get("parcel_id") and DIAGNOSIS_MODEL_AVAILABLE:
             return _run_real_diagnosis_model(payload, model)
-        elif real_model == "farmland_acidification" and payload.get("parcel_id"):
+        elif real_model == "farmland_acidification" and payload.get("parcel_id") and DIAGNOSIS_MODEL_AVAILABLE:
             return _run_real_acidification_model(payload, model)
         elif real_model == "farmland_stability" and payload.get("parcel_id") and STABILITY_MODEL_AVAILABLE:
             return _run_real_stability_model(payload, model)

@@ -112,13 +112,14 @@ class FarmlandGradeRunner:
             }
 
         try:
+            # 不使用 encoding 参数（文本模式），手动编解码以避免
+            # "bytes input to text stream" 和 "str has no decode" 的冲突
             proc = subprocess.Popen(
                 [self.exe_path],
                 stdin=subprocess.PIPE,
                 stdout=subprocess.PIPE,
                 stderr=subprocess.PIPE,
                 cwd=os.path.dirname(self.exe_path) or os.getcwd(),
-                encoding='gbk'
             )
 
             start_time = time.time()
@@ -135,7 +136,7 @@ class FarmlandGradeRunner:
                     "error": {
                         "code": "EXECUTION_ERROR",
                         "message": f"exe执行失败，返回码: {proc.returncode}",
-                        "stderr": stderr.strip()
+                        "stderr": stderr.decode('gbk', errors='replace').strip()
                     }
                 }
 
@@ -175,6 +176,12 @@ class FarmlandGradeRunner:
                 }
             }
         except Exception as e:
+            # 确保子进程被清理，避免僵尸进程泄漏
+            try:
+                proc.kill()
+                proc.communicate()
+            except Exception:
+                pass
             return {
                 "status": "error",
                 "error": {

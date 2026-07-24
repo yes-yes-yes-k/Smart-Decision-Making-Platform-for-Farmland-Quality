@@ -67,15 +67,17 @@ def generate_amendment(pH: float, organic_matter: float, region_code: str) -> Di
             'amendment_plan': []
         }
 
-    config = AMENDMENT_CONFIG.get(region_code, AMENDMENT_CONFIG.get('default', {}))
+    # AMENDMENT_CONFIG 结构为 {'lime_rate': {...}, 'measures': {'mild'/'moderate'/'severe': [...]}}
+    # 注意 classify_acidification 返回的 level='slight' 对应 measures 中的 'mild' 键
+    measures_config = AMENDMENT_CONFIG.get('measures', {})
     amendments = []
 
     if level == 'severe':
-        amendments.extend(config.get('severe', []))
+        amendments.extend(measures_config.get('severe', []))
     elif level == 'moderate':
-        amendments.extend(config.get('moderate', []))
+        amendments.extend(measures_config.get('moderate', []))
     elif level == 'slight':
-        amendments.extend(config.get('slight', []))
+        amendments.extend(measures_config.get('mild', []))
 
     if organic_matter < 15:
         amendments.append({

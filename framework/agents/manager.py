@@ -45,7 +45,7 @@ class AgentManager:
         self._register_agents()
 
     def _register_agents(self) -> None:
-        """注册所有 6 个专业智能体；若专业实现尚未就绪，回退到桩智能体。"""
+        """注册所有 7 个专业智能体；若专业实现尚未就绪，回退到桩智能体。"""
         specs = [
             ("model-1", "StabilityRiskAgent", "耕地质量等级稳定性与退化风险识别", "stability"),
             ("model-2", "PotentialAssessmentAgent", "耕地质量提升潜力评估", "potential"),
@@ -53,6 +53,7 @@ class AgentManager:
             ("model-4", "AcidificationRemediationAgent", "耕地土壤酸化改良", "acidification"),
             ("model-5", "OrganicMatterAgent", "耕地土壤有机质培肥提升", "organic_matter"),
             ("model-6", "FertilityMLAgent", "耕地肥力 SOC/Dose ML 预测", "fertility_ml"),
+            ("model-7", "FarmlandGradeAgent", "耕地质量等级评价（Fortran exe）", "grade"),
         ]
 
         real_agents = self._load_real_agents()
@@ -69,15 +70,22 @@ class AgentManager:
         self.agents["model-4"].dependencies = []
         self.agents["model-5"].dependencies = []
         self.agents["model-6"].dependencies = []
+        self.agents["model-7"].dependencies = []
 
     def _load_real_agents(self) -> Dict[str, BaseAgent]:
         """尝试加载专业智能体实现，失败时返回空字典。"""
         real: Dict[str, BaseAgent] = {}
+        # model-1: 优先加载带真实模型集成的新版 stability_agent，
+        # 回退到旧版 stability_risk_agent（纯 mock）
         try:
-            from .specialized.stability_risk_agent import StabilityRiskAgent
+            from .specialized.stability_agent import StabilityRiskAgent
             real["model-1"] = StabilityRiskAgent()
         except ImportError:
-            pass
+            try:
+                from .specialized.stability_risk_agent import StabilityRiskAgent
+                real["model-1"] = StabilityRiskAgent()
+            except ImportError:
+                pass
         try:
             from .specialized.potential_agent import PotentialAssessmentAgent
             real["model-2"] = PotentialAssessmentAgent()
@@ -101,6 +109,11 @@ class AgentManager:
         try:
             from .specialized.fertility_ml_agent import FertilityMLAgent
             real["model-6"] = FertilityMLAgent()
+        except ImportError:
+            pass
+        try:
+            from .specialized.grade_agent import FarmlandGradeAgent
+            real["model-7"] = FarmlandGradeAgent()
         except ImportError:
             pass
         return real

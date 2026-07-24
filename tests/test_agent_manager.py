@@ -6,14 +6,15 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from framework.agents.manager import AgentManager
 
 
-def test_manager_register_six_agents():
-    """Manager 注册 6 个智能体"""
+def test_manager_register_seven_agents():
+    """Manager 注册 7 个智能体（含 model-7 耕地质量等级评价）"""
     mgr = AgentManager()
     assert set(mgr.agents.keys()) == {
         "model-1", "model-2", "model-3",
         "model-4", "model-5", "model-6",
+        "model-7",
     }
-    print("✓ AgentManager 注册 6 个智能体")
+    print("✓ AgentManager 注册 7 个智能体")
 
 
 def test_manager_topological_sort_province():
@@ -128,7 +129,7 @@ def test_manager_loads_fertility_ml_agent():
 
 
 if __name__ == "__main__":
-    test_manager_register_six_agents()
+    test_manager_register_seven_agents()
     test_manager_topological_sort_province()
     test_manager_topological_sort_farmer()
     test_manager_process_farmer_returns_structured_result()

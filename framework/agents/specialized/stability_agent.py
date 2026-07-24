@@ -16,7 +16,12 @@ class StabilityRiskAgent(BaseAgent):
     """模型1：耕地质量稳定性与退化风险评价智能体"""
 
     def __init__(self):
-        super().__init__("StabilityRiskAgent")
+        super().__init__(
+            name="StabilityRiskAgent",
+            description="评价耕地质量等级稳定性并识别退化风险",
+            model_id="stability-risk-evaluation",
+            domain="stability",
+        )
 
     def execute(self, data: Dict[str, Any] = None) -> Dict[str, Any]:
         if not data:
