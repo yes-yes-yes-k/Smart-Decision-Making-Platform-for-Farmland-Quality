@@ -1,0 +1,15 @@
+{
+  "change": "sync-model-specs-from-overview",
+  "phase": "design",
+  "mode": "compact",
+  "canonical_spec": "openspec",
+  "generated_by": "comet-handoff.sh",
+  "context_hash": "4a19846cdf0ffa919bf79b581b21af75468b60276a4f2141b63ce30c5ac8471b",
+  "files": [
+    { "path": "openspec/changes/sync-model-specs-from-overview/proposal.md", "sha256": "2ae0e325894e8e7599234ac126e61670b2bf08da0fc58df7e35a6db3237f7607" },
+    { "path": "openspec/changes/sync-model-specs-from-overview/design.md", "sha256": "4722c54c72336b298c071dfdb52c2fe44c6c89857431048bde53cbb58b5a5fba" },
+    { "path": "openspec/changes/sync-model-specs-from-overview/tasks.md", "sha256": "b006248c3f10234c17a5651ae9a613ab18e5a682b762ccf23e49b4ff46fc3989" },
+    { "path": "openspec/changes/sync-model-specs-from-overview/specs/professional-model-agents/spec.md", "sha256": "a39374ba9416a40b4c655042503b72da292dd8bb648657114b6b76427e1d7975" },
+    { "path": "openspec/changes/sync-model-specs-from-overview/specs/role-based-routing/spec.md", "sha256": "74788d25a95ed151c1d9dc531e85058c53b7ff552e2f41a90ce0ad8d10c2a7b4" }
+  ]
+}
