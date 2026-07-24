@@ -4,11 +4,11 @@ from ai_culti_demo import list_thematic_models, run_thematic_model
 
 
 class ThematicModelTests(unittest.TestCase):
-    def test_list_thematic_models_returns_six_models(self):
+    def test_list_thematic_models_returns_eight_models(self):
         result = list_thematic_models()
 
         self.assertEqual(result["status"], "ok")
-        self.assertEqual(len(result["models"]), 6)
+        self.assertEqual(len(result["models"]), 8)
         self.assertEqual(
             result["models"][0]["model_id"],
             "spatial-structure-analysis",

@@ -79,6 +79,13 @@ class FarmlandGradeAgent(BaseAgent):
         return {}
 
     def answer_question(self, question: str, context: Dict[str, Any]) -> Dict[str, Any]:
+        # 检测实际模型可用但缺少地块代码的情况（用于附加提示）
+        need_parcel_hint = False
+        if GRADE_EVAL_AVAILABLE:
+            parcel_code = context.get("parcel_code") or context.get("data", {}).get("parcel_code")
+            if not parcel_code:
+                need_parcel_hint = True
+
         # 尝试使用实际模型
         real_result = self._get_real_grade(context)
 
@@ -176,8 +183,17 @@ class FarmlandGradeAgent(BaseAgent):
             ]
             confidence = 0.85
 
-        return MockDataLoader.mark_simulated({
+        response = {
             "answer": answer,
             "evidence": evidence,
             "confidence": confidence,
-        })
+        }
+        # 实际模型可用但缺少地块代码时，附加提示（不阻断模拟回退）
+        if need_parcel_hint:
+            response["need_input"] = "parcel_code"
+            response["hint"] = (
+                "当前为模拟数据。提供地块代码（parcel_code）后可获取真实评价结果，"
+                "例如：'查询地块 110105001 的质量等级'。"
+            )
+
+        return MockDataLoader.mark_simulated(response)

@@ -96,6 +96,13 @@ class ProblemIdentificationAgent(BaseAgent):
         return {}
 
     def answer_question(self, question: str, context: Dict[str, Any]) -> Dict[str, Any]:
+        # 检测实际模型可用但缺少地块 ID 的情况（用于附加提示）
+        need_parcel_hint = False
+        if FARMland_DIAGNOSIS_AVAILABLE:
+            parcel_id = context.get("parcel_id") or context.get("data", {}).get("parcel_id")
+            if not parcel_id:
+                need_parcel_hint = True
+
         # 尝试使用实际诊断模型
         real_result = self._get_real_diagnosis(context)
 
@@ -212,8 +219,17 @@ class ProblemIdentificationAgent(BaseAgent):
                 evidence.append({"target_ph_from_model2": model2["target_ph"]})
             confidence = 0.83
 
-        return MockDataLoader.mark_simulated({
+        response = {
             "answer": answer,
             "evidence": evidence,
             "confidence": confidence,
-        })
+        }
+        # 实际模型可用但缺少地块 ID 时，附加提示（不阻断模拟回退）
+        if need_parcel_hint:
+            response["need_input"] = "parcel_id"
+            response["hint"] = (
+                "当前为模拟数据。提供地块 ID（parcel_id）后可获取真实诊断结果，"
+                "例如：'诊断地块 110105001 的障碍因素'。"
+            )
+
+        return MockDataLoader.mark_simulated(response)
