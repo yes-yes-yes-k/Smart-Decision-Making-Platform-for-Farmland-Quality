@@ -180,7 +180,7 @@ Expected: 输出 `OK`
 
 **说明：** 当前 delta spec 第 7 行 TYPE_1 描述为「酸化程度/退化风险」，与 D5 不一致（D5 把"酸化程度"移入 TYPE_2）。需修正 4 条 TYPE 描述。
 
-- [ ] **Step 1: 修正 4 条 TYPE 描述**
+- [x] **Step 1: 修正 4 条 TYPE 描述**
 
 将 `openspec/changes/sync-model-specs-from-overview/specs/role-based-routing/spec.md` 中的映射块替换为：
 
@@ -192,21 +192,16 @@ Expected: 输出 `OK`
 - TYPE_4（有机质/有机肥/肥力/有机碳）→ FertilityMLAgent (model-6) / OrganicMatterAgent (model-5)
 ```
 
-- [ ] **Step 2: 确认 scenario 块保持不变**
+- [x] **Step 2: 确认 scenario 块保持不变**
 
 确认以下 6 个 scenario 仍存在且未改：识别省市管理端问题、识别县域执行端问题、识别农户种植端问题、识别酸化治理问题、识别有机质培肥问题、关键词优先于向量匹配。
 
-- [ ] **Step 3: 验证描述已对齐**
+- [x] **Step 3: 验证描述已对齐**
 
 Run: `python -c "p='openspec/changes/sync-model-specs-from-overview/specs/role-based-routing/spec.md'; s=open(p,encoding='utf-8').read(); assert 'TYPE_1（等级稳定性/退化风险）' in s; assert 'TYPE_2（酸化程度/调理剂/改良方案）' in s; print('OK')"`
 Expected: 输出 `OK`
 
-- [ ] **Step 4: Commit**
-
-```bash
-git add openspec/changes/sync-model-specs-from-overview/specs/role-based-routing/spec.md
-git commit -m "docs(sync-models): 修正 role-based-routing delta spec TYPE 描述与 D5 关键词对齐"
-```
+- [x] **Step 4: Commit** — f0efa34
 
 ---
 
