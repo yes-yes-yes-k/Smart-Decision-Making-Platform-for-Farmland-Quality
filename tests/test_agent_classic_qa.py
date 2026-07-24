@@ -139,6 +139,101 @@ def test_acidification_farmer_severity():
     assert "GB/T 42817-2023" in out["answer"]
 
 
+def test_organic_content_overall():
+    """省市端：有机质含量评估"""
+    from framework.agents.specialized.organic_matter_agent import OrganicMatterAgent
+    out = OrganicMatterAgent().answer_question(
+        "全省耕地土壤有机质含量如何，空间分布情况？", {})
+    assert out["simulated"] is True
+    # 收紧：实现产出 "全省耕地有机质含量平均..."
+    assert "全省耕地有机质含量平均" in out["answer"]
+
+
+def test_organic_manure_straw_dosage():
+    """有机肥/秸秆施用量"""
+    from framework.agents.specialized.organic_matter_agent import OrganicMatterAgent
+    out = OrganicMatterAgent().answer_question(
+        "为了提升耕地土壤有机质，有机肥或者秸秆每亩施用量多少？", {})
+    assert out["simulated"] is True
+    # 收紧：实现产出 "建议有机肥施用量 {manure_dosage} kg/亩..."
+    assert "建议有机肥施用量" in out["answer"]
+
+
+def test_organic_county_average():
+    """县域端：本县有机质平均含量"""
+    from framework.agents.specialized.organic_matter_agent import OrganicMatterAgent
+    out = OrganicMatterAgent().answer_question("本县耕地土壤有机质平均含量是多少？", {})
+    assert out["simulated"] is True
+    # 收紧：实现产出 "本县耕地土壤有机质平均含量..."
+    assert "本县耕地土壤有机质平均含量" in out["answer"]
+
+
+def test_organic_low_value_reason():
+    """有机质低值原因"""
+    from framework.agents.specialized.organic_matter_agent import OrganicMatterAgent
+    out = OrganicMatterAgent().answer_question("耕地有机质含量低的原因是什么？", {})
+    assert out["simulated"] is True
+    # 收紧：实现产出 "耕地有机质含量低的原因：..."
+    assert "耕地有机质含量低的原因" in out["answer"]
+
+
+def test_fertility_ml_overall_diagnosis(monkeypatch):
+    """model-6 综合诊断含'综合地力'表述（D1）"""
+    from framework.agents.specialized.fertility_ml_agent import FertilityMLAgent
+    monkeypatch.setattr(
+        "framework.agents.specialized.fertility_ml_agent.model_6_execution",
+        lambda data: {
+            "status": "success",
+            "soc_prediction": 12.5, "soc_confidence": 0.91,
+            "dose_prediction": 150.0, "dose_confidence": 0.47,
+            "dose_warning": "Dose 模型 R²=0.47，预测结果仅供参考",
+            "imputed_features": [], "imputation_applied": False,
+            "model_version": "ETR_v1_20260713",
+        })
+    out = FertilityMLAgent().answer_question("我的田肥力怎么样？", {"data": {"pH": 6.5}})
+    assert out["simulated"] is True
+    # 收紧：实现产出 "耕地综合地力改良提升综合诊断（基于 ML 预测）：..."
+    assert "综合地力" in out["answer"]
+
+
+def test_fertility_ml_soc_query(monkeypatch):
+    """model-6 SOC 查询"""
+    from framework.agents.specialized.fertility_ml_agent import FertilityMLAgent
+    monkeypatch.setattr(
+        "framework.agents.specialized.fertility_ml_agent.model_6_execution",
+        lambda data: {
+            "status": "success",
+            "soc_prediction": 12.5, "soc_confidence": 0.91,
+            "dose_prediction": 150.0, "dose_confidence": 0.47,
+            "dose_warning": "Dose 模型 R²=0.47",
+            "imputed_features": [], "imputation_applied": False,
+            "model_version": "ETR_v1_20260713",
+        })
+    out = FertilityMLAgent().answer_question("我的田土壤有机碳含量大概多少？", {"data": {"pH": 6.5}})
+    assert out["simulated"] is True
+    # 收紧：实现产出含 "SOC（土壤有机碳）：..."
+    assert "SOC" in out["answer"]
+
+
+def test_fertility_ml_dose_query(monkeypatch):
+    """model-6 Dose 查询"""
+    from framework.agents.specialized.fertility_ml_agent import FertilityMLAgent
+    monkeypatch.setattr(
+        "framework.agents.specialized.fertility_ml_agent.model_6_execution",
+        lambda data: {
+            "status": "success",
+            "soc_prediction": 12.5, "soc_confidence": 0.91,
+            "dose_prediction": 150.0, "dose_confidence": 0.47,
+            "dose_warning": "Dose 模型 R²=0.47",
+            "imputed_features": [], "imputation_applied": False,
+            "model_version": "ETR_v1_20260713",
+        })
+    out = FertilityMLAgent().answer_question("我这块地大概需要施多少有机肥？", {"data": {"pH": 6.5}})
+    assert out["simulated"] is True
+    # 收紧：实现产出含 "Dose（施肥量）：... t/ha"
+    assert "t/ha" in out["answer"]
+
+
 if __name__ == "__main__":
     test_stability_overall_province()
     test_stability_weak_county_list()
@@ -154,4 +249,11 @@ if __name__ == "__main__":
     test_acidification_remediation_dosage_with_standard()
     test_acidification_landuse_types()
     test_acidification_farmer_severity()
-    print("\nmodel-1/model-2/model-3/model-4 经典 Q&A 测试通过！")
+    test_organic_content_overall()
+    test_organic_manure_straw_dosage()
+    test_organic_county_average()
+    test_organic_low_value_reason()
+    test_fertility_ml_overall_diagnosis(None)
+    test_fertility_ml_soc_query(None)
+    test_fertility_ml_dose_query(None)
+    print("\nmodel-1/2/3/4/5/6 经典 Q&A 测试通过！")

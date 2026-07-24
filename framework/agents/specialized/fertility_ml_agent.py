@@ -139,7 +139,7 @@ class FertilityMLAgent(BaseAgent):
 
         return MockDataLoader.mark_simulated({
             "answer": (
-                f"基于 ML 预测的综合肥力诊断：\n"
+                f"耕地综合地力改良提升综合诊断（基于 ML 预测）：\n"
                 f"- SOC（土壤有机碳）：{pred['soc_prediction']:.2f} g/kg（置信度 {pred['soc_confidence']:.0%}）\n"
                 f"- Dose（施肥量）：{pred['dose_prediction']:.2f} t/ha（置信度 {pred['dose_confidence']:.0%}，{pred['dose_warning']}）"
                 f"{imputation_note}{fallback_note}"

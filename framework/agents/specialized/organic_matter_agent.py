@@ -75,11 +75,39 @@ class OrganicMatterAgent(BaseAgent):
         inputs.update({k: v for k, v in context.items() if k in MOCK_INPUTS})
         computed = self._compute(inputs)
 
-        if "含量" in question or "分布" in question or "现状" in question:
+        # 县域端：本县有机质平均含量与低值区域
+        if "本县" in question or "平均含量" in question:
+            answer = (
+                f"本县耕地土壤有机质平均含量 {computed['organic_matter']} g/kg，"
+                f"等级为{computed['level']}。"
+                f"低值区域为等级“极低”“低”的片区，建议作为培肥重点。"
+            )
+            evidence = [
+                {"metric": "organic_matter", "value": computed["organic_matter"], "unit": "g/kg"},
+                {"metric": "level", "value": computed["level"]},
+                {"recommendation": "识别有机质低值区域并给出明确数值"},
+            ]
+            confidence = 0.83
+        # 有机质低值原因
+        elif "原因" in question and ("有机质" in question or "低" in question):
+            answer = (
+                f"耕地有机质含量低的原因：受土壤类型、气候、地形、耕作制度、"
+                f"秸秆还田与施肥管理影响。当前有机质 {computed['organic_matter']} g/kg"
+                f"（{computed['level']}），低有机质区域应作为后续培肥重点。"
+            )
+            evidence = [
+                {"metric": "organic_matter", "value": computed["organic_matter"], "unit": "g/kg"},
+                {"metric": "level", "value": computed["level"]},
+                {"factors": "土壤类型/气候/地形/耕作制度/秸秆还田/施肥管理"},
+            ]
+            confidence = 0.80
+        # 有机质含量评估（省市端）
+        elif "含量" in question or "分布" in question or "现状" in question:
             answer = (
                 f"全省耕地有机质含量平均 {computed['organic_matter']} g/kg，"
                 f"等级为{computed['level']}。"
                 f"全氮 {computed['total_nitrogen']} g/kg，碳氮比 {computed['cn_ratio']}。"
+                f"空间分布建议按高/中/低等级占比与地形梯度分析。"
             )
             evidence = [
                 {"metric": "organic_matter", "value": computed["organic_matter"], "unit": "g/kg"},
@@ -88,10 +116,12 @@ class OrganicMatterAgent(BaseAgent):
                 {"metric": "cn_ratio", "value": computed["cn_ratio"]},
             ]
             confidence = 0.84
-        elif "施用量" in question or "有机肥" in question:
+        # 有机肥/秸秆施用量
+        elif "施用量" in question or "有机肥" in question or "秸秆" in question:
             answer = (
                 f"有机质等级为{computed['level']}，"
                 f"建议有机肥施用量 {computed['manure_dosage']} kg/亩，"
+                f"秸秆还田参考同等养分替代量，"
                 f"预期有机质提升 {computed['potential_increase']} g/kg。"
             )
             evidence = [
