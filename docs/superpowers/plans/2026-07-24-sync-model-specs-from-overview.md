@@ -561,7 +561,7 @@ git commit -m "test(sync-models): 补充 TYPE_3/4 关键词路由与优先级测
 - Consumes: delta spec 模型 1/2 scenario（Task 1）；`answer_question(question: str, context: Dict) -> Dict` 签名不变
 - Produces: model-1/model-2 对 xlsx 三角色经典问题返回对齐回复；`StabilityRiskAgent.answer_question` 新增"县域薄弱片区""农户稳不稳""关注清单"分支；`PotentialAssessmentAgent.answer_question` 新增"县域潜力分布""农户地块诊断"分支
 
-- [ ] **Step 1: 写失败测试（model-1/model-2 经典 Q&A）**
+- [x] **Step 1: 写失败测试（model-1/model-2 经典 Q&A）**
 
 创建 `tests/test_agent_classic_qa.py`：
 
@@ -646,12 +646,12 @@ if __name__ == "__main__":
     print("\nmodel-1/model-2 经典 Q&A 测试通过！")
 ```
 
-- [ ] **Step 2: 运行测试确认失败**
+- [x] **Step 2: 运行测试确认失败**
 
 Run: `python -m pytest tests/test_agent_classic_qa.py -v`
 Expected: `test_stability_weak_county_list` / `test_stability_farmer_plain_language` / `test_stability_attention_list` / `test_potential_county_distribution` / `test_potential_farmer_plot_diagnosis` FAIL（当前分支未覆盖这些关键词）
 
-- [ ] **Step 3: 更新 StabilityRiskAgent.answer_question**
+- [x] **Step 3: 更新 StabilityRiskAgent.answer_question**
 
 将 `framework/agents/specialized/stability_risk_agent.py` 的 `answer_question` 方法（第 55-100 行）替换为：
 
@@ -755,7 +755,7 @@ Expected: `test_stability_weak_county_list` / `test_stability_farmer_plain_langu
         })
 ```
 
-- [ ] **Step 4: 更新 PotentialAssessmentAgent.answer_question**
+- [x] **Step 4: 更新 PotentialAssessmentAgent.answer_question**
 
 将 `framework/agents/specialized/potential_agent.py` 的 `answer_question` 方法（第 79-115 行）替换为：
 
@@ -842,22 +842,24 @@ Expected: `test_stability_weak_county_list` / `test_stability_farmer_plain_langu
         })
 ```
 
-- [ ] **Step 5: 运行测试确认通过**
+- [x] **Step 5: 运行测试确认通过**
 
 Run: `python -m pytest tests/test_agent_classic_qa.py -v`
 Expected: 全部 PASS
 
-- [ ] **Step 6: 回归现有 agent 单元测试**
+- [x] **Step 6: 回归现有 agent 单元测试**
 
 Run: `python -m pytest tests/test_agent_specialized.py -v`
 Expected: 全部 PASS（现有 `test_stability_risk_agent_answer_question_overall` 用"整体稳定吗"仍命中省市端分支；`test_potential_agent_answer_question` 用"潜力"命中潜力分支）
 
-- [ ] **Step 7: Commit**
+- [x] **Step 7: Commit**
 
 ```bash
 git add framework/agents/specialized/stability_risk_agent.py framework/agents/specialized/potential_agent.py tests/test_agent_classic_qa.py
 git commit -m "feat(sync-models): 更新 StabilityRisk/Potential Agent 回复模板对齐 xlsx 三角色经典问题(D4)"
 ```
+
+**Post-review fix**: commit e185b404 — 收紧 5 个弱断言（test_stability_weak_county_list / test_stability_farmer_plain_language / test_stability_attention_list / test_potential_county_distribution / test_potential_farmer_plot_diagnosis）以验证新分支产出。7 passed + 21 passed 回归通过。
 
 ---
 
