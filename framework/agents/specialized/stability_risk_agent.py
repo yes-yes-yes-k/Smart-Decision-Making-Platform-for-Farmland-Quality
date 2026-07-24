@@ -62,7 +62,57 @@ class StabilityRiskAgent(BaseAgent):
         general_area = sum(c["area_mu"] for c in counties if c["stability"] == "一般")
         weak_area = sum(c["area_mu"] for c in counties if c["stability"] == "较弱")
 
-        if "整体" in question or "稳定" in question:
+        # 农户端：通俗语言说明稳不稳
+        if "稳不稳" in question or ("我的" in question and "田" in question and "稳定" not in question and "风险" not in question):
+            plain = "比较稳" if stable_area >= general_area and stable_area >= weak_area else (
+                "一般稳" if general_area >= weak_area else "不太稳")
+            answer = (
+                f"您的地块耕地质量等级稳定性为「{plain}」。"
+                f"参考全县稳定性分布：稳定占比 {stable_area/total_area*100:.1f}%，"
+                f"一般占比 {general_area/total_area*100:.1f}%，较弱占比 {weak_area/total_area*100:.1f}%。"
+            )
+            evidence = [
+                {"metric": "稳定性类型", "value": plain},
+                {"metric": "稳定面积占比", "value": f"{stable_area/total_area*100:.1f}%"},
+            ]
+            confidence = 0.80
+        # 县域端：稳定性较弱片区清单
+        elif "稳定性较弱" in question or "现场复核" in question or ("乡镇" in question and "地块" in question):
+            weak_counties = sorted(
+                [c for c in counties if c["stability"] == "较弱"],
+                key=lambda c: c["stability_score"],
+            )
+            names = "、".join(c["name"] for c in weak_counties[:5]) or "无明显薄弱片区"
+            answer = (
+                f"本县稳定性较弱的乡镇/地块清单：{names}。"
+                f"建议对上述区域现场复核当前等级、稳定性类型与是否接近等级边界。"
+            )
+            evidence = [
+                {"county": c["name"], "stability": c["stability"],
+                 "stability_score": c["stability_score"], "area_mu": c["area_mu"]}
+                for c in weak_counties[:5]
+            ]
+            confidence = 0.82
+        # 重点关注清单
+        elif "关注清单" in question or "重点关注" in question:
+            focus = sorted(
+                [c for c in counties if c["risk_index"] >= 0.40 or c["stability"] == "较弱"],
+                key=lambda c: c["risk_index"], reverse=True,
+            )
+            names = "、".join(c["name"] for c in focus[:5])
+            answer = (
+                f"建议纳入重点关注清单：{names}。"
+                f"关注其等级稳定性、退化风险等级、风险类型与主要风险来源，"
+                f"后续可调用模型2/3进行潜力与障碍诊断。"
+            )
+            evidence = [
+                {"county": c["name"], "risk_index": c["risk_index"],
+                 "stability": c["stability"], "risk_type": "退化风险" if c["risk_index"] >= 0.5 else "临界风险"}
+                for c in focus[:5]
+            ]
+            confidence = 0.83
+        # 省市端：稳定性总体评价
+        elif "整体" in question or "稳定" in question:
             answer = (
                 f"全省耕地质量稳定性总体评价：稳定占比 {stable_area/total_area*100:.1f}%，"
                 f"一般占比 {general_area/total_area*100:.1f}%，"
@@ -75,6 +125,7 @@ class StabilityRiskAgent(BaseAgent):
                 {"recommendation": "对较弱区域优先纳入退化风险重点关注清单"},
             ]
             confidence = 0.85
+        # 退化风险
         elif "退化风险" in question or "风险" in question:
             risk_counties = sorted(
                 [c for c in counties if c["quality_grade"] >= 4 and c["risk_index"] >= 0.35],

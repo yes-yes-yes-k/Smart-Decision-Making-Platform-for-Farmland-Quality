@@ -95,21 +95,64 @@ class PotentialAssessmentAgent(BaseAgent):
 
         top_obstacles = sorted(indicators, key=lambda x: x["obstacle_degree"], reverse=True)[:3]
 
-        answer = (
-            f"耕地质量提升潜力等级为 {overall_level}，"
-            f"平均障碍度值 {avg_obstacle}，"
-            f"主要障碍因素：{', '.join(i['name'] for i in top_obstacles)}。"
-        )
-        evidence = [
-            {"indicator": i["name"], "obstacle_degree": i["obstacle_degree"],
-             "potential_level": i["potential_level"]}
-            for i in top_obstacles
-        ]
-        evidence.append({"target_ph": target_ph, "recommendation": "目标 pH 供下游模型3使用"})
+        # 农户端：地块诊断"毛病"
+        if "毛病" in question or ("我这块地" in question and "潜力" not in question):
+            answer = (
+                f"地块诊断结论：耕地质量提升潜力等级为 {overall_level}。"
+                f"主要障碍因子：{', '.join(i['name'] for i in top_obstacles)}，"
+                f"建议针对性改良上述指标（附示意图）。"
+            )
+            evidence = [
+                {"indicator": i["name"], "obstacle_degree": i["obstacle_degree"],
+                 "current": i["current"], "potential": i["potential"]}
+                for i in top_obstacles
+            ]
+            confidence = 0.79
+        # 县域端：优先改良片区潜力分布
+        elif "片区" in question or ("村" in question and "潜力" in question):
+            answer = (
+                f"县域优先改良片区潜力分布：整体潜力等级 {overall_level}，"
+                f"平均障碍度值 {avg_obstacle}。建议以地块为单元绘制潜力分布图，"
+                f"颜色深浅表示潜力值，选中地块显示村名、地块编号、面积、当前等级、目标等级、潜力分值。"
+            )
+            evidence = [
+                {"indicator": i["name"], "obstacle_degree": i["obstacle_degree"],
+                 "potential_level": i["potential_level"]}
+                for i in top_obstacles
+            ]
+            confidence = 0.81
+        # 省市端：总体潜力评估（含增产粮食）
+        elif "潜力" in question or "增产" in question or "粮食" in question:
+            answer = (
+                f"耕地质量提升潜力等级为 {overall_level}，"
+                f"平均障碍度值 {avg_obstacle}，"
+                f"主要障碍因素：{', '.join(i['name'] for i in top_obstacles)}。"
+                f"可改善面积与粮食增产潜力需结合地块面积进一步汇总。"
+            )
+            evidence = [
+                {"indicator": i["name"], "obstacle_degree": i["obstacle_degree"],
+                 "potential_level": i["potential_level"]}
+                for i in top_obstacles
+            ]
+            evidence.append({"target_ph": target_ph, "recommendation": "目标 pH 供下游模型3使用"})
+            confidence = 0.80
+        else:
+            answer = (
+                f"耕地质量提升潜力等级为 {overall_level}，"
+                f"平均障碍度值 {avg_obstacle}，"
+                f"主要障碍因素：{', '.join(i['name'] for i in top_obstacles)}。"
+            )
+            evidence = [
+                {"indicator": i["name"], "obstacle_degree": i["obstacle_degree"],
+                 "potential_level": i["potential_level"]}
+                for i in top_obstacles
+            ]
+            evidence.append({"target_ph": target_ph, "recommendation": "目标 pH 供下游模型3使用"})
+            confidence = 0.80
 
         return MockDataLoader.mark_simulated({
             "answer": answer,
             "evidence": evidence,
-            "confidence": 0.80,
+            "confidence": confidence,
             "target_ph": target_ph,
         })
