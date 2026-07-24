@@ -168,3 +168,65 @@ def test_storage_is_ready():
         storage.save_diagnosis([diag_record])
 
         assert storage.is_ready()
+
+
+# Evaluation tests
+from src.ai_culti_demo.farmland_diagnosis.evaluation import bulk_evaluate, evaluate_single, calc_continuous, calc_discrete
+import pandas as pd
+
+def test_evaluate_single():
+    row = pd.Series({
+        'JY': 'HN', 'EJ': 'MNY',
+        'PH': 6.5, 'YJ': 25, 'YXP': 30, 'SXK': 150, 'RZ': 1.2,
+        'GZ': 'RT', 'GG': 'FS', 'PS': 'CM', 'DX': 'PLT', 'ZD': 'TLBC',
+        'YXT': 100, 'GCH': 20
+    })
+
+    result = evaluate_single(row, 'HN', 'MNY')
+
+    assert 'PH_LD' in result
+    assert 'composite_weight' in result
+    assert 'grade' in result
+    # 优质数据应评为最高等级1级
+    assert result['grade'] == '1'
+
+def test_bulk_evaluate():
+    with tempfile.TemporaryDirectory() as tmpdir:
+        csv_path = os.path.join(tmpdir, 'test.csv')
+        with open(csv_path, 'w', encoding='utf-8') as f:
+            f.write('''一级农业区,二级农业区,pH,有机质,有效磷,速效钾,容重,耕层质地,灌溉能力,排水能力,地形部位,质地构型,有效土层,耕层厚度
+华南区,闽南粤中农林水产区,6.5,25,30,150,1.2,壤土,充分满足,充分满足,平原低阶,上松下紧型,100,20
+''')
+
+        db_path = os.path.join(tmpdir, 'test.db')
+        result = bulk_evaluate(csv_path, db_path)
+
+        assert result['status'] == 'ok'
+        assert result['processed'] == 1
+
+        storage = DiagnosisStorage(db_path)
+        eval_result = storage.get_evaluation('0')
+        assert eval_result is not None
+        assert eval_result['PH'] == 6.5
+        # 优质数据应评为最高等级1级
+        assert eval_result['grade'] == '1'
+
+def test_bulk_evaluate_missing_columns():
+    with tempfile.TemporaryDirectory() as tmpdir:
+        csv_path = os.path.join(tmpdir, 'test.csv')
+        with open(csv_path, 'w', encoding='utf-8') as f:
+            f.write('pH,有机质\n6.5,25\n')
+
+        result = bulk_evaluate(csv_path)
+        assert result['status'] == 'error'
+        assert 'Missing columns' in result['message']
+
+def test_calc_continuous():
+    params = {'a': 0.256941, 'c': 6.7, 'L': 4.0, 'U': 9.5}
+    result = calc_continuous(6.5, params)
+    assert 0.9 < result < 1.0
+
+def test_calc_discrete():
+    mapping = {'FS': 1, 'S': 0.8, 'BS': 0.6, 'US': 0.3}
+    result = calc_discrete('FS', mapping)
+    assert result == 1.0
