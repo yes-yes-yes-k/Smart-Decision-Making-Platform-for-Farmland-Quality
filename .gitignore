@@ -22,6 +22,21 @@ response.json
 !data/fertility/
 !data/fertility/**
 
+# 耕地质量稳定性模型 shapefile 测试数据（大文件，不入库）
+data/farmland_stability/*
+!data/farmland_stability/.gitkeep
+!data/farmland_stability/README.md
+
+# 耕地诊断模型 CSV 测试数据（大文件，不入库）
+data/farmland_diagnosis/*
+!data/farmland_diagnosis/.gitkeep
+!data/farmland_diagnosis/README.md
+
+# Fortran exe 及 .dat 数据库二进制文件（不入库）
+bin/farmland_quality_eval/*
+!bin/farmland_quality_eval/.gitkeep
+!bin/farmland_quality_eval/README.md
+
 # 忽略训练过程临时文件
 *.pkl.bak
 

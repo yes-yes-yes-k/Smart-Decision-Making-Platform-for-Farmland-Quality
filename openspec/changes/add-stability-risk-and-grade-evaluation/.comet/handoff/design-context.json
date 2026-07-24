@@ -1,0 +1,17 @@
+{
+  "change": "add-stability-risk-and-grade-evaluation",
+  "phase": "design",
+  "mode": "compact",
+  "canonical_spec": "openspec",
+  "generated_by": "comet-handoff.sh",
+  "context_hash": "66588c218e3f173124cbd061d235b378f704541b3885ae057cbfd4cbe5fbfa95",
+  "files": [
+    { "path": "openspec/changes/add-stability-risk-and-grade-evaluation/proposal.md", "sha256": "42011843416ff8f1290a85abacec4422daeef93285bab1b27eb63d14b5f1e795" },
+    { "path": "openspec/changes/add-stability-risk-and-grade-evaluation/design.md", "sha256": "bc461d90977848186cab38a20fe51e6a916961ca4c260b27114b21621cfb0980" },
+    { "path": "openspec/changes/add-stability-risk-and-grade-evaluation/tasks.md", "sha256": "9efcb25295c914b9f49c81f029d3bb322c4fb4302f08356f8f60531321209c38" },
+    { "path": "openspec/changes/add-stability-risk-and-grade-evaluation/specs/farmland-acidification-improvement-model/spec.md", "sha256": "c1c735ec7ae01987d921cbd91ce6772fcd8d3530e95765aca3372888f1feb223" },
+    { "path": "openspec/changes/add-stability-risk-and-grade-evaluation/specs/farmland-obstacle-diagnosis-model/spec.md", "sha256": "7b039e5d8b1a266b285057a86617a7e9fc78c48f7d14de3c7f6fae90405696a4" },
+    { "path": "openspec/changes/add-stability-risk-and-grade-evaluation/specs/professional-model-agents/spec.md", "sha256": "066818dd9e5c175217ebb202d35b24ae792235ae50d743d21812750228465f03" },
+    { "path": "openspec/changes/add-stability-risk-and-grade-evaluation/specs/role-based-routing/spec.md", "sha256": "5fe566d273829d620bec065870ad31328d80e0c4cf8bd7bc99e7a9754e4453f7" }
+  ]
+}

@@ -4,6 +4,13 @@ from typing import Any, Dict, List
 from ..base import BaseAgent
 from ..mock_data import MockDataLoader
 
+# 尝试导入实际模型3实现
+try:
+    from ai_culti_demo.farmland_diagnosis import query_parcel, diagnose, DiagnosisStorage
+    FARMland_DIAGNOSIS_AVAILABLE = True
+except ImportError:
+    FARMland_DIAGNOSIS_AVAILABLE = False
+
 
 # 模拟数据：11 个指标的障碍等级频数分布（1~10 级）
 MOCK_INDICATOR_GRADES: Dict[str, List[int]] = {
@@ -68,7 +75,94 @@ class ProblemIdentificationAgent(BaseAgent):
             "metadata": {"simulated": True},
         })
 
+    def _get_real_diagnosis(self, context: Dict[str, Any]) -> Dict[str, Any]:
+        """尝试获取实际诊断结果"""
+        if not FARMland_DIAGNOSIS_AVAILABLE:
+            return {}
+
+        parcel_id = context.get("parcel_id") or context.get("data", {}).get("parcel_id")
+        db_path = context.get("db_path") or context.get("data", {}).get("db_path")
+
+        if not parcel_id:
+            return {}
+
+        try:
+            result = query_parcel(parcel_id, db_path)
+            if result.get("status") == "ok":
+                return result
+        except Exception:
+            pass
+
+        return {}
+
     def answer_question(self, question: str, context: Dict[str, Any]) -> Dict[str, Any]:
+        # 检测实际模型可用但缺少地块 ID 的情况（用于附加提示）
+        need_parcel_hint = False
+        if FARMland_DIAGNOSIS_AVAILABLE:
+            parcel_id = context.get("parcel_id") or context.get("data", {}).get("parcel_id")
+            if not parcel_id:
+                need_parcel_hint = True
+
+        # 尝试使用实际诊断模型
+        real_result = self._get_real_diagnosis(context)
+
+        if real_result:
+            diagnosis = real_result.get("diagnosis", {})
+            evaluation = real_result.get("evaluation", {})
+            obstacle_type = diagnosis.get("obstacle_type", "无明显障碍")
+            main_factors = diagnosis.get("main_factors", [])
+            secondary_factors = diagnosis.get("secondary_factors", [])
+            grade = evaluation.get("grade", "未知")
+
+            if "有没有问题" in question or ("我这块地" in question and "问题" in question):
+                answer = (
+                    f"您的地块耕地质量诊断结果：障碍类型为{obstacle_type}。"
+                    f"主要障碍因素：{'; '.join(main_factors) if main_factors else '无'}。"
+                    f"耕地质量等级：{grade}级。"
+                )
+                evidence = [
+                    {"factor": f, "type": "primary"}
+                    for f in main_factors[:3]
+                ]
+                evidence.append({"grade": grade})
+                confidence = 0.85
+            elif "县" in question or "乡镇" in question or "方面" in question:
+                answer = (
+                    f"障碍诊断结果：障碍类型为{obstacle_type}；"
+                    f"主要障碍因素：{'; '.join(main_factors) if main_factors else '无'}；"
+                    f"次要障碍因素：{'; '.join(secondary_factors) if secondary_factors else '无'}。"
+                    f"耕地质量等级：{grade}级。"
+                )
+                evidence = [
+                    {"factor": f, "type": "primary"}
+                    for f in main_factors[:3]
+                ]
+                evidence.extend([{"factor": f, "type": "secondary"} for f in secondary_factors[:3]])
+                confidence = 0.88
+            else:
+                answer = (
+                    f"主要障碍因素：{'; '.join(main_factors) if main_factors else '无'}；"
+                    f"次要障碍因素：{'; '.join(secondary_factors) if secondary_factors else '无'}。"
+                    f"障碍类型：{obstacle_type}。"
+                    f"耕地质量等级：{grade}级。"
+                )
+                evidence = [
+                    {"factor": f, "type": "primary"}
+                    for f in main_factors[:3]
+                ]
+                evidence.extend([{"factor": f, "type": "secondary"} for f in secondary_factors[:3]])
+                confidence = 0.88
+
+            return {
+                "answer": answer,
+                "evidence": evidence,
+                "confidence": confidence,
+                "simulated": False,
+                "diagnosis_detail": diagnosis,
+                "evaluation_detail": evaluation,
+            }
+
+        # 使用模拟数据回退
         result = self.execute({})["result"]
         primary = result["primary_factors"]
         secondary = result["secondary_factors"]
@@ -125,8 +219,17 @@ class ProblemIdentificationAgent(BaseAgent):
                 evidence.append({"target_ph_from_model2": model2["target_ph"]})
             confidence = 0.83
 
-        return MockDataLoader.mark_simulated({
+        response = {
             "answer": answer,
             "evidence": evidence,
             "confidence": confidence,
-        })
+        }
+        # 实际模型可用但缺少地块 ID 时，附加提示（不阻断模拟回退）
+        if need_parcel_hint:
+            response["need_input"] = "parcel_id"
+            response["hint"] = (
+                "当前为模拟数据。提供地块 ID（parcel_id）后可获取真实诊断结果，"
+                "例如：'诊断地块 110105001 的障碍因素'。"
+            )
+
+        return MockDataLoader.mark_simulated(response)
