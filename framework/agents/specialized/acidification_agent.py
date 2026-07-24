@@ -4,6 +4,13 @@ from typing import Any, Dict
 from ..base import BaseAgent
 from ..mock_data import MockDataLoader
 
+# 尝试导入实际模型3实现
+try:
+    from ai_culti_demo.farmland_diagnosis import query_acidification, evaluate_acidification
+    ACIDIFICATION_MODEL_AVAILABLE = True
+except ImportError:
+    ACIDIFICATION_MODEL_AVAILABLE = False
+
 
 # 模拟输入参数
 MOCK_INPUTS = {
@@ -67,7 +74,117 @@ class AcidificationRemediationAgent(BaseAgent):
             "metadata": {"simulated": True},
         })
 
+    def _get_real_acidification(self, context: Dict[str, Any]) -> Dict[str, Any]:
+        """尝试获取实际酸化改良结果"""
+        if not ACIDIFICATION_MODEL_AVAILABLE:
+            return {}
+
+        parcel_id = context.get("parcel_id") or context.get("data", {}).get("parcel_id")
+        db_path = context.get("db_path") or context.get("data", {}).get("db_path")
+
+        if not parcel_id:
+            return {}
+
+        try:
+            result = query_acidification(parcel_id, db_path)
+            if result.get("status") == "ok":
+                return result.get("acidification", {})
+        except Exception:
+            pass
+
+        return {}
+
     def answer_question(self, question: str, context: Dict[str, Any]) -> Dict[str, Any]:
+        # 尝试使用实际酸化改良模型
+        real_result = self._get_real_acidification(context)
+
+        if real_result:
+            acid_level = real_result.get("acidification_level", "未知")
+            pH = real_result.get("pH", 5.5)
+            lime_demand = real_result.get("lime_demand", 0)
+            amendment_type = real_result.get("amendment_type", "有机肥")
+            amendment_rate = real_result.get("amendment_rate", 0)
+            need_amendment = real_result.get("need_amendment", False)
+
+            if "酸化严重" in question or ("这块田" in question and "酸化" in question):
+                answer = (
+                    f"您的地块土壤 pH={pH}，酸化等级为{acid_level}。"
+                    f"{'需要进行酸化改良。' if need_amendment else '无需酸化改良。'}"
+                    f"（依据 GB/T 42817-2023：酸性 5.5≤pH<6.5、强酸性 4.5≤pH<5.5、极强酸性 pH<4.5）"
+                )
+                evidence = [
+                    {"metric": "ph", "value": pH},
+                    {"metric": "acidification_level", "value": acid_level},
+                    {"standard": "GB/T 42817-2023"},
+                ]
+                confidence = 0.88
+            elif "治理" in question or "调理剂" in question or "石灰" in question or "碱性材料" in question:
+                answer = (
+                    f"土壤酸化程度为{acid_level}，"
+                    f"建议施{amendment_type} {amendment_rate} kg/亩，"
+                    f"石灰需求量约 {lime_demand} kg/亩。"
+                    f"（依据 GB/T 42817-2023 酸化等级判定与 NY/T 443-2019 调理剂施用量计算，"
+                    f"分两次施用，结合翻耕作业）"
+                )
+                evidence = [
+                    {"metric": "ph", "value": pH},
+                    {"metric": "lime_demand", "value": lime_demand, "unit": "kg/亩"},
+                    {"metric": "amendment_type", "value": amendment_type},
+                    {"metric": "amendment_rate", "value": amendment_rate, "unit": "kg/亩"},
+                    {"standard": "GB/T 42817-2023"},
+                    {"standard": "NY/T 443-2019"},
+                    {"recommendation": "分两次施用，结合翻耕作业"},
+                ]
+                confidence = 0.88
+            elif "酸化程度" in question or "酸化等级" in question or "酸化现状" in question or "酸化" in question:
+                answer = (
+                    f"当前土壤 pH={pH}，酸化程度为{acid_level}。"
+                    f"{'需要进行酸化改良。' if need_amendment else '无需酸化改良。'}"
+                    f"（依据 GB/T 42817-2023 分级）"
+                )
+                evidence = [
+                    {"metric": "ph", "value": pH},
+                    {"metric": "acidification_level", "value": acid_level},
+                    {"standard": "GB/T 42817-2023"},
+                ]
+                confidence = 0.88
+            elif "酸化改良" in question or "改良方案" in question:
+                answer = (
+                    f"酸化改良方案：当前土壤 pH={pH}，酸化程度为{acid_level}。"
+                    f"建议施{amendment_type} {amendment_rate} kg/亩，"
+                    f"石灰需求量约 {lime_demand} kg/亩。"
+                    f"预计治理后 pH 可提升至{real_result.get('target_pH', 6.5)}。"
+                )
+                evidence = [
+                    {"metric": "ph", "value": pH},
+                    {"metric": "acidification_level", "value": acid_level},
+                    {"metric": "amendment_type", "value": amendment_type},
+                    {"metric": "amendment_rate", "value": amendment_rate, "unit": "kg/亩"},
+                    {"metric": "lime_demand", "value": lime_demand, "unit": "kg/亩"},
+                    {"recommendation": real_result.get("reason", "")},
+                ]
+                confidence = 0.88
+            else:
+                answer = (
+                    f"土壤 pH={pH}（{acid_level}），"
+                    f"建议{amendment_type}施用量 {amendment_rate} kg/亩。"
+                )
+                evidence = [
+                    {"metric": "ph", "value": pH},
+                    {"metric": "acidification_level", "value": acid_level},
+                    {"metric": "amendment_rate", "value": amendment_rate, "unit": "kg/亩"},
+                ]
+                confidence = 0.85
+
+            return {
+                "answer": answer,
+                "evidence": evidence,
+                "confidence": confidence,
+                "simulated": False,
+                "acidification_detail": real_result,
+            }
+
+        # 使用模拟数据回退
         inputs = {}
         if isinstance(context.get("data"), dict):
             inputs.update(context["data"])
