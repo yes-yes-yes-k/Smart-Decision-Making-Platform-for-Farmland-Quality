@@ -87,7 +87,7 @@ bin/farmland_quality_eval/README.md    # 修改：增加 .dat API 部署说明
 - Consumes: 无
 - Produces: `Config.MAX_DATA_IMPORT_SIZE`、`Config.DATA_IMPORT_TIMEOUT`、`Config.DATA_IMPORT_TARGETS`、`Config.BACKUP_RETENTION_COUNT`
 
-- [ ] **Step 1: 在 `framework/config.py` 的 `Config` 类中新增 4 个配置项**
+- [x] **Step 1: 在 `framework/config.py` 的 `Config` 类中新增 4 个配置项**
 
 在 `framework/config.py` 的 `Config` 类中，`MAX_CONCURRENT_MODELS` 行之后、`get_max_concurrent` 方法之前插入：
 
@@ -103,7 +103,7 @@ bin/farmland_quality_eval/README.md    # 修改：增加 .dat API 部署说明
     BACKUP_RETENTION_COUNT = 3
 ```
 
-- [ ] **Step 2: 在 `framework/upload/__init__.py` 中导出数据导入模块**
+- [x] **Step 2: 在 `framework/upload/__init__.py` 中导出数据导入模块**
 
 `framework/upload/__init__.py` 当前为空文件，写入以下内容：
 
@@ -111,11 +111,11 @@ bin/farmland_quality_eval/README.md    # 修改：增加 .dat API 部署说明
 """framework.upload 包：文件上传与数据导入相关模块。"""
 ```
 
-- [ ] **Step 3: 创建 `logs/` 目录占位文件**
+- [x] **Step 3: 创建 `logs/` 目录占位文件**
 
 创建 `logs/.gitkeep` 文件（空文件），确保 `logs/` 目录在仓库中存在，供审计日志写入。
 
-- [ ] **Step 4: 验证配置项可导入**
+- [x] **Step 4: 验证配置项可导入**
 
 运行：
 
@@ -125,7 +125,7 @@ python -c "from framework.config import Config; print(Config.MAX_DATA_IMPORT_SIZ
 
 预期输出：`209715200 600 {'csv': 'data/farmland_diagnosis', 'shapefile': 'data/farmland_stability', 'dat': 'bin/farmland_quality_eval'} 3`
 
-- [ ] **Step 5: 提交**
+- [x] **Step 5: 提交**
 
 ```bash
 git add framework/config.py framework/upload/__init__.py logs/.gitkeep

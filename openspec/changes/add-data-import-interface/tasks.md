@@ -1,9 +1,9 @@
 ## 1. 配置与基础设施
 
-- [ ] 1.1 在 `framework/config.py` 增加 `MAX_DATA_IMPORT_SIZE = 200 * 1024 * 1024` 和 `DATA_IMPORT_TIMEOUT = 600` 配置项
-- [ ] 1.2 在 `framework/config.py` 增加数据类型到目标目录的映射配置：`DATA_IMPORT_TARGETS = {'csv': 'data/farmland_diagnosis', 'shapefile': 'data/farmland_stability', 'dat': 'bin/farmland_quality_eval'}`
-- [ ] 1.3 在 `framework/config.py` 增加 `BACKUP_RETENTION_COUNT = 3` 配置项
-- [ ] 1.4 创建 `framework/upload/__init__.py` 中导出数据导入相关模块（若需要）
+- [x] 1.1 在 `framework/config.py` 增加 `MAX_DATA_IMPORT_SIZE = 200 * 1024 * 1024` 和 `DATA_IMPORT_TIMEOUT = 600` 配置项
+- [x] 1.2 在 `framework/config.py` 增加数据类型到目标目录的映射配置：`DATA_IMPORT_TARGETS = {'csv': 'data/farmland_diagnosis', 'shapefile': 'data/farmland_stability', 'dat': 'bin/farmland_quality_eval'}`
+- [x] 1.3 在 `framework/config.py` 增加 `BACKUP_RETENTION_COUNT = 3` 配置项
+- [x] 1.4 创建 `framework/upload/__init__.py` 中导出数据导入相关模块（若需要）
 
 ## 2. 数据校验器（framework/upload/data_validator.py）
 
@@ -75,7 +75,7 @@
 
 - [ ] 9.1 确认 `geopandas`、`pandas` 已在 `pyproject.toml` 中（上一轮已添加，本次仅需确认）
 - [ ] 9.2 确认 `framework/core_engine/adapter.py` 已暴露 `bulk_evaluate_csv`、`precompute_stability`、`check_grade_eval_deployment` 三个新方法；若未暴露，补充 adapter 方法（含 `_ensure_data_import_imports` 延迟导入）
-- [ ] 9.3 在 `start_http_server.py` 或 `framework/api/app.py` 启动时验证 `logs/` 目录存在（用于审计日志）
+- [x] 9.3 在 `start_http_server.py` 或 `framework/api/app.py` 启动时验证 `logs/` 目录存在（用于审计日志）
 
 ## 10. precompute.py 模块（src/ai_culti_demo/farmland_stability/precompute.py）
 
