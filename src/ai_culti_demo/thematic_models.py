@@ -3,6 +3,7 @@ from __future__ import annotations
 from typing import Any
 
 from .overview import get_county_overview
+from .farmland_diagnosis import query_parcel, query_acidification, DiagnosisStorage
 
 
 ModelSpec = dict[str, Any]
@@ -43,34 +44,39 @@ MODEL_SPECS: dict[str, ModelSpec] = {
     "obstacle-factor-identification": {
         "model_id": "obstacle-factor-identification",
         "name": "耕地质量主要障碍因素识别模型",
-        "purpose": "识别限制耕地质量提升的主要障碍因素，并输出分级治理方向。",
-        "minimum_inputs": ["area_code"],
+        "purpose": "基于耕地质量评价结果，识别限制耕地质量提升的主要障碍因素，判定障碍类型（单一障碍/多障碍），并输出分级治理方向。",
+        "minimum_inputs": ["parcel_id"],
         "recommended_layers": ["quality-overview", "acidification-risk", "organic-matter"],
         "findings": [
-            {"title": "障碍识别", "content": "首版重点识别酸化风险、有机质不足和综合质量薄弱三类占位障碍。"},
+            {"title": "障碍识别", "content": "基于隶属度评价结果，识别障碍因子并判定障碍程度（轻度/中度/重度）。"},
+            {"title": "障碍类型判定", "content": "根据障碍度阈值判定障碍类型：单一障碍（仅一个主要障碍）、多障碍（多个障碍因子叠加）。"},
             {"title": "治理方向", "content": "结果用于支撑后续单项治理和协同提升模型调用。"},
         ],
         "recommendations": [
             "先按主要障碍类型组织问题清单，再匹配治理措施。",
             "在真实模型替换前保留障碍类别字段和建议结构。",
         ],
-        "fallback_fields": ["longitude", "latitude"],
+        "fallback_fields": ["longitude", "latitude", "parcel_id"],
+        "real_model": "farmland_diagnosis",
     },
     "acidification-governance": {
         "model_id": "acidification-governance",
         "name": "土壤酸化治理模型",
-        "purpose": "对酸化问题进行占位识别、治理需求分析和措施匹配。",
-        "minimum_inputs": ["area_code"],
+        "purpose": "对酸化问题进行分区识别、治理需求分析和改良措施匹配，生成针对性的酸化改良方案。",
+        "minimum_inputs": ["parcel_id"],
         "recommended_layers": ["acidification-risk", "soil_points"],
         "findings": [
-            {"title": "问题识别", "content": "酸化治理模型以酸化风险图层和样点来源为基础返回结构化占位结论。"},
+            {"title": "酸化分区", "content": "基于 pH 值进行酸化程度分区：强酸性(pH<4.5)、酸性(4.5≤pH<5.5)、微酸性(5.5≤pH<6.5)、中性(6.5≤pH<7.5)、碱性(pH≥7.5)。"},
+            {"title": "改良方案", "content": "根据酸化程度和有机质含量生成针对性改良方案，包括石灰施用量、有机肥建议等。"},
             {"title": "措施匹配", "content": "当前建议聚焦 pH 核验、区域复核和治理措施分层组织。"},
         ],
         "recommendations": [
             "优先核验酸化相关字段与分级阈值映射。",
             "在重点片区先做 pH 复核，再安排分区治理措施。",
+            "结合有机质含量调整改良方案，有机质不足时增加有机肥施用量。",
         ],
-        "fallback_fields": ["longitude", "latitude"],
+        "fallback_fields": ["longitude", "latitude", "parcel_id"],
+        "real_model": "farmland_acidification",
     },
     "organic-matter-improvement": {
         "model_id": "organic-matter-improvement",
@@ -220,6 +226,132 @@ def _collaborative_result(payload: dict[str, Any], model: ModelSpec, area: dict[
     return result
 
 
+def _run_real_diagnosis_model(payload: dict[str, Any], model: ModelSpec) -> dict[str, Any]:
+    """调用实际的障碍诊断模型"""
+    parcel_id = payload.get("parcel_id")
+    db_path = payload.get("db_path")
+
+    if not parcel_id:
+        return {
+            "status": "error",
+            "error": {
+                "code": "MISSING_PARCEL_ID",
+                "message": "调用障碍诊断模型时必须提供 parcel_id",
+            },
+        }
+
+    result = query_parcel(parcel_id, db_path)
+
+    if result["status"] == "not_ready":
+        return {
+            "status": "error",
+            "error": {
+                "code": "DIAGNOSIS_NOT_READY",
+                "message": "诊断数据尚未就绪，请先运行批量评价和诊断流程",
+            },
+        }
+
+    if result["status"] == "not_found":
+        return {
+            "status": "error",
+            "error": {
+                "code": "PARCEL_NOT_FOUND",
+                "message": f"未找到地块 {parcel_id} 的诊断数据",
+            },
+        }
+
+    diagnosis = result.get("diagnosis", {})
+    evaluation = result.get("evaluation", {})
+
+    return {
+        "status": "ok",
+        "model": _base_model_descriptor(model),
+        "area": {"name": "地块诊断", "code": parcel_id},
+        "summary": f"{model['name']} 已返回实际诊断结果。障碍类型：{diagnosis.get('obstacle_type', '未知')}",
+        "findings": [
+            {"title": "障碍类型", "content": diagnosis.get('obstacle_type', '无明显障碍')},
+            {"title": "主要障碍因素", "content": "; ".join(diagnosis.get('main_factors', [])) or "无"},
+            {"title": "次要障碍因素", "content": "; ".join(diagnosis.get('secondary_factors', [])) or "无"},
+            {"title": "质量等级", "content": f"综合等级：{evaluation.get('grade', '未知')}"},
+        ],
+        "recommended_layers": model["recommended_layers"],
+        "recommendations": [
+            f"针对{diagnosis.get('obstacle_type', '')}问题，建议优先治理主要障碍因素",
+            "结合酸化治理模型制定综合改良方案",
+        ],
+        "lineage": _lineage_for_model(model),
+        "reliability": {
+            "level": "real_model",
+            "message": "当前结果来自实际耕地质量诊断模型计算。",
+        },
+        "fallback": {"used": False, "fields": [], "strategy": "已使用实际模型计算"},
+        "diagnosis_detail": diagnosis,
+        "evaluation_detail": evaluation,
+    }
+
+
+def _run_real_acidification_model(payload: dict[str, Any], model: ModelSpec) -> dict[str, Any]:
+    """调用实际的酸化改良模型"""
+    parcel_id = payload.get("parcel_id")
+    db_path = payload.get("db_path")
+
+    if not parcel_id:
+        return {
+            "status": "error",
+            "error": {
+                "code": "MISSING_PARCEL_ID",
+                "message": "调用酸化改良模型时必须提供 parcel_id",
+            },
+        }
+
+    result = query_acidification(parcel_id, db_path)
+
+    if result["status"] == "not_ready":
+        return {
+            "status": "error",
+            "error": {
+                "code": "ACIDIFICATION_NOT_READY",
+                "message": "酸化改良数据尚未就绪，请先运行批量评价和酸化评估流程",
+            },
+        }
+
+    if result["status"] == "not_found":
+        return {
+            "status": "error",
+            "error": {
+                "code": "PARCEL_NOT_FOUND",
+                "message": f"未找到地块 {parcel_id} 的酸化改良数据",
+            },
+        }
+
+    acidification = result.get("acidification", {})
+
+    return {
+        "status": "ok",
+        "model": _base_model_descriptor(model),
+        "area": {"name": "地块酸化改良", "code": parcel_id},
+        "summary": f"{model['name']} 已返回实际改良方案。酸化程度：{acidification.get('acidification_level', '未知')}",
+        "findings": [
+            {"title": "酸化程度", "content": acidification.get('acidification_level', '未知')},
+            {"title": "改良需求", "content": "需要改良" if acidification.get('need_amendment', False) else "无需改良"},
+            {"title": "石灰需求量", "content": f"{acidification.get('lime_demand', 0)} kg/亩"},
+            {"title": "改良剂类型", "content": acidification.get('amendment_type', '有机肥')},
+        ],
+        "recommended_layers": model["recommended_layers"],
+        "recommendations": [
+            f"根据酸化程度，建议施用{acidification.get('amendment_type', '')}，施用量 {acidification.get('amendment_rate', 0)} kg/亩",
+            acidification.get('reason', ''),
+        ],
+        "lineage": _lineage_for_model(model),
+        "reliability": {
+            "level": "real_model",
+            "message": "当前结果来自实际耕地酸化改良模型计算。",
+        },
+        "fallback": {"used": False, "fields": [], "strategy": "已使用实际模型计算"},
+        "acidification_detail": acidification,
+    }
+
+
 def run_thematic_model(payload: dict[str, Any]) -> dict[str, Any]:
     """执行单个模拟专题模型。"""
 
@@ -243,6 +375,14 @@ def run_thematic_model(payload: dict[str, Any]) -> dict[str, Any]:
             },
             "supported_model_ids": list(MODEL_SPECS.keys()),
         }
+
+    # 检查是否有实际模型实现
+    real_model = model.get("real_model")
+    if real_model and payload.get("parcel_id"):
+        if real_model == "farmland_diagnosis":
+            return _run_real_diagnosis_model(payload, model)
+        elif real_model == "farmland_acidification":
+            return _run_real_acidification_model(payload, model)
 
     area_code = payload.get("area_code", "lechang")
     overview = get_county_overview(area_code)
