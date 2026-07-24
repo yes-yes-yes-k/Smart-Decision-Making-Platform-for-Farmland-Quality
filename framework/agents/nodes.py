@@ -29,23 +29,64 @@ try:
 except ImportError:
     CORE_ENGINE_AVAILABLE = False
 
-QUESTION_TYPE_1_KEYWORDS = ["酸化程度", "酸化等级", "pH分级", "酸度", "酸化现状", "土壤酸性", "酸性分级"]
-QUESTION_TYPE_2_KEYWORDS = ["治理", "调理剂", "石灰", "碱性材料", "改良", "修复", "调理", "施加", "用量"]
-QUESTION_TYPE_3_KEYWORDS = ["氮肥", "pH下降", "施氮", "酸化原因", "氮素", "化肥"]
-QUESTION_TYPE_4_KEYWORDS = ["有机肥", "施肥", "施用量", "肥力", "有机碳", "SOC", "soc", "Dose", "dose"]
+QUESTION_TYPE_1_KEYWORDS = [
+    "等级稳定", "稳定性", "稳不稳", "稳定吗", "稳定性较弱", "退化风险",
+    "关注清单", "重点关注", "临界状态", "风险类型", "等级整体", "掉级",
+]
+QUESTION_TYPE_2_KEYWORDS = [
+    "酸化程度", "酸化等级", "酸化现状", "酸化严重", "酸化了", "酸化治理",
+    "调理剂", "碱性材料", "碱性调理剂", "木本泥炭", "石灰", "pH提升",
+    "土地利用类型", "酸化",
+]
+QUESTION_TYPE_3_KEYWORDS = [
+    "潜力", "障碍因素", "主要问题", "障碍诊断", "潜力分布", "障碍组合",
+    "提升潜力", "地块诊断", "毛病", "障碍等级",
+]
+QUESTION_TYPE_4_KEYWORDS = [
+    "有机质", "有机肥", "秸秆", "肥力", "综合地力", "有机碳", "SOC", "soc",
+    "施用量", "施肥量", "Dose", "dose", "培肥", "综合肥力",
+]
 
 RELEVANCE_KEYWORDS = [
     "酸化", "pH", "土壤", "耕地", "治理", "改良", "氮肥", "施肥",
     "调理剂", "石灰", "碱性", "酸性", "交换性酸", "CEC", "阳离子交换量",
     "土壤质量", "农业", "农田", "养分", "种植", "作物", "水稻", "小麦",
-    "玉米", "肥料", "有机质", "酸碱度", "酸性土", "碱性土", "改良剂"
+    "玉米", "肥料", "有机质", "酸碱度", "酸性土", "碱性土", "改良剂",
+    # 扩展：覆盖 xlsx 经典问题通用词，确保 relevance >= 0.3
+    "田", "地", "质量", "等级", "稳定", "潜力", "障碍", "问题",
+    "乡镇", "县", "片区", "地块", "农户", "风险", "关注", "清单",
+    "诊断", "毛病", "增产", "粮食", "碳氮比", "全氮", "容重",
 ]
 
 REFERENCE_QUESTIONS: Dict[int, List[str]] = {
-    1: ["全省耕地酸化程度如何", "土壤pH分布情况", "酸化等级面积统计", "耕地酸性现状评估"],
-    2: ["如何治理强酸性耕地", "石灰施用量计算", "土壤改良方案", "酸性土壤调理方法"],
-    3: ["施氮肥会导致土壤pH下降多少", "氮肥对土壤酸化的影响", "不同施氮量对pH的影响"],
-    4: ["土壤有机碳含量预测", "施肥量推荐", "综合肥力评估", "耕地肥力诊断", "我的田施有机肥多少", "土壤有机碳含量多少", "施用量预测", "SOC预测", "Dose预测"],
+    1: [
+        "查询区域内耕地质量等级整体稳定吗",
+        "查询区域内哪些高等级耕地存在退化风险",
+        "本县哪些乡镇或地块等级稳定性较弱需要现场复核",
+        "我的这块田质量等级稳不稳",
+        "查询区域内哪些对象需要纳入重点关注清单",
+    ],
+    2: [
+        "查询区域内农用地土壤酸化程度如何不同酸化等级比例分别多少",
+        "我的田酸化了pH是多少我要施加多少碱性调理剂可以治理好",
+        "查询区域内不同土地利用类型的酸化程度",
+        "我的这块田酸化严重吗",
+    ],
+    3: [
+        "辖区耕地质量提升的总体潜力有多大可增产多少粮食",
+        "我们县划定的优先改良片区具体在哪几个村每块潜力多大",
+        "我这块地到底有啥毛病",
+        "全省耕地质量存在哪些问题",
+        "县乡镇里的耕地在哪些方面有问题",
+    ],
+    4: [
+        "全省耕地土壤有机质含量如何空间分布情况",
+        "为了提升耕地土壤有机质有机肥或者秸秆每亩施用量多少",
+        "本县耕地土壤有机质平均含量是多少",
+        "我的田肥力怎么样",
+        "我的田土壤有机碳含量大概多少",
+        "我这块地大概需要施多少有机肥",
+    ],
 }
 
 REFERENCE_VECTORS: Dict[int, List[List[float]]] = {}
@@ -100,9 +141,11 @@ def _check_relevance_keyword(question: str) -> float:
 
 def identify_question_type(question: str) -> tuple[int, float]:
     if EMBEDDING_AVAILABLE and embedding_service.is_available():
-        return _identify_question_type_vector(question)
-    else:
-        return _identify_question_type_keyword(question)
+        result = _identify_question_type_vector(question)
+        # 向量匹配置信度不足（返回 0）时，降级到关键词匹配，确保 xlsx 经典问题路由正确（D5）
+        if result[0] != 0:
+            return result
+    return _identify_question_type_keyword(question)
 
 def _identify_question_type_vector(question: str) -> tuple[int, float]:
     query_vector = embedding_service.embed_query(question)
@@ -214,9 +257,10 @@ async def _execute_model_dependent(model_name: str, func: Callable, dep_result: 
         return model_name, {"success": False, "error": str(e)}
 
 QUESTION_TYPE_TO_MODEL_ID = {
-    1: "acidification-governance",
-    2: "multi-factor-collaborative-improvement",
-    3: "organic-matter-improvement",
+    1: "model-1",
+    2: "model-4",
+    3: "model-2,model-3",
+    4: "model-5,model-6",
 }
 
 def execute_models(state: MultiAgentState) -> MultiAgentState:
