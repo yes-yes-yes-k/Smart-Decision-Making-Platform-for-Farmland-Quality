@@ -379,7 +379,7 @@ git commit -m "feat: add precompute.py for stability model persistence"
 - Consumes: `bulk_evaluate`（farmland_diagnosis.evaluation）、`precompute.main`（Task 2）、`FarmlandGradeRunner`（farmland_grade_eval.runner）
 - Produces: `CoreEngine.bulk_evaluate_csv(csv_path) -> Dict`、`CoreEngine.precompute_stability(shapefile_dir, manifest) -> Dict`、`CoreEngine.check_grade_eval_deployment() -> Dict`
 
-- [ ] **Step 1: 编写 adapter 新方法的失败测试**
+- [x] **Step 1: 编写 adapter 新方法的失败测试**
 
 在 `tests/test_precompute.py` 末尾追加（或新建 `tests/test_adapter_data_import.py`）：
 
@@ -435,7 +435,7 @@ def test_adapter_check_grade_eval_deployment_ok():
         assert result["deployment_ok"] is True
 ```
 
-- [ ] **Step 2: 运行测试验证失败**
+- [x] **Step 2: 运行测试验证失败**
 
 运行：
 
@@ -445,7 +445,7 @@ python -m pytest tests/test_precompute.py::test_adapter_bulk_evaluate_csv_delega
 
 预期：FAIL，报 `AttributeError: 'CoreEngine' object has no attribute 'bulk_evaluate_csv'`
 
-- [ ] **Step 3: 在 `framework/core_engine/adapter.py` 的 `CoreEngine` 类中新增方法**
+- [x] **Step 3: 在 `framework/core_engine/adapter.py` 的 `CoreEngine` 类中新增方法**
 
 在 `verify_runtime` 方法之后、`core_engine = CoreEngine()` 之前插入：
 
@@ -488,7 +488,7 @@ python -m pytest tests/test_precompute.py::test_adapter_bulk_evaluate_csv_delega
             return {"deployment_ok": False, "error": {"code": "DEPLOYMENT_CHECK_ERROR", "message": str(e)}}
 ```
 
-- [ ] **Step 4: 运行测试验证通过**
+- [x] **Step 4: 运行测试验证通过**
 
 运行：
 
@@ -498,7 +498,7 @@ python -m pytest tests/test_precompute.py -v
 
 预期：全部 PASS（含原有 3 个 + 新增 4 个 adapter 测试）
 
-- [ ] **Step 5: 提交**
+- [x] **Step 5: 提交**
 
 ```bash
 git add framework/core_engine/adapter.py tests/test_precompute.py

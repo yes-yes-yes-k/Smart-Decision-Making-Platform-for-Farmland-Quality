@@ -74,7 +74,7 @@
 ## 9. 依赖与启动校验
 
 - [ ] 9.1 确认 `geopandas`、`pandas` 已在 `pyproject.toml` 中（上一轮已添加，本次仅需确认）
-- [ ] 9.2 确认 `framework/core_engine/adapter.py` 已暴露 `bulk_evaluate_csv`、`precompute_stability`、`check_grade_eval_deployment` 三个新方法；若未暴露，补充 adapter 方法（含 `_ensure_data_import_imports` 延迟导入）
+- [x] 9.2 确认 `framework/core_engine/adapter.py` 已暴露 `bulk_evaluate_csv`、`precompute_stability`、`check_grade_eval_deployment` 三个新方法；若未暴露，补充 adapter 方法（含 `_ensure_data_import_imports` 延迟导入）
 - [x] 9.3 在 `start_http_server.py` 或 `framework/api/app.py` 启动时验证 `logs/` 目录存在（用于审计日志）
 
 ## 10. precompute.py 模块（src/ai_culti_demo/farmland_stability/precompute.py）
