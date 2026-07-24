@@ -132,10 +132,10 @@
 ### Requirement: FertilityMLAgent 智能体
 系统 SHALL 实现 `FertilityMLAgent` 智能体，对应模型6「耕地综合地力改良提升模型」，负责综合多个模型结果形成分区分类的综合提升建议。该智能体内部使用预训练的 ExtraTreesRegressor 模型对 SOC 和 Dose 进行 ML 预测作为综合地力评估的计算单元，并通过 `framework/agents/manager.py` 注册为 `model-6`。
 
-**模型输入**（来源：xlsx 总览表）：
+**模型输入**（来源：xlsx 总览表，xlsx 未填写，保留现有实现）：
 - 综合上述模型1-5的输入指标，包括土壤理化指标、农田类型、目标有机质等
 
-**模型输出**（来源：xlsx 总览表）：
+**模型输出**（来源：xlsx 总览表，xlsx 未填写，保留现有实现）：
 - 综合提升建议（基于 SOC 预测和 Dose 预测的综合地力评估）
 
 #### Scenario: 农户综合诊断
