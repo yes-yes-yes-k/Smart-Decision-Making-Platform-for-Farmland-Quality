@@ -219,7 +219,7 @@ Expected: 输出 `OK`
 
 **说明：** 当前 `QUESTION_TYPE_1_KEYWORDS` 是酸化词（与 D5 冲突），TYPE_2 含"施加""用量"通用词（D5 要求移除）。同时 `RELEVANCE_KEYWORDS` 缺"田""地""等级""稳定"等词，导致 xlsx 经典问题 relevance<0.3 被判 0，必须扩展。
 
-- [ ] **Step 1: 写失败测试（TYPE_1 稳定性 + TYPE_2 酸化治理）**
+- [x] **Step 1: 写失败测试（TYPE_1 稳定性 + TYPE_2 酸化治理）**
 
 创建 `tests/test_question_type_keywords.py`：
 
@@ -297,12 +297,12 @@ if __name__ == "__main__":
     print("\nTYPE_1/TYPE_2 关键词测试通过！")
 ```
 
-- [ ] **Step 2: 运行测试确认失败**
+- [x] **Step 2: 运行测试确认失败**
 
 Run: `python -m pytest tests/test_question_type_keywords.py -v`
 Expected: 多个用例 FAIL（当前 TYPE_1 是酸化词，稳定性问题会命中 TYPE_2 或返回 0；"稳不稳""关注清单"无关键词命中）
 
-- [ ] **Step 3: 更新 nodes.py 关键词与相关性词**
+- [x] **Step 3: 更新 nodes.py 关键词与相关性词**
 
 在 `framework/agents/nodes.py` 中，将第 32-35 行的关键词常量替换为：
 
@@ -387,17 +387,17 @@ QUESTION_TYPE_TO_MODEL_ID = {
 }
 ```
 
-- [ ] **Step 4: 运行测试确认通过**
+- [x] **Step 4: 运行测试确认通过**
 
 Run: `python -m pytest tests/test_question_type_keywords.py -v`
 Expected: 全部 PASS
 
-- [ ] **Step 5: 确认现有 nodes 相关测试不破坏**
+- [x] **Step 5: 确认现有 nodes 相关测试不破坏**
 
 Run: `python -m pytest tests/test_agent_specialized.py tests/test_fertility_ml_prediction.py -v`
 Expected: 全部 PASS（关键词改动不影响 agent 单元测试）
 
-- [ ] **Step 6: Commit**
+- [x] **Step 6: Commit**
 
 ```bash
 git add framework/agents/nodes.py tests/test_question_type_keywords.py
@@ -418,7 +418,7 @@ git commit -m "feat(sync-models): 更新 nodes.py TYPE_1/2 关键词与相关性
 - Consumes: Task 4 的关键词常量
 - Produces: TYPE_3/TYPE_4 路由正确；关键词优先级逻辑（`_identify_question_type_keyword` 先于向量）经测试确认
 
-- [ ] **Step 1: 追加失败测试（TYPE_3/TYPE_4 + 优先级）**
+- [x] **Step 1: 追加失败测试（TYPE_3/TYPE_4 + 优先级）**
 
 在 `tests/test_question_type_keywords.py` 末尾（`if __name__` 之前）追加：
 
@@ -527,19 +527,19 @@ if __name__ == "__main__":
     print("\n全部问题类型关键词测试通过！")
 ```
 
-- [ ] **Step 2: 运行测试确认通过**
+- [x] **Step 2: 运行测试确认通过**
 
 Run: `python -m pytest tests/test_question_type_keywords.py -v`
 Expected: 全部 PASS（TYPE_3/4 关键词已在 Task 4 写入；优先级用例验证 `_identify_question_type_keyword` 命中具体词）
 
 若有用例 FAIL，检查 `framework/agents/nodes.py` 的 TYPE_3/TYPE_4 关键词是否与 Task 4 Step 3 写入一致，必要时补词。
 
-- [ ] **Step 3: 确认 _identify_question_type_keyword 优先级逻辑未被破坏**
+- [x] **Step 3: 确认 _identify_question_type_keyword 优先级逻辑未被破坏**
 
 Run: `python -c "from framework.agents.nodes import identify_question_type; print(identify_question_type('有机肥每亩施用量多少？'))"`
 Expected: 输出形如 `(4, 0.x)`，TYPE=4
 
-- [ ] **Step 4: Commit**
+- [x] **Step 4: Commit**
 
 ```bash
 git add tests/test_question_type_keywords.py
@@ -1603,12 +1603,12 @@ if __name__ == "__main__":
     print("\nspec 一致性测试通过！")
 ```
 
-- [ ] **Step 2: 运行测试确认通过**
+- [x] **Step 2: 运行测试确认通过**
 
 Run: `python -m pytest tests/test_model_specs_sync.py -v`
 Expected: 全部 PASS。若有 FAIL，回到 Task 1/2/3 补全对应 spec 内容后重跑。
 
-- [ ] **Step 3: Commit**
+- [x] **Step 3: Commit**
 
 ```bash
 git add tests/test_model_specs_sync.py
@@ -1727,7 +1727,7 @@ git commit -m "test(sync-models): 补全 xlsx 全部经典问题路由覆盖用�
 - Consumes: Task 6/7/8 的 agent 回复模板
 - Produces: 6 个 agent 对 xlsx 3 角色经典问题返回 `simulated is True` 且 answer 非空
 
-- [ ] **Step 1: 补全矩阵汇总用例**
+- [x] **Step 1: 补全矩阵汇总用例**
 
 在 `tests/test_agent_classic_qa.py` 的 `if __name__` 块之前追加汇总用例：
 
@@ -1774,17 +1774,19 @@ def test_fertility_ml_simulated_with_mock(monkeypatch):
 
 更新 `if __name__ == "__main__":` 块追加这些用例调用。
 
-- [ ] **Step 2: 运行全文件测试**
+- [x] **Step 2: 运行全文件测试**
 
 Run: `python -m pytest tests/test_agent_classic_qa.py -v`
 Expected: 全部 PASS
 
-- [ ] **Step 3: Commit**
+- [x] **Step 3: Commit**
 
 ```bash
 git add tests/test_agent_classic_qa.py
 git commit -m "test(sync-models): 补全 6 agent 经典 Q&A 矩阵汇总测试(D4)"
 ```
+
+**Commit**: 4cc0b54 — 28 passed (test_agent_classic_qa.py 全量)。Task 11 reviewer **Approved**：concern 属 pre-existing（Task 4 设计取舍），vector 路径正确路由（相似度 0.985/0.992），不在 Task 11 范围内修复，作为独立 hardening 跟踪。无风险信号。
 
 ---
 
@@ -1799,12 +1801,12 @@ git commit -m "test(sync-models): 补全 6 agent 经典 Q&A 矩阵汇总测试(D
 - Consumes: Task 4-12 全部改动
 - Produces: 全量测试通过，不破坏现有功能
 
-- [ ] **Step 1: 运行全量测试**
+- [x] **Step 1: 运行全量测试**
 
 Run: `python -m pytest tests/ -v`
 Expected: 全部 PASS，无 FAIL/ERROR。
 
-- [ ] **Step 2: 若有失败，定位并修复**
+- [x] **Step 2: 若有失败，定位并修复**
 
 逐个分析失败用例：
 - 若为 `test_agent_specialized.py` 旧用例因新分支顺序变化而失败，调整旧用例的问题文本或断言以适配新模板（优先改测试问题文本使其明确命中预期分支，不放宽断言）。
@@ -1813,12 +1815,12 @@ Expected: 全部 PASS，无 FAIL/ERROR。
 
 修复后重跑 `python -m pytest tests/ -v` 直至全绿。
 
-- [ ] **Step 3: 确认 model_6_execution 未被修改**
+- [x] **Step 3: 确认 model_6_execution 未被修改**
 
 Run: `git diff --stat 251ac1cefb1a2e49f8766565c51f1ce5e5713f7b -- framework/domain/other_models/model_6.py`
 Expected: 无输出（文件未改）。若有改动，回滚该文件：`git checkout -- framework/domain/other_models/model_6.py`
 
-- [ ] **Step 4: Commit（若有测试修复）**
+- [x] **Step 4: Commit（若有测试修复）**
 
 ```bash
 git add tests/
@@ -1826,6 +1828,8 @@ git commit -m "test(sync-models): 修复全量回归测试适配新关键词与�
 ```
 
 若 Step 1 一次通过无需修复，则跳过 commit。
+
+**结果**: 179 passed / 0 failed（排除 3 个既有 collection-error 模块：test_function_calling/test_interfaces/test_thematic_models，均非本 change 引入）；`model_6.py` 无 diff（Task 13 Step 3 通过）；无需修复，跳过 commit。
 
 ---
 
@@ -1840,27 +1844,27 @@ git commit -m "test(sync-models): 修复全量回归测试适配新关键词与�
 - Consumes: Task 1-13 全部产物
 - Produces: 集成验证脚本断言 4 项集成点
 
-- [ ] **Step 1: 验证 model 6 spec 名称已回退（6.1）**
+- [x] **Step 1: 验证 model 6 spec 名称已回退（6.1）**
 
 Run: `python -c "s=open('openspec/changes/sync-model-specs-from-overview/specs/professional-model-agents/spec.md',encoding='utf-8').read(); assert '耕地综合地力改良提升模型' in s and '耕地肥力机器学习预测模型' not in s; print('6.1 OK')"`
 Expected: 输出 `6.1 OK`
 
-- [ ] **Step 2: 验证 FertilityMLAgent ML 预测功能正常（6.2）**
+- [x] **Step 2: 验证 FertilityMLAgent ML 预测功能正常（6.2）**
 
 Run: `python -m pytest tests/test_fertility_ml_prediction.py tests/test_agent_specialized.py -v -k "fertility or ml"`
 Expected: 全部 PASS（SOC/Dose 预测、fallback、rejected 路径均正常）
 
-- [ ] **Step 3: 验证 6 agent answer_question 返回对齐 xlsx 回复（6.3）**
+- [x] **Step 3: 验证 6 agent answer_question 返回对齐 xlsx 回复（6.3）**
 
 Run: `python -m pytest tests/test_agent_classic_qa.py -v`
 Expected: 全部 PASS（6 agent × 经典问题均返回对齐回复）
 
-- [ ] **Step 4: 验证关键词覆盖 xlsx 经典问题（6.4）**
+- [x] **Step 4: 验证关键词覆盖 xlsx 经典问题（6.4）**
 
 Run: `python -m pytest tests/test_question_type_keywords.py -v`
 Expected: 全部 PASS（含 `test_all_xlsx_classic_questions_routed` 21 条经典问题）
 
-- [ ] **Step 5: 集成验证脚本汇总**
+- [x] **Step 5: 集成验证脚本汇总**
 
 Run:
 ```
@@ -1868,7 +1872,7 @@ python -c "import subprocess,sys; r=subprocess.run([sys.executable,'-m','pytest'
 ```
 Expected: 全部 PASS，输出含 `passed` 且无 `failed`。
 
-- [ ] **Step 6: 确认变更范围符合非目标约束**
+- [x] **Step 6: 确认变更范围符合非目标约束**
 
 Run:
 ```
@@ -1884,12 +1888,14 @@ Expected: 改动文件仅限：
 
 不应出现 `framework/domain/other_models/model_6.py`、`framework/api/**`、数据库导入脚本等改动。
 
-- [ ] **Step 7: Commit 验证记录**
+- [x] **Step 7: Commit 验证记录**
 
 ```bash
 git add docs/superpowers/plans/2026-07-24-sync-model-specs-from-overview.md
 git commit -m "chore(sync-models): 集成验证通过 - 6.1/6.2/6.3/6.4 全部确认"
 ```
+
+**结果**: 6.1 OK（spec 名称已回退）；6.2/6.3/6.4 全量回归已覆盖（test_fertility_ml_prediction / test_agent_classic_qa / test_question_type_keywords 全 PASS）；Step 5 汇总 `62 passed in 23.16s`；Step 6 变更范围符合非目标约束（仅 spec/nodes.py/6 agents/3 测试文件/plan，无 model_6.py、无 framework/api/**、无数据库脚本改动）。build 阶段全部完成。
 
 ---
 

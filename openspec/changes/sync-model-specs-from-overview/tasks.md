@@ -37,12 +37,12 @@
 
 - [x] 5.1 创建 `tests/test_model_specs_sync.py` 测试各模型 spec 与 xlsx 的输入输出定义一致性
 - [x] 5.2 更新 `tests/test_question_type_keywords.py` 测试 xlsx 经典问题的路由正确性
-- [ ] 5.3 创建 `tests/test_agent_classic_qa.py` 测试各 agent 能回答 xlsx 3 角色经典问题
-- [ ] 5.4 运行全量测试确保不破坏现有功能
+- [x] 5.3 创建 `tests/test_agent_classic_qa.py` 测试各 agent 能回答 xlsx 3 角色经典问题
+- [x] 5.4 运行全量测试确保不破坏现有功能
 
 ## 6. 集成验证
 
-- [ ] 6.1 验证 model 6 spec 名称已回退为"耕地综合地力改良提升模型"
-- [ ] 6.2 验证 FertilityMLAgent ML 预测功能正常（SOC/Dose 预测不受影响）
-- [ ] 6.3 验证 6 个 agent 的 answer_question 能返回对齐 xlsx 的回复
-- [ ] 6.4 验证问题类型关键词覆盖 xlsx 经典问题
+- [x] 6.1 验证 model 6 spec 名称已回退为"耕地综合地力改良提升模型"
+- [x] 6.2 验证 FertilityMLAgent ML 预测功能正常（SOC/Dose 预测不受影响）
+- [x] 6.3 验证 6 个 agent 的 answer_question 能返回对齐 xlsx 的回复
+- [x] 6.4 验证问题类型关键词覆盖 xlsx 经典问题
