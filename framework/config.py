@@ -48,6 +48,16 @@ class Config:
 
     MAX_CONCURRENT_MODELS = int(os.environ.get('MAX_CONCURRENT_MODELS') or '0')
 
+    # 数据导入接口配置
+    MAX_DATA_IMPORT_SIZE = 200 * 1024 * 1024  # 200MB
+    DATA_IMPORT_TIMEOUT = 600  # 秒
+    DATA_IMPORT_TARGETS = {
+        'csv': 'data/farmland_diagnosis',
+        'shapefile': 'data/farmland_stability',
+        'dat': 'bin/farmland_quality_eval',
+    }
+    BACKUP_RETENTION_COUNT = 3
+
     @classmethod
     def get_max_concurrent(cls) -> int:
         if cls.MAX_CONCURRENT_MODELS > 0:
