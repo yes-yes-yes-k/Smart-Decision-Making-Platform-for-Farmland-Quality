@@ -181,6 +181,29 @@ class AgentManager:
             return any(kw.lower() in q_lower for kw in FERTILITY_KEYWORDS)
         return True
 
+    def _synthesize_comprehensive_result(self, results: Dict[str, Dict[str, Any]]) -> Dict[str, Any]:
+        """综合模型1（退化风险）和模型3（障碍诊断）的结果。"""
+        model1_result = results.get("model-1", {})
+        model3_result = results.get("model-3", {})
+
+        synthesis = {
+            "type": "comprehensive",
+            "model1": model1_result,
+            "model3": model3_result,
+        }
+
+        if model1_result.get("status") == "ok" and model3_result.get("status") == "ok":
+            risk_info = model1_result.get("result", {})
+            diagnosis_info = model3_result.get("result", {})
+
+            synthesis["summary"] = "综合诊断结果："
+            if risk_info.get("risk_level"):
+                synthesis["summary"] += f"退化风险等级为{risk_info['risk_level']}；"
+            if diagnosis_info.get("obstacle_type"):
+                synthesis["summary"] += f"障碍类型为{diagnosis_info['obstacle_type']}。"
+
+        return synthesis
+
     def _summarize(
         self,
         role: str,
