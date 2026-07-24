@@ -59,6 +59,85 @@ def test_type2_no_generic_words_collision():
     assert "调理剂" in QUESTION_TYPE_2_KEYWORDS
 
 
+def test_type3_potential_question():
+    """潜力评估 → TYPE_3（model-2/3）"""
+    qt, _ = _identify("辖区耕地质量提升的总体潜力有多大？可增产多少粮食？")
+    assert qt == 3
+
+
+def test_type3_county_potential_distribution():
+    """县域优先改良片区 → TYPE_3"""
+    qt, _ = _identify("我们县划定的优先改良片区具体在哪几个村？每块潜力多大？")
+    assert qt == 3
+
+
+def test_type3_farmer_plot_diagnosis():
+    """农户地块诊断"毛病" → TYPE_3"""
+    qt, _ = _identify("我这块地到底有啥毛病？")
+    assert qt == 3
+
+
+def test_type3_problem_identification():
+    """主要问题/障碍因素 → TYPE_3"""
+    qt, _ = _identify("全省耕地质量存在哪些问题？")
+    assert qt == 3
+
+
+def test_type4_organic_matter_content():
+    """有机质含量 → TYPE_4（model-5/6）"""
+    qt, _ = _identify("全省耕地土壤有机质含量如何，空间分布情况？")
+    assert qt == 4
+
+
+def test_type4_manure_dosage():
+    """有机肥/秸秆施用量 → TYPE_4"""
+    qt, _ = _identify("为了提升耕地土壤有机质，有机肥或者秸秆每亩施用量多少？")
+    assert qt == 4
+
+
+def test_type4_fertility_ml():
+    """农户肥力/SOC → TYPE_4"""
+    qt, _ = _identify("我的田肥力怎么样？")
+    assert qt == 4
+
+
+def test_type4_county_organic_average():
+    """县域有机质平均含量 → TYPE_4"""
+    qt, _ = _identify("本县耕地土壤有机质平均含量是多少？")
+    assert qt == 4
+
+
+def test_keyword_match_priority_over_vector():
+    """D5：关键词匹配优先于向量匹配。
+    即使 embedding 可用，含具体关键词的问题也应被关键词逻辑判定。
+    这里直接测试 _identify_question_type_keyword 返回非 0。"""
+    from framework.agents.nodes import _identify_question_type_keyword
+    # 含 TYPE_4 具体词"有机肥"
+    qt, _ = _identify_question_type_keyword("有机肥每亩施用量多少？")
+    assert qt == 4
+    # 含 TYPE_2 具体词"调理剂"
+    qt, _ = _identify_question_type_keyword("我要施加多少碱性调理剂？")
+    assert qt == 2
+
+
+def test_type_order_no_cross_collision():
+    """关键词不跨类型重叠：TYPE_1 不含酸化词，TYPE_2 不含稳定词"""
+    from framework.agents.nodes import (
+        QUESTION_TYPE_1_KEYWORDS, QUESTION_TYPE_2_KEYWORDS,
+        QUESTION_TYPE_3_KEYWORDS, QUESTION_TYPE_4_KEYWORDS,
+    )
+    # "酸化"属 TYPE_2，不应出现在 TYPE_1
+    assert not any("酸化" in kw for kw in QUESTION_TYPE_1_KEYWORDS)
+    # "稳定"属 TYPE_1，不应出现在 TYPE_2
+    assert not any("稳定" in kw for kw in QUESTION_TYPE_2_KEYWORDS)
+    # "潜力"属 TYPE_3，不应出现在其他
+    assert not any("潜力" in kw for kw in QUESTION_TYPE_1_KEYWORDS)
+    assert not any("潜力" in kw for kw in QUESTION_TYPE_2_KEYWORDS)
+    # "有机质"属 TYPE_4，不应出现在 TYPE_1/2/3
+    assert not any("有机质" in kw for kw in QUESTION_TYPE_1_KEYWORDS)
+    assert not any("有机质" in kw for kw in QUESTION_TYPE_3_KEYWORDS)
+
+
 if __name__ == "__main__":
     test_type1_stability_province_question()
     test_type1_stability_county_question()
@@ -68,4 +147,14 @@ if __name__ == "__main__":
     test_type2_remediation_dosage_question()
     test_type2_landuse_acidification_question()
     test_type2_no_generic_words_collision()
-    print("\nTYPE_1/TYPE_2 关键词测试通过！")
+    test_type3_potential_question()
+    test_type3_county_potential_distribution()
+    test_type3_farmer_plot_diagnosis()
+    test_type3_problem_identification()
+    test_type4_organic_matter_content()
+    test_type4_manure_dosage()
+    test_type4_fertility_ml()
+    test_type4_county_organic_average()
+    test_keyword_match_priority_over_vector()
+    test_type_order_no_cross_collision()
+    print("\n全部问题类型关键词测试通过！")
