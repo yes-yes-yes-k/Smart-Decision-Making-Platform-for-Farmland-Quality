@@ -16,7 +16,12 @@ class FarmlandGradeAgent(BaseAgent):
     """耕地质量等级评价智能体（调用Fortran exe）"""
 
     def __init__(self):
-        super().__init__("FarmlandGradeAgent")
+        super().__init__(
+            name="FarmlandGradeAgent",
+            description="通过Fortran exe进行耕地质量等级评价",
+            model_id="quality-grade-evaluation",
+            domain="grade",
+        )
 
     def execute(self, data: Dict[str, Any] = None) -> Dict[str, Any]:
         if not data:

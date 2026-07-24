@@ -2,15 +2,15 @@
 
 - [x] 1.1 在 requirements.txt 中新增 geopandas、scipy 依赖（明确兼容版本）
 - [x] 1.2 在开发环境安装 geopandas 及其 Windows 依赖（GDAL/PROJ/GEOS），验证 `import geopandas` 成功
-- [ ] 1.3 编写 geopandas Windows 安装说明文档（记录 conda/wheel 安装方式）
+- [x] 1.3 编写 geopandas Windows 安装说明文档（记录 conda/wheel 安装方式）
 
 ## 2. 数据部署
 
-- [ ] 2.1 创建数据目录 `data/farmland_stability/`，将模型1 的 3 期 shapefile（2018/2021/2024 测试数据）复制到该目录
-- [ ] 2.2 创建数据目录 `data/farmland_diagnosis/`，将模型3 的 CSV 测试数据（test.csv、test_with_LD.csv、test_with_LD_diagnosis.csv）复制到该目录
+- [x] 2.1 创建数据目录 `data/farmland_stability/`，将模型1 的 3 期 shapefile（2018/2021/2024 测试数据）复制到该目录
+- [x] 2.2 创建数据目录 `data/farmland_diagnosis/`，将模型3 的 CSV 测试数据（test.csv、test_with_LD.csv、test_with_LD_diagnosis.csv）复制到该目录
 - [x] 2.3 创建 exe 部署目录（如 `bin/farmland_quality_eval/`），将 `Farmland_quality_evaluation.exe` 和 `Farmlands_Quality_Level_Database.dat` 复制到该目录
-- [ ] 2.4 在 `.gitignore` 中排除 shapefile 数据、CSV 数据和 exe/.dat 二进制文件（避免大文件入库）
-- [ ] 2.5 编写数据部署说明文档（记录文件位置和目录结构）
+- [x] 2.4 在 `.gitignore` 中排除 shapefile 数据、CSV 数据和 exe/.dat 二进制文件（避免大文件入库）
+- [x] 2.5 编写数据部署说明文档（记录文件位置和目录结构）
 
 ## 3. 模型1（耕地质量稳定性与退化风险）集成
 
@@ -60,7 +60,7 @@
 - [x] 7.5 在 `nodes.py` 中新增障碍诊断/障碍组合关键词路由到模型3 的障碍诊断能力
 - [x] 7.6 在 `nodes.py` 中新增酸化程度/改良方案关键词路由到模型3 的酸化改良能力
 - [x] 7.7 更新被替换占位模型的 MODEL_SPECS 定义，将 `reliability` 从 `demo_stub` 改为 `real_model`，扩展输出字段
-- [ ] 7.8 实现缺少地块代码时的提示逻辑（质量等级/障碍度/酸化改良查询需要地块代码）
+- [x] 7.8 实现缺少地块代码时的提示逻辑（质量等级/障碍度/酸化改良查询需要地块代码）
 
 ## 8. Agent 实现
 
@@ -72,25 +72,25 @@
 
 ## 9. API 与端到端集成
 
-- [ ] 9.1 验证 `/api/v1/chat/` 接口能正确路由稳定性风险问题到 StabilityRiskAgent 并返回模型1 真实结果
-- [ ] 9.2 验证 `/api/v1/chat/` 接口能正确路由质量等级/障碍度问题到 FarmlandGradeObstacleAgent 并返回 exe 评价结果
-- [ ] 9.3 验证 `/api/v1/chat/` 接口能正确路由障碍诊断问题到 ObstacleDiagnosisAgent 并返回模型3 诊断结果
-- [ ] 9.4 验证 `/api/v1/chat/` 接口能正确路由酸化改良问题到 AcidificationImprovementAgent 并返回模型3 改良方案
-- [ ] 9.5 验证综合诊断接口能同时调用 StabilityRiskAgent 和 ObstacleDiagnosisAgent，返回整合结果
+- [x] 9.1 验证 `/api/v1/chat/` 接口能正确路由稳定性风险问题到 StabilityRiskAgent 并返回模型1 真实结果
+- [x] 9.2 验证 `/api/v1/chat/` 接口能正确路由质量等级/障碍度问题到 FarmlandGradeObstacleAgent 并返回 exe 评价结果
+- [x] 9.3 验证 `/api/v1/chat/` 接口能正确路由障碍诊断问题到 ObstacleDiagnosisAgent 并返回模型3 诊断结果
+- [x] 9.4 验证 `/api/v1/chat/` 接口能正确路由酸化改良问题到 AcidificationImprovementAgent 并返回模型3 改良方案
+- [x] 9.5 验证综合诊断接口能同时调用 StabilityRiskAgent 和 ObstacleDiagnosisAgent，返回整合结果
 - [ ] 9.6 实现数据导入接口（如需），支持上传新 shapefile/CSV 并触发重新预计算/评价
-- [ ] 9.7 验证 CoreEngine.run_thematic_model() 能正确调度三个新模型
-- [ ] 9.8 验证响应字段结构符合统一调用契约（status、model、summary、findings、reliability 等）
+- [x] 9.7 验证 CoreEngine.run_thematic_model() 能正确调度三个新模型
+- [x] 9.8 验证响应字段结构符合统一调用契约（status、model、summary、findings、reliability 等）
 
 ## 10. 测试验证
 
-- [ ] 10.1 编写模型1 离线预计算的单元测试（验证 9 模块输出字段完整性）
-- [ ] 10.2 编写模型1 在线查询的单元测试（含正常查询、数据未就绪、地块不存在场景）
-- [ ] 10.3 编写 exe 调用包装器的单元测试（含正常调用、超时、文件缺失、地块无效场景）
-- [ ] 10.4 编写模型3 批量评价的单元测试（验证隶属度、综合权重、质量等级计算）
-- [ ] 10.5 编写模型3 障碍诊断的单元测试（验证障碍类型、主要/次要因素识别）
-- [ ] 10.6 编写模型3 酸化改良的单元测试（验证酸化程度分区、改良方案生成）
-- [ ] 10.7 编写所有 agent 的单元测试（验证路由和错误处理）
-- [ ] 10.8 编写综合诊断整合的单元测试（验证模型1 和模型3 结果整合）
-- [ ] 10.9 编写路由扩展的单元测试（验证关键词路由到正确 agent）
-- [ ] 10.10 编写端到端集成测试（/api/v1/chat/ → 路由 → agent → 模型 → 响应）
-- [ ] 10.11 运行全量回归测试，确保未替换的占位模型和其他功能不受影响
+- [x] 10.1 编写模型1 离线预计算的单元测试（验证 9 模块输出字段完整性）
+- [x] 10.2 编写模型1 在线查询的单元测试（含正常查询、数据未就绪、地块不存在场景）
+- [x] 10.3 编写 exe 调用包装器的单元测试（含正常调用、超时、文件缺失、地块无效场景）
+- [x] 10.4 编写模型3 批量评价的单元测试（验证隶属度、综合权重、质量等级计算）
+- [x] 10.5 编写模型3 障碍诊断的单元测试（验证障碍类型、主要/次要因素识别）
+- [x] 10.6 编写模型3 酸化改良的单元测试（验证酸化程度分区、改良方案生成）
+- [x] 10.7 编写所有 agent 的单元测试（验证路由和错误处理）
+- [x] 10.8 编写综合诊断整合的单元测试（验证模型1 和模型3 结果整合）
+- [x] 10.9 编写路由扩展的单元测试（验证关键词路由到正确 agent）
+- [x] 10.10 编写端到端集成测试（/api/v1/chat/ → 路由 → agent → 模型 → 响应）
+- [x] 10.11 运行全量回归测试，确保未替换的占位模型和其他功能不受影响

@@ -527,7 +527,7 @@ def run_thematic_model(payload: dict[str, Any]) -> dict[str, Any]:
             "status": "error",
             "error": {
                 "code": "INVALID_MODEL_ID",
-                "message": "model_id 不在当前已注册的 6 个模拟专题模型目录中",
+                "message": "model_id 不在当前已注册的 8 个模拟专题模型目录中",
             },
             "supported_model_ids": list(MODEL_SPECS.keys()),
         }
@@ -539,9 +539,9 @@ def run_thematic_model(payload: dict[str, Any]) -> dict[str, Any]:
             return _run_real_diagnosis_model(payload, model)
         elif real_model == "farmland_acidification" and payload.get("parcel_id"):
             return _run_real_acidification_model(payload, model)
-        elif real_model == "farmland_stability" and payload.get("parcel_id"):
+        elif real_model == "farmland_stability" and payload.get("parcel_id") and STABILITY_MODEL_AVAILABLE:
             return _run_real_stability_model(payload, model)
-        elif real_model == "farmland_grade_eval" and payload.get("parcel_code"):
+        elif real_model == "farmland_grade_eval" and payload.get("parcel_code") and GRADE_EVAL_MODEL_AVAILABLE:
             return _run_real_grade_model(payload, model)
 
     area_code = payload.get("area_code", "lechang")
