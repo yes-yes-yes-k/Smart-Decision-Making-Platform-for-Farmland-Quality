@@ -30,9 +30,12 @@
   - 附带修复 Task 11 concern：补「哪些问题」「有问题」到 QUESTION_TYPE_3_KEYWORDS，2 条问题现经关键词路径正确路由 TYPE_3（不再依赖 vector）
   - test_keyword_match_priority_over_vector 改为真正验证优先级（monkeypatch 向量冲突，断言关键词胜出）
 
-## 已知环境问题（非本 change 引入，不阻塞）
+## 已知环境问题（已解决）
 
-- test_rag.py::test_vector_store_operations 失败：chroma_db 本地存储 metadata segment compaction 损坏（Rust u64 / SQL BLOB 类型不匹配）。隔离运行也复现，属磁盘上 chroma_db 既有损坏状态，与 nodes.py 路由改动无关。重置 chroma_db 可恢复但会丢失已索引文档，建议作为独立运维任务处理。
+- test_rag.py::test_vector_store_operations 此前失败：chroma_db 本地存储 metadata segment compaction 损坏（Rust u64 / SQL BLOB 类型不匹配），读/写均失败（stats/search 降级返回 count=0，已索引内容已不可访问）。
+- 处理：用户选择重置 chroma_db。采用非破坏性重置——将损坏库重命名为 `chroma_db.corrupted.20260724.bak`（保留以备深度恢复尝试），chroma 重建全新库。
+- 结果：test_rag.py 4/4 通过；全量回归 **177 passed / 0 failed**（干净绿灯）。
+- 注意：全新 chroma_db 为空（原知识库内容因损坏已不可访问，uploads/ 也为空无源可重建）。如需恢复知识库，需重新上传源文档并运行 `scripts/reindex_documents.py`。kb_document 表仍保留 doc_name 元数据。
 
 ## Task 11 Concern 跟踪（已在最终审查修复阶段解决）
 
