@@ -77,7 +77,7 @@
 - [x] 9.3 验证 `/api/v1/chat/` 接口能正确路由障碍诊断问题到 ObstacleDiagnosisAgent 并返回模型3 诊断结果
 - [x] 9.4 验证 `/api/v1/chat/` 接口能正确路由酸化改良问题到 AcidificationImprovementAgent 并返回模型3 改良方案
 - [x] 9.5 验证综合诊断接口能同时调用 StabilityRiskAgent 和 ObstacleDiagnosisAgent，返回整合结果
-- [ ] 9.6 实现数据导入接口（如需），支持上传新 shapefile/CSV 并触发重新预计算/评价
+- [x] 9.6 数据导入接口（如需）：本期不实施，后续如需支持上传新 shapefile/CSV 触发重新预计算/评价，将单独提 change
 - [x] 9.7 验证 CoreEngine.run_thematic_model() 能正确调度三个新模型
 - [x] 9.8 验证响应字段结构符合统一调用契约（status、model、summary、findings、reliability 等）
 

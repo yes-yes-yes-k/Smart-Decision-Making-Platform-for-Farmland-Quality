@@ -71,7 +71,7 @@ data/
 - Consumes: 无
 - Produces: `REGION_MAP`, `SECONDARY_REGION_MAP`, `COLUMN_RENAME`, `TEXT_VALUE_MAPS`, `COEFFICIENTS`, `WEIGHTS`, `INDICATOR_NAME_MAP`, `calc_obstacle_level()`
 
-- [ ] **Step 1: 编写配置模块代码**
+- [x] **Step 1: 编写配置模块代码**
 
 ```python
 # src/ai_culti_demo/farmland_diagnosis/config.py
@@ -303,7 +303,7 @@ def calc_obstacle_level(row, indicators):
     return levels
 ```
 
-- [ ] **Step 2: 编写 __init__.py**
+- [x] **Step 2: 编写 __init__.py**
 
 ```python
 # src/ai_culti_demo/farmland_diagnosis/__init__.py
@@ -324,7 +324,7 @@ __all__ = [
 ]
 ```
 
-- [ ] **Step 3: 编写单元测试**
+- [x] **Step 3: 编写单元测试**
 
 ```python
 # tests/test_farmland_diagnosis.py
@@ -357,12 +357,12 @@ def test_calc_obstacle_level_organic():
     assert result['YJ'] == '中度障碍'
 ```
 
-- [ ] **Step 4: 运行测试**
+- [x] **Step 4: 运行测试**
 
 Run: `cd d:\17417\Documents\agent_culti_demo; python -m pytest tests/test_farmland_diagnosis.py::test_region_map -v`
 Expected: PASS
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add src/ai_culti_demo/farmland_diagnosis/ tests/test_farmland_diagnosis.py
@@ -380,7 +380,7 @@ git commit -m "feat: add farmland_diagnosis config module"
 - Consumes: 无
 - Produces: `DiagnosisStorage` 类
 
-- [ ] **Step 1: 编写存储模块代码**
+- [x] **Step 1: 编写存储模块代码**
 
 ```python
 # src/ai_culti_demo/farmland_diagnosis/storage.py
@@ -634,7 +634,7 @@ class DiagnosisStorage:
         return eval_exists and diag_exists and eval_count > 0 and diag_count > 0
 ```
 
-- [ ] **Step 2: 编写单元测试**
+- [x] **Step 2: 编写单元测试**
 
 ```python
 # tests/test_farmland_diagnosis.py (继续追加)
@@ -717,12 +717,12 @@ def test_storage_is_ready():
         assert storage.is_ready()
 ```
 
-- [ ] **Step 3: 运行测试**
+- [x] **Step 3: 运行测试**
 
 Run: `cd d:\17417\Documents\agent_culti_demo; python -m pytest tests/test_farmland_diagnosis.py::test_storage_create_tables -v`
 Expected: PASS
 
-- [ ] **Step 4: Commit**
+- [x] **Step 4: Commit**
 
 ```bash
 git add src/ai_culti_demo/farmland_diagnosis/storage.py
@@ -740,7 +740,7 @@ git commit -m "feat: add DiagnosisStorage SQLite persistence"
 - Consumes: `DiagnosisStorage`, `REGION_MAP`, `COLUMN_RENAME`, `TEXT_VALUE_MAPS`, `COEFFICIENTS`, `WEIGHTS`, `INDICATOR_NAME_MAP`, `calc_obstacle_level`
 - Produces: `bulk_evaluate()`, `evaluate_single()`
 
-- [ ] **Step 1: 编写评价模块代码**
+- [x] **Step 1: 编写评价模块代码**
 
 ```python
 # src/ai_culti_demo/farmland_diagnosis/evaluation.py
@@ -926,7 +926,7 @@ def bulk_evaluate(input_csv: str, output_db_path: str = None) -> Dict[str, Any]:
     }
 ```
 
-- [ ] **Step 2: 编写测试数据**
+- [x] **Step 2: 编写测试数据**
 
 ```python
 # 在 tests/ 目录创建测试 CSV
@@ -936,7 +936,7 @@ def bulk_evaluate(input_csv: str, output_db_path: str = None) -> Dict[str, Any]:
 华南区,粤西桂南农林区,5.0,18,15,80,1.5,黏土,基本满足,基本满足,丘陵中部,紧实型,70,15
 ```
 
-- [ ] **Step 3: 编写单元测试**
+- [x] **Step 3: 编写单元测试**
 
 ```python
 # tests/test_farmland_diagnosis.py (继续追加)
@@ -989,12 +989,12 @@ def test_evaluate_single():
     assert result['grade'] == '3'
 ```
 
-- [ ] **Step 4: 运行测试**
+- [x] **Step 4: 运行测试**
 
 Run: `cd d:\17417\Documents\agent_culti_demo; python -m pytest tests/test_farmland_diagnosis.py::test_bulk_evaluate -v`
 Expected: PASS
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add src/ai_culti_demo/farmland_diagnosis/evaluation.py tests/test_data.csv
@@ -1012,7 +1012,7 @@ git commit -m "feat: add bulk evaluation module"
 - Consumes: `DiagnosisStorage`, `INDICATOR_NAME_MAP`
 - Produces: `diagnose()`, `query_parcel()`
 
-- [ ] **Step 1: 编写诊断模块代码**
+- [x] **Step 1: 编写诊断模块代码**
 
 ```python
 # src/ai_culti_demo/farmland_diagnosis/diagnosis.py
@@ -1159,7 +1159,7 @@ def query_parcel(parcel_id: str, db_path: str = None) -> Dict[str, Any]:
     }
 ```
 
-- [ ] **Step 2: 编写单元测试**
+- [x] **Step 2: 编写单元测试**
 
 ```python
 # tests/test_farmland_diagnosis.py (继续追加)
@@ -1249,12 +1249,12 @@ def test_query_parcel():
         assert result['parcel_id'] == 'test-001'
 ```
 
-- [ ] **Step 3: 运行测试**
+- [x] **Step 3: 运行测试**
 
 Run: `cd d:\17417\Documents\agent_culti_demo; python -m pytest tests/test_farmland_diagnosis.py::test_diagnosis_row_no_obstacle -v`
 Expected: PASS
 
-- [ ] **Step 4: Commit**
+- [x] **Step 4: Commit**
 
 ```bash
 git add src/ai_culti_demo/farmland_diagnosis/diagnosis.py
@@ -1273,7 +1273,7 @@ git commit -m "feat: add obstacle diagnosis module"
 - Consumes: `DiagnosisStorage`, `AMENDMENT_CONFIG`, `INDICATOR_NAME_MAP`
 - Produces: `extract_acidification()`, `classify_level()`, `generate_plan()`, `query_parcel()`
 
-- [ ] **Step 1: 编写酸化改良模块代码**
+- [x] **Step 1: 编写酸化改良模块代码**
 
 ```python
 # src/ai_culti_demo/farmland_acidification/acid
