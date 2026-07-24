@@ -230,3 +230,61 @@ def test_calc_discrete():
     mapping = {'FS': 1, 'S': 0.8, 'BS': 0.6, 'US': 0.3}
     result = calc_discrete('FS', mapping)
     assert result == 1.0
+
+
+# Diagnosis tests
+from src.ai_culti_demo.farmland_diagnosis.diagnosis import diagnosis_row, diagnose, query_parcel
+
+def test_diagnosis_row_single_obstacle():
+    row = pd.Series({
+        'pH障碍等级': '中度障碍', 'pH_OD': 0.25,
+        '有机质障碍等级': '无障碍', '有机质_OD': 0.05
+    })
+
+    result = diagnosis_row(row)
+
+    assert result['obstacle_type'] == '单一障碍'
+    assert len(result['main_factors']) == 1
+    assert 'pH' in result['main_factors'][0]
+
+def test_diagnosis_row_multi_obstacle():
+    row = pd.Series({
+        'pH障碍等级': '中度障碍', 'pH_OD': 0.25,
+        '有机质障碍等级': '中度障碍', '有机质_OD': 0.20,
+        '有效磷障碍等级': '轻度障碍', '有效磷_OD': 0.15
+    })
+
+    result = diagnosis_row(row)
+
+    assert result['obstacle_type'] == '多障碍'
+    assert len(result['main_factors']) >= 2
+
+def test_diagnosis_row_no_obstacle():
+    row = pd.Series({
+        'pH障碍等级': '无障碍', 'pH_OD': 0.05,
+        '有机质障碍等级': '无障碍', '有机质_OD': 0.03
+    })
+
+    result = diagnosis_row(row)
+
+    assert result['obstacle_type'] == '无明显障碍'
+    assert result['main_factors'] == []
+
+def test_diagnose_flow():
+    with tempfile.TemporaryDirectory() as tmpdir:
+        csv_path = os.path.join(tmpdir, 'test.csv')
+        with open(csv_path, 'w', encoding='utf-8') as f:
+            f.write('''一级农业区,二级农业区,pH,有机质,有效磷,速效钾,容重,耕层质地,灌溉能力,排水能力,地形部位,质地构型,有效土层,耕层厚度
+华南区,闽南粤中农林水产区,4.5,10,5,50,1.8,粘土,基本满足,基本满足,丘陵岗地,夹砂型,60,15
+''')
+
+        db_path = os.path.join(tmpdir, 'test.db')
+        bulk_evaluate(csv_path, db_path)
+        result = diagnose(db_path)
+
+        assert result['status'] == 'ok'
+        assert result['diagnosed'] == 1
+
+        query_result = query_parcel('0', db_path)
+        assert query_result['status'] == 'ok'
+        assert 'diagnosis' in query_result
