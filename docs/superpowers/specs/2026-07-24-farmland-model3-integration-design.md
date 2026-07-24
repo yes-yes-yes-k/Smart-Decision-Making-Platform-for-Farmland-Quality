@@ -2,6 +2,8 @@
 comet_change: add-stability-risk-and-grade-evaluation
 role: technical-design
 canonical_spec: openspec
+archived-with: 2026-07-24-add-stability-risk-and-grade-evaluation
+status: final
 ---
 
 # 模型3（耕地质量主要问题精准识别与酸化改良）深度技术设计
@@ -681,3 +683,4 @@ def _identify_question_type_keyword(question: str) -> tuple[int, float]:
 **建议 change 名称**：`add-data-import-interface`
 **建议优先级**：P2（核心模型稳定运行后实施）
 **预计影响 spec**：`farmland-obstacle-diagnosis-model`（已定义 Requirement）、`farmland-stability-risk-model`（新增 shapefile 导入 Requirement）
+

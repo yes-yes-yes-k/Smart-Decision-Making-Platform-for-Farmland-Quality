@@ -2,6 +2,7 @@
 change: add-stability-risk-and-grade-evaluation
 design-doc: docs/superpowers/specs/2026-07-24-farmland-model3-integration-design.md
 base-ref: 277481d045527f56190120d5a355905ea2a63342
+archived-with: 2026-07-24-add-stability-risk-and-grade-evaluation
 ---
 
 # 模型3（耕地质量主要问题精准识别与酸化改良）集成实施计划
@@ -23,6 +24,7 @@ base-ref: 277481d045527f56190120d5a355905ea2a63342
 - 改良方案生成采用混合方式（基于障碍等级 + 指标数值计算）
 - Agent 层实现模型3与模型1的综合诊断
 
+archived-with: 2026-07-24-add-stability-risk-and-grade-evaluation
 ---
 
 ## 文件结构
@@ -59,6 +61,7 @@ data/
     └── farmland_diagnosis.db    # SQLite 数据库（运行时生成）
 ```
 
+archived-with: 2026-07-24-add-stability-risk-and-grade-evaluation
 ---
 
 ### Task 1: 创建诊断配置模块
@@ -369,6 +372,7 @@ git add src/ai_culti_demo/farmland_diagnosis/ tests/test_farmland_diagnosis.py
 git commit -m "feat: add farmland_diagnosis config module"
 ```
 
+archived-with: 2026-07-24-add-stability-risk-and-grade-evaluation
 ---
 
 ### Task 2: 创建 SQLite 数据持久化模块
@@ -729,6 +733,7 @@ git add src/ai_culti_demo/farmland_diagnosis/storage.py
 git commit -m "feat: add DiagnosisStorage SQLite persistence"
 ```
 
+archived-with: 2026-07-24-add-stability-risk-and-grade-evaluation
 ---
 
 ### Task 3: 创建批量评价模块
@@ -1001,6 +1006,7 @@ git add src/ai_culti_demo/farmland_diagnosis/evaluation.py tests/test_data.csv
 git commit -m "feat: add bulk evaluation module"
 ```
 
+archived-with: 2026-07-24-add-stability-risk-and-grade-evaluation
 ---
 
 ### Task 4: 创建障碍诊断模块
@@ -1261,6 +1267,7 @@ git add src/ai_culti_demo/farmland_diagnosis/diagnosis.py
 git commit -m "feat: add obstacle diagnosis module"
 ```
 
+archived-with: 2026-07-24-add-stability-risk-and-grade-evaluation
 ---
 
 ### Task 5: 创建酸化改良模块

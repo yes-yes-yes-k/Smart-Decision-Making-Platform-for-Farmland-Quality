@@ -1,0 +1,68 @@
+# farmland-obstacle-diagnosis-model Specification
+
+## Purpose
+TBD - created by archiving change add-stability-risk-and-grade-evaluation. Update Purpose after archive.
+## Requirements
+### Requirement: 模型3 批量质量等级评价
+系统 SHALL 提供基于 CSV 的批量质量等级评价入口，对包含 12 项指标（pH、有机质、有效磷、速效钾、容重、耕层质地、灌溉能力、排水能力、地形部位、质地构型、有效土层、耕层厚度）和区域信息（一级/二级农业区）的 CSV 数据执行隶属度计算、综合权重计算和质量等级划分(1-10等)。
+
+#### Scenario: 执行批量评价
+- **WHEN** 管理员触发批量评价，且 CSV 文件已部署到指定目录，包含必需字段（一级农业区、二级农业区、pH、有机质、有效磷、速效钾、容重、耕层质地、灌溉能力、排水能力、地形部位、质地构型、有效土层、耕层厚度）
+- **THEN** 系统 SHALL 调用 calculator.py 处理 CSV，计算各指标隶属度、综合权重，并按区域配置的阈值划分质量等级，输出包含 `*_LD`（隶属度）、`composite_weight`（综合权重）、`grade`（质量等级）的结果
+
+#### Scenario: CSV 字段缺失
+- **WHEN** 批量评价被触发，但 CSV 文件缺少必需字段（如一级农业区、pH、有机质等）
+- **THEN** 系统 SHALL 返回明确的错误信息，列出缺失的字段，不执行部分计算
+
+#### Scenario: 区域名称无效
+- **WHEN** CSV 中存在未在 REGION_MAP 或 SECONDARY_REGION_MAP 中定义的区域名称
+- **THEN** 系统 SHALL 返回错误信息，列出无效区域名称所在的行号
+
+### Requirement: 模型3 障碍诊断
+系统 SHALL 基于 calculator.py 的输出（包含隶属度、综合权重、质量等级）执行障碍诊断，识别障碍类型（单一障碍/多障碍）、主要障碍因素和次要障碍因素。
+
+#### Scenario: 执行障碍诊断
+- **WHEN** calculator.py 的输出 CSV 已就绪，且包含所有指标隶属度和障碍度字段
+- **THEN** 系统 SHALL 调用 calculator2.py，对每行数据进行障碍诊断，输出障碍类型、主要因素描述、次要因素描述
+
+#### Scenario: 无明显障碍
+- **WHEN** 某地块所有指标的障碍度均低于阈值（主要障碍度 < 20%，次要障碍度 < 10%）
+- **THEN** 系统 SHALL 返回障碍类型为"无明显障碍"，主要/次要因素描述为空
+
+#### Scenario: 单一障碍
+- **WHEN** 某地块只有一个指标的障碍度达到主要障碍阈值（>= 20%），且没有其他中度以上障碍
+- **THEN** 系统 SHALL 返回障碍类型为"单一障碍"，仅列出该指标为主要因素
+
+#### Scenario: 多障碍
+- **WHEN** 某地块有多个指标的障碍度达到主要或次要障碍阈值
+- **THEN** 系统 SHALL 返回障碍类型为"多障碍"，按障碍度降序列出主要和次要因素
+
+### Requirement: 模型3 障碍组合类型识别
+系统 SHALL 识别障碍组合类型，支持单一障碍、双重障碍和多因素叠加障碍等组合类型的判定。
+
+#### Scenario: 识别障碍组合类型
+- **WHEN** 系统完成障碍诊断后，识别到多个中度以上障碍因素
+- **THEN** 系统 SHALL 返回障碍组合类型描述（如"酸化+有机质不足"、"养分失衡+耕层条件偏弱"）
+
+### Requirement: 模型3 在线障碍诊断查询
+系统 SHALL 提供在线查询接口，按地块 ID 从批量评价和障碍诊断结果中查询障碍诊断信息，对接 `run_thematic_model()` 的统一调用契约。
+
+#### Scenario: 查询指定地块的障碍诊断结果
+- **WHEN** 调用方以地块 ID 发起在线查询，且批量评价和障碍诊断结果已就绪
+- **THEN** 系统 SHALL 返回该地块的障碍类型、主要障碍因素、次要障碍因素和障碍度排序
+
+#### Scenario: 诊断数据未就绪
+- **WHEN** 调用方发起在线查询，但批量评价和障碍诊断尚未完成或结果文件缺失
+- **THEN** 系统 SHALL 返回 `status: "not_ready"` 和"数据未就绪，请先执行批量评价"的提示
+
+### Requirement: 模型3 数据导入接口
+系统 SHALL 提供数据导入接口，支持上传新的 CSV 数据并触发重新评价和诊断。
+
+#### Scenario: 导入新 CSV 数据
+- **WHEN** 用户通过导入接口上传 CSV 文件
+- **THEN** 系统 SHALL 将文件部署到数据目录，并提示用户触发批量评价以更新诊断结果
+
+#### Scenario: 导入数据格式校验
+- **WHEN** 用户上传的 CSV 缺少必需字段（如一级农业区、二级农业区、12 项指标）
+- **THEN** 系统 SHALL 拒绝导入并返回缺失字段列表
+
