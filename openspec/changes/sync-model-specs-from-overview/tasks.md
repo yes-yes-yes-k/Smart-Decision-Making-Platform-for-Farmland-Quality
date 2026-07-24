@@ -29,9 +29,9 @@
 
 ## 4. 路由与角色映射
 
-- [ ] 4.1 确认 `RoleRouter` 的 3 角色路由（province_admin/county_executor/farmer）与 xlsx 三端一致
-- [ ] 4.2 更新 `router.py` 确保省市管理端和县域执行端角色能路由到对应模型集合
-- [ ] 4.3 验证农户种植端角色路由到 model-4/5/6
+- [x] 4.1 确认 `RoleRouter` 的 3 角色路由（province_admin/county_executor/farmer）与 xlsx 三端一致
+- [x] 4.2 更新 `router.py` 确保省市管理端和县域执行端角色能路由到对应模型集合
+- [x] 4.3 验证农户种植端角色路由到 model-4/5/6
 
 ## 5. 测试
 

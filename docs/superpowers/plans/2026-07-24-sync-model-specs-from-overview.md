@@ -1384,7 +1384,7 @@ git commit -m "feat(sync-models): 更新 Organic/FertilityML Agent 回复模板�
 
 **说明：** 当前 `router.py` 的 `ROLE_AGENTS` 已与 xlsx 三端一致。本任务以测试固化该映射，若发现不一致则修正 `router.py`。
 
-- [ ] **Step 1: 追加路由验证测试**
+- [x] **Step 1: 追加路由验证测试**
 
 在 `tests/test_agent_classic_qa.py` 的 `if __name__` 块之前追加：
 
@@ -1439,21 +1439,27 @@ def test_router_xlsx_three_ends_coverage():
 
 更新 `if __name__ == "__main__":` 块追加这些用例调用。
 
-- [ ] **Step 2: 运行测试**
+- [x] **Step 2: 运行测试**
 
 Run: `python -m pytest tests/test_agent_classic_qa.py -v -k "router"`
 Expected: 全部 PASS。若 `test_router_farmer_agents` 中 `identify_role` 未识别"我的田"为 farmer，检查 `ROLE_KEYWORDS["farmer"]` 是否含"我的田"（当前已含），无需改代码。
 
-- [ ] **Step 3: 确认 router.py 无需修改**
+**实际**: 直接 GREEN（router.py 已与 xlsx 三端一致，5 passed）
+
+- [x] **Step 3: 确认 router.py 无需修改**
 
 若 Step 2 全部 PASS，则 `router.py` 不修改。若 FAIL，修正 `framework/agents/router.py` 的 `ROLE_KEYWORDS` 或 `ROLE_AGENTS` 使映射与 xlsx 三端一致，再运行测试至 PASS。
 
-- [ ] **Step 4: Commit**
+**实际**: router.py 未修改，ROLE_AGENTS 已正确：province→[model-1,model-3], county→[model-1,model-3,model-2], farmer→[model-4,model-5,model-6]
+
+- [x] **Step 4: Commit**
 
 ```bash
 git add tests/test_agent_classic_qa.py
 git commit -m "test(sync-models): 固化 RoleRouter 三角色路由与 xlsx 三端一致性验证"
 ```
+
+**Commit**: aee10df — 26 passed (test_agent_classic_qa.py 全量)。无风险信号。
 
 ---
 
