@@ -2,6 +2,8 @@
 comet_change: import-lechang-soil-data
 role: technical-design
 canonical_spec: openspec
+archived-with: import-lechang-soil-data
+status: archived
 ---
 
 # Design Doc: import-lechang-soil-data

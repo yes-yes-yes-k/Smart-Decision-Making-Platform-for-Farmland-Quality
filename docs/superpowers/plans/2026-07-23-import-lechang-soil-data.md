@@ -2,6 +2,7 @@
 change: import-lechang-soil-data
 design-doc: docs/superpowers/specs/2026-07-23-import-lechang-soil-data-design.md
 base-ref: d480d687c0a826fa724e42b64ee63b0c109e8621
+archived-with: import-lechang-soil-data
 ---
 
 # 乐昌土壤数据导入 实施计划
