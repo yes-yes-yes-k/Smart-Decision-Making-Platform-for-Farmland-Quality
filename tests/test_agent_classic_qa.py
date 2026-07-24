@@ -18,8 +18,8 @@ def test_stability_weak_county_list():
     out = StabilityRiskAgent().answer_question(
         "本县哪些乡镇或地块等级稳定性较弱，需要现场复核？", {})
     assert out["simulated"] is True
-    # 回复应包含薄弱片区清单语义
-    assert "较弱" in out["answer"] or "薄弱" in out["answer"] or "稳定" in out["answer"]
+    # 收紧：必须命中「县域薄弱片区分支」专属产出，旧 else 分支不含此字符串
+    assert "本县稳定性较弱" in out["answer"]
     assert len(out["evidence"]) >= 1
 
 
@@ -29,8 +29,8 @@ def test_stability_farmer_plain_language():
     out = StabilityRiskAgent().answer_question("我的这块田质量等级稳不稳？", {})
     assert out["simulated"] is True
     assert "稳" in out["answer"]
-    # 通俗语言：包含"比较稳""一般稳""不太稳"之一或稳定性类型说明
-    assert any(w in out["answer"] for w in ["比较稳", "一般稳", "不太稳", "稳定", "一般", "较弱"])
+    # 收紧：必须命中「农户稳不稳分支」三档之一，排除"稳定/一般/较弱"宽泛词
+    assert any(w in out["answer"] for w in ["比较稳", "一般稳", "不太稳"])
 
 
 def test_stability_attention_list():
@@ -38,7 +38,8 @@ def test_stability_attention_list():
     from framework.agents.specialized.stability_risk_agent import StabilityRiskAgent
     out = StabilityRiskAgent().answer_question("查询区域内哪些对象需要纳入重点关注清单？", {})
     assert out["simulated"] is True
-    assert "关注" in out["answer"] or "清单" in out["answer"] or "风险" in out["answer"]
+    # 收紧：必须命中「关注清单分支」专属产出
+    assert "建议纳入重点关注清单" in out["answer"]
 
 
 def test_potential_overall_uplift():
@@ -55,7 +56,8 @@ def test_potential_county_distribution():
     out = PotentialAssessmentAgent().answer_question(
         "我们县划定的优先改良片区具体在哪几个村？每块潜力多大？", {})
     assert out["simulated"] is True
-    assert "潜力" in out["answer"] or "障碍" in out["answer"] or "片区" in out["answer"]
+    # 收紧：必须命中「县域潜力分布分支」专属产出，旧 else 分支不含此字符串
+    assert "县域优先改良片区" in out["answer"]
 
 
 def test_potential_farmer_plot_diagnosis():
@@ -63,8 +65,8 @@ def test_potential_farmer_plot_diagnosis():
     from framework.agents.specialized.potential_agent import PotentialAssessmentAgent
     out = PotentialAssessmentAgent().answer_question("我这块地到底有啥毛病？", {})
     assert out["simulated"] is True
-    # 回复应给出诊断/障碍因子
-    assert "障碍" in out["answer"] or "毛病" in out["answer"] or "潜力" in out["answer"] or "诊断" in out["answer"]
+    # 收紧：必须命中「农户地块诊断分支」专属产出
+    assert "地块诊断结论" in out["answer"]
 
 
 if __name__ == "__main__":
