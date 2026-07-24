@@ -2,6 +2,7 @@
 change: sync-model-specs-from-overview
 design-doc: docs/superpowers/specs/2026-07-24-sync-model-specs-from-overview-design.md
 base-ref: 251ac1cefb1a2e49f8766565c51f1ce5e5713f7b
+archived-with: 2026-07-24-sync-model-specs-from-overview
 ---
 
 # 同步专业模型 spec 与 xlsx 总览表 实施计划
@@ -56,6 +57,7 @@ base-ref: 251ac1cefb1a2e49f8766565c51f1ce5e5713f7b
 - `tests/test_agent_specialized.py` — 已存在：回归
 - `tests/test_fertility_ml_prediction.py` — 已存在：model-6 回归
 
+archived-with: 2026-07-24-sync-model-specs-from-overview
 ---
 
 ## Task 1: 校对 professional-model-agents delta spec 模型 1-3
@@ -109,6 +111,7 @@ git add openspec/changes/sync-model-specs-from-overview/specs/professional-model
 git commit -m "docs(sync-models): 校对 professional-model-agents delta spec 模型1-3 输入输出与 scenario"
 ```
 
+archived-with: 2026-07-24-sync-model-specs-from-overview
 ---
 
 ## Task 2: 校对 professional-model-agents delta spec 模型 4-6（含 D1 名称回退）
@@ -165,6 +168,7 @@ Expected: 输出 `OK`
 
 - [x] **Step 5: Commit** — 7298ceb
 
+archived-with: 2026-07-24-sync-model-specs-from-overview
 ---
 
 ## Task 3: 修正 role-based-routing delta spec 的 TYPE 描述与 D5 对齐
@@ -203,6 +207,7 @@ Expected: 输出 `OK`
 
 - [x] **Step 4: Commit** — f0efa34
 
+archived-with: 2026-07-24-sync-model-specs-from-overview
 ---
 
 ## Task 4: 更新 nodes.py 关键词 TYPE_1/TYPE_2 与 RELEVANCE_KEYWORDS（TDD）
@@ -404,6 +409,7 @@ git add framework/agents/nodes.py tests/test_question_type_keywords.py
 git commit -m "feat(sync-models): 更新 nodes.py TYPE_1/2 关键词与相关性词覆盖 xlsx 经典问题(D5)"
 ```
 
+archived-with: 2026-07-24-sync-model-specs-from-overview
 ---
 
 ## Task 5: 验证 nodes.py TYPE_3/TYPE_4 关键词与关键词优先级（TDD）
@@ -546,6 +552,7 @@ git add tests/test_question_type_keywords.py
 git commit -m "test(sync-models): 补充 TYPE_3/4 关键词路由与优先级测试(D5)"
 ```
 
+archived-with: 2026-07-24-sync-model-specs-from-overview
 ---
 
 ## Task 6: 更新 StabilityRiskAgent 与 PotentialAssessmentAgent 回复模板（TDD）
@@ -861,6 +868,7 @@ git commit -m "feat(sync-models): 更新 StabilityRisk/Potential Agent 回复模
 
 **Post-review fix**: commit e185b404 — 收紧 5 个弱断言（test_stability_weak_county_list / test_stability_farmer_plain_language / test_stability_attention_list / test_potential_county_distribution / test_potential_farmer_plot_diagnosis）以验证新分支产出。7 passed + 21 passed 回归通过。
 
+archived-with: 2026-07-24-sync-model-specs-from-overview
 ---
 
 ## Task 7: 更新 ProblemIdentificationAgent 与 AcidificationRemediationAgent 回复模板（TDD）
@@ -1125,6 +1133,7 @@ git commit -m "feat(sync-models): 更新 Problem/Acidification Agent 回复模�
 
 **Commit**: ee7afe98 — 14 passed (test_agent_classic_qa.py 全量) + 6 passed (回归 problem/acidification)。无风险信号命中。
 
+archived-with: 2026-07-24-sync-model-specs-from-overview
 ---
 
 ## Task 8: 更新 OrganicMatterAgent 与 FertilityMLAgent 回复模板（TDD）
@@ -1368,6 +1377,7 @@ git commit -m "feat(sync-models): 更新 Organic/FertilityML Agent 回复模板�
 
 **Commit**: 3545aad — 21 passed (test_agent_classic_qa.py 全量) + 37 passed (回归 specialized + fertility_ml_prediction)。无风险信号。Minor concern：`__main__` 块的 monkeypatch 用例脚本直跑会失败，pytest 路径正常，接受。
 
+archived-with: 2026-07-24-sync-model-specs-from-overview
 ---
 
 ## Task 9: 验证 RoleRouter 三角色路由与 xlsx 三端一致（TDD）
@@ -1461,6 +1471,7 @@ git commit -m "test(sync-models): 固化 RoleRouter 三角色路由与 xlsx 三�
 
 **Commit**: aee10df — 26 passed (test_agent_classic_qa.py 全量)。无风险信号。
 
+archived-with: 2026-07-24-sync-model-specs-from-overview
 ---
 
 ## Task 10: 创建 spec 一致性测试
@@ -1615,6 +1626,7 @@ git add tests/test_model_specs_sync.py
 git commit -m "test(sync-models): 新增 delta spec 与 xlsx 一致性测试(D1/D2/D3)"
 ```
 
+archived-with: 2026-07-24-sync-model-specs-from-overview
 ---
 
 ## Task 11: 完善关键词路由测试全量覆盖
@@ -1714,6 +1726,7 @@ git commit -m "test(sync-models): 补全 xlsx 全部经典问题路由覆盖用�
 
 **Commit**: 9b22245 — 24 passed。未修改 nodes.py。
 
+archived-with: 2026-07-24-sync-model-specs-from-overview
 ---
 
 ## Task 12: 完善 agent 经典 Q&A 测试全量覆盖
@@ -1788,6 +1801,7 @@ git commit -m "test(sync-models): 补全 6 agent 经典 Q&A 矩阵汇总测试(D
 
 **Commit**: 4cc0b54 — 28 passed (test_agent_classic_qa.py 全量)。Task 11 reviewer **Approved**：concern 属 pre-existing（Task 4 设计取舍），vector 路径正确路由（相似度 0.985/0.992），不在 Task 11 范围内修复，作为独立 hardening 跟踪。无风险信号。
 
+archived-with: 2026-07-24-sync-model-specs-from-overview
 ---
 
 ## Task 13: 全量回归测试
@@ -1831,6 +1845,7 @@ git commit -m "test(sync-models): 修复全量回归测试适配新关键词与�
 
 **结果**: 179 passed / 0 failed（排除 3 个既有 collection-error 模块：test_function_calling/test_interfaces/test_thematic_models，均非本 change 引入）；`model_6.py` 无 diff（Task 13 Step 3 通过）；无需修复，跳过 commit。
 
+archived-with: 2026-07-24-sync-model-specs-from-overview
 ---
 
 ## Task 14: 集成验证
@@ -1897,6 +1912,7 @@ git commit -m "chore(sync-models): 集成验证通过 - 6.1/6.2/6.3/6.4 全部�
 
 **结果**: 6.1 OK（spec 名称已回退）；6.2/6.3/6.4 全量回归已覆盖（test_fertility_ml_prediction / test_agent_classic_qa / test_question_type_keywords 全 PASS）；Step 5 汇总 `62 passed in 23.16s`；Step 6 变更范围符合非目标约束（仅 spec/nodes.py/6 agents/3 测试文件/plan，无 model_6.py、无 framework/api/**、无数据库脚本改动）。build 阶段全部完成。
 
+archived-with: 2026-07-24-sync-model-specs-from-overview
 ---
 
 ## Self-Review 自检
@@ -1928,3 +1944,4 @@ git commit -m "chore(sync-models): 集成验证通过 - 6.1/6.2/6.3/6.4 全部�
 - TYPE_2 移除"施加""用量"通用词（Task 4 + Task 5 `test_type_order_no_cross_collision`）✓
 - 关键词跨类型重叠检查（Task 5 `test_type_order_no_cross_collision`）✓
 - model_6_execution 未改（Task 13 Step 3 + Task 14 Step 6）✓
+

@@ -4,5 +4,6 @@
   "openspec_tasks": "openspec/changes/sync-model-specs-from-overview/tasks.md",
   "openspec_delta_spec": "openspec/changes/sync-model-specs-from-overview/specs/professional-model-agents/spec.md",
   "handoff_context": "openspec/changes/sync-model-specs-from-overview/.comet/handoff/design-context.json",
-  "handoff_markdown": "openspec/changes/sync-model-specs-from-overview/.comet/handoff/design-context.md"
+  "handoff_markdown": "openspec/changes/sync-model-specs-from-overview/.comet/handoff/design-context.md",
+  "archive_directory": "openspec/changes/archive/2026-07-24-sync-model-specs-from-overview"
 }

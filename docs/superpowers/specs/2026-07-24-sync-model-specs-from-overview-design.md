@@ -2,6 +2,8 @@
 comet_change: sync-model-specs-from-overview
 role: technical-design
 canonical_spec: openspec
+archived-with: 2026-07-24-sync-model-specs-from-overview
+status: final
 ---
 
 # 技术设计：sync-model-specs-from-overview
@@ -79,3 +81,4 @@ delta spec 已包含六种模型的输入输出和 scenario。本轮工作：
 - 不训练新 ML 模型
 - 不修改 model_6_execution 核心逻辑
 - 不修改 API 路由结构
+
