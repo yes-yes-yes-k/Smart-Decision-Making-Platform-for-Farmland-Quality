@@ -79,7 +79,7 @@
 
 ## 10. precompute.py 模块（src/ai_culti_demo/farmland_stability/precompute.py）
 
-- [ ] 10.1 创建 `src/ai_culti_demo/farmland_stability/precompute.py` 模块，填补 README 提及但缺失的 `python -m ...precompute` 入口
-- [ ] 10.2 实现 `g_to_records(G, id_col='ID', region='PJFQ', score='ZHQZ', grade='GDZLDJ') -> List[Dict]`：将 `run_all_models` 返回的 GeoDataFrame G 转换为 `StabilityStorage.save_results` 期望的 records 列表；用 `MODULE_FIELDS` 映射 module_1..9 字段，`RESULT_CN` 做中文 key，`all_results` 汇总所有模块
-- [ ] 10.3 实现 `main(shapefile_dir, manifest) -> dict`：调用 `run_all_models(current_file, history_files, years)` → `g_to_records(G)` → `StabilityStorage.save_results(records)` 写入 `data/farmland_stability/stability_results.db` → `save_final_results(G, shp_file, xlsx_file, years)` 输出 shapefile + xlsx；返回 `{status, processed, saved_to_db, output_files}`
-- [ ] 10.4 编写 `tests/test_precompute.py`：用 mock GeoDataFrame 测试 `g_to_records` 字段映射正确性；用 monkeypatch 测试 `main` 完整流程（mock run_all_models/StabilityStorage/save_final_results）
+- [x] 10.1 创建 `src/ai_culti_demo/farmland_stability/precompute.py` 模块，填补 README 提及但缺失的 `python -m ...precompute` 入口
+- [x] 10.2 实现 `g_to_records(G, id_col='ID', region='PJFQ', score='ZHQZ', grade='GDZLDJ') -> List[Dict]`：将 `run_all_models` 返回的 GeoDataFrame G 转换为 `StabilityStorage.save_results` 期望的 records 列表；用 `MODULE_FIELDS` 映射 module_1..9 字段，`RESULT_CN` 做中文 key，`all_results` 汇总所有模块
+- [x] 10.3 实现 `main(shapefile_dir, manifest) -> dict`：调用 `run_all_models(current_file, history_files, years)` → `g_to_records(G)` → `StabilityStorage.save_results(records)` 写入 `data/farmland_stability/stability_results.db` → `save_final_results(G, shp_file, xlsx_file, years)` 输出 shapefile + xlsx；返回 `{status, processed, saved_to_db, output_files}`
+- [x] 10.4 编写 `tests/test_precompute.py`：用 mock GeoDataFrame 测试 `g_to_records` 字段映射正确性；用 monkeypatch 测试 `main` 完整流程（mock run_all_models/StabilityStorage/save_final_results）

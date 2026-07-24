@@ -148,7 +148,7 @@ git commit -m "feat: add data import config items and logs directory"
 - Consumes: `run_all_models`、`save_final_results`、`MODULE_FIELDS`、`RESULT_CN`（来自 `model.py`）；`StabilityStorage`（来自 `storage.py`）
 - Produces: `g_to_records(G, ...) -> List[Dict]`、`main(shapefile_dir, manifest) -> Dict`
 
-- [ ] **Step 1: 编写 `tests/test_precompute.py` 的失败测试**
+- [x] **Step 1: 编写 `tests/test_precompute.py` 的失败测试**
 
 创建 `tests/test_precompute.py`：
 
@@ -241,7 +241,7 @@ def test_main_full_flow_with_mocks():
         m_save_final.assert_called_once()
 ```
 
-- [ ] **Step 2: 运行测试验证失败**
+- [x] **Step 2: 运行测试验证失败**
 
 运行：
 
@@ -251,7 +251,7 @@ python -m pytest tests/test_precompute.py -v
 
 预期：FAIL，报 `ModuleNotFoundError: No module named 'ai_culti_demo.farmland_stability.precompute'`
 
-- [ ] **Step 3: 实现 `src/ai_culti_demo/farmland_stability/precompute.py`**
+- [x] **Step 3: 实现 `src/ai_culti_demo/farmland_stability/precompute.py`**
 
 创建 `src/ai_culti_demo/farmland_stability/precompute.py`：
 
@@ -346,7 +346,7 @@ if __name__ == '__main__':
     print(result)
 ```
 
-- [ ] **Step 4: 运行测试验证通过**
+- [x] **Step 4: 运行测试验证通过**
 
 运行：
 
@@ -356,7 +356,7 @@ python -m pytest tests/test_precompute.py -v
 
 预期：3 个测试全部 PASS
 
-- [ ] **Step 5: 提交**
+- [x] **Step 5: 提交**
 
 ```bash
 git add src/ai_culti_demo/farmland_stability/precompute.py tests/test_precompute.py
