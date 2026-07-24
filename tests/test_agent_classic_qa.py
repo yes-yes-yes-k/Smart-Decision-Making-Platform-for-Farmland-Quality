@@ -282,6 +282,46 @@ def test_router_xlsx_three_ends_coverage():
     assert router.identify_role("我的田这块地施多少") == "farmer"
 
 
+def test_all_six_agents_simulated_flag():
+    """6 个 agent 对代表性经典问题均返回 simulated=True 且 answer 非空"""
+    from framework.agents.specialized.stability_risk_agent import StabilityRiskAgent
+    from framework.agents.specialized.potential_agent import PotentialAssessmentAgent
+    from framework.agents.specialized.problem_agent import ProblemIdentificationAgent
+    from framework.agents.specialized.acidification_agent import AcidificationRemediationAgent
+    from framework.agents.specialized.organic_matter_agent import OrganicMatterAgent
+    from framework.agents.specialized.fertility_ml_agent import FertilityMLAgent
+
+    cases = [
+        (StabilityRiskAgent(), "查询区域内耕地质量等级整体稳定吗？"),
+        (PotentialAssessmentAgent(), "辖区耕地质量提升的总体潜力有多大？"),
+        (ProblemIdentificationAgent(), "全省耕地质量存在哪些问题？"),
+        (AcidificationRemediationAgent(), "查询区域内农用地土壤酸化程度如何？"),
+        (OrganicMatterAgent(), "全省耕地土壤有机质含量如何？"),
+    ]
+    for agent, q in cases:
+        out = agent.answer_question(q, {})
+        assert out.get("simulated") is True, f"{agent.name} 未标记 simulated"
+        assert out.get("answer"), f"{agent.name} answer 为空"
+
+
+def test_fertility_ml_simulated_with_mock(monkeypatch):
+    """model-6 需 mock model_6_execution 后验证 simulated"""
+    from framework.agents.specialized.fertility_ml_agent import FertilityMLAgent
+    monkeypatch.setattr(
+        "framework.agents.specialized.fertility_ml_agent.model_6_execution",
+        lambda data: {
+            "status": "success",
+            "soc_prediction": 12.5, "soc_confidence": 0.91,
+            "dose_prediction": 150.0, "dose_confidence": 0.47,
+            "dose_warning": "Dose 模型 R²=0.47",
+            "imputed_features": [], "imputation_applied": False,
+            "model_version": "ETR_v1_20260713",
+        })
+    out = FertilityMLAgent().answer_question("我的田肥力怎么样？", {"data": {"pH": 6.5}})
+    assert out.get("simulated") is True
+    assert out.get("answer")
+
+
 if __name__ == "__main__":
     test_stability_overall_province()
     test_stability_weak_county_list()
@@ -309,4 +349,6 @@ if __name__ == "__main__":
     test_router_farmer_agents()
     test_router_unknown_role_fallback_farmer()
     test_router_xlsx_three_ends_coverage()
+    test_all_six_agents_simulated_flag()
+    test_fertility_ml_simulated_with_mock(None)
     print("\nmodel-1/2/3/4/5/6 经典 Q&A 测试通过！")
