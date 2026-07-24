@@ -138,6 +138,66 @@ def test_type_order_no_cross_collision():
     assert not any("有机质" in kw for kw in QUESTION_TYPE_3_KEYWORDS)
 
 
+def test_type4_soc_query():
+    """model-6 SOC 查询 → TYPE_4"""
+    qt, _ = _identify("我的田土壤有机碳含量大概多少？")
+    assert qt == 4
+
+
+def test_type4_dose_query():
+    """model-6 Dose 查询 → TYPE_4"""
+    qt, _ = _identify("我这块地大概需要施多少有机肥？")
+    assert qt == 4
+
+
+def test_type4_straw_query():
+    """秸秆还田 → TYPE_4"""
+    qt, _ = _identify("秸秆还田每亩施用量多少？")
+    assert qt == 4
+
+
+def test_type2_farmer_severity():
+    """农户酸化严重 → TYPE_2"""
+    qt, _ = _identify("我的这块田酸化严重吗？")
+    assert qt == 2
+
+
+def test_unrelated_question_returns_zero():
+    """无关问题 relevance 低 → TYPE_0"""
+    qt, _ = _identify("今天天气怎么样？")
+    assert qt == 0
+
+
+def test_all_xlsx_classic_questions_routed():
+    """xlsx 全部经典问题均能路由到非 0 类型（覆盖性断言）"""
+    cases = [
+        ("查询区域内耕地质量等级整体稳定吗？", 1),
+        ("查询区域内哪些高等级耕地存在退化风险？", 1),
+        ("本县哪些乡镇或地块等级稳定性较弱，需要现场复核？", 1),
+        ("我的这块田质量等级稳不稳？", 1),
+        ("查询区域内哪些对象需要纳入重点关注清单？", 1),
+        ("辖区耕地质量提升的总体潜力有多大？可增产多少粮食？", 3),
+        ("我们县划定的优先改良片区具体在哪几个村？每块潜力多大？", 3),
+        ("我这块地到底有啥毛病？", 3),
+        ("全省耕地质量存在哪些问题？", 3),
+        ("县/乡镇里的耕地在哪些方面有问题", 3),
+        ("查询区域内农用地土壤酸化程度如何，不同酸化等级比例分别多少？", 2),
+        ("我的田酸化了，pH是5.0，我要施加多少碱性调理剂可以治理好？", 2),
+        ("查询区域内不同土地利用类型的酸化程度", 2),
+        ("我的这块田酸化严重吗？", 2),
+        ("全省耕地土壤有机质含量如何，空间分布情况？", 4),
+        ("为了提升耕地土壤有机质，有机肥或者秸秆每亩施用量多少？", 4),
+        ("本县耕地土壤有机质平均含量是多少？", 4),
+        ("耕地有机质含量低的原因是什么？", 4),
+        ("我的田肥力怎么样？", 4),
+        ("我的田土壤有机碳含量大概多少？", 4),
+        ("我这块地大概需要施多少有机肥？", 4),
+    ]
+    for q, expected in cases:
+        qt, _ = _identify(q)
+        assert qt == expected, f"问题「{q}」期望 TYPE_{expected}，实际 TYPE_{qt}"
+
+
 if __name__ == "__main__":
     test_type1_stability_province_question()
     test_type1_stability_county_question()
@@ -157,4 +217,10 @@ if __name__ == "__main__":
     test_type4_county_organic_average()
     test_keyword_match_priority_over_vector()
     test_type_order_no_cross_collision()
+    test_type4_soc_query()
+    test_type4_dose_query()
+    test_type4_straw_query()
+    test_type2_farmer_severity()
+    test_unrelated_question_returns_zero()
+    test_all_xlsx_classic_questions_routed()
     print("\n全部问题类型关键词测试通过！")
