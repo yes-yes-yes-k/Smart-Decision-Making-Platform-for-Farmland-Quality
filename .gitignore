@@ -24,3 +24,6 @@ response.json
 
 # 忽略训练过程临时文件
 *.pkl.bak
+
+# Superpowers 技能运行时目录
+.superpowers/
