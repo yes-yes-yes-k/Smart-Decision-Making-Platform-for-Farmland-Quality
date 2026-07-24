@@ -1140,9 +1140,9 @@ git commit -m "feat(sync-models): 更新 Problem/Acidification Agent 回复模�
 - Consumes: delta spec 模型 5/6 scenario；D1（model 6 综合地力表述）
 - Produces: model-5 新增"县域有机质平均含量""低值原因"分支；model-6 `_format_both` 文案含"综合地力"
 
-- [ ] **Step 1: 追加失败测试（model-5/model-6 经典 Q&A）**
+- [x] **Step 1: 追加失败测试（model-5/model-6 经典 Q&A）**
 
-在 `tests/test_agent_classic_qa.py` 的 `if __name__` 块之前追加：
+在 `tests/test_agent_classic_qa.py` 的 `if __name__` 块之前追加（断言已按「收紧断言」方案收紧，禁止 `or` 宽泛关键词）：
 
 ```python
 def test_organic_content_overall():
@@ -1232,12 +1232,14 @@ def test_fertility_ml_dose_query(monkeypatch):
 
 更新 `if __name__ == "__main__":` 块追加这些用例调用。
 
-- [ ] **Step 2: 运行测试确认失败**
+- [x] **Step 2: 运行测试确认失败**
 
 Run: `python -m pytest tests/test_agent_classic_qa.py -v -k "organic or fertility_ml"`
 Expected: `test_organic_county_average` / `test_organic_low_value_reason` 可能 FAIL（当前分支未覆盖"本县""原因"）；`test_fertility_ml_overall_diagnosis` 中"综合地力"断言可能 FAIL（当前 `_format_both` 用"综合肥力诊断"）
 
-- [ ] **Step 3: 更新 OrganicMatterAgent.answer_question**
+**实际**: 3 FAIL / 4 PASS（4 PASS 为现有实现已含目标子串的回归保护用例；3 FAIL 驱动新分支实现）
+
+- [x] **Step 3: 更新 OrganicMatterAgent.answer_question**
 
 将 `framework/agents/specialized/organic_matter_agent.py` 的 `answer_question` 方法（第 71-119 行）替换为：
 
@@ -1323,7 +1325,7 @@ Expected: `test_organic_county_average` / `test_organic_low_value_reason` 可能
         })
 ```
 
-- [ ] **Step 4: 更新 FertilityMLAgent._format_both 文案对齐"综合地力"**
+- [x] **Step 4: 更新 FertilityMLAgent._format_both 文案对齐"综合地力"**
 
 在 `framework/agents/specialized/fertility_ml_agent.py` 的 `_format_both` 方法（第 127-156 行）中，将返回的 `answer` 字符串替换为含"综合地力"表述。修改 `return MockDataLoader.mark_simulated({` 前的 answer 赋值：
 
@@ -1347,22 +1349,24 @@ Expected: `test_organic_county_average` / `test_organic_low_value_reason` 可能
 
 注意：仅修改 `answer` 字符串首行，`evidence`/`sources` 保持不变；`imputation_note`/`fallback_note` 逻辑保持不变。
 
-- [ ] **Step 5: 运行测试确认通过**
+- [x] **Step 5: 运行测试确认通过**
 
 Run: `python -m pytest tests/test_agent_classic_qa.py -v -k "organic or fertility_ml"`
 Expected: 全部 PASS
 
-- [ ] **Step 6: 回归 model-6 单元测试**
+- [x] **Step 6: 回归 model-6 单元测试**
 
 Run: `python -m pytest tests/test_agent_specialized.py tests/test_fertility_ml_prediction.py -v`
 Expected: 全部 PASS（`test_fertility_ml_agent_answer_fertility_keywords` 断言 evidence 含 soc/dose，未断言 answer 文案，不受影响）
 
-- [ ] **Step 7: Commit**
+- [x] **Step 7: Commit**
 
 ```bash
 git add framework/agents/specialized/organic_matter_agent.py framework/agents/specialized/fertility_ml_agent.py tests/test_agent_classic_qa.py
 git commit -m "feat(sync-models): 更新 Organic/FertilityML Agent 回复模板对齐综合地力表述(D1/D4)"
 ```
+
+**Commit**: 3545aad — 21 passed (test_agent_classic_qa.py 全量) + 37 passed (回归 specialized + fertility_ml_prediction)。无风险信号。Minor concern：`__main__` 块的 monkeypatch 用例脚本直跑会失败，pytest 路径正常，接受。
 
 ---
 

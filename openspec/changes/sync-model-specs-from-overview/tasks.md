@@ -24,8 +24,8 @@
 - [x] 3.2 更新 `PotentialAssessmentAgent.answer_question` 的回复模板
 - [x] 3.3 更新 `ProblemIdentificationAgent.answer_question` 的回复模板
 - [x] 3.4 更新 `AcidificationRemediationAgent.answer_question` 的回复模板（含 GB/T 42817-2023 标准引用）
-- [ ] 3.5 更新 `OrganicMatterAgent.answer_question` 的回复模板
-- [ ] 3.6 更新 `FertilityMLAgent.answer_question` 的回复模板（保留 ML 预测，对齐综合地力描述）
+- [x] 3.5 更新 `OrganicMatterAgent.answer_question` 的回复模板
+- [x] 3.6 更新 `FertilityMLAgent.answer_question` 的回复模板（保留 ML 预测，对齐综合地力描述）
 
 ## 4. 路由与角色映射
 
