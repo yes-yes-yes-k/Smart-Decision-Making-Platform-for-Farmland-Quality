@@ -876,9 +876,9 @@ git commit -m "feat(sync-models): 更新 StabilityRisk/Potential Agent 回复模
 - Consumes: delta spec 模型 3/4 scenario；GB/T 42817-2023 与 NY/T 443-2019 标准引用
 - Produces: model-3 新增"农户地块问题"分支；model-4 新增"不同土地利用类型酸化""农户酸化判断"分支，治理分支文案引用 GB/T 42817-2023 与 NY/T 443-2019
 
-- [ ] **Step 1: 追加失败测试（model-3/model-4 经典 Q&A）**
+- [x] **Step 1: 追加失败测试（model-3/model-4 经典 Q&A）**
 
-在 `tests/test_agent_classic_qa.py` 的 `if __name__` 块之前追加：
+在 `tests/test_agent_classic_qa.py` 的 `if __name__` 块之前追加（断言已按「收紧断言」方案收紧，禁止 `or` 宽泛关键词）：
 
 ```python
 def test_problem_overall_factors():
@@ -942,12 +942,14 @@ def test_acidification_farmer_severity():
 
 更新 `if __name__ == "__main__":` 块追加这些用例调用。
 
-- [ ] **Step 2: 运行测试确认失败**
+- [x] **Step 2: 运行测试确认失败**
 
 Run: `python -m pytest tests/test_agent_classic_qa.py -v -k "problem or acidification"`
 Expected: `test_acidification_remediation_dosage_with_standard` FAIL（当前治理分支未引用标准）；部分农户端/土地利用用例可能 FAIL
 
-- [ ] **Step 3: 更新 ProblemIdentificationAgent.answer_question**
+**实际**: 6 FAIL + 1 PASSED（test_problem_overall_factors 旧实现省市端分支已含"主要障碍因素"字符串而通过；6 个失败足以驱动新分支实现）
+
+- [x] **Step 3: 更新 ProblemIdentificationAgent.answer_question**
 
 将 `framework/agents/specialized/problem_agent.py` 的 `answer_question` 方法（第 71-103 行）替换为：
 
@@ -1016,7 +1018,7 @@ Expected: `test_acidification_remediation_dosage_with_standard` FAIL（当前治
         })
 ```
 
-- [ ] **Step 4: 更新 AcidificationRemediationAgent.answer_question**
+- [x] **Step 4: 更新 AcidificationRemediationAgent.answer_question**
 
 将 `framework/agents/specialized/acidification_agent.py` 的 `answer_question` 方法（第 70-117 行）替换为：
 
@@ -1104,22 +1106,24 @@ Expected: `test_acidification_remediation_dosage_with_standard` FAIL（当前治
         })
 ```
 
-- [ ] **Step 5: 运行测试确认通过**
+- [x] **Step 5: 运行测试确认通过**
 
 Run: `python -m pytest tests/test_agent_classic_qa.py -v -k "problem or acidification"`
 Expected: 全部 PASS
 
-- [ ] **Step 6: 回归现有 agent 单元测试**
+- [x] **Step 6: 回归现有 agent 单元测试**
 
 Run: `python -m pytest tests/test_agent_specialized.py -v -k "problem or acidification"`
 Expected: 全部 PASS
 
-- [ ] **Step 7: Commit**
+- [x] **Step 7: Commit**
 
 ```bash
 git add framework/agents/specialized/problem_agent.py framework/agents/specialized/acidification_agent.py tests/test_agent_classic_qa.py
 git commit -m "feat(sync-models): 更新 Problem/Acidification Agent 回复模板含 GB/T 42817 与 NY/T 443 引用(D4)"
 ```
+
+**Commit**: ee7afe98 — 14 passed (test_agent_classic_qa.py 全量) + 6 passed (回归 problem/acidification)。无风险信号命中。
 
 ---
 
