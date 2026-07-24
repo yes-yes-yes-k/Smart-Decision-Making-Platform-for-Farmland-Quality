@@ -40,7 +40,7 @@ QUESTION_TYPE_2_KEYWORDS = [
 ]
 QUESTION_TYPE_3_KEYWORDS = [
     "潜力", "障碍因素", "主要问题", "障碍诊断", "潜力分布", "障碍组合",
-    "提升潜力", "地块诊断", "毛病", "障碍等级",
+    "提升潜力", "地块诊断", "毛病", "障碍等级", "哪些问题", "有问题",
 ]
 QUESTION_TYPE_4_KEYWORDS = [
     "有机质", "有机肥", "秸秆", "肥力", "综合地力", "有机碳", "SOC", "soc",
@@ -141,12 +141,15 @@ def _check_relevance_keyword(question: str) -> float:
     return min(match_count / 3, 1.0)
 
 def identify_question_type(question: str) -> tuple[int, float]:
+    # D5: 关键词匹配优先于向量匹配——先查关键词，命中（返回非 0）即采用，
+    # 即使向量匹配的相关性分数较高也不覆盖关键词结果
+    result = _identify_question_type_keyword(question)
+    if result[0] != 0:
+        return result
+    # 关键词未命中，降级到向量匹配（embedding 可用时）
     if EMBEDDING_AVAILABLE and embedding_service.is_available():
-        result = _identify_question_type_vector(question)
-        # 向量匹配置信度不足（返回 0）时，降级到关键词匹配，确保 xlsx 经典问题路由正确（D5）
-        if result[0] != 0:
-            return result
-    return _identify_question_type_keyword(question)
+        return _identify_question_type_vector(question)
+    return result
 
 def _identify_question_type_vector(question: str) -> tuple[int, float]:
     query_vector = embedding_service.embed_query(question)
