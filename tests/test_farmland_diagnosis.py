@@ -288,3 +288,57 @@ def test_diagnose_flow():
         query_result = query_parcel('0', db_path)
         assert query_result['status'] == 'ok'
         assert 'diagnosis' in query_result
+
+
+# Acidification tests
+from src.ai_culti_demo.farmland_diagnosis.acidification import classify_acidification, generate_amendment, evaluate_acidification, query_acidification
+
+def test_classify_acidification_severe():
+    result = classify_acidification(4.0, 'HN')
+    assert result['level'] == 'severe'
+    assert result['description'] == '强酸性'
+
+def test_classify_acidification_moderate():
+    result = classify_acidification(5.0, 'HN')
+    assert result['level'] == 'moderate'
+    assert result['description'] == '酸性'
+
+def test_classify_acidification_slight():
+    result = classify_acidification(6.0, 'HN')
+    assert result['level'] == 'slight'
+    assert result['description'] == '微酸性'
+
+def test_classify_acidification_neutral():
+    result = classify_acidification(7.0, 'HN')
+    assert result['level'] == 'neutral'
+    assert result['description'] == '中性'
+
+def test_generate_amendment_severe():
+    result = generate_amendment(4.0, 10, 'HN')
+    assert result['need_amendment'] == True
+    assert len(result['amendment_plan']) > 0
+
+def test_generate_amendment_no_need():
+    result = generate_amendment(7.0, 20, 'HN')
+    assert result['need_amendment'] == False
+    assert result['amendment_plan'] == []
+
+def test_evaluate_acidification_flow():
+    with tempfile.TemporaryDirectory() as tmpdir:
+        csv_path = os.path.join(tmpdir, 'test.csv')
+        with open(csv_path, 'w', encoding='utf-8') as f:
+            f.write('''一级农业区,二级农业区,pH,有机质,有效磷,速效钾,容重,耕层质地,灌溉能力,排水能力,地形部位,质地构型,有效土层,耕层厚度
+华南区,闽南粤中农林水产区,4.5,10,5,50,1.8,粘土,基本满足,基本满足,丘陵岗地,夹砂型,60,15
+''')
+
+        db_path = os.path.join(tmpdir, 'test.db')
+        bulk_evaluate(csv_path, db_path)
+        diagnose(db_path)  # 需要先运行诊断确保 is_ready 返回 True
+        result = evaluate_acidification(db_path)
+
+        assert result['status'] == 'ok'
+        assert result['evaluated'] == 1
+
+        query_result = query_acidification('0', db_path)
+        assert query_result['status'] == 'ok'
+        assert 'acidification' in query_result
