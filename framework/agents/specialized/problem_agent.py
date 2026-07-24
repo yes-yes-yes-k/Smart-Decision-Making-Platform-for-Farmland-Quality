@@ -80,24 +80,53 @@ class ProblemIdentificationAgent(BaseAgent):
         if isinstance(model2, dict) and "target_ph" in model2:
             target_ph_note = f" 结合模型2目标 pH={model2['target_ph']}，"
 
-        answer = (
-            f"主要障碍因素：{', '.join(primary) if primary else '无明显主要障碍'}；"
-            f"次要障碍因素：{', '.join(secondary) if secondary else '无明显次要障碍'}。"
-            f"{target_ph_note}"
-            f"障碍组合：{', '.join(combinations) if combinations else '无明显复合障碍'}。"
-        )
-        evidence = [
-            {"factor": f, "severity": result["severity_scores"][f], "type": "primary"}
-            for f in primary[:3]
-        ]
-        evidence.extend([
-            {"combination": c} for c in combinations
-        ])
-        if isinstance(model2, dict) and "target_ph" in model2:
-            evidence.append({"target_ph_from_model2": model2["target_ph"]})
+        # 农户端：简单语言说明
+        if "有没有问题" in question or ("我这块地" in question and "问题" in question):
+            answer = (
+                f"您的地块耕地质量等级诊断：主要障碍为 {', '.join(primary) if primary else '无明显主要障碍'}。"
+                f"低等级指标：{', '.join(primary[:3]) if primary else '无'}。"
+            )
+            evidence = [
+                {"factor": f, "severity": result["severity_scores"][f], "type": "primary"}
+                for f in primary[:3]
+            ]
+            confidence = 0.80
+        # 县域端：障碍诊断统计
+        elif "县" in question or "乡镇" in question or "方面" in question:
+            answer = (
+                f"县域障碍诊断：主要障碍因素 {', '.join(primary) if primary else '无明显主要障碍'}；"
+                f"次要障碍因素 {', '.join(secondary) if secondary else '无明显次要障碍'}。"
+                f"{target_ph_note}"
+                f"每个指标按 1~10 级频数统计，最后一列标注是否主要/次要障碍因素。"
+                f"障碍组合：{', '.join(combinations) if combinations else '无明显复合障碍'}。"
+            )
+            evidence = [
+                {"factor": f, "severity": result["severity_scores"][f], "type": "primary"}
+                for f in primary[:3]
+            ]
+            evidence.extend([{"combination": c} for c in combinations])
+            if isinstance(model2, dict) and "target_ph" in model2:
+                evidence.append({"target_ph_from_model2": model2["target_ph"]})
+            confidence = 0.83
+        # 省市端：主要问题/障碍因素识别
+        else:
+            answer = (
+                f"主要障碍因素：{', '.join(primary) if primary else '无明显主要障碍'}；"
+                f"次要障碍因素：{', '.join(secondary) if secondary else '无明显次要障碍'}。"
+                f"{target_ph_note}"
+                f"障碍组合：{', '.join(combinations) if combinations else '无明显复合障碍'}。"
+            )
+            evidence = [
+                {"factor": f, "severity": result["severity_scores"][f], "type": "primary"}
+                for f in primary[:3]
+            ]
+            evidence.extend([{"combination": c} for c in combinations])
+            if isinstance(model2, dict) and "target_ph" in model2:
+                evidence.append({"target_ph_from_model2": model2["target_ph"]})
+            confidence = 0.83
 
         return MockDataLoader.mark_simulated({
             "answer": answer,
             "evidence": evidence,
-            "confidence": 0.83,
+            "confidence": confidence,
         })

@@ -69,6 +69,76 @@ def test_potential_farmer_plot_diagnosis():
     assert "地块诊断结论" in out["answer"]
 
 
+def test_problem_overall_factors():
+    """省市端：主要障碍因素"""
+    from framework.agents.specialized.problem_agent import ProblemIdentificationAgent
+    out = ProblemIdentificationAgent().answer_question("全省耕地质量存在哪些问题？", {})
+    assert out["simulated"] is True
+    # 收紧：实现产出 "主要障碍因素：..."
+    assert "主要障碍因素" in out["answer"]
+
+
+def test_problem_county_diagnosis():
+    """县域端：县/乡镇耕地障碍诊断"""
+    from framework.agents.specialized.problem_agent import ProblemIdentificationAgent
+    out = ProblemIdentificationAgent().answer_question("县/乡镇里的耕地在哪些方面有问题", {})
+    assert out["simulated"] is True
+    # 收紧：实现产出 "县域障碍诊断：..."
+    assert "县域障碍诊断" in out["answer"]
+
+
+def test_problem_farmer_simple_language():
+    """农户端：我这块地有没有问题（简单语言）"""
+    from framework.agents.specialized.problem_agent import ProblemIdentificationAgent
+    out = ProblemIdentificationAgent().answer_question("我这块地有没有问题？", {})
+    assert out["simulated"] is True
+    # 收紧：实现产出 "您的地块耕地质量等级诊断：..."
+    assert "地块耕地质量等级诊断" in out["answer"]
+
+
+def test_acidification_degree_with_standard():
+    """酸化程度判定引用 GB/T 42817-2023"""
+    from framework.agents.specialized.acidification_agent import AcidificationRemediationAgent
+    out = AcidificationRemediationAgent().answer_question(
+        "查询区域内农用地土壤酸化程度如何，不同酸化等级比例分别多少？", {})
+    assert out["simulated"] is True
+    # 收紧：实现产出 "酸化程度为{degree}（依据 GB/T 42817-2023 分级）"
+    assert "酸化程度为" in out["answer"]
+    assert "GB/T 42817-2023" in out["answer"]
+
+
+def test_acidification_remediation_dosage_with_standard():
+    """调理剂施用量引用 GB/T 42817-2023 与 NY/T 443-2019"""
+    from framework.agents.specialized.acidification_agent import AcidificationRemediationAgent
+    out = AcidificationRemediationAgent().answer_question(
+        "我的田酸化了，pH是5.0，我要施加多少碱性调理剂可以治理好？", {})
+    assert out["simulated"] is True
+    # 收紧：实现产出 "建议施石灰 {lime_dosage} kg/亩..." + "依据 GB/T 42817-2023...NY/T 443-2019..."
+    assert "建议施石灰" in out["answer"]
+    assert "GB/T 42817-2023" in out["answer"]
+    assert "NY/T 443-2019" in out["answer"]
+
+
+def test_acidification_landuse_types():
+    """不同土地利用类型酸化程度"""
+    from framework.agents.specialized.acidification_agent import AcidificationRemediationAgent
+    out = AcidificationRemediationAgent().answer_question(
+        "查询区域内不同土地利用类型的酸化程度", {})
+    assert out["simulated"] is True
+    # 收紧：实现产出 "不同土地利用类型酸化程度：..."
+    assert "不同土地利用类型酸化程度" in out["answer"]
+
+
+def test_acidification_farmer_severity():
+    """农户端：我的这块田酸化严重吗"""
+    from framework.agents.specialized.acidification_agent import AcidificationRemediationAgent
+    out = AcidificationRemediationAgent().answer_question("我的这块田酸化严重吗？", {})
+    assert out["simulated"] is True
+    # 收紧：实现产出 "您的地块土壤 pH=...酸化等级为...（依据 GB/T 42817-2023...）"
+    assert "酸化等级为" in out["answer"]
+    assert "GB/T 42817-2023" in out["answer"]
+
+
 if __name__ == "__main__":
     test_stability_overall_province()
     test_stability_weak_county_list()
@@ -77,4 +147,11 @@ if __name__ == "__main__":
     test_potential_overall_uplift()
     test_potential_county_distribution()
     test_potential_farmer_plot_diagnosis()
-    print("\nmodel-1/model-2 经典 Q&A 测试通过！")
+    test_problem_overall_factors()
+    test_problem_county_diagnosis()
+    test_problem_farmer_simple_language()
+    test_acidification_degree_with_standard()
+    test_acidification_remediation_dosage_with_standard()
+    test_acidification_landuse_types()
+    test_acidification_farmer_severity()
+    print("\nmodel-1/model-2/model-3/model-4 经典 Q&A 测试通过！")
