@@ -84,3 +84,54 @@ def test_main_full_flow_with_mocks():
         mock_storage.create_tables.assert_called_once()
         mock_storage.save_results.assert_called_once()
         m_save_final.assert_called_once()
+
+
+def test_adapter_bulk_evaluate_csv_delegates():
+    """验证 adapter.bulk_evaluate_csv 委托给 bulk_evaluate 并捕获异常。"""
+    from framework.core_engine.adapter import CoreEngine
+
+    engine = CoreEngine()
+
+    with patch('src.ai_culti_demo.farmland_diagnosis.evaluation.bulk_evaluate', return_value={"status": "ok", "processed": 5}) as m:
+        result = engine.bulk_evaluate_csv("/fake/test.csv")
+        assert result["status"] == "ok"
+        assert result["processed"] == 5
+        m.assert_called_once_with("/fake/test.csv")
+
+
+def test_adapter_bulk_evaluate_csv_error_handling():
+    """验证 adapter.bulk_evaluate_csv 捕获异常返回错误字典。"""
+    from framework.core_engine.adapter import CoreEngine
+
+    engine = CoreEngine()
+
+    with patch('src.ai_culti_demo.farmland_diagnosis.evaluation.bulk_evaluate', side_effect=RuntimeError("boom")):
+        result = engine.bulk_evaluate_csv("/fake/test.csv")
+        assert result["status"] == "error"
+        assert result["error"]["code"] == "BULK_EVALUATE_ERROR"
+        assert "boom" in result["error"]["message"]
+
+
+def test_adapter_precompute_stability_delegates():
+    """验证 adapter.precompute_stability 委托给 precompute.main。"""
+    from framework.core_engine.adapter import CoreEngine
+
+    engine = CoreEngine()
+    manifest = {"current_filename": "2024.shp", "history_filenames": ["2018.shp"], "years": [2018, 2024]}
+
+    with patch('src.ai_culti_demo.farmland_stability.precompute.main', return_value={"status": "ok", "processed": 10}) as m:
+        result = engine.precompute_stability("/fake/dir", manifest)
+        assert result["status"] == "ok"
+        m.assert_called_once_with("/fake/dir", manifest)
+
+
+def test_adapter_check_grade_eval_deployment_ok():
+    """验证 adapter.check_grade_eval_deployment 返回 deployment_ok。"""
+    from framework.core_engine.adapter import CoreEngine
+
+    engine = CoreEngine()
+
+    with patch('src.ai_culti_demo.farmland_grade_eval.runner.FarmlandGradeRunner') as MockRunner:
+        MockRunner.return_value.check_deployment.return_value = {"exe_exists": True, "dat_exists": True, "ready": True}
+        result = engine.check_grade_eval_deployment()
+        assert result["deployment_ok"] is True

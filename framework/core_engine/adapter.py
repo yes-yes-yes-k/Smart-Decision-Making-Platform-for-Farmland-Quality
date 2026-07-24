@@ -112,4 +112,41 @@ class CoreEngine:
                 "error": {"code": "VERIFY_ERROR", "message": str(e)}
             }
 
+    def _ensure_data_import_imports(self):
+        """延迟导入数据导入相关模块，避免在 _ensure_import 中引入 geopandas 等重依赖。"""
+        if not hasattr(self, '_data_import_ready'):
+            from src.ai_culti_demo.farmland_diagnosis.evaluation import bulk_evaluate
+            from src.ai_culti_demo.farmland_stability.precompute import main as precompute_main
+            from src.ai_culti_demo.farmland_grade_eval.runner import FarmlandGradeRunner
+            self._bulk_evaluate = bulk_evaluate
+            self._precompute_main = precompute_main
+            self._FarmlandGradeRunner = FarmlandGradeRunner
+            self._data_import_ready = True
+
+    def bulk_evaluate_csv(self, csv_path: str) -> Dict[str, Any]:
+        self._ensure_import()
+        self._ensure_data_import_imports()
+        try:
+            return self._bulk_evaluate(csv_path)
+        except Exception as e:
+            return {"status": "error", "error": {"code": "BULK_EVALUATE_ERROR", "message": str(e)}}
+
+    def precompute_stability(self, shapefile_dir: str, manifest: Dict[str, Any]) -> Dict[str, Any]:
+        self._ensure_import()
+        self._ensure_data_import_imports()
+        try:
+            return self._precompute_main(shapefile_dir, manifest)
+        except Exception as e:
+            return {"status": "error", "error": {"code": "PRECOMPUTE_ERROR", "message": str(e)}}
+
+    def check_grade_eval_deployment(self) -> Dict[str, Any]:
+        self._ensure_import()
+        self._ensure_data_import_imports()
+        try:
+            runner = self._FarmlandGradeRunner()
+            result = runner.check_deployment()
+            return {"deployment_ok": True, "detail": result} if result else {"deployment_ok": False, "detail": None}
+        except Exception as e:
+            return {"deployment_ok": False, "error": {"code": "DEPLOYMENT_CHECK_ERROR", "message": str(e)}}
+
 core_engine = CoreEngine()
