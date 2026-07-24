@@ -654,3 +654,30 @@ def _identify_question_type_keyword(question: str) -> tuple[int, float]:
 ### 6.4 farmland-acidification-improvement-model/spec.md
 
 补充改良方案生成的混合方式说明（基于障碍等级 + 指标数值计算）。
+
+## 7. Implementation Divergence
+
+### 7.1 模型3 数据导入接口（本期不实施）
+
+**偏差说明**：`farmland-obstacle-diagnosis-model/spec.md` 中定义了「模型3 数据导入接口」Requirement，要求支持上传新 CSV 数据并触发重新评价和诊断。本期 change 未实施该接口，tasks.md 9.6 已明确标注「本期不实施」。
+
+**原因**：本期 change 聚焦三个核心模型的集成（模型1 稳定性风险、耕地质量等级 exe、模型3 障碍诊断与酸化改良），优先保证核心评价和诊断能力的可用性。数据导入接口属于运营增强功能，可在核心模型稳定运行后再行实施。
+
+**影响范围**：
+- 用户当前需通过手动部署 CSV 文件到 `data/farmland_diagnosis/` 目录并运行批量评价脚本更新诊断结果
+- 不影响核心的障碍诊断查询、酸化改良方案生成和综合诊断能力
+
+**后续实施计划**：
+
+将在单独的 OpenSpec change 中实施「数据导入接口」，计划包含：
+
+1. **API 端点设计**：新增 `POST /api/v1/data/import` 接口，支持上传 CSV 文件
+2. **字段校验**：上传时校验 CSV 必需字段（一级农业区、二级农业区、12 项指标），缺失字段时拒绝导入并返回缺失字段列表
+3. **文件部署**：校验通过后将文件部署到 `data/farmland_diagnosis/` 目录
+4. **触发重新评价**：导入成功后提示用户触发批量评价（`evaluate_acidification` 或 CLI 命令）以更新诊断结果
+5. **shapefile 导入扩展**：同步支持模型1 的 shapefile 导入，触发离线预计算
+6. **.dat 数据库更新**：支持耕地质量等级 exe 的 .dat 数据库替换
+
+**建议 change 名称**：`add-data-import-interface`
+**建议优先级**：P2（核心模型稳定运行后实施）
+**预计影响 spec**：`farmland-obstacle-diagnosis-model`（已定义 Requirement）、`farmland-stability-risk-model`（新增 shapefile 导入 Requirement）
