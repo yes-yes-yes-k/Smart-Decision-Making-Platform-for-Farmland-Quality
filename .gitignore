@@ -27,3 +27,7 @@ response.json
 
 # Superpowers 技能运行时目录
 .superpowers/
+
+# Git worktrees
+.worktrees/
+worktrees/
