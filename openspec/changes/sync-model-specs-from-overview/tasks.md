@@ -35,8 +35,8 @@
 
 ## 5. 测试
 
-- [ ] 5.1 创建 `tests/test_model_specs_sync.py` 测试各模型 spec 与 xlsx 的输入输出定义一致性
-- [ ] 5.2 更新 `tests/test_question_type_keywords.py` 测试 xlsx 经典问题的路由正确性
+- [x] 5.1 创建 `tests/test_model_specs_sync.py` 测试各模型 spec 与 xlsx 的输入输出定义一致性
+- [x] 5.2 更新 `tests/test_question_type_keywords.py` 测试 xlsx 经典问题的路由正确性
 - [ ] 5.3 创建 `tests/test_agent_classic_qa.py` 测试各 agent 能回答 xlsx 3 角色经典问题
 - [ ] 5.4 运行全量测试确保不破坏现有功能
 

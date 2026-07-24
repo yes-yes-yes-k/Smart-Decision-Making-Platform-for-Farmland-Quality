@@ -1474,7 +1474,7 @@ git commit -m "test(sync-models): 固化 RoleRouter 三角色路由与 xlsx 三�
 - Consumes: Task 1/2/3 校对后的 delta spec 文件
 - Produces: 断言 delta spec 含 6 模型输入输出关键词、model 6 名称已回退、role-based-routing TYPE 描述与 D5 一致
 
-- [ ] **Step 1: 写 spec 一致性测试**
+- [x] **Step 1: 写 spec 一致性测试**
 
 创建 `tests/test_model_specs_sync.py`：
 
@@ -1630,7 +1630,7 @@ git commit -m "test(sync-models): 新增 delta spec 与 xlsx 一致性测试(D1/
 
 **说明：** Task 4/5 已覆盖大部分经典问题。本任务补全剩余边界用例（如 model-6 SOC/Dose 单独问题、model-2 目标 pH 内部计算不入路由），并运行全文件确认。
 
-- [ ] **Step 1: 补全边界用例**
+- [x] **Step 1: 补全边界用例**
 
 在 `tests/test_question_type_keywords.py` 的 `if __name__` 块之前追加：
 
@@ -1697,17 +1697,22 @@ def test_all_xlsx_classic_questions_routed():
 
 更新 `if __name__ == "__main__":` 块追加这些用例调用。
 
-- [ ] **Step 2: 运行全文件测试**
+- [x] **Step 2: 运行全文件测试**
 
 Run: `python -m pytest tests/test_question_type_keywords.py -v`
 Expected: 全部 PASS（含 `test_all_xlsx_classic_questions_routed` 的 21 条经典问题）
 
-- [ ] **Step 3: Commit**
+**实际**: 24 passed。未修改 nodes.py（vector 路径正常处理路由）。
+**DONE_WITH_CONCERNS**: 新测试首次运行即 GREEN（无 RED），因 `embedding_service.is_available()` 返回 True 走 vector 路径；keyword fallback 路径对「全省耕地质量存在哪些问题？」「县/乡镇里的耕地在哪些方面有问题」返回 TYPE_0（缺"问题"关键词），但生产路径正常。潜在脆弱点已记录，不在 Task 11 范围内修复。
+
+- [x] **Step 3: Commit**
 
 ```bash
 git add tests/test_question_type_keywords.py
 git commit -m "test(sync-models): 补全 xlsx 全部经典问题路由覆盖用例(D5)"
 ```
+
+**Commit**: 9b22245 — 24 passed。未修改 nodes.py。
 
 ---
 
