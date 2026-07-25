@@ -1,6 +1,6 @@
 workflow: full
 language: zh-CN
-phase: build
+phase: verify
 context_compression: off
 build_mode: subagent-driven-development
 build_pause: null
@@ -8,13 +8,13 @@ subagent_dispatch: confirmed
 tdd_mode: tdd
 review_mode: standard
 isolation: branch
-verify_mode: null
+verify_mode: full
 auto_transition: true
 base_ref: ce3c7c2fe3d0e2d7c1c7169141b60cc37d477d3d
 design_doc: docs/superpowers/specs/2026-07-25-data-import-interface-design.md
 plan: docs/superpowers/plans/2026-07-25-data-import-interface.md
 verify_result: pending
-verification_report: null
+verification_report: docs/superpowers/reports/2026-07-25-add-data-import-interface-verify.md
 branch_status: pending
 created_at: 2026-07-24
 verified_at: null
