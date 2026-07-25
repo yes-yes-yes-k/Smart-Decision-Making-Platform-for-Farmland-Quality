@@ -1,6 +1,6 @@
 workflow: full
 language: zh-CN
-phase: verify
+phase: archive
 context_compression: off
 build_mode: subagent-driven-development
 build_pause: null
@@ -13,11 +13,11 @@ auto_transition: true
 base_ref: 602f9b1614296020b51bd9f3a605be3a85d6f82b
 design_doc: docs/superpowers/specs/2026-07-25-add-parcel-id-and-type5-coverage-design.md
 plan: docs/superpowers/plans/2026-07-25-add-parcel-id-and-type5-coverage.md
-verify_result: pending
+verify_result: pass
 verification_report: docs/superpowers/reports/2026-07-25-add-parcel-id-and-type5-coverage-verify.md
 branch_status: handled
 created_at: 2026-07-25
-verified_at: null
+verified_at: 2026-07-25
 archived: false
 direct_override: null
 handoff_context: openspec/changes/add-parcel-id-and-type5-coverage/.comet/handoff/design-context.json
