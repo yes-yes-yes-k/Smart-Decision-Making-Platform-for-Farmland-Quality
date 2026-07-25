@@ -8,7 +8,7 @@ subagent_dispatch: confirmed
 tdd_mode: tdd
 review_mode: standard
 isolation: branch
-verify_mode: null
+verify_mode: full
 auto_transition: true
 base_ref: 602f9b1614296020b51bd9f3a605be3a85d6f82b
 design_doc: docs/superpowers/specs/2026-07-25-add-parcel-id-and-type5-coverage-design.md
