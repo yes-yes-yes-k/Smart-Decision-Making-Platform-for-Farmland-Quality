@@ -101,6 +101,11 @@ REFERENCE_QUESTIONS: Dict[int, List[str]] = {
         "我的田土壤有机碳含量大概多少",
         "我这块地大概需要施多少有机肥",
     ],
+    5: [
+        "我的田耕地质量等级是多少",
+        "查询地块的综合指数和障碍度排序",
+        "这块地的耕地质量等级评价结果",
+    ],
 }
 
 REFERENCE_VECTORS: Dict[int, List[List[float]]] = {}

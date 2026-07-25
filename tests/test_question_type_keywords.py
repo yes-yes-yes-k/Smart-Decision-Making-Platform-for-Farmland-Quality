@@ -247,6 +247,34 @@ def test_type5_keyword_function_direct():
     assert rel >= 0.3
 
 
+def test_reference_questions_has_type5():
+    """REFERENCE_QUESTIONS 应含 key 5（至少 3 个质量等级评价问题）"""
+    from framework.agents.nodes import REFERENCE_QUESTIONS
+    assert 5 in REFERENCE_QUESTIONS, "REFERENCE_QUESTIONS 缺少 key 5"
+    assert len(REFERENCE_QUESTIONS[5]) >= 3, (
+        f"REFERENCE_QUESTIONS[5] 应至少 3 个问题，实际 {len(REFERENCE_QUESTIONS.get(5, []))}"
+    )
+    print("✓ REFERENCE_QUESTIONS[5] 存在且含 >= 3 个问题")
+
+
+def test_type5_questions_routed_to_type5():
+    """REFERENCE_QUESTIONS[5] 的每个问题经 identify_question_type 返回 5"""
+    from framework.agents.nodes import REFERENCE_QUESTIONS
+    for q in REFERENCE_QUESTIONS[5]:
+        qt, _ = _identify(q)
+        assert qt == 5, f"type 5 问题「{q}」期望 TYPE_5，实际 TYPE_{qt}"
+
+
+def test_type5_questions_route_to_farmer():
+    """REFERENCE_QUESTIONS[5] 的每个问题经 RoleRouter 识别为 farmer"""
+    from framework.agents.nodes import REFERENCE_QUESTIONS
+    from framework.agents.router import RoleRouter
+    router = RoleRouter()
+    for q in REFERENCE_QUESTIONS[5]:
+        role = router.identify_role(q)
+        assert role == "farmer", f"type 5 问题「{q}」期望 farmer 角色，实际 {role}"
+
+
 if __name__ == "__main__":
     test_type1_stability_province_question()
     test_type1_stability_county_question()
@@ -278,4 +306,7 @@ if __name__ == "__main__":
     test_type5_keyword_branch_after_type4()
     test_type5_no_collision_with_type1()
     test_type5_keyword_function_direct()
+    test_reference_questions_has_type5()
+    test_type5_questions_routed_to_type5()
+    test_type5_questions_route_to_farmer()
     print("\n全部问题类型关键词测试通过！")
