@@ -4,24 +4,24 @@
 
 ## 当前状态
 
-- **plan task**: Task 10 — 文档更新（对应 tasks.md 第 8 节 8.1-8.5）+ 9.1 依赖确认
-- **阶段**: implementing
+- **plan task**: 全部完成 ✅ — 10/10 任务已完成，build 阶段结束
+- **阶段**: build 完成，待 verify
 - **review_mode**: standard
 - **tdd_mode**: tdd
 - **base-ref**: ce3c7c2fe3d0e2d7c1c7169141b60cc37d477d3d
 
 ## Task 10 派发记录
 
-- **派发时间**: 待派发
+- **派发时间**: 2026-07-25
 - **model**: sonnet
-- **允许修改文件**: data/farmland_diagnosis/README.md, data/farmland_stability/README.md, bin/farmland_quality_eval/README.md, docs/api/data_import.md, README.md
+- **允许修改文件**: 5 个文档文件
 - **RED/GREEN 证据**: N/A（文档任务无测试）
-- **实现提交哈希**: 待回报
+- **实现提交哈希**: bea66c1
 
 ## 审查-修复轮次
 
 - standard 模式：每任务 reviewer 仅风险任务触发，最多 1 轮；最终轻量审查 1 次
-- 当前任务轮次: 0/1（文档任务属低风险，不派发 reviewer）
+- 当前任务轮次: N/A（文档任务属低风险，未派发 reviewer）
 
 ## 已完成任务
 
@@ -63,6 +63,11 @@
 - 提交: b7d5ddb | 风险信号: 无（测试任务，真实 validator/deployer + mock trigger） → 未派发 reviewer
 - 测试: 5/5 PASS + 完整测试套件 47/47 PASS 无回归
 - 覆盖: CSV/shapefile/.dat 端到端 + 触发失败回滚 + 备份保留策略（预创建旧备份 + 1 次导入）
+
+### Task 10 — 文档更新 ✅
+- 提交: bea66c1 | 风险信号: 无（文档任务） → 未派发 reviewer
+- 改动: 5 files changed, 220 insertions(+), 1 deletion(-)
+- 覆盖: 3 个 data README + docs/api.md + 根 README.md（API 概览表 + 15→16 REST API）
 
 ## 已知问题
 

@@ -65,11 +65,11 @@
 
 ## 8. 文档更新
 
-- [ ] 8.1 更新 `data/farmland_diagnosis/README.md`：增加"通过 HTTP API 部署"小节，说明 `POST /api/v1/data/import` 用法和示例
-- [ ] 8.2 更新 `data/farmland_stability/README.md`：增加 shapefile zip + manifest.json 的打包说明和 API 调用示例
-- [ ] 8.3 更新 `bin/farmland_quality_eval/README.md`：增加 .dat 通过 API 部署的说明
-- [ ] 8.4 创建 `docs/api/data_import.md`（或在已有 API 文档中补充）：完整 API 契约、请求/响应示例、错误码表、manifest.json 格式说明
-- [ ] 8.5 更新项目根 README.md（若列有 API 端点清单）：补充 `/api/v1/data/import`
+- [x] 8.1 更新 `data/farmland_diagnosis/README.md`：增加"通过 HTTP API 部署"小节，说明 `POST /api/v1/data/import` 用法和示例
+- [x] 8.2 更新 `data/farmland_stability/README.md`：增加 shapefile zip + manifest.json 的打包说明和 API 调用示例
+- [x] 8.3 更新 `bin/farmland_quality_eval/README.md`：增加 .dat 通过 API 部署的说明
+- [x] 8.4 在 `docs/api.md` 补充"数据导入接口"小节：完整 API 契约、请求/响应示例、错误码表（含 413/504）、manifest.json 格式说明
+- [x] 8.5 更新项目根 README.md：在 API 概览补充"数据导入"表格，将"15 个 REST API"更新为"16 个"
 
 ## 9. 依赖与启动校验
 
