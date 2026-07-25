@@ -271,6 +271,48 @@ def test_process_no_routing_when_question_type_unknown():
     print("✓ 未知 question_type 返回 no_routing")
 
 
+def test_no_skipped_entries_in_details_for_type4():
+    """type=4 路由到 model-6，details 中 model-6 不应有 skipped 状态"""
+    mgr = AgentManager()
+    result = mgr.process("我的田肥力怎么样", {"question_type": 4})
+    details = result["data"]["details"]
+    m6 = details.get("model-6", {})
+    assert m6.get("status") != "skipped", f"model-6 不应被 skipped: {m6}"
+    assert m6.get("reason") != "question_not_related"
+    print("✓ type=4 details 中 model-6 未被 skipped")
+
+
+def test_no_skipped_entries_in_details_for_type5():
+    """type=5 路由到 model-7，details 中 model-7 不应有 skipped 状态"""
+    mgr = AgentManager()
+    result = mgr.process("我的田耕地质量等级是多少", {"question_type": 5, "parcel_code": "A0001"})
+    details = result["data"]["details"]
+    m7 = details.get("model-7", {})
+    assert m7.get("status") != "skipped", f"model-7 不应被 skipped: {m7}"
+    print("✓ type=5 details 中 model-7 未被 skipped")
+
+
+def test_should_execute_agent_method_removed():
+    """_should_execute_agent 方法应已删除"""
+    mgr = AgentManager()
+    assert not hasattr(mgr, "_should_execute_agent"), "_should_execute_agent 仍存在"
+    print("✓ _should_execute_agent 已移除")
+
+
+def test_fertility_keywords_constant_removed():
+    """FERTILITY_KEYWORDS 常量应已删除"""
+    import framework.agents.manager as mgr_mod
+    assert not hasattr(mgr_mod, "FERTILITY_KEYWORDS"), "FERTILITY_KEYWORDS 仍存在"
+    print("✓ FERTILITY_KEYWORDS 已移除")
+
+
+def test_grade_keywords_constant_removed():
+    """GRADE_KEYWORDS 常量应已删除"""
+    import framework.agents.manager as mgr_mod
+    assert not hasattr(mgr_mod, "GRADE_KEYWORDS"), "GRADE_KEYWORDS 仍存在"
+    print("✓ GRADE_KEYWORDS 已移除")
+
+
 if __name__ == "__main__":
     test_manager_register_seven_agents()
     test_manager_topological_sort_province()
