@@ -503,6 +503,113 @@ context 参数说明：
 
 ---
 
+## 数据导入接口
+
+### 上传部署专题模型数据
+
+**POST** `/api/v1/data/import`
+
+> 需要管理员权限（admin）
+> Content-Type: `multipart/form-data`
+> 文件大小限制：200MB
+
+用于上传部署三类专题模型数据（CSV / shapefile / .dat），部署前自动备份现有文件，部署后自动触发对应的处理流程。
+
+#### 请求字段
+
+| 字段 | 类型 | 必填 | 说明 |
+|------|------|------|------|
+| `data_type` | string | 是 | 数据类型：`csv` / `shapefile` / `dat` |
+| `file` | file | 是 | 上传的文件 |
+
+#### 数据类型说明
+
+**CSV（data_type=csv）**
+- 部署到 `data/farmland_diagnosis/test.csv`（固定文件名）
+- 必需 14 列：`一级农业区`、`二级农业区`、`pH`、`有机质`、`有效磷`、`速效钾`、`容重`、`耕层质地`、`灌溉能力`、`排水能力`、`地形部位`、`质地构型`、`有效土层`、`耕层厚度`
+- 编码：UTF-8（失败回退 GBK）
+- 触发：`bulk_evaluate` 批量评价
+
+**shapefile（data_type=shapefile）**
+- 部署到 `data/farmland_stability/`（解压后扁平化）
+- 上传格式：zip 包，含 `manifest.json` + 每期 shapefile 5 组件（.shp/.cpg/.dbf/.prj/.shx）
+- zip 限制：文件数 ≤ 30、解压后总大小 ≤ 200MB、无路径穿越
+- 触发：`precompute.main` 预计算 + 持久化
+
+**.dat（data_type=dat）**
+- 部署到 `bin/farmland_quality_eval/Farmlands_Quality_Level_Database.dat`（固定文件名）
+- 校验：非空、≤ 200MB
+- 触发：`FarmlandGradeRunner.check_deployment` 部署校验
+
+#### manifest.json 格式（shapefile 必需）
+
+```json
+{
+    "current_year": 2024,
+    "history_years": [2020, 2021],
+    "years": [2020, 2021, 2024],
+    "current_filename": "current.shp",
+    "history_filenames": ["2020.shp", "2021.shp"]
+}
+```
+
+#### 成功响应（200）
+
+```json
+{
+    "status": "ok",
+    "data": {
+        "data_type": "csv",
+        "deployed_path": "data/farmland_diagnosis/test.csv",
+        "backup_path": "data/farmland_diagnosis/backup/20260725-110000",
+        "trigger_result": {"status": "ok", "processed": 100, "errors": []}
+    }
+}
+```
+
+#### 错误码
+
+| HTTP 状态码 | 说明 |
+|-------------|------|
+| 400 | 缺少 data_type/file、data_type 不合法、校验失败（缺列/shapefile 组件不全/.dat 为空等） |
+| 401 | 未携带 JWT |
+| 403 | 非 admin 用户 |
+| 413 | 文件大小超过 200MB |
+| 500 | 触发器异常或返回错误字典（已自动回滚） |
+| 504 | 触发器超时（600s，已自动回滚） |
+
+#### curl 示例
+
+```bash
+# 登录获取 token（需 admin 账号）
+curl -X POST http://localhost:5000/api/v1/auth/login \
+  -H "Content-Type: application/json" \
+  -d '{"username":"admin","password":"admin123"}'
+
+# 上传 CSV
+curl -X POST http://localhost:5000/api/v1/data/import \
+  -H "Authorization: Bearer <token>" \
+  -F "data_type=csv" \
+  -F "file=@/path/to/test.csv"
+
+# 上传 shapefile zip 包
+curl -X POST http://localhost:5000/api/v1/data/import \
+  -H "Authorization: Bearer <token>" \
+  -F "data_type=shapefile" \
+  -F "file=@/path/to/stability_data.zip"
+
+# 上传 .dat 数据库
+curl -X POST http://localhost:5000/api/v1/data/import \
+  -H "Authorization: Bearer <token>" \
+  -F "data_type=dat" \
+  -F "file=@/path/to/Farmlands_Quality_Level_Database.dat"
+```
+
+> 备份策略：部署前备份现有文件到 `backup/YYYYMMDD-HHMMSS/`，保留最近 3 份；触发失败自动回滚到备份。
+> 审计日志：`logs/data_import.log`（JSON 行格式）。
+
+---
+
 ## 错误码
 
 | HTTP 状态码 | 说明 |
@@ -511,7 +618,9 @@ context 参数说明：
 | 401 | 未认证或认证失败 |
 | 403 | 权限不足 |
 | 404 | 资源不存在 |
+| 413 | 请求体过大（如数据导入文件超过 200MB） |
 | 500 | 服务器内部错误 |
+| 504 | 网关超时（如数据导入触发器超过 600s） |
 
 ---
 

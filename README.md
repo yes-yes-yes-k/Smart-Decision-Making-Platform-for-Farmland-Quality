@@ -13,7 +13,7 @@
 - **Function Calling**：工具注册表 + LangChain Tools 集成 + 自定义工具接口
 - **JWT 认证**：用户体系、会话管理、权限装饰器
 - **文档管理**：PDF / Word / Excel 解析、向量化入库、检索引用
-- **15 个 REST API**：认证、聊天、模型调用、文档、县域、报告
+- **16 个 REST API**：认证、聊天、模型调用、文档、县域、报告、数据导入
 
 ## 技术栈
 
@@ -156,6 +156,12 @@ python start_production_server.py --host 127.0.0.1 --port 8000 --threads 8
 | GET | `/api/v1/county/overview` | 县域耕地质量总览 |
 | POST | `/api/v1/county/diagnose` | 结构化诊断 |
 | POST | `/api/v1/report/summary` | 报告汇总 |
+
+### 数据导入
+
+| 方法 | 路径 | 说明 |
+|------|------|------|
+| POST | `/api/v1/data/import` | 上传部署专题模型数据（CSV/shapefile/.dat，需 admin） |
 
 完整 OpenAPI 规范见 [docs/openapi.json](docs/openapi.json)，可导入 Apifox 等工具查看。
 
