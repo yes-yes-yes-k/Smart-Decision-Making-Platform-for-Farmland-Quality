@@ -43,3 +43,10 @@
 - [x] 7.3 修改 `identify_question_type` 函数：在最前端调用 `_is_knowledge_question`，命中则返回 `(0, 1.0)` 走 RAG
 - [x] 7.4 编写 `identify_question_type` 集成测试：验证「什么是土壤酸化」返回 type 0（而非 type 2）；「耕地质量等级是什么意思」返回 type 0（而非 type 5）；「我的田耕地质量等级是多少」仍返回 type 5
 - [x] 7.5 验证知识性问题检测测试通过，且不影响现有 type 1-5 路由测试
+
+## 8. 文档同步更新（OpenAPI / API 文档 / README）
+
+- [x] 8.1 更新 `docs/openapi.json`：移除 chat 响应中的 `role` 字段和 `MultiAgentResult.data.role`；更新 `question_type` 描述（0=RAG, 1=稳定性, 2=酸化, 3=障碍诊断, 4=肥力, 5=质量等级）；更新 `/api/v1/chat/` 描述为 question_type 路由；新增 `parcel_id`/`parcel_code` 请求参数；更新 `agents_invoked` 示例为 1:1 映射
+- [x] 8.2 更新 `docs/api.md`：更新 `question_type` 路由说明（type 0-5）；新增 `parcel_id`/`parcel_code` 请求字段说明；补充 `agents_invoked`/`recommendations` 响应字段；更新模型列表新增 model-7
+- [x] 8.3 更新 `README.md`：将 `RoleRouter` 改为 `QuestionTypeRouter`；将「6 个专题模型/智能体」改为 7 个；更新多智能体架构图（1:1 映射）；更新测试套件数量为 134；更新 `specialized/` 与 `router.py` 注释
+- [x] 8.4 验证文档更新一致性：openapi.json 与 api.md 描述一致；README 与代码实现一致；无残留 RoleRouter / 6 个智能体等过时表述

@@ -246,17 +246,24 @@
 
 **POST** `/api/v1/chat/`
 
-统一智能路由入口，根据问题类型自动路由：
-- **question_type=0** → RAG 链（通用问答）
-- **question_type=1** → 酸化评估模型
-- **question_type=2** → 石灰需求量计算（包含酸化评估）
-- **question_type=3** → 氮肥影响模拟
+统一智能路由入口，根据问题类型（question_type）自动路由：
+- **question_type=0** → RAG 链（知识性问题，如「什么是土壤酸化」「耕地质量等级是什么意思」）
+- **question_type=1** → model-1 稳定性风险识别（等级稳定性/退化风险）
+- **question_type=2** → model-4 酸化改良（酸化程度/调理剂/改良方案）
+- **question_type=3** → model-3 障碍诊断（潜力/障碍因素/主要问题）
+- **question_type=4** → model-6 肥力 ML 预测（有机质/有机肥/SOC/Dose）
+- **question_type=5** → model-7 耕地质量等级评价（综合指数/质量等级/障碍度排序）
+
+> 路由采用 1:1 映射：每个 question_type 仅调用对应的单一专业智能体，不再按用户角色固定调用多个模型组合。
 
 请求体：
 ```json
 {
-    "message": "如何治理强酸性耕地？",
+    "message": "我的田耕地质量等级是多少？",
     "conversation_id": 1,
+    "area_code": "lechang",
+    "parcel_id": "1",
+    "parcel_code": "A0001",
     "context": {
         "target_ph": 6.0,
         "soil_depth": 20,
@@ -273,6 +280,9 @@
 |------|------|------|------|
 | `message` | string | 是 | 用户问题 |
 | `conversation_id` | int | 否 | 对话 ID，不传则创建新对话 |
+| `area_code` | string | 否 | 区域代码（默认 "lechang"，model-1/3/4 按 area_code 查 DB） |
+| `parcel_id` | string | 否 | 地块 ID（数字字符串，给 model-1/3/4 查 DB），农户端问题或 type 5 问题建议携带 |
+| `parcel_code` | string | 否 | 地块代码（字母数字，给 model-7 调 Fortran exe），type 5 质量等级评价必需 |
 | `context` | object | 否 | 专业模型参数 |
 
 context 参数说明：
@@ -293,21 +303,41 @@ context 参数说明：
     "data": {
         "answer": "根据评估结果，建议施用石灰...",
         "sources": [{"doc_name": "土壤治理指南.pdf"}],
-        "question_type": 2,
+        "question_type": 5,
         "model_results": {
-            "acidification_assessment": {
-                "success": true,
-                "result": {"level": "严重", "ph": 4.5}
-            },
-            "lime_calculation": {
-                "success": true,
-                "result": {"lime_demand": 2500}
+            "status": "ok",
+            "data": {
+                "question_type": 5,
+                "agents_invoked": ["model-7"],
+                "summary": "[model-7] 质量等级 10等, 综合指数 0.6728",
+                "details": {
+                    "model-7": {
+                        "answer": "耕地质量等级：10等，综合指数：0.6728",
+                        "evidence": [],
+                        "confidence": 0.95
+                    }
+                },
+                "recommendations": ["质地构型障碍度最高，建议优先改良"]
             }
         },
+        "agents_invoked": ["model-7"],
+        "recommendations": ["质地构型障碍度最高，建议优先改良"],
         "message_id": 3
     }
 }
 ```
+
+| 字段 | 类型 | 说明 |
+|------|------|------|
+| `answer` | string | 综合回答内容 |
+| `sources` | array | RAG 引用文档列表（仅 type 0 或 RAG 命中时返回） |
+| `question_type` | int | 问题类型（0-5），见上方路由说明 |
+| `model_results` | object | 多智能体框架返回的结构化结果（type 1-5 时返回） |
+| `agents_invoked` | array | 调用的智能体 ID 列表（1:1 映射，仅含单一模型） |
+| `recommendations` | array | 综合建议列表 |
+| `message_id` | int | 本次回答的消息 ID |
+
+> 注：API 响应不再包含 `role` 字段（已移除）。客户端应使用 `question_type` 字段判断问题类型。
 
 ---
 
@@ -322,15 +352,19 @@ context 参数说明：
 {
     "status": "ok",
     "data": [
-        {"name": "acidification_assessment", "description": "酸化程度评估模型"},
-        {"name": "lime_calculation", "description": "石灰需求量计算模型"},
-        {"name": "nitrogen_impact", "description": "氮肥影响模拟模型"},
-        {"name": "model_4", "description": "模型4"},
-        {"name": "model_5", "description": "模型5"},
-        {"name": "model_6", "description": "模型6"}
+        {"name": "spatial-structure-analysis", "description": "按区域、类型和图层组织县域耕地质量空间结构，用于总览和空间分区研判。"},
+        {"name": "soil-indicator-analysis", "description": "围绕 pH、有机质和养分等关键指标做多维占位解析，用于支撑专题判断。"},
+        {"name": "obstacle-factor-identification", "description": "基于耕地质量评价结果，识别限制耕地质量提升的主要障碍因素，判定障碍类型（单一障碍/多障碍），并输出分级治理方向。"},
+        {"name": "acidification-governance", "description": "对酸化问题进行分区识别、治理需求分析和改良措施匹配，生成针对性的酸化改良方案。"},
+        {"name": "organic-matter-improvement", "description": "对有机质不足问题进行占位识别、提升需求分析和措施匹配。"},
+        {"name": "stability-risk-evaluation", "description": "基于3期历史数据，通过九模块综合评价耕地质量稳定性和退化风险。"},
+        {"name": "quality-grade-evaluation", "description": "通过Fortran exe进行耕地质量等级评价，输出12指标原始值/隶属度、综合指数、质量等级和障碍度排序。"},
+        {"name": "multi-factor-collaborative-improvement", "description": "综合多个专题模型的占位结果，形成分区分类的综合提升建议。"}
     ]
 }
 ```
+
+> 注：以上 8 个为核心引擎提供的专题模型。多智能体框架中的 7 个专业智能体（model-1 至 model-7）基于这些专题模型实现，并通过 question_type 1:1 映射进行路由调用。
 
 ---
 

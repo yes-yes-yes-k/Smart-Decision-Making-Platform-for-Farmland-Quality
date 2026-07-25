@@ -1,6 +1,6 @@
 workflow: full
 language: zh-CN
-phase: verify
+phase: build
 context_compression: off
 build_mode: executing-plans
 build_pause: null
@@ -13,7 +13,7 @@ auto_transition: true
 base_ref: b6d8a5dda947f296c15f4dffe3a32c7aaa0feaab
 design_doc: docs/superpowers/specs/2026-07-26-refactor-routing-to-question-type-design.md
 plan: docs/superpowers/plans/2026-07-26-refactor-routing-to-question-type.md
-verify_result: pending
+verify_result: fail
 verification_report: docs/superpowers/reports/2026-07-26-refactor-routing-to-question-type-verify.md
 branch_status: handled
 created_at: 2026-07-25
