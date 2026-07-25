@@ -46,3 +46,18 @@ bin/farmland_quality_eval/*
 # Git worktrees
 .worktrees/
 worktrees/
+
+# chroma_db 损坏备份
+chroma_db.corrupted.*.bak/
+
+# 乐昌原始数据文件（大文件，不入库）
+data/lechang/
+
+# src/data 运行时数据库（不入库）
+src/data/
+
+# 验证日志
+verify_output.log
+
+# 根目录散落 xlsx 文件
+/*.xlsx
