@@ -1,4 +1,4 @@
----
+﻿---
 change: refactor-routing-to-question-type
 design-doc: docs/superpowers/specs/2026-07-26-refactor-routing-to-question-type-design.md
 base-ref: b6d8a5dda947f296c15f4dffe3a32c7aaa0feaab
@@ -6,7 +6,7 @@ base-ref: b6d8a5dda947f296c15f4dffe3a32c7aaa0feaab
 
 # 重构路由为 question_type-based 1:1 映射 Implementation Plan
 
-> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
+> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [x]`) syntax for tracking.
 
 **Goal:** 将多智能体路由从 role-based 改为 question_type-based 1:1 映射（type 1→model-1、2→model-4、3→model-3、4→model-6、5→model-7），新增知识性问题预检，移除 API 响应中的 `role` 字段。
 
@@ -53,7 +53,7 @@ base-ref: b6d8a5dda947f296c15f4dffe3a32c7aaa0feaab
 **Interfaces:**
 - Produces: `QuestionTypeRouter` 类（待 Task 1.2 实现），方法 `get_agents_for_type(question_type: int) -> List[str]`，类常量 `TYPE_AGENTS: Dict[int, List[str]]`
 
-- [ ] **Step 1: 创建测试文件 `tests/test_question_type_router.py`**
+- [x] **Step 1: 创建测试文件 `tests/test_question_type_router.py`**
 
 ```python
 """测试 QuestionTypeRouter 基于 question_type 的 1:1 路由"""
@@ -125,12 +125,12 @@ if __name__ == "__main__":
     print("\n所有 QuestionTypeRouter 测试通过！")
 ```
 
-- [ ] **Step 2: 运行测试验证失败**
+- [x] **Step 2: 运行测试验证失败**
 
 Run: `python tests/test_question_type_router.py`
 Expected: FAIL with `ImportError: cannot import name 'QuestionTypeRouter'`
 
-- [ ] **Step 3: Commit 失败测试**
+- [x] **Step 3: Commit 失败测试**
 
 ```bash
 git add tests/test_question_type_router.py
@@ -148,7 +148,7 @@ git commit -m "test: add failing tests for QuestionTypeRouter 1:1 mapping"
 - Consumes: 无
 - Produces: `QuestionTypeRouter` 类、`TYPE_AGENTS` 字典、`QuestionTypeRouter.get_agents_for_type(question_type: int) -> List[str]`
 
-- [ ] **Step 1: 完全重写 `framework/agents/router.py`**
+- [x] **Step 1: 完全重写 `framework/agents/router.py`**
 
 ```python
 from __future__ import annotations
@@ -171,7 +171,7 @@ class QuestionTypeRouter:
         return list(self.TYPE_AGENTS.get(question_type, []))
 ```
 
-- [ ] **Step 2: Commit 实现**
+- [x] **Step 2: Commit 实现**
 
 ```bash
 git add framework/agents/router.py
@@ -185,17 +185,17 @@ git commit -m "refactor: replace RoleRouter with QuestionTypeRouter (1:1 mapping
 **Files:**
 - Verify: `tests/test_question_type_router.py`
 
-- [ ] **Step 1: 运行 router 单元测试**
+- [x] **Step 1: 运行 router 单元测试**
 
 Run: `python tests/test_question_type_router.py`
 Expected: PASS，输出「所有 QuestionTypeRouter 测试通过！」
 
-- [ ] **Step 2: 运行 pytest 确认 router 模块无回归**
+- [x] **Step 2: 运行 pytest 确认 router 模块无回归**
 
 Run: `python -m pytest tests/test_question_type_router.py -v`
 Expected: 5 passed
 
-- [ ] **Step 3: 全局搜索 RoleRouter 残留引用**
+- [x] **Step 3: 全局搜索 RoleRouter 残留引用**
 
 Run: `findstr /S /N "RoleRouter" d:\17417\Documents\agent_culti_demo\framework d:\17417\Documents\agent_culti_demo\tests`
 Expected: 无输出（或仅在 `__pycache__` 中），源码与测试中不应再引用 `RoleRouter`
@@ -213,7 +213,7 @@ Expected: 无输出（或仅在 `__pycache__` 中），源码与测试中不应�
 - Consumes: `AgentManager.process(question: str, context: Dict) -> Dict`，context 须含 `question_type` 键
 - Produces: 验证 `process` 按 question_type 1:1 路由到单一 agent；返回结构含 `data.question_type` 而非 `data.role`
 
-- [ ] **Step 1: 在 `tests/test_agent_manager.py` 末尾追加测试函数**
+- [x] **Step 1: 在 `tests/test_agent_manager.py` 末尾追加测试函数**
 
 ```python
 def test_process_type1_routes_to_model1_only():
@@ -293,12 +293,12 @@ def test_process_no_routing_when_question_type_unknown():
     print("✓ 未知 question_type 返回 no_routing")
 ```
 
-- [ ] **Step 2: 运行新测试验证失败**
+- [x] **Step 2: 运行新测试验证失败**
 
 Run: `python -m pytest tests/test_agent_manager.py::test_process_type1_routes_to_model1_only tests/test_agent_manager.py::test_process_no_routing_when_question_type_none -v`
 Expected: FAIL（当前 process 仍走 role 路由，`agents_invoked` 为 farmer 的 4 个 agent）
 
-- [ ] **Step 3: Commit 失败测试**
+- [x] **Step 3: Commit 失败测试**
 
 ```bash
 git add tests/test_agent_manager.py
@@ -316,7 +316,7 @@ git commit -m "test: add failing tests for AgentManager question_type routing"
 - Consumes: `AgentManager` 不再有 `_should_execute_agent` 方法、`FERTILITY_KEYWORDS`、`GRADE_KEYWORDS`
 - Produces: 验证 details 中不出现 `skipped` 条目（因路由精准，无需二次过滤）
 
-- [ ] **Step 1: 在 `tests/test_agent_manager.py` 追加回归测试**
+- [x] **Step 1: 在 `tests/test_agent_manager.py` 追加回归测试**
 
 ```python
 def test_no_skipped_entries_in_details_for_type4():
@@ -361,12 +361,12 @@ def test_grade_keywords_constant_removed():
     print("✓ GRADE_KEYWORDS 已移除")
 ```
 
-- [ ] **Step 2: 运行回归测试验证失败**
+- [x] **Step 2: 运行回归测试验证失败**
 
 Run: `python -m pytest tests/test_agent_manager.py::test_should_execute_agent_method_removed tests/test_agent_manager.py::test_no_skipped_entries_in_details_for_type4 -v`
 Expected: FAIL（`_should_execute_agent` 仍存在）
 
-- [ ] **Step 3: Commit 失败测试**
+- [x] **Step 3: Commit 失败测试**
 
 ```bash
 git add tests/test_agent_manager.py
@@ -386,7 +386,7 @@ git commit -m "test: add regression tests for _should_execute_agent removal"
 - Consumes: `QuestionTypeRouter.get_agents_for_type(question_type: int) -> List[str]`（来自 Task 1.2）
 - Produces: `AgentManager.process(question, context)` 从 `context["question_type"]` 路由；返回 `data` 含 `question_type` 字段（替代原 `role`）
 
-- [ ] **Step 1: 修改 import**
+- [x] **Step 1: 修改 import**
 
 将 `framework/agents/manager.py:5` 由：
 ```python
@@ -397,11 +397,11 @@ from .router import RoleRouter
 from .router import QuestionTypeRouter
 ```
 
-- [ ] **Step 2: 删除 FERTILITY_KEYWORDS 与 GRADE_KEYWORDS 常量**
+- [x] **Step 2: 删除 FERTILITY_KEYWORDS 与 GRADE_KEYWORDS 常量**
 
 删除 `framework/agents/manager.py:8-21`（即 `FERTILITY_KEYWORDS = [...]` 与 `GRADE_KEYWORDS = [...]` 两个常量及其上方注释）。
 
-- [ ] **Step 3: 修改 `__init__` 中的 router 实例化**
+- [x] **Step 3: 修改 `__init__` 中的 router 实例化**
 
 将 `framework/agents/manager.py:51` 由：
 ```python
@@ -412,7 +412,7 @@ from .router import QuestionTypeRouter
         self.router = QuestionTypeRouter()
 ```
 
-- [ ] **Step 4: 清理 model-3 dependencies**
+- [x] **Step 4: 清理 model-3 dependencies**
 
 将 `framework/agents/manager.py:76` 由：
 ```python
@@ -423,7 +423,7 @@ from .router import QuestionTypeRouter
         self.agents["model-3"].dependencies = []
 ```
 
-- [ ] **Step 5: 重写 `process` 方法**
+- [x] **Step 5: 重写 `process` 方法**
 
 替换 `framework/agents/manager.py:128-136`（原 process 方法）为：
 
@@ -453,7 +453,7 @@ from .router import QuestionTypeRouter
         }
 ```
 
-- [ ] **Step 6: 重写 `_summarize` 方法签名与返回**
+- [x] **Step 6: 重写 `_summarize` 方法签名与返回**
 
 替换 `framework/agents/manager.py:229-267`（原 _summarize 方法）为：
 
@@ -499,7 +499,7 @@ from .router import QuestionTypeRouter
         }
 ```
 
-- [ ] **Step 7: Commit process/_summarize 重写**
+- [x] **Step 7: Commit process/_summarize 重写**
 
 ```bash
 git add framework/agents/manager.py
@@ -518,7 +518,7 @@ git commit -m "refactor: rewrite AgentManager.process to use question_type routi
 - Consumes: 无
 - Produces: `_execute_with_dependencies` 不再调用 `_should_execute_agent`，所有 agent 直接执行
 
-- [ ] **Step 1: 简化 `_execute_with_dependencies` 方法**
+- [x] **Step 1: 简化 `_execute_with_dependencies` 方法**
 
 替换 `framework/agents/manager.py:138-174`（原 _execute_with_dependencies 方法）为：
 
@@ -549,11 +549,11 @@ git commit -m "refactor: rewrite AgentManager.process to use question_type routi
         return results
 ```
 
-- [ ] **Step 2: 删除 `_should_execute_agent` 方法**
+- [x] **Step 2: 删除 `_should_execute_agent` 方法**
 
 删除 `framework/agents/manager.py:197-204`（即整个 `_should_execute_agent` 方法及其上方注释）。
 
-- [ ] **Step 3: Commit 删除**
+- [x] **Step 3: Commit 删除**
 
 ```bash
 git add framework/agents/manager.py
@@ -567,17 +567,17 @@ git commit -m "refactor: remove _should_execute_agent and FERTILITY/GRADE_KEYWOR
 **Files:**
 - Verify: `tests/test_agent_manager.py`
 
-- [ ] **Step 1: 运行 AgentManager 全部测试**
+- [x] **Step 1: 运行 AgentManager 全部测试**
 
 Run: `python -m pytest tests/test_agent_manager.py -v`
 Expected: Task 2.1/2.2 新增的 13 个测试全部 PASS；旧 role 相关测试（test_manager_process_farmer_returns_structured_result 等）此时可能仍 FAIL，将在任务组 5 修复
 
-- [ ] **Step 2: 单独验证新测试**
+- [x] **Step 2: 单独验证新测试**
 
 Run: `python -m pytest tests/test_agent_manager.py::test_process_type1_routes_to_model1_only tests/test_agent_manager.py::test_process_type5_routes_to_model7_only tests/test_agent_manager.py::test_process_no_routing_when_question_type_none tests/test_agent_manager.py::test_should_execute_agent_method_removed -v`
 Expected: 4 passed
 
-- [ ] **Step 3: 验证 manager 模块无残留**
+- [x] **Step 3: 验证 manager 模块无残留**
 
 Run: `python -c "from framework.agents.manager import AgentManager, agent_manager; m = AgentManager(); assert not hasattr(m, '_should_execute_agent'); print('OK')"`
 Expected: 输出 `OK`
@@ -595,7 +595,7 @@ Expected: 输出 `OK`
 - Consumes: `state["question_type"]`（由 identify_question_node 写入）
 - Produces: `context["question_type"]` 传给 `agent_manager.process`
 
-- [ ] **Step 1: 修改 execute_models 函数中的 context 构造**
+- [x] **Step 1: 修改 execute_models 函数中的 context 构造**
 
 在 `framework/agents/nodes.py` 的 `execute_models` 函数中，将：
 ```python
@@ -613,7 +613,7 @@ Expected: 输出 `OK`
         }
 ```
 
-- [ ] **Step 2: Commit 透传改动**
+- [x] **Step 2: Commit 透传改动**
 
 ```bash
 git add framework/agents/nodes.py
@@ -631,7 +631,7 @@ git commit -m "feat: pass question_type from state to agent_manager context"
 - Consumes: 无
 - Produces: `QUESTION_TYPE_TO_MODEL_ID[5] = "model-7"` 供 `_execute_models_fallback` 使用
 
-- [ ] **Step 1: 修改 QUESTION_TYPE_TO_MODEL_ID 字典**
+- [x] **Step 1: 修改 QUESTION_TYPE_TO_MODEL_ID 字典**
 
 将 `framework/agents/nodes.py:283-288` 由：
 ```python
@@ -653,7 +653,7 @@ QUESTION_TYPE_TO_MODEL_ID = {
 }
 ```
 
-- [ ] **Step 2: Commit 字典更新**
+- [x] **Step 2: Commit 字典更新**
 
 ```bash
 git add framework/agents/nodes.py
@@ -668,7 +668,7 @@ git commit -m "feat: add type 5 mapping to QUESTION_TYPE_TO_MODEL_ID fallback di
 - Modify: `tests/test_execute_models_pipeline.py:33-44` (更新 _stub_process_return 以匹配新结构)
 - Verify: `tests/test_execute_models_pipeline.py`
 
-- [ ] **Step 1: 更新 `_stub_process_return` 桩返回值**
+- [x] **Step 1: 更新 `_stub_process_return` 桩返回值**
 
 将 `tests/test_execute_models_pipeline.py:33-44` 由：
 ```python
@@ -701,7 +701,7 @@ def _stub_process_return():
     }
 ```
 
-- [ ] **Step 2: 新增 question_type 透传断言**
+- [x] **Step 2: 新增 question_type 透传断言**
 
 在 `tests/test_execute_models_pipeline.py` 的 `test_execute_models_passes_parcel_id_and_parcel_code_to_context` 函数末尾（`print("✓ execute_models 透传 parcel_id/parcel_code 到 context top-level")` 之前）追加：
 
@@ -710,12 +710,12 @@ def _stub_process_return():
     assert ctx.get("question_type") == 1, f"question_type 未透传到 context: {ctx}"
 ```
 
-- [ ] **Step 3: 运行 execute_models 管道测试**
+- [x] **Step 3: 运行 execute_models 管道测试**
 
 Run: `python -m pytest tests/test_execute_models_pipeline.py -v`
 Expected: 3 passed
 
-- [ ] **Step 4: Commit 测试更新**
+- [x] **Step 4: Commit 测试更新**
 
 ```bash
 git add tests/test_execute_models_pipeline.py
@@ -736,14 +736,14 @@ git commit -m "test: update execute_models pipeline tests for question_type pass
 - Consumes: `agent_data` 不再含 `role` 字段（Task 2.3 已将 _summarize 返回 `question_type` 替代 `role`）
 - Produces: API 响应 `data` 中不再有 `role` 键
 
-- [ ] **Step 1: 删除 role 提取行**
+- [x] **Step 1: 删除 role 提取行**
 
 在 `framework/api/routes/chat.py:91`，删除：
 ```python
     role = agent_data.get("role")
 ```
 
-- [ ] **Step 2: 删除 role 写入块**
+- [x] **Step 2: 删除 role 写入块**
 
 在 `framework/api/routes/chat.py`，删除：
 ```python
@@ -766,7 +766,7 @@ git commit -m "test: update execute_models pipeline tests for question_type pass
         response_data["recommendations"] = recommendations
 ```
 
-- [ ] **Step 3: Commit chat.py 改动**
+- [x] **Step 3: Commit chat.py 改动**
 
 ```bash
 git add framework/api/routes/chat.py
@@ -780,17 +780,17 @@ git commit -m "refactor: remove role field from chat API response"
 **Files:**
 - Verify: `framework/api/routes/chat.py`
 
-- [ ] **Step 1: 全局搜索 chat.py 中 role 残留**
+- [x] **Step 1: 全局搜索 chat.py 中 role 残留**
 
 Run: `findstr /N "role" d:\17417\Documents\agent_culti_demo\framework\api\routes\chat.py`
 Expected: 仅在 `Message(conversation_id=..., role='user', ...)` 与 `role='assistant'` 与 `history = [{"role": m.role, ...}]` 中出现（这些是消息角色，不是用户角色，应保留）。不应出现 `agent_data.get("role")` 或 `response_data["role"]`。
 
-- [ ] **Step 2: 验证 _summarize 不再返回 role**
+- [x] **Step 2: 验证 _summarize 不再返回 role**
 
 Run: `python -c "from framework.agents.manager import AgentManager; m = AgentManager(); r = m.process('我的田肥力怎么样', {'question_type': 4}); assert 'role' not in r['data']; assert 'question_type' in r['data']; print('OK')"`
 Expected: 输出 `OK`
 
-- [ ] **Step 3: 验证响应字段完整**
+- [x] **Step 3: 验证响应字段完整**
 
 Run: `python -c "from framework.agents.manager import AgentManager; m = AgentManager(); r = m.process('我的田耕地质量等级是多少', {'question_type': 5, 'parcel_code': 'A0001'}); d = r['data']; assert set(['question_type','agents_invoked','summary','details','recommendations']).issubset(d.keys()); assert 'role' not in d; print('OK')"`
 Expected: 输出 `OK`
@@ -808,7 +808,7 @@ Expected: 输出 `OK`
 - Consumes: Task 2.3 重写后的 `process` 返回 `data.question_type`
 - Produces: 测试断言改为 `question_type` 字段
 
-- [ ] **Step 1: 重写 `test_manager_process_farmer_returns_structured_result`**
+- [x] **Step 1: 重写 `test_manager_process_farmer_returns_structured_result`**
 
 将 `tests/test_agent_manager.py:38-52` 由：
 ```python
@@ -847,7 +847,7 @@ def test_manager_process_type4_returns_structured_result():
     print("✓ AgentManager.process 返回符合规范的结构化结果")
 ```
 
-- [ ] **Step 2: 重写 `test_manager_process_unknown_question_defaults_farmer`**
+- [x] **Step 2: 重写 `test_manager_process_unknown_question_defaults_farmer`**
 
 将 `tests/test_agent_manager.py:55-60` 由：
 ```python
@@ -869,7 +869,7 @@ def test_manager_process_no_question_type_returns_no_routing():
     print("✓ 无 question_type 返回 no_routing")
 ```
 
-- [ ] **Step 3: Commit 测试重写**
+- [x] **Step 3: Commit 测试重写**
 
 ```bash
 git add tests/test_agent_manager.py
@@ -883,7 +883,7 @@ git commit -m "test: rewrite role-based assertions to question_type in test_agen
 **Files:**
 - Modify: `tests/test_agent_manager.py` (删除 7 个失效测试函数)
 
-- [ ] **Step 1: 删除以下测试函数**
+- [x] **Step 1: 删除以下测试函数**
 
 从 `tests/test_agent_manager.py` 中删除以下 7 个函数（连同其文档字符串与函数体）：
 
@@ -895,7 +895,7 @@ git commit -m "test: rewrite role-based assertions to question_type in test_agen
 6. `test_model6_skipped_in_details_for_non_fertility`（约 110-119 行）
 7. `test_model7_skipped_in_details_for_non_grade_farmer_question`（约 172-181 行）
 
-- [ ] **Step 2: 删除 `__main__` 块中对已删除函数的调用**
+- [x] **Step 2: 删除 `__main__` 块中对已删除函数的调用**
 
 修改 `tests/test_agent_manager.py` 末尾的 `if __name__ == "__main__":` 块，移除对已删除函数的调用：
 
@@ -926,7 +926,7 @@ if __name__ == "__main__":
 
 注：`test_farmer_role_includes_model_7` 与 `test_model7_executed_for_grade_farmer_question` 将在 Task 5.3 重写。
 
-- [ ] **Step 3: Commit 测试清理**
+- [x] **Step 3: Commit 测试清理**
 
 ```bash
 git add tests/test_agent_manager.py
@@ -946,7 +946,7 @@ git commit -m "test: remove obsolete _should_execute_agent and role-based tests"
 - Consumes: `QuestionTypeRouter.TYPE_AGENTS`（来自 Task 1.2）
 - Produces: 验证 type 1-5 各路由到单一 model；type 5 → model-7 端到端
 
-- [ ] **Step 1: 重写 `test_farmer_role_includes_model_7`**
+- [x] **Step 1: 重写 `test_farmer_role_includes_model_7`**
 
 将 `tests/test_agent_manager.py:131-138` 由：
 ```python
@@ -970,7 +970,7 @@ def test_type5_routes_to_model7():
     print("✓ type 5 路由到 model-7（1:1 映射）")
 ```
 
-- [ ] **Step 2: 重写 `test_model7_executed_for_grade_farmer_question`**
+- [x] **Step 2: 重写 `test_model7_executed_for_grade_farmer_question`**
 
 将 `tests/test_agent_manager.py:184-194` 由：
 ```python
@@ -999,7 +999,7 @@ def test_model7_executed_for_type5_question():
     print("✓ type=5 质量等级问题 model-7 被执行")
 ```
 
-- [ ] **Step 3: 在 `tests/test_multi_agent.py` 新增 type 5 → model-7 端到端集成测试**
+- [x] **Step 3: 在 `tests/test_multi_agent.py` 新增 type 5 → model-7 端到端集成测试**
 
 在 `tests/test_multi_agent.py` 末尾（`if __name__ == "__main__":` 之前）追加：
 
@@ -1045,12 +1045,12 @@ def test_type5_routes_to_model7_end_to_end():
 
 同时在 `if __name__ == "__main__":` 块中追加 `test_type5_routes_to_model7_end_to_end()` 调用。
 
-- [ ] **Step 4: 运行测试套件验证**
+- [x] **Step 4: 运行测试套件验证**
 
 Run: `python -m pytest tests/test_agent_manager.py tests/test_multi_agent.py -v`
 Expected: All passed
 
-- [ ] **Step 5: Commit 测试新增**
+- [x] **Step 5: Commit 测试新增**
 
 ```bash
 git add tests/test_agent_manager.py tests/test_multi_agent.py
@@ -1064,22 +1064,22 @@ git commit -m "test: rewrite role tests to type-based and add type 5 e2e integra
 **Files:**
 - Verify: 全部 `tests/` 目录
 
-- [ ] **Step 1: 全局搜索源码与测试中的 role 残留**
+- [x] **Step 1: 全局搜索源码与测试中的 role 残留**
 
 Run: `findstr /S /N "ROLE_KEYWORDS\|ROLE_AGENTS\|identify_role\|get_agents_for_role\|FERTILITY_KEYWORDS\|GRADE_KEYWORDS\|_should_execute_agent" d:\17417\Documents\agent_culti_demo\framework d:\17417\Documents\agent_culti_demo\tests`
 Expected: 无输出（除 `__pycache__` 中可能存在的旧 .pyc）
 
-- [ ] **Step 2: 运行完整测试套件**
+- [x] **Step 2: 运行完整测试套件**
 
 Run: `python -m pytest tests/ -v --tb=short`
 Expected: 全部 PASS（已知不相关的基础设施测试如 test_auth、test_upload 可能因环境跳过，不在本次范围）
 
-- [ ] **Step 3: 验证 test_agent_manager.py 独立运行**
+- [x] **Step 3: 验证 test_agent_manager.py 独立运行**
 
 Run: `python tests/test_agent_manager.py`
 Expected: 输出「所有 AgentManager 测试通过！」
 
-- [ ] **Step 4: 验证 test_multi_agent.py 独立运行**
+- [x] **Step 4: 验证 test_multi_agent.py 独立运行**
 
 Run: `python tests/test_multi_agent.py`
 Expected: 输出「所有多智能体并发工作流测试通过！」
@@ -1093,16 +1093,16 @@ Expected: 输出「所有多智能体并发工作流测试通过！」
 **Files:**
 - Verify: `scripts/gen_full_verification_report.py`
 
-- [ ] **Step 1: 运行 23 个问题端到端验证脚本**
+- [x] **Step 1: 运行 23 个问题端到端验证脚本**
 
 Run: `python scripts/gen_full_verification_report.py`
 Expected: 23 个问题全部处理成功；type 5 的 Q21/Q22/Q23 仍返回真实 model-7 结果（非 skipped、非 error）
 
-- [ ] **Step 2: 检查报告中 type 5 问题的 agents_invoked**
+- [x] **Step 2: 检查报告中 type 5 问题的 agents_invoked**
 
 打开生成的报告（默认在 `scripts/` 或 `reports/` 目录），确认 Q21/Q22/Q23 的 `agents_invoked` 仅含 `["model-7"]`，无 `model-4/5/6`。
 
-- [ ] **Step 3: 检查报告中无 role 字段**
+- [x] **Step 3: 检查报告中无 role 字段**
 
 确认所有 23 个问题的 API 响应中均无 `role` 字段，仅含 `question_type`、`agents_invoked`、`summary`、`recommendations`。
 
@@ -1113,7 +1113,7 @@ Expected: 23 个问题全部处理成功；type 5 的 Q21/Q22/Q23 仍返回真�
 **Files:**
 - Verify: `framework/api/routes/chat.py`、`framework/agents/manager.py`
 
-- [ ] **Step 1: 构造测试请求验证响应结构**
+- [x] **Step 1: 构造测试请求验证响应结构**
 
 Run:
 ```bash
@@ -1121,7 +1121,7 @@ python -c "from framework.agents.manager import AgentManager; m = AgentManager()
 ```
 Expected: 输出「字段检查通过: ['agents_invoked', 'details', 'question_type', 'recommendations', 'summary']」
 
-- [ ] **Step 2: 验证 chat.py 中 response_data 构造逻辑无 role**
+- [x] **Step 2: 验证 chat.py 中 response_data 构造逻辑无 role**
 
 Run: `findstr /N "response_data\[" d:\17417\Documents\agent_culti_demo\framework\api\routes\chat.py`
 Expected: 仅出现 `response_data["agents_invoked"]` 与 `response_data["recommendations"]`，不出现 `response_data["role"]`
@@ -1135,17 +1135,17 @@ Expected: 仅出现 `response_data["agents_invoked"]` 与 `response_data["recomm
 
 **注：** 本任务依赖任务组 7（知识性问题检测）完成。若任务组 7 尚未完成，先执行任务组 7 再回到本任务。
 
-- [ ] **Step 1: 验证「什么是土壤酸化」走 RAG**
+- [x] **Step 1: 验证「什么是土壤酸化」走 RAG**
 
 Run: `python -c "from framework.agents.nodes import identify_question_type; t, r = identify_question_type('什么是土壤酸化'); print(f'type={t}, relevance={r:.2f}'); assert t == 0, f'应返回 type 0（RAG），实际: {t}'"`
 Expected: 输出 `type=0, relevance=1.00`
 
-- [ ] **Step 2: 验证「耕地质量等级是什么意思」走 RAG**
+- [x] **Step 2: 验证「耕地质量等级是什么意思」走 RAG**
 
 Run: `python -c "from framework.agents.nodes import identify_question_type; t, r = identify_question_type('耕地质量等级是什么意思'); print(f'type={t}, relevance={r:.2f}'); assert t == 0, f'应返回 type 0（RAG），实际: {t}'"`
 Expected: 输出 `type=0, relevance=1.00`
 
-- [ ] **Step 3: 验证「我的田耕地质量等级是多少」仍走 type 5**
+- [x] **Step 3: 验证「我的田耕地质量等级是多少」仍走 type 5**
 
 Run: `python -c "from framework.agents.nodes import identify_question_type; t, r = identify_question_type('我的田耕地质量等级是多少'); print(f'type={t}, relevance={r:.2f}'); assert t == 5, f'应返回 type 5，实际: {t}'"`
 Expected: 输出 `type=5, relevance=...`（relevance 值取决于关键词匹配，需 >= 0.3）
@@ -1162,7 +1162,7 @@ Expected: 输出 `type=5, relevance=...`（relevance 值取决于关键词匹配
 **Interfaces:**
 - Produces: `_is_knowledge_question(question: str) -> bool`（待 Task 7.2 实现）、常量 `KNOWLEDGE_QUESTION_PATTERNS_START`、`KNOWLEDGE_QUESTION_PATTERNS_CONTAIN`
 
-- [ ] **Step 1: 创建测试文件 `tests/test_knowledge_question.py`**
+- [x] **Step 1: 创建测试文件 `tests/test_knowledge_question.py`**
 
 ```python
 """测试知识性问题预检（_is_knowledge_question）"""
@@ -1278,12 +1278,12 @@ if __name__ == "__main__":
     print("\n所有 _is_knowledge_question 测试通过！")
 ```
 
-- [ ] **Step 2: 运行测试验证失败**
+- [x] **Step 2: 运行测试验证失败**
 
 Run: `python tests/test_knowledge_question.py`
 Expected: FAIL with `ImportError: cannot import name '_is_knowledge_question'`
 
-- [ ] **Step 3: Commit 失败测试**
+- [x] **Step 3: Commit 失败测试**
 
 ```bash
 git add tests/test_knowledge_question.py
@@ -1302,7 +1302,7 @@ git commit -m "test: add failing tests for _is_knowledge_question pre-check"
 - Consumes: 无
 - Produces: `KNOWLEDGE_QUESTION_PATTERNS_START: List[str]`、`KNOWLEDGE_QUESTION_PATTERNS_CONTAIN: List[str]`、`_is_knowledge_question(question: str) -> bool`
 
-- [ ] **Step 1: 在 `framework/agents/nodes.py` 顶部（QUESTION_TYPE_1_KEYWORDS 之前，约第 31 行前）新增常量**
+- [x] **Step 1: 在 `framework/agents/nodes.py` 顶部（QUESTION_TYPE_1_KEYWORDS 之前，约第 31 行前）新增常量**
 
 在 `QUESTION_TYPE_1_KEYWORDS = [...]` 之前插入：
 
@@ -1313,7 +1313,7 @@ KNOWLEDGE_QUESTION_PATTERNS_CONTAIN = ["是什么意思", "什么意思", "定�
 
 ```
 
-- [ ] **Step 2: 在 `identify_question_type` 函数之前新增 `_is_knowledge_question` 函数**
+- [x] **Step 2: 在 `identify_question_type` 函数之前新增 `_is_knowledge_question` 函数**
 
 在 `framework/agents/nodes.py` 的 `def identify_question_type(question: str) -> tuple[int, float]:` 行之前插入：
 
@@ -1338,12 +1338,12 @@ def _is_knowledge_question(question: str) -> bool:
 
 ```
 
-- [ ] **Step 3: 运行 _is_knowledge_question 单元测试**
+- [x] **Step 3: 运行 _is_knowledge_question 单元测试**
 
 Run: `python tests/test_knowledge_question.py`
 Expected: 13 个测试全部 PASS，输出「所有 _is_knowledge_question 测试通过！」
 
-- [ ] **Step 4: Commit 函数实现**
+- [x] **Step 4: Commit 函数实现**
 
 ```bash
 git add framework/agents/nodes.py
@@ -1361,7 +1361,7 @@ git commit -m "feat: add _is_knowledge_question pre-check function"
 - Consumes: `_is_knowledge_question`（来自 Task 7.2）
 - Produces: `identify_question_type` 对知识性问题返回 `(0, 1.0)`
 
-- [ ] **Step 1: 修改 `identify_question_type` 函数**
+- [x] **Step 1: 修改 `identify_question_type` 函数**
 
 将 `framework/agents/nodes.py:161-170` 由：
 ```python
@@ -1393,7 +1393,7 @@ def identify_question_type(question: str) -> tuple[int, float]:
     return result
 ```
 
-- [ ] **Step 2: Commit 改动**
+- [x] **Step 2: Commit 改动**
 
 ```bash
 git add framework/agents/nodes.py
@@ -1411,7 +1411,7 @@ git commit -m "feat: integrate _is_knowledge_question pre-check into identify_qu
 - Consumes: `identify_question_type`（已集成知识性预检）、`_is_knowledge_question`
 - Produces: 验证「什么是X」「X是什么意思」返回 type 0；「我的田X」仍返回原 type
 
-- [ ] **Step 1: 在 `tests/test_knowledge_question.py` 末尾追加集成测试**
+- [x] **Step 1: 在 `tests/test_knowledge_question.py` 末尾追加集成测试**
 
 在文件末尾（`if __name__ == "__main__":` 之前）追加：
 
@@ -1473,7 +1473,7 @@ def test_identify_question_type_specific_我的田_肥力_仍_type4():
     print(f"✓ 「我的田肥力怎么样」→ type={q_type} (model-6)")
 ```
 
-- [ ] **Step 2: 在 `__main__` 块中追加新测试调用**
+- [x] **Step 2: 在 `__main__` 块中追加新测试调用**
 
 修改 `tests/test_knowledge_question.py` 末尾的 `if __name__ == "__main__":` 块，在 `print("\n所有 _is_knowledge_question 测试通过！")` 之前追加：
 
@@ -1493,12 +1493,12 @@ def test_identify_question_type_specific_我的田_肥力_仍_type4():
     print("\n所有知识性问题检测测试通过！")
 ```
 
-- [ ] **Step 3: 运行集成测试**
+- [x] **Step 3: 运行集成测试**
 
 Run: `python tests/test_knowledge_question.py`
 Expected: 全部 PASS（13 单元 + 7 集成 = 20 测试），输出「所有知识性问题检测测试通过！」
 
-- [ ] **Step 4: Commit 集成测试**
+- [x] **Step 4: Commit 集成测试**
 
 ```bash
 git add tests/test_knowledge_question.py
@@ -1512,27 +1512,27 @@ git commit -m "test: add identify_question_type integration tests for knowledge 
 **Files:**
 - Verify: `tests/test_question_type_keywords.py`、`tests/test_multi_agent.py`、`tests/test_knowledge_question.py`
 
-- [ ] **Step 1: 运行关键词路由测试套件**
+- [x] **Step 1: 运行关键词路由测试套件**
 
 Run: `python -m pytest tests/test_question_type_keywords.py -v`
 Expected: 全部 PASS（知识性预检不应影响现有 type 1-5 关键词匹配）
 
-- [ ] **Step 2: 运行多智能体工作流测试**
+- [x] **Step 2: 运行多智能体工作流测试**
 
 Run: `python -m pytest tests/test_multi_agent.py -v`
 Expected: 全部 PASS
 
-- [ ] **Step 3: 运行知识性问题检测全量测试**
+- [x] **Step 3: 运行知识性问题检测全量测试**
 
 Run: `python -m pytest tests/test_knowledge_question.py -v`
 Expected: 20 passed
 
-- [ ] **Step 4: 运行回归——确认 23 个端到端问题结果不变**
+- [x] **Step 4: 运行回归——确认 23 个端到端问题结果不变**
 
 Run: `python scripts/gen_full_verification_report.py`
 Expected: 23 个问题全部处理成功；type 1-5 的问题路由到对应单一模型；知识性问题（如有）走 RAG
 
-- [ ] **Step 5: 执行任务组 6 的 Task 6.3 知识性问题验证**
+- [x] **Step 5: 执行任务组 6 的 Task 6.3 知识性问题验证**
 
 回到 Task 6.3 执行 Step 1-3，确认「什么是土壤酸化」「耕地质量等级是什么意思」走 RAG，「我的田耕地质量等级是多少」仍走 type 5。
 
@@ -1542,7 +1542,7 @@ Expected: 23 个问题全部处理成功；type 1-5 的问题路由到对应单�
 
 实施完成后，按以下清单自检：
 
-- [ ] **Spec 覆盖**：设计文档第 3 节 3.1-3.8 全部实现
+- [x] **Spec 覆盖**：设计文档第 3 节 3.1-3.8 全部实现
   - 3.1 QuestionTypeRouter（Task 1.1-1.3）✓
   - 3.2 AgentManager.process 重构（Task 2.1-2.5）✓
   - 3.3 _execute_with_dependencies 简化（Task 2.4）✓
@@ -1551,10 +1551,10 @@ Expected: 23 个问题全部处理成功；type 1-5 的问题路由到对应单�
   - 3.6 知识性问题预检（Task 7.1-7.5）✓
   - 3.7 execute_models 透传（Task 3.1-3.3）✓
   - 3.8 chat.py 改动（Task 4.1-4.2）✓
-- [ ] **无占位符**：所有代码块完整，无 TODO/TBD
-- [ ] **类型一致**：`get_agents_for_type(question_type: int) -> List[str]` 在所有任务中签名一致
-- [ ] **测试覆盖**：第 4 节边界条件表 7 个场景均有测试覆盖
-- [ ] **23 个端到端问题回答不变**（Task 6.1）
+- [x] **无占位符**：所有代码块完整，无 TODO/TBD
+- [x] **类型一致**：`get_agents_for_type(question_type: int) -> List[str]` 在所有任务中签名一致
+- [x] **测试覆盖**：第 4 节边界条件表 7 个场景均有测试覆盖
+- [x] **23 个端到端问题回答不变**（Task 6.1）
 
 ---
 
