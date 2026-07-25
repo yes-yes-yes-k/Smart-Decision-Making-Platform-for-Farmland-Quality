@@ -112,13 +112,20 @@ class FarmlandGradeRunner:
 
             elif current_section == 'indicators':
                 # 酸碱度(SJD):    4.600 / 耕层质地(GCZD): 黏壤土
+                # 拆分 name 和 code：name 不含括号，code 从括号中提取
                 for sep in (':', '：'):
                     if sep in stripped:
                         key, value = stripped.split(sep, 1)
+                        key = key.strip()
                         indicator = {
-                            "name": key.strip(),
+                            "name": key,
                             "raw_value": value.strip()
                         }
+                        # 提取括号中的代码：酸碱度(SJD) → name="酸碱度", code="SJD"
+                        if '(' in key and key.endswith(')'):
+                            code_start = key.index('(')
+                            indicator["name"] = key[:code_start].strip()
+                            indicator["code"] = key[code_start + 1:-1].strip()
                         result["indicators"].append(indicator)
                         break
 
@@ -129,9 +136,15 @@ class FarmlandGradeRunner:
                         name_part, rest = stripped.split(sep, 1)
                         rest_parts = rest.strip().split()
                         if len(rest_parts) >= 2:
+                            try:
+                                degree = float(rest_parts[0])
+                            except ValueError:
+                                # 非数字 degree，跳过该行（不抛异常）
+                                break
                             obstacle = {
+                                "rank": len(result["obstacle_degree"]) + 1,
                                 "indicator": name_part.strip(),
-                                "degree": float(rest_parts[0]),
+                                "degree": degree,
                                 "level": rest_parts[1]
                             }
                             result["obstacle_degree"].append(obstacle)

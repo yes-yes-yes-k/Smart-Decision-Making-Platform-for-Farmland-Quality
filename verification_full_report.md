@@ -18,15 +18,18 @@
   1. section 标记改为匹配 exe 实际输出（`地块代码`/`原始指标值`/`障碍度因子`）
   2. `parcel_info` 解析同时支持 `：` 和 `:` 分隔符
   3. `composite_index`/`quality_grade` 全文匹配（排除「潜在耕地质量等级」）
-  4. `obstacle_degree` 解析提取 `indicator`、`degree`（float）、`level`（中文等级）
-  5. 分隔线（`---`/`===`）和表格头（`| 评价指标`）正确终结当前 section
+  4. `obstacle_degree` 解析提取 `indicator`、`degree`（float）、`level`（中文等级），并按顺序生成 `rank` 字段
+  5. `indicators` 拆分 `name` 和 `code`：从 `酸碱度(SJD)` 提取 `name="酸碱度"` + `code="SJD"`
+  6. `obstacle_degree` 的 `degree` 用 try/except 跳过非数字行（避免 ValueError 中断解析）
+  7. 分隔线（`---`/`===`）和表格头（`| 评价指标`）正确终结当前 section
 - **验证结果**：调用真实 exe（parcel_code=`A0001`）通过断言：
   - `quality_grade` = `10等` ✓
   - `composite_index` = `0.6728` ✓
-  - `indicators` = 12 条 ✓
-  - `obstacle_degree` = 12 条 ✓
+  - `indicators` = 12 条（含 `name`/`code`/`raw_value` 三字段）✓
+  - `obstacle_degree` = 12 条（含 `rank`/`indicator`/`degree`/`level` 四字段）✓
   - `parcel_info` = 5 个字段（地块代码/经度/纬度/县区名称/二级农业区名称）✓
-- **影响范围**：仅 `runner.py:parse_output` 一处函数，无 API/契约变更。
+- **单元测试**：`tests/test_farmland_grade_eval.py` 19/19 通过（含真实样本解析、边界场景、端到端集成）
+- **影响范围**：仅 `runner.py:parse_output` 一处函数，无 API/契约变更。`grade_agent.py` 仅访问 `indicator`/`degree`/`quality_grade`/`composite_index` 字段，新增 `code`/`rank` 字段向后兼容。
 
 ---
 
