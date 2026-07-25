@@ -40,7 +40,7 @@ class Config:
     CHROMA_COLLECTION_NAME = os.environ.get('CHROMA_COLLECTION_NAME') or 'enterprise_kb'
 
     UPLOAD_FOLDER = os.environ.get('UPLOAD_FOLDER') or './uploads'
-    MAX_CONTENT_LENGTH = 50 * 1024 * 1024
+    MAX_CONTENT_LENGTH = 200 * 1024 * 1024  # 200MB，对齐 MAX_DATA_IMPORT_SIZE，允许数据导入大文件
 
     CHUNK_SIZE = 800
     CHUNK_OVERLAP = 150
