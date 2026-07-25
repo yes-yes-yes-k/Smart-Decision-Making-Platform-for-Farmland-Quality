@@ -1,6 +1,5 @@
 import subprocess
 import os
-import re
 import time
 from typing import Dict, Any, Optional
 from pathlib import Path
@@ -31,7 +30,22 @@ class FarmlandGradeRunner:
         }
 
     def parse_output(self, output: str) -> Dict[str, Any]:
-        """解析exe输出为结构化JSON"""
+        """解析exe输出为结构化JSON
+
+        exe 实际输出格式（2026-07-25 验证）：
+          地块代码：A0001
+          经度：  112.973801
+          ...
+          ------------------- 原始指标值 -------------------
+          酸碱度(SJD):    4.600
+          ...
+          ------------------------------------------------
+          耕地质量综合指数：  0.6728
+          耕地质量等级：10等
+          ------------ 障碍度因子（从大到小） ------------
+          质地构型    :  0.1690  中度障碍
+          ...
+        """
         lines = output.strip().split('\n')
         result = {
             "raw_output": output,
@@ -44,88 +58,84 @@ class FarmlandGradeRunner:
 
         current_section = None
 
-        # 指标行正则：指标名(代码): 值
-        indicator_pattern = re.compile(r'^(.+?)\((.+?)\)\s*[:：]\s*(.+)$')
-        # 障碍度行正则：指标名 : 障碍度值 障碍类型
-        obstacle_pattern = re.compile(r'^(.+?)\s*[:：]\s*([\d.]+)\s+(.+)$')
-
         for line in lines:
-            line = line.strip()
-            if not line:
+            stripped = line.strip()
+            if not stripped:
                 continue
 
-            # section 标记识别（匹配 exe 实际输出关键词）
-            if '原始指标值' in line:
+            # Section markers — match actual exe output (not generic labels)
+            if '地块代码' in stripped and '：' in stripped:
+                current_section = 'parcel'
+            elif '原始指标值' in stripped:
                 current_section = 'indicators'
                 continue
-            elif '障碍度因子' in line:
+            elif '障碍度因子' in stripped:
                 current_section = 'obstacle'
                 continue
-            elif line.startswith('---'):
-                # 普通分隔线，重置 section
+            elif stripped.startswith('---') or stripped.startswith('==='):
+                # Separator line — end current section (but keep scanning for composite)
+                if current_section in ('indicators', 'obstacle'):
+                    current_section = None
+                continue
+            elif stripped.startswith('|') and '评价指标' in stripped:
+                # Table header — stop parsing indicators
                 current_section = None
                 continue
-            elif line.startswith('地块代码') and ('：' in line or ':' in line):
-                current_section = 'parcel'
-            elif '耕地质量综合指数' in line:
-                current_section = 'composite'
-            elif '耕地质量等级' in line:
-                current_section = 'composite'
 
-            if current_section == 'parcel':
-                # parcel_info：用中文 '：' 或英文 ':' 分隔
-                if '：' in line:
-                    key, value = line.split('：', 1)
-                    result["parcel_info"][key.strip()] = value.strip()
-                elif ':' in line:
-                    key, value = line.split(':', 1)
-                    result["parcel_info"][key.strip()] = value.strip()
-
-            elif current_section == 'indicators':
-                # indicators：指标名(代码): 值
-                m = indicator_pattern.match(line)
-                if m:
-                    indicator = {
-                        "name": m.group(1).strip(),
-                        "code": m.group(2).strip(),
-                        "raw_value": m.group(3).strip()
-                    }
-                    result["indicators"].append(indicator)
-
-            elif current_section == 'composite':
-                # composite：综合指数和质量等级
-                if '耕地质量综合指数' in line:
-                    m = re.search(r'([\d.]+)', line)
-                    if m:
+            # Composite index / quality grade — match anywhere (no section needed)
+            if '耕地质量综合指数' in stripped:
+                # 耕地质量综合指数：  0.6728
+                for sep in ('：', ':'):
+                    if sep in stripped:
+                        val = stripped.split(sep, 1)[1].strip()
                         try:
-                            result["composite_index"] = float(m.group(1))
+                            result["composite_index"] = float(val)
                         except ValueError:
                             pass
-                elif '耕地质量等级' in line:
-                    if '：' in line:
-                        parts = line.split('：', 1)
-                        if len(parts) > 1:
-                            result["quality_grade"] = parts[1].strip()
-                    elif ':' in line:
-                        parts = line.split(':', 1)
-                        if len(parts) > 1:
-                            result["quality_grade"] = parts[1].strip()
+                        break
+                continue
+            if '耕地质量等级' in stripped and '潜在' not in stripped:
+                # 耕地质量等级：10等  (exclude 潜在耕地质量等级)
+                for sep in ('：', ':'):
+                    if sep in stripped:
+                        result["quality_grade"] = stripped.split(sep, 1)[1].strip()
+                        break
+                continue
+
+            if current_section == 'parcel':
+                # 地块代码：A0001 / 经度：  112.973801 / 县区名称：武江区
+                for sep in ('：', ':'):
+                    if sep in stripped:
+                        key, value = stripped.split(sep, 1)
+                        result["parcel_info"][key.strip()] = value.strip()
+                        break
+
+            elif current_section == 'indicators':
+                # 酸碱度(SJD):    4.600 / 耕层质地(GCZD): 黏壤土
+                for sep in (':', '：'):
+                    if sep in stripped:
+                        key, value = stripped.split(sep, 1)
+                        indicator = {
+                            "name": key.strip(),
+                            "raw_value": value.strip()
+                        }
+                        result["indicators"].append(indicator)
+                        break
 
             elif current_section == 'obstacle':
-                # obstacle：指标名 : 障碍度值 障碍类型
-                m = obstacle_pattern.match(line)
-                if m:
-                    try:
-                        degree = float(m.group(2))
-                    except ValueError:
-                        continue
-                    obstacle = {
-                        "rank": len(result["obstacle_degree"]) + 1,
-                        "indicator": m.group(1).strip(),
-                        "degree": degree,
-                        "level": m.group(3).strip()
-                    }
-                    result["obstacle_degree"].append(obstacle)
+                # 质地构型    :  0.1690  中度障碍
+                for sep in (':', '：'):
+                    if sep in stripped:
+                        name_part, rest = stripped.split(sep, 1)
+                        rest_parts = rest.strip().split()
+                        if len(rest_parts) >= 2:
+                            obstacle = {
+                                "indicator": name_part.strip(),
+                                "degree": float(rest_parts[0]),
+                                "level": rest_parts[1]
+                            }
+                            result["obstacle_degree"].append(obstacle)
+                        break
 
         return result
 

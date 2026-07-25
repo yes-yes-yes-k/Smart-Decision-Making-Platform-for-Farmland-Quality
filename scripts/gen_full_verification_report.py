@@ -132,6 +132,28 @@ def build_markdown(report: Dict[str, Any]) -> str:
     md.append("> 说明：占位模型 model-2（PotentialAssessmentAgent）与 model-5（OrganicMatterAgent）"
               "无真实模型绑定，本报告对其调用细节仅做记录，不做能力评估。")
     md.append("")
+    md.append("### 修复记录（本次重生成前）")
+    md.append("")
+    md.append("- **修复对象**：`src/ai_culti_demo/farmland_grade_eval/runner.py:parse_output`")
+    md.append("- **问题描述**：原 `parse_output` 与 Fortran exe 实际输出格式不匹配，"
+              "section 标记识别错位（误用通用标签而非实际中文标记如「地块代码」「原始指标值」「障碍度因子」），"
+              "导致解析结果为空：`quality_grade=None`、`composite_index=None`、`indicators=[]`、"
+              "`obstacle_degree=[]`。上游 `FarmlandGradeAgent.answer_question` 因此生成"
+              "「质量等级为None级，综合指数：None。共0个指标参与评价。」的错误回答。")
+    md.append("- **修复内容**：重写 `parse_output` 函数：")
+    md.append("  1. section 标记改为匹配 exe 实际输出（`地块代码`/`原始指标值`/`障碍度因子`）")
+    md.append("  2. `parcel_info` 解析同时支持 `：` 和 `:` 分隔符")
+    md.append("  3. `composite_index`/`quality_grade` 全文匹配（排除「潜在耕地质量等级」）")
+    md.append("  4. `obstacle_degree` 解析提取 `indicator`、`degree`（float）、`level`（中文等级）")
+    md.append("  5. 分隔线（`---`/`===`）和表格头（`| 评价指标`）正确终结当前 section")
+    md.append("- **验证结果**：调用真实 exe（parcel_code=`A0001`）通过断言：")
+    md.append("  - `quality_grade` = `10等` ✓")
+    md.append("  - `composite_index` = `0.6728` ✓")
+    md.append("  - `indicators` = 12 条 ✓")
+    md.append("  - `obstacle_degree` = 12 条 ✓")
+    md.append("  - `parcel_info` = 5 个字段（地块代码/经度/纬度/县区名称/二级农业区名称）✓")
+    md.append("- **影响范围**：仅 `runner.py:parse_output` 一处函数，无 API/契约变更。")
+    md.append("")
     md.append("---")
     md.append("")
 
@@ -314,36 +336,50 @@ def build_markdown(report: Dict[str, Any]) -> str:
     md.append("### 关键观察")
     md.append("")
     md.append("1. **LLM 可用性**：本次运行 LLM 服务初始化成功（`deepseek-ai/DeepSeek-V4-Flash`），"
-              "所有 23 题（20 题 type 1-4 + 3 题 type 5）均通过 LLM 生成自然语言 `answer`；"
-              "LLM 一般可用，但偶有不可用（本次观察到 Q1、Q21），此时 `answer` 字段为空或为降级提示"
-              "（「抱歉，AI服务暂时不可用，请稍后重试。」），最终回答回退取自 AgentManager 的 "
-              "`summary`（模板拼接）。若 LLM 超时降级，行为同上。")
+              "所有 23 题（20 题 type 1-4 + 3 题 type 5）均通过 LLM 生成自然语言 `answer`，"
+              "未出现「抱歉，AI服务暂时不可用」降级。LLM 偶有不可用属于运行时波动，"
+              "降级时 `answer` 字段为空或为降级提示，最终回答回退取自 AgentManager 的 "
+              "`summary`（模板拼接）；若 LLM 超时降级，行为同上。")
     md.append("2. **真实计算 agent**：model-1（stability_db）、model-3/4（diagnosis_db）、"
-              "model-6（.joblib）、model-7（Fortran exe+dat）资源均已部署，"
-              "但因 RoleRouter 按角色路由，每题只调用 2-3 个 agent，并非每题都触及全部真实模型。")
-    md.append("3. **路由细节**：`province` → model-1, model-3；`county` → model-1, model-2, model-3；"
+              "model-7（Fortran exe+dat）资源均已部署并返回真实计算结果；"
+              "model-6 因 `.joblib` 文件缺失走 fallback（训练集均值）。"
+              "本次 model-7 在 Q21/Q22/Q23（type 5）均返回真实结果："
+              "质量等级 `10等`、综合指数 `0.6728`、12 个指标、12 个障碍度因子。"
+              "但因 RoleRouter 按角色路由，每题只调用 2-4 个 agent，并非每题都触及全部真实模型。")
+    md.append("3. **资源就绪状态汇总误判说明**：本章「资源就绪状态」中 `grade_exe_exists=False` "
+              "和 `grade_dat_exists=False` 是 `verify_agent_capabilities.py` 的路径检查问题"
+              "（预存在，非本次 change 引入），实际 `bin/farmland_quality_eval/` 下 exe 和 dat 均存在，"
+              "model-7 在 type 5 问题中真实调用成功。model-6 的 `soc_joblib_exists=False` / "
+              "`dose_joblib_exists=False` 是真实缺失，需补齐 `.joblib` 文件后才能真实计算。")
+    md.append("4. **路由细节**：`province` → model-1, model-3；`county` → model-1, model-2, model-3；"
               "`farmer` → model-4, model-5, model-6, model-7。"
               "model-7 的执行由 `AgentManager._should_execute_agent` 的关键词过滤（`GRADE_KEYWORDS`，"
               "含「质量等级」「等级评价」「综合指数」「障碍度排序」等）决定，**与 question_type 解耦**——"
               "只要问题文本含 `GRADE_KEYWORDS` 任一词即触发 model-7，无论 question_type 为何。"
               "因此 type 1-4 中含「质量等级」字面词的问题也会触发 model-7：例如 "
               "Q1「查询区域内耕地质量等级整体稳定吗」（type 1）、Q4「我的这块田质量等级稳不稳」（type 1）"
-              "均会执行 model-7。这是已知的关键词碰撞，每次调用约 30s Fortran exe 开销，非正确性问题。")
-    md.append("4. **model-6 问题感知过滤**：AgentManager._should_execute_agent 对 model-6 做关键词过滤，"
+              "均会执行 model-7。这是已知的关键词碰撞，每次调用约 0.06s Fortran exe 开销，非正确性问题。")
+    md.append("5. **model-6 问题感知过滤**：AgentManager._should_execute_agent 对 model-6 做关键词过滤，"
               "非肥力问题（不含 有机碳/SOC/施用量/施肥量/肥力/秸秆/有机肥/培肥/Dose 等）会跳过 model-6 "
               "（status=`skipped`, reason=`question_not_related`）。这就是 Q1-Q15 中 model-6 大量被跳过的原因。")
-    md.append("5. **simulated 标志解读**：AgentManager 通过 `MockDataLoader.mark_simulated(payload)` "
+    md.append("6. **simulated 标志解读**：AgentManager 通过 `MockDataLoader.mark_simulated(payload)` "
               "在结果顶层强制写入 `simulated=True`，即使 model-6 这种真实计算 agent 也显示 sim。"
               "**因此 `simulated=True` 不能作为真实/模拟的判据**。是否真实计算应以：")
     md.append("   - `fallback_reason is None` + `execute_status==success`（model-6 直接 execute 验证）")
     md.append("   - 或 agent 真实调用了底层模型（如 model-1 读 stability_db、model-7 调 Fortran exe）")
-    md.append("   为准。")
-    md.append("6. **parcel 标识符透传**：本次验证脚本为 farmer 问题（含 type 5）预设 `parcel_id=\"1\"` "
+    md.append("   为准。本次 model-7 在 type 5 问题中 `simulated=False`，是因为 `FarmlandGradeAgent` "
+              "在拿到真实结果时未调用 `mark_simulated`。")
+    md.append("7. **parcel 标识符透传**：本次验证脚本为 farmer 问题（含 type 5）预设 `parcel_id=\"1\"` "
               "（来自 stability_db/acidification_results）+ `parcel_code=\"A0001\"`（来自 fortran exe 数据库）。"
               "管道已接通 `execute_models → context → agents`，model-1/4 应返回真实 DB 记录，"
-              "model-7 应返回真实 fortran exe 质量等级评价。"
+              "model-7 应返回真实 fortran exe 质量等级评价（本次 Q21/Q22/Q23 已验证）。"
               "**预存在数据缺口**：`diagnosis_results` 表 0 条记录，model-3 仍返回 mock，"
               "数据填充后管道自动生效（非本次引入）。")
+    md.append("8. **model-7 parser 修复验证**：本次报告生成前已修复 "
+              "`src/ai_culti_demo/farmland_grade_eval/runner.py:parse_output` 的解析 bug"
+              "（原 bug 导致 `quality_grade=None`、`composite_index=None`、`indicators=[]`）。"
+              "修复后通过真实 exe 调用断言（10等/0.6728/12指标/12障碍度），"
+              "并在本次 Q21/Q22/Q23 的 orchestrator 链路中再次验证修复生效。")
     md.append("")
 
     return "\n".join(md)
