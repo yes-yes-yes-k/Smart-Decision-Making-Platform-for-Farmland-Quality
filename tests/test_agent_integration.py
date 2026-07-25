@@ -22,27 +22,27 @@ def _make_state(question: str, question_type: int = 1) -> MultiAgentState:
     }
 
 
-def test_execute_models_invokes_agent_manager_farmer():
-    """execute_models 应通过 AgentManager 路由到 farmer 智能体组合"""
-    state = _make_state("我的田施氮肥施多少？")
+def test_execute_models_invokes_agent_manager_type4():
+    """execute_models 应通过 AgentManager 路由到 type 4 智能体（model-6）"""
+    state = _make_state("我的田施氮肥施多少？", question_type=4)
     result = execute_models(state)
     assert result["status"] == "model_completed"
     mr = result["model_results"]
     assert mr.get("status") == "ok"
     data = mr.get("data", {})
-    assert data.get("role") == "farmer"
-    assert data.get("agents_invoked") == ["model-4", "model-5", "model-6", "model-7"]
-    print("✓ execute_models 通过 AgentManager 路由到 farmer")
+    assert data.get("question_type") == 4
+    assert data.get("agents_invoked") == ["model-6"]
+    print("✓ execute_models 通过 AgentManager 路由到 type 4 (model-6)")
 
 
-def test_execute_models_invokes_agent_manager_province():
-    state = _make_state("全省耕地酸化程度如何？")
+def test_execute_models_invokes_agent_manager_type1():
+    state = _make_state("全省耕地酸化程度如何？", question_type=1)
     result = execute_models(state)
     assert result["status"] == "model_completed"
     data = result["model_results"].get("data", {})
-    assert data.get("role") == "province"
-    assert set(data.get("agents_invoked", [])) == {"model-1", "model-3"}
-    print("✓ execute_models 通过 AgentManager 路由到 province")
+    assert data.get("question_type") == 1
+    assert data.get("agents_invoked") == ["model-1"]
+    print("✓ execute_models 通过 AgentManager 路由到 type 1 (model-1)")
 
 
 def test_execute_models_writes_structured_result():
@@ -90,67 +90,96 @@ def test_chat_api_returns_structured_multi_agent_result():
     payload = resp.get_json()
     assert payload["status"] == "ok"
     data = payload["data"]
-    # 多智能体结构化字段
-    assert data.get("role") == "farmer"
-    assert data.get("agents_invoked") == ["model-4", "model-5", "model-6", "model-7"]
-    # recommendations 字段仅在非空时写入响应（chat.py:111-112），
-    # 因此使用默认值 [] 兼容 model-6 被跳过且 model-4/5 else 分支无 recommendation 的场景
+    # 多智能体结构化字段（question_type-based 1:1 路由）
+    assert "role" not in data, f"响应不应含 role 字段: {data}"
+    assert "question_type" in data
+    qt = data.get("question_type")
+    agents_invoked = data.get("agents_invoked", [])
+    # 1:1 映射：agents_invoked 应仅含单一 agent
+    assert len(agents_invoked) == 1, f"1:1 路由应仅调 1 个 agent，实际: {agents_invoked}"
+    # recommendations 字段仅在非空时写入响应
     assert isinstance(data.get("recommendations", []), list)
     assert "answer" in data
 
-    print("✓ /api/v1/chat/ 返回多智能体结构化结果")
+    print(f"✓ /api/v1/chat/ 返回多智能体结构化结果 (type={qt}, agents={agents_invoked})")
 
 
-def test_e2e_province_role_routing():
-    """省市管理端问题应路由到 model-1 + model-3"""
-    state = _make_state("全省耕地质量整体稳定吗？哪些县区有退化风险？")
+def test_e2e_type1_stability_routing():
+    """type=1 稳定性问题应路由到 model-1"""
+    state = _make_state("全省耕地质量整体稳定吗？哪些县区有退化风险？", question_type=1)
     result = execute_models(state)
     data = result["model_results"]["data"]
-    assert data["role"] == "province"
-    assert data["agents_invoked"] == ["model-1", "model-3"]
-    # model-3 依赖 model-2，但 model-2 不在 invoked 集合内 —— 应安全跳过
-    for aid in ["model-1", "model-3"]:
-        assert aid in data["details"]
-        assert data["details"][aid]["simulated"] is True
-    print("✓ 省市管理端路由正确（model-1 + model-3）")
+    assert data["question_type"] == 1
+    assert data["agents_invoked"] == ["model-1"]
+    assert "model-1" in data["details"]
+    assert data["details"]["model-1"]["simulated"] is True
+    print("✓ type=1 稳定性路由正确（model-1）")
 
 
-def test_e2e_county_role_routing():
-    """县域执行端问题应路由到 model-1 + model-3 + model-2，model-3 排在 model-2 之后"""
-    state = _make_state("本县乡镇任务如何分配？县域耕地质量如何？")
+def test_e2e_type1_county_stability_routing():
+    """type=1 县域稳定性问题也路由到 model-1（1:1 映射，不再按角色分多模型）"""
+    state = _make_state("本县乡镇任务如何分配？县域耕地质量如何？", question_type=1)
     result = execute_models(state)
     data = result["model_results"]["data"]
-    assert data["role"] == "county"
-    assert set(data["agents_invoked"]) == {"model-1", "model-2", "model-3"}
-    # model-2 应在 model-3 之前（拓扑序）
-    assert data["agents_invoked"].index("model-2") < data["agents_invoked"].index("model-3")
-    print("✓ 县域执行端路由正确（model-1 + model-2 + model-3，拓扑序正确）")
+    assert data["question_type"] == 1
+    assert data["agents_invoked"] == ["model-1"]
+    print("✓ type=1 县域稳定性路由正确（model-1，1:1 映射）")
 
 
-def test_e2e_farmer_role_routing():
-    """农户种植端问题应路由到 model-4 + model-5 + model-6，model-6 排在最后"""
-    state = _make_state("我的田施肥施多少？施石灰多少？")
+def test_e2e_type4_fertility_routing():
+    """type=4 肥力问题应路由到 model-6（1:1 映射，model-6 ML 预测）"""
+    state = _make_state("我的田施肥施多少？施石灰多少？", question_type=4)
     result = execute_models(state)
     data = result["model_results"]["data"]
-    assert data["role"] == "farmer"
-    assert data["agents_invoked"] == ["model-4", "model-5", "model-6", "model-7"]
-    # model-7 应排在最后（追加在 farmer 列表末尾，无依赖）
-    assert data["agents_invoked"][-1] == "model-7"
-    # model-6 为独立 ML 预测（不依赖 model-4/5），evidence 含 ML 预测 metric
+    assert data["question_type"] == 4
+    assert data["agents_invoked"] == ["model-6"]
+    # model-6 为独立 ML 预测，evidence 含 ML 预测 metric
     m6_evidence = str(data["details"]["model-6"]["evidence"])
     assert "dose_prediction" in m6_evidence or "soc_prediction" in m6_evidence
-    print("✓ 农户种植端路由正确（model-4 + model-5 + model-6，model-6 ML 预测生效）")
+    print("✓ type=4 肥力路由正确（model-6 ML 预测生效）")
 
 
 def test_e2e_recommendations_aggregated():
-    """汇总的 recommendations 应来自各智能体 evidence 中的 recommendation/source"""
-    state = _make_state("我的田施有机肥多少？")
-    result = execute_models(state)
-    data = result["model_results"]["data"]
-    assert isinstance(data["recommendations"], list)
-    # 至少应包含一条建议（来自 model-4 或 model-5 或 model-6）
-    assert len(data["recommendations"]) >= 1
-    print("✓ recommendations 字段已聚合各智能体建议")
+    """汇总的 recommendations 应来自智能体 evidence 中的 recommendation/source。
+
+    1:1 路由后，type 4 仅调 model-6（ML 预测），其 evidence 为 metric/value 格式，
+    不含 recommendation/source。使用 mock 验证：当 agent evidence 含
+    recommendation/source 时，_summarize 能正确聚合并去重；metric/value 不混入。
+    """
+    from framework.agents.manager import agent_manager
+
+    real_agent = agent_manager.agents["model-6"]
+
+    class _FakeAgent:
+        dependencies: list = []
+
+        def answer_question(self, question, context):
+            return {
+                "answer": "测试回复",
+                "evidence": [
+                    {"recommendation": "增施有机肥 2 t/亩"},
+                    {"source": "农业农村部指南"},
+                    {"metric": "soc_prediction", "value": 12.0},  # 不应进入 recommendations
+                ],
+                "confidence": 0.8,
+                "simulated": True,
+            }
+
+    try:
+        agent_manager.agents["model-6"] = _FakeAgent()
+        state = _make_state("我的田施有机肥多少？", question_type=4)
+        result = execute_models(state)
+        data = result["model_results"]["data"]
+        assert isinstance(data["recommendations"], list)
+        # 应收集 recommendation 和 source 两条，去重
+        assert len(data["recommendations"]) >= 2, f"应至少聚合 2 条建议: {data['recommendations']}"
+        assert "增施有机肥 2 t/亩" in data["recommendations"]
+        assert "农业农村部指南" in data["recommendations"]
+        # metric/value 格式的 evidence 不应出现在 recommendations
+        assert "soc_prediction" not in data["recommendations"]
+    finally:
+        agent_manager.agents["model-6"] = real_agent
+    print("✓ recommendations 字段已聚合智能体建议（mock 验证）")
 
 
 def test_chat_api_passes_top_level_parcel_id_and_code():
@@ -182,8 +211,8 @@ def test_chat_api_passes_top_level_parcel_id_and_code():
             "question_type": 5,
             "model_results": {
                 "data": {
-                    "role": "farmer",
-                    "agents_invoked": ["model-4", "model-5", "model-6", "model-7"],
+                    "question_type": 5,
+                    "agents_invoked": ["model-7"],
                     "summary": "",
                     "details": {},
                     "recommendations": [],
@@ -243,7 +272,7 @@ def test_chat_api_top_level_parcel_overrides_context():
         return {
             "answer": "ok",
             "question_type": 5,
-            "model_results": {"data": {"role": "farmer", "agents_invoked": [], "summary": "", "details": {}, "recommendations": []}},
+            "model_results": {"data": {"question_type": 5, "agents_invoked": [], "summary": "", "details": {}, "recommendations": []}},
         }
 
     real_run = multi_agent_orchestrator.run

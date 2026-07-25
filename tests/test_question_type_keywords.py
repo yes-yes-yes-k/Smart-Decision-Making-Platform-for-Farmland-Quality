@@ -283,16 +283,6 @@ def test_type5_questions_routed_to_type5():
         assert qt == 5, f"type 5 问题「{q}」期望 TYPE_5，实际 TYPE_{qt}"
 
 
-def test_type5_questions_route_to_farmer():
-    """REFERENCE_QUESTIONS[5] 的每个问题经 RoleRouter 识别为 farmer"""
-    from framework.agents.nodes import REFERENCE_QUESTIONS
-    from framework.agents.router import RoleRouter
-    router = RoleRouter()
-    for q in REFERENCE_QUESTIONS[5]:
-        role = router.identify_role(q)
-        assert role == "farmer", f"type 5 问题「{q}」期望 farmer 角色，实际 {role}"
-
-
 if __name__ == "__main__":
     test_type1_stability_province_question()
     test_type1_stability_county_question()
@@ -326,5 +316,4 @@ if __name__ == "__main__":
     test_type5_keyword_function_direct()
     test_reference_questions_has_type5()
     test_type5_questions_routed_to_type5()
-    test_type5_questions_route_to_farmer()
     print("\n全部问题类型关键词测试通过！")
