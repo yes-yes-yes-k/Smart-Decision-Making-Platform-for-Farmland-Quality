@@ -57,11 +57,11 @@
 
 ## 7. 集成测试
 
-- [ ] 7.1 编写 `tests/test_data_import_integration.py`：使用真实临时目录和 mock adapter，端到端测试 CSV 上传 → 部署 → 触发 → 审计日志写入
-- [ ] 7.2 端到端测试 shapefile zip 上传 → 解压 → 部署 → 触发 → 审计日志写入
-- [ ] 7.3 端到端测试 .dat 上传 → 部署 → check_deployment → 审计日志写入
-- [ ] 7.4 端到端测试触发失败 → 回滚 → 审计日志记录回滚
-- [ ] 7.5 端到端测试备份保留策略：连续导入 4 次，验证 backup/ 下仅保留最近 3 份
+- [x] 7.1 编写 `tests/test_data_import_integration.py`：使用真实临时目录和 mock trigger，端到端测试 CSV 上传 → 部署 → 触发 → 审计日志写入
+- [x] 7.2 端到端测试 shapefile zip 上传 → 解压 → 部署 → 触发 → 审计日志写入
+- [x] 7.3 端到端测试 .dat 上传 → 部署 → check_deployment → 审计日志写入
+- [x] 7.4 端到端测试触发失败 → 回滚 → 审计日志记录回滚
+- [x] 7.5 端到端测试备份保留策略：预创建 4 个旧备份 + 1 次导入，验证 cleanup_backups 保留最近 3 份（偏离 tasks.md "连续 4 次"以避免时间戳碰撞）
 
 ## 8. 文档更新
 
@@ -73,7 +73,7 @@
 
 ## 9. 依赖与启动校验
 
-- [ ] 9.1 确认 `geopandas`、`pandas` 已在 `pyproject.toml` 中（上一轮已添加，本次仅需确认）
+- [x] 9.1 确认 `geopandas`、`pandas` 已在 `pyproject.toml` 中（pandas>=2.2.0 在第 20 行，geopandas>=0.14.0 在第 30 行）
 - [x] 9.2 确认 `framework/core_engine/adapter.py` 已暴露 `bulk_evaluate_csv`、`precompute_stability`、`check_grade_eval_deployment` 三个新方法；若未暴露，补充 adapter 方法（含 `_ensure_data_import_imports` 延迟导入）
 - [x] 9.3 在 `start_http_server.py` 或 `framework/api/app.py` 启动时验证 `logs/` 目录存在（用于审计日志）
 

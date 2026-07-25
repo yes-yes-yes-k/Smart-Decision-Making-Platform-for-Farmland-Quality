@@ -4,24 +4,24 @@
 
 ## 当前状态
 
-- **plan task**: Task 9 — 集成测试（对应 tasks.md 第 7 节 7.1-7.5）
+- **plan task**: Task 10 — 文档更新（对应 tasks.md 第 8 节 8.1-8.5）+ 9.1 依赖确认
 - **阶段**: implementing
 - **review_mode**: standard
 - **tdd_mode**: tdd
 - **base-ref**: ce3c7c2fe3d0e2d7c1c7169141b60cc37d477d3d
 
-## Task 9 派发记录
+## Task 10 派发记录
 
 - **派发时间**: 待派发
 - **model**: sonnet
-- **允许修改文件**: tests/test_data_import_integration.py
-- **RED/GREEN 证据**: 待回报
+- **允许修改文件**: data/farmland_diagnosis/README.md, data/farmland_stability/README.md, bin/farmland_quality_eval/README.md, docs/api/data_import.md, README.md
+- **RED/GREEN 证据**: N/A（文档任务无测试）
 - **实现提交哈希**: 待回报
 
 ## 审查-修复轮次
 
 - standard 模式：每任务 reviewer 仅风险任务触发，最多 1 轮；最终轻量审查 1 次
-- 当前任务轮次: 0/1（集成测试属低风险，预计不派发 reviewer）
+- 当前任务轮次: 0/1（文档任务属低风险，不派发 reviewer）
 
 ## 已完成任务
 
@@ -58,6 +58,11 @@
 - 测试: 12/12 PASS + test_docs_dedup.py 9/9 无回归
 - reviewer 发现: 无 CRITICAL/IMPORTANT，3 项 MINOR（app.py import 顺序无害偏差、异常消息返回客户端 brief 允许、deploy 异常路径未测 brief 未要求）
 - 实现: 1 路由函数 `import_data` + @admin_required + 双大小校验 + 3 回滚路径 + 审计日志 + 临时文件 finally 清理
+
+### Task 9 — 集成测试 ✅
+- 提交: b7d5ddb | 风险信号: 无（测试任务，真实 validator/deployer + mock trigger） → 未派发 reviewer
+- 测试: 5/5 PASS + 完整测试套件 47/47 PASS 无回归
+- 覆盖: CSV/shapefile/.dat 端到端 + 触发失败回滚 + 备份保留策略（预创建旧备份 + 1 次导入）
 
 ## 已知问题
 
