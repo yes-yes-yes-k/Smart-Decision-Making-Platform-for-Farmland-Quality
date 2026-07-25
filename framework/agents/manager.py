@@ -13,6 +13,13 @@ FERTILITY_KEYWORDS = [
     "秸秆", "有机肥", "培肥",
 ]
 
+# 质量等级相关关键词（与 nodes.QUESTION_TYPE_5_KEYWORDS 保持一致）
+# 不从 nodes.py import 以避免循环依赖（nodes.py 已 from manager import agent_manager）
+GRADE_KEYWORDS = [
+    "质量等级", "等级评价", "综合指数", "指标隶属度", "障碍度排序",
+    "耕地质量等级", "质量评价", "等级评定", "指标权重",
+]
+
 
 class _StubAgent(BaseAgent):
     """桩智能体，在专业智能体实现前用于 Manager 单元测试。"""
@@ -188,10 +195,12 @@ class AgentManager:
         return order
 
     def _should_execute_agent(self, agent_id: str, question: str) -> bool:
-        """问题感知过滤：model-6 仅在肥力相关问题时执行。"""
+        """问题感知过滤：model-6 仅肥力问题执行，model-7 仅质量等级问题执行。"""
         if agent_id == "model-6":
             q_lower = (question or "").lower()
             return any(kw.lower() in q_lower for kw in FERTILITY_KEYWORDS)
+        if agent_id == "model-7":
+            return any(kw in (question or "") for kw in GRADE_KEYWORDS)
         return True
 
     def _synthesize_comprehensive_result(self, results: Dict[str, Dict[str, Any]]) -> Dict[str, Any]:

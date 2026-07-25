@@ -138,6 +138,62 @@ def test_farmer_role_includes_model_7():
     print("✓ farmer 角色含 model-7（4 个 agent）")
 
 
+def test_should_execute_model7_grade_question():
+    """问'质量等级' → _should_execute_agent('model-7', ...) = True"""
+    from framework.agents.manager import AgentManager, GRADE_KEYWORDS
+    mgr = AgentManager()
+    assert mgr._should_execute_agent("model-7", "我的田耕地质量等级是多少？") is True
+    assert mgr._should_execute_agent("model-7", "查询地块的综合指数和障碍度排序") is True
+    assert mgr._should_execute_agent("model-7", "这块地的耕地质量等级评价结果") is True
+    print("✓ 质量等级相关问题触发 model-7 执行")
+
+
+def test_should_skip_model7_non_grade_question():
+    """非质量等级问题 → _should_execute_agent('model-7', ...) = False"""
+    from framework.agents.manager import AgentManager
+    mgr = AgentManager()
+    assert mgr._should_execute_agent("model-7", "我的田肥力怎么样？") is False
+    assert mgr._should_execute_agent("model-7", "我的田酸化严重吗？") is False
+    assert mgr._should_execute_agent("model-7", "你好") is False
+    print("✓ 非质量等级问题跳过 model-7")
+
+
+def test_grade_keywords_mirrors_question_type_5():
+    """GRADE_KEYWORDS 应镜像 nodes.QUESTION_TYPE_5_KEYWORDS"""
+    from framework.agents.manager import GRADE_KEYWORDS
+    from framework.agents.nodes import QUESTION_TYPE_5_KEYWORDS
+    assert GRADE_KEYWORDS == QUESTION_TYPE_5_KEYWORDS, (
+        f"GRADE_KEYWORDS 与 QUESTION_TYPE_5_KEYWORDS 不一致：\n"
+        f"  manager: {GRADE_KEYWORDS}\n  nodes: {QUESTION_TYPE_5_KEYWORDS}"
+    )
+    print("✓ GRADE_KEYWORDS 镜像 QUESTION_TYPE_5_KEYWORDS")
+
+
+def test_model7_skipped_in_details_for_non_grade_farmer_question():
+    """farmer 问非质量等级问题 → details['model-7'] 含 skipped 状态"""
+    from framework.agents.manager import AgentManager
+    mgr = AgentManager()
+    result = mgr.process("我的田肥力怎么样？", {})
+    details = result["data"]["details"]
+    m7 = details.get("model-7", {})
+    assert m7.get("status") == "skipped", f"model-7 应被跳过，实际: {m7}"
+    assert m7.get("reason") == "question_not_related"
+    print("✓ 非质量等级 farmer 问题 model-7 被跳过")
+
+
+def test_model7_executed_for_grade_farmer_question():
+    """farmer 问质量等级问题 → details['model-7'] 不含 skipped 状态"""
+    from framework.agents.manager import AgentManager
+    mgr = AgentManager()
+    result = mgr.process("我的田耕地质量等级是多少？", {"parcel_code": "A0001"})
+    details = result["data"]["details"]
+    m7 = details.get("model-7", {})
+    assert m7.get("status") != "skipped", f"model-7 不应被跳过，实际: {m7}"
+    # parcel_code 已传，model-7 应调 fortran exe（若部署就绪）或走 mock 回退
+    assert "answer" in m7 or "simulated" in m7
+    print("✓ 质量等级 farmer 问题 model-7 被执行")
+
+
 if __name__ == "__main__":
     test_manager_register_seven_agents()
     test_manager_topological_sort_province()
@@ -145,4 +201,9 @@ if __name__ == "__main__":
     test_manager_process_farmer_returns_structured_result()
     test_manager_process_unknown_question_defaults_farmer()
     test_farmer_role_includes_model_7()
+    test_should_execute_model7_grade_question()
+    test_should_skip_model7_non_grade_question()
+    test_grade_keywords_mirrors_question_type_5()
+    test_model7_skipped_in_details_for_non_grade_farmer_question()
+    test_model7_executed_for_grade_farmer_question()
     print("\n所有 AgentManager 测试通过！")
