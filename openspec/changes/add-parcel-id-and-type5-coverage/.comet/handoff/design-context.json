@@ -1,0 +1,15 @@
+{
+  "change": "add-parcel-id-and-type5-coverage",
+  "phase": "design",
+  "mode": "compact",
+  "canonical_spec": "openspec",
+  "generated_by": "comet-handoff.sh",
+  "context_hash": "d06f4ab204d19b60a1cb75a42722e3561e78c3e9f9d0166e2ec706e6b15ac37c",
+  "files": [
+    { "path": "openspec/changes/add-parcel-id-and-type5-coverage/proposal.md", "sha256": "c6d1a69a8f9bfc4e01d75b3d6e138ba348dd601e1a739e9ca5a3c00cd23f2681" },
+    { "path": "openspec/changes/add-parcel-id-and-type5-coverage/design.md", "sha256": "893f4faf418331d660d5f27e1bd0e4cbc27fc07b42f22e6bbc9e042a89d707d9" },
+    { "path": "openspec/changes/add-parcel-id-and-type5-coverage/tasks.md", "sha256": "43b49b0d47fd24ab58fa2fb72184be15bc476a39b6ed8d6649a5c33183b88567" },
+    { "path": "openspec/changes/add-parcel-id-and-type5-coverage/specs/multi-agent-orchestrator/spec.md", "sha256": "2b02ad6e28b21fac73e85e010d7109aa7591a29d65ae961e12f145f3b16225ca" },
+    { "path": "openspec/changes/add-parcel-id-and-type5-coverage/specs/role-based-routing/spec.md", "sha256": "324d1d5fd7de53917f84b813043365db7c42451b2761ed2428e9cedad79d333a" }
+  ]
+}
