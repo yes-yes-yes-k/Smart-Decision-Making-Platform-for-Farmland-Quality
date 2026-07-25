@@ -2,6 +2,8 @@
 comet_change: add-data-import-interface
 role: technical-design
 canonical_spec: openspec
+archived-with: 2026-07-25-add-data-import-interface
+status: final
 ---
 
 # Data Import Interface — Technical Design Doc
@@ -455,3 +457,4 @@ admin POST /api/v1/data/import (data_type=dat, file=xxx.dat)
 - 现有诊断存储: `src/ai_culti_demo/farmland_diagnosis/storage.py`
 - 现有等级评价 runner: `src/ai_culti_demo/farmland_grade_eval/runner.py`
 - 数据目录 README: `data/farmland_diagnosis/README.md`、`data/farmland_stability/README.md`、`bin/farmland_quality_eval/README.md`
+

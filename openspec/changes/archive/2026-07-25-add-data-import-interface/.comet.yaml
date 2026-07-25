@@ -18,7 +18,7 @@ verification_report: docs/superpowers/reports/2026-07-25-add-data-import-interfa
 branch_status: handled
 created_at: 2026-07-24
 verified_at: 2026-07-25
-archived: false
+archived: true
 direct_override: null
 handoff_context: openspec/changes/add-data-import-interface/.comet/handoff/design-context.json
 handoff_hash: af514c0322d04e414c9d977562da783b64d98b35fd3ea8e0500d575ed0fde479

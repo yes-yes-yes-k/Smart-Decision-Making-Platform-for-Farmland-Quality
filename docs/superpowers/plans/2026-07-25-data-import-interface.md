@@ -2,6 +2,7 @@
 change: add-data-import-interface
 design-doc: docs/superpowers/specs/2026-07-25-data-import-interface-design.md
 base-ref: ce3c7c2fe3d0e2d7c1c7169141b60cc37d477d3d
+archived-with: 2026-07-25-add-data-import-interface
 ---
 
 # 数据导入接口实施计划
@@ -29,6 +30,7 @@ base-ref: ce3c7c2fe3d0e2d7c1c7169141b60cc37d477d3d
 - 不加并发锁，文档提示"避免并发导入"
 - 数据类型 → 目标目录映射：`{'csv': 'data/farmland_diagnosis', 'shapefile': 'data/farmland_stability', 'dat': 'bin/farmland_quality_eval'}`
 
+archived-with: 2026-07-25-add-data-import-interface
 ---
 
 ## 文件结构
@@ -72,6 +74,7 @@ data/farmland_stability/README.md      # 修改：增加 zip + manifest 打包�
 bin/farmland_quality_eval/README.md    # 修改：增加 .dat API 部署说明
 ```
 
+archived-with: 2026-07-25-add-data-import-interface
 ---
 
 ### Task 1: 配置项与基础设施
@@ -132,6 +135,7 @@ git add framework/config.py framework/upload/__init__.py logs/.gitkeep
 git commit -m "feat: add data import config items and logs directory"
 ```
 
+archived-with: 2026-07-25-add-data-import-interface
 ---
 
 ### Task 2: precompute.py 模块（稳定性模型持久化）
@@ -363,6 +367,7 @@ git add src/ai_culti_demo/farmland_stability/precompute.py tests/test_precompute
 git commit -m "feat: add precompute.py for stability model persistence"
 ```
 
+archived-with: 2026-07-25-add-data-import-interface
 ---
 
 ### Task 3: Adapter 扩展（3 个新方法）
@@ -505,6 +510,7 @@ git add framework/core_engine/adapter.py tests/test_precompute.py
 git commit -m "feat: extend CoreEngine adapter with data import methods"
 ```
 
+archived-with: 2026-07-25-add-data-import-interface
 ---
 
 ### Task 4: 数据校验器
@@ -872,6 +878,7 @@ git add framework/upload/data_validator.py tests/test_data_validator.py
 git commit -m "feat: add data validators for CSV/shapefile/dat"
 ```
 
+archived-with: 2026-07-25-add-data-import-interface
 ---
 
 ### Task 5: 数据部署器
@@ -1231,6 +1238,7 @@ git add framework/upload/data_deployer.py tests/test_data_deployer.py
 git commit -m "feat: add data deployer with backup and rollback"
 ```
 
+archived-with: 2026-07-25-add-data-import-interface
 ---
 
 ### Task 6: 审计日志
@@ -1424,6 +1432,7 @@ git add framework/upload/audit_logger.py tests/test_audit_logger.py
 git commit -m "feat: add audit logger for data import operations"
 ```
 
+archived-with: 2026-07-25-add-data-import-interface
 ---
 
 ### Task 7: 触发器封装
@@ -1619,6 +1628,7 @@ git add framework/upload/data_trigger.py tests/test_data_trigger.py
 git commit -m "feat: add data triggers with timeout control"
 ```
 
+archived-with: 2026-07-25-add-data-import-interface
 ---
 
 ### Task 8: API 路由
@@ -2072,6 +2082,7 @@ git add framework/api/routes/data_import.py framework/api/app.py tests/test_data
 git commit -m "feat: add POST /api/v1/data/import route with full orchestration"
 ```
 
+archived-with: 2026-07-25-add-data-import-interface
 ---
 
 ### Task 9: 集成测试
@@ -2337,6 +2348,7 @@ git add tests/test_data_import_integration.py
 git commit -m "test: add end-to-end integration tests for data import"
 ```
 
+archived-with: 2026-07-25-add-data-import-interface
 ---
 
 ### Task 10: 文档更新与依赖校验
@@ -2564,6 +2576,7 @@ git add docs/api/data_import.md data/farmland_diagnosis/README.md data/farmland_
 git commit -m "docs: add data import API documentation and update READMEs"
 ```
 
+archived-with: 2026-07-25-add-data-import-interface
 ---
 
 ## 完整测试运行
@@ -2588,3 +2601,4 @@ python -m pytest tests/test_precompute.py tests/test_data_validator.py tests/tes
 | API 端点上线 | Task 8 | `POST /api/v1/data/import` 路由单测通过 |
 | 端到端验证 | Task 9 | 集成测试 5 场景通过 |
 | 文档齐备 | Task 10 | API 文档 + 3 个 README 更新 |
+

@@ -4,5 +4,6 @@
   "openspec_tasks": "openspec/changes/add-data-import-interface/tasks.md",
   "openspec_delta_spec": "openspec/changes/add-data-import-interface/specs/thematic-data-import/spec.md",
   "handoff_context": "openspec/changes/add-data-import-interface/.comet/handoff/design-context.json",
-  "handoff_markdown": "openspec/changes/add-data-import-interface/.comet/handoff/design-context.md"
+  "handoff_markdown": "openspec/changes/add-data-import-interface/.comet/handoff/design-context.md",
+  "archive_directory": "openspec/changes/archive/2026-07-25-add-data-import-interface"
 }
