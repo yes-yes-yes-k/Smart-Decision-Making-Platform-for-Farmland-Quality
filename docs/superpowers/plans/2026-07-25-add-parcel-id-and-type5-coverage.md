@@ -54,7 +54,7 @@ base-ref: 5d8659d3478984c576fc453150ee38615821ee31
 
 **背景**：当前 farmer 角色 3 个 agent。追加 model-7 后，`AgentManager._summarize` 的 `agents_invoked` 会包含全部 4 个 agent（无论是否被 `_should_execute_agent` 跳过），因此现有断言 `["model-4", "model-5", "model-6"]` 必须同步更新。
 
-- [ ] **Step 1: 写失败测试 — 验证 farmer 含 model-7**
+- [x] **Step 1: 写失败测试 — 验证 farmer 含 model-7**
 
 追加到 `tests/test_agent_manager.py` 末尾（在 `if __name__ == "__main__"` 块之前）：
 
@@ -69,12 +69,12 @@ def test_farmer_role_includes_model_7():
     print("✓ farmer 角色含 model-7（4 个 agent）")
 ```
 
-- [ ] **Step 2: 运行测试验证失败**
+- [x] **Step 2: 运行测试验证失败**
 
 Run: `python tests/test_agent_manager.py test_farmer_role_includes_model_7`
 Expected: FAIL — `AssertionError: farmer 角色未含 model-7`（因 `ROLE_AGENTS['farmer']` 当前只有 3 个）
 
-- [ ] **Step 3: 修改 `ROLE_AGENTS['farmer']` 追加 model-7**
+- [x] **Step 3: 修改 `ROLE_AGENTS['farmer']` 追加 model-7**
 
 在 `framework/agents/router.py:17` 修改：
 
@@ -86,12 +86,12 @@ Expected: FAIL — `AssertionError: farmer 角色未含 model-7`（因 `ROLE_AGE
     }
 ```
 
-- [ ] **Step 4: 运行新测试验证通过**
+- [x] **Step 4: 运行新测试验证通过**
 
 Run: `python tests/test_agent_manager.py test_farmer_role_includes_model_7`
 Expected: PASS — `✓ farmer 角色含 model-7（4 个 agent）`
 
-- [ ] **Step 5: 更新现有 farmer agents_invoked 断言（test_agent_manager.py）**
+- [x] **Step 5: 更新现有 farmer agents_invoked 断言（test_agent_manager.py）**
 
 在 `tests/test_agent_manager.py` 的 `test_manager_process_farmer_returns_structured_result` 函数中，将：
 
@@ -107,7 +107,7 @@ Expected: PASS — `✓ farmer 角色含 model-7（4 个 agent）`
 
 同时更新 `test_manager_topological_sort_farmer` 的注释（仅注释，断言不变——该测试直接传 `["model-4", "model-5", "model-6"]`，不依赖 ROLE_AGENTS）。
 
-- [ ] **Step 6: 更新现有 farmer agents_invoked 断言（test_agent_integration.py）**
+- [x] **Step 6: 更新现有 farmer agents_invoked 断言（test_agent_integration.py）**
 
 在 `tests/test_agent_integration.py` 中修改 3 处：
 
@@ -130,7 +130,7 @@ Expected: PASS — `✓ farmer 角色含 model-7（4 个 agent）`
 
 注意：`test_e2e_farmer_role_routing` 的问题 "我的田施肥施多少？施石灰多少？" 不含质量等级关键词，model-7 会被 `_should_execute_agent` 跳过——但 Task 2 才会实现该过滤。**此时运行该测试，model-7 会尝试执行**（调 fortran exe 但 `parcel_code` 缺失，走 mock 回退）。`agents_invoked` 仍含 model-7（因 `_summarize` 用 `_topological_sort(agent_ids)` 包含全部），`details["model-7"]` 含 `simulated: True`。现有 `for aid, payload in data["details"].items(): assert payload.get("simulated") is True` 仍通过。
 
-- [ ] **Step 7: 运行受影响的现有测试验证不回归**
+- [x] **Step 7: 运行受影响的现有测试验证不回归**
 
 Run:
 ```
@@ -139,7 +139,7 @@ python tests/test_agent_integration.py
 ```
 Expected: 全部 PASS。`test_e2e_farmer_role_routing` 中 model-6 仍执行（问题含 "施肥"），model-7 因 parcel_code 缺失走 mock 回退（simulated=True），断言通过。
 
-- [ ] **Step 8: 提交**
+- [x] **Step 8: 提交**
 
 ```bash
 git add framework/agents/router.py tests/test_agent_manager.py tests/test_agent_integration.py
@@ -164,7 +164,7 @@ git commit -m "feat(routing): farmer 角色追加 model-7（4 个 agent）
 
 **背景**：model-7 调 fortran exe 有 30s 超时，对非质量等级问题应跳过。沿用 model-6 的 `FERTILITY_KEYWORDS` 本地副本模式（`manager.py:9-14` 注释"与 FertilityMLAgent.FERTILITY_KEYWORDS 保持一致"），避免 `manager.py` ↔ `nodes.py` 循环 import（`nodes.py:286` 已 `from framework.agents.manager import agent_manager`）。
 
-- [ ] **Step 1: 写失败测试 — model-7 关键词过滤**
+- [x] **Step 1: 写失败测试 — model-7 关键词过滤**
 
 追加到 `tests/test_agent_manager.py` 末尾：
 
@@ -225,12 +225,12 @@ def test_model7_executed_for_grade_farmer_question():
     print("✓ 质量等级 farmer 问题 model-7 被执行")
 ```
 
-- [ ] **Step 2: 运行测试验证失败**
+- [x] **Step 2: 运行测试验证失败**
 
 Run: `python tests/test_agent_manager.py test_should_execute_model7_grade_question`
 Expected: FAIL — `ImportError: cannot import name 'GRADE_KEYWORDS' from 'framework.agents.manager'`
 
-- [ ] **Step 3: 新增 GRADE_KEYWORDS 本地副本**
+- [x] **Step 3: 新增 GRADE_KEYWORDS 本地副本**
 
 在 `framework/agents/manager.py` 的 `FERTILITY_KEYWORDS` 定义之后（约第 14 行后）追加：
 
@@ -243,7 +243,7 @@ GRADE_KEYWORDS = [
 ]
 ```
 
-- [ ] **Step 4: 修改 `_should_execute_agent` 追加 model-7 分支**
+- [x] **Step 4: 修改 `_should_execute_agent` 追加 model-7 分支**
 
 在 `framework/agents/manager.py` 的 `_should_execute_agent` 方法中（约第 190-195 行），将：
 
@@ -269,7 +269,7 @@ GRADE_KEYWORDS = [
         return True
 ```
 
-- [ ] **Step 5: 运行新测试验证通过**
+- [x] **Step 5: 运行新测试验证通过**
 
 Run:
 ```
@@ -281,12 +281,12 @@ python tests/test_agent_manager.py test_model7_executed_for_grade_farmer_questio
 ```
 Expected: 全部 PASS。
 
-- [ ] **Step 6: 运行全套 manager 测试验证不回归**
+- [x] **Step 6: 运行全套 manager 测试验证不回归**
 
 Run: `python tests/test_agent_manager.py`
 Expected: 全部 PASS。注意 `test_should_execute_other_agents_always` 断言 model-4/5 始终执行——不受影响。
 
-- [ ] **Step 7: 提交**
+- [x] **Step 7: 提交**
 
 ```bash
 git add framework/agents/manager.py tests/test_agent_manager.py
@@ -311,7 +311,7 @@ git commit -m "feat(manager): model-7 问题感知过滤（仅质量等级问题
 
 **背景**：`QUESTION_TYPE_5_KEYWORDS` 已定义但 `_identify_question_type_keyword` 无 type 5 分支，导致 type 5 问题返回 `(0, relevance)`。分支顺序 1→2→3→4→5，type 5 在最后，不影响前序类型判定。关键词碰撞已验证安全：type 5 问题不含"稳定"（type 1 的 "等级稳定" 不命中）。
 
-- [ ] **Step 1: 写失败测试 — type 5 识别**
+- [x] **Step 1: 写失败测试 — type 5 识别**
 
 追加到 `tests/test_question_type_keywords.py` 末尾（在 `if __name__ == "__main__"` 块之前）：
 
@@ -365,12 +365,12 @@ def test_type5_keyword_function_direct():
     assert rel >= 0.3
 ```
 
-- [ ] **Step 2: 运行测试验证失败**
+- [x] **Step 2: 运行测试验证失败**
 
 Run: `python tests/test_question_type_keywords.py test_type5_grade_quality_question`
 Expected: FAIL — `AssertionError: 期望 TYPE_5，实际 0`（因 `_identify_question_type_keyword` 无 type 5 分支，返回 `(0, relevance)`）
 
-- [ ] **Step 3: 修改 `_identify_question_type_keyword` 追加 type 5 分支**
+- [x] **Step 3: 修改 `_identify_question_type_keyword` 追加 type 5 分支**
 
 在 `framework/agents/nodes.py` 的 `_identify_question_type_keyword` 函数中（约第 183-196 行），将：
 
@@ -412,7 +412,7 @@ def _identify_question_type_keyword(question: str) -> tuple[int, float]:
         return 0, relevance
 ```
 
-- [ ] **Step 4: 运行新测试验证通过**
+- [x] **Step 4: 运行新测试验证通过**
 
 Run:
 ```
@@ -425,12 +425,12 @@ python tests/test_question_type_keywords.py test_type5_keyword_function_direct
 ```
 Expected: 全部 PASS。
 
-- [ ] **Step 5: 运行全套关键词测试验证不回归**
+- [x] **Step 5: 运行全套关键词测试验证不回归**
 
 Run: `python tests/test_question_type_keywords.py`
 Expected: 全部 PASS。`test_all_xlsx_classic_questions_routed` 中 type 1-4 问题不受影响（type 5 分支在 type 4 之后，不抢占已有类型）。
 
-- [ ] **Step 6: 提交**
+- [x] **Step 6: 提交**
 
 ```bash
 git add framework/agents/nodes.py tests/test_question_type_keywords.py
@@ -454,7 +454,7 @@ git commit -m "feat(nodes): _identify_question_type_keyword 新增 type 5 分支
 
 **背景**：3 个问题均含 farmer 关键词（"我的田"/"地块"/"这块地"）确保 RoleRouter 识别为 farmer。问题同时含 type 5 关键词（"质量等级"/"综合指数"/"等级评价"）确保 `_identify_question_type_keyword` 返回 5。注意"查询地块的综合指数和障碍度排序"不含"我的田"/"这块地"但含"地块"——"地块"不在 `ROLE_KEYWORDS['farmer']` 中，但 `identify_role` 默认返回 "farmer"（无匹配时回退），仍能正确路由。
 
-- [ ] **Step 1: 写失败测试 — REFERENCE_QUESTIONS[5] 存在且非空**
+- [x] **Step 1: 写失败测试 — REFERENCE_QUESTIONS[5] 存在且非空**
 
 追加到 `tests/test_question_type_keywords.py` 末尾：
 
@@ -487,12 +487,12 @@ def test_type5_questions_route_to_farmer():
         assert role == "farmer", f"type 5 问题「{q}」期望 farmer 角色，实际 {role}"
 ```
 
-- [ ] **Step 2: 运行测试验证失败**
+- [x] **Step 2: 运行测试验证失败**
 
 Run: `python tests/test_question_type_keywords.py test_reference_questions_has_type5`
 Expected: FAIL — `AssertionError: REFERENCE_QUESTIONS 缺少 key 5`
 
-- [ ] **Step 3: 在 REFERENCE_QUESTIONS dict 新增 key 5**
+- [x] **Step 3: 在 REFERENCE_QUESTIONS dict 新增 key 5**
 
 在 `framework/agents/nodes.py` 的 `REFERENCE_QUESTIONS` dict 中（约第 96-104 行，type 4 条目之后），追加 key 5：
 
@@ -534,7 +534,7 @@ REFERENCE_QUESTIONS: Dict[int, List[str]] = {
 }
 ```
 
-- [ ] **Step 4: 运行新测试验证通过**
+- [x] **Step 4: 运行新测试验证通过**
 
 Run:
 ```
@@ -544,12 +544,12 @@ python tests/test_question_type_keywords.py test_type5_questions_route_to_farmer
 ```
 Expected: 全部 PASS。
 
-- [ ] **Step 5: 运行全套关键词测试验证不回归**
+- [x] **Step 5: 运行全套关键词测试验证不回归**
 
 Run: `python tests/test_question_type_keywords.py`
 Expected: 全部 PASS。
 
-- [ ] **Step 6: 提交**
+- [x] **Step 6: 提交**
 
 ```bash
 git add framework/agents/nodes.py tests/test_question_type_keywords.py
@@ -574,7 +574,7 @@ git commit -m "feat(nodes): REFERENCE_QUESTIONS 新增 type 5（3 个质量等�
 
 **背景（Design Doc T1）**：现有 `execute_models`（`nodes.py:289-296`）将标量字段放 top-level，`data` 作为嵌套 dict。4 个 agent 的 `_get_real_*` 方法都先读 `context.get("parcel_id")`（top-level），再回退 `context.get("data",{}).get("parcel_id")`。top-level 是首选查找路径，命中最快，与现有字段一致。改动仅需在 `for key in (...)` 循环的元组新增 `"parcel_id", "parcel_code"`。
 
-- [ ] **Step 1: 新建测试文件 — 写失败测试**
+- [x] **Step 1: 新建测试文件 — 写失败测试**
 
 创建 `tests/test_execute_models_pipeline.py`：
 
@@ -707,12 +707,12 @@ if __name__ == "__main__":
     print("\n所有 execute_models 管道透传测试通过！")
 ```
 
-- [ ] **Step 2: 运行测试验证失败**
+- [x] **Step 2: 运行测试验证失败**
 
 Run: `python tests/test_execute_models_pipeline.py`
 Expected: FAIL — `AssertionError: parcel_id 未透传到 context top-level`（因 `execute_models` 当前 `for key in (...)` 循环不含 `parcel_id`/`parcel_code`）
 
-- [ ] **Step 3: 修改 execute_models 透传 parcel 标识符**
+- [x] **Step 3: 修改 execute_models 透传 parcel 标识符**
 
 在 `framework/agents/nodes.py` 的 `execute_models` 函数中（约第 289-296 行），将：
 
@@ -742,17 +742,17 @@ Expected: FAIL — `AssertionError: parcel_id 未透传到 context top-level`（
                 context[key] = state["request"][key]
 ```
 
-- [ ] **Step 4: 运行新测试验证通过**
+- [x] **Step 4: 运行新测试验证通过**
 
 Run: `python tests/test_execute_models_pipeline.py`
 Expected: 全部 PASS — `所有 execute_models 管道透传测试通过！`
 
-- [ ] **Step 5: 运行现有集成测试验证不回归**
+- [x] **Step 5: 运行现有集成测试验证不回归**
 
 Run: `python tests/test_agent_integration.py`
 Expected: 全部 PASS。`test_execute_models_invokes_agent_manager_farmer` 等测试的 state 不含 `parcel_id`/`parcel_code`，行为不变。
 
-- [ ] **Step 6: 提交**
+- [x] **Step 6: 提交**
 
 ```bash
 git add framework/agents/nodes.py tests/test_execute_models_pipeline.py
@@ -777,7 +777,7 @@ git commit -m "feat(nodes): execute_models 透传 parcel_id/parcel_code 到 cont
 
 **背景（Design Doc T3）**：现有 `chat.py:76` `orchestrator_request = {"question": message, **context}` 已展平 `context` 字段。Open spec 场景要求 top-level `body 含 parcel_id: "1"`。实现：top-level 优先——`orchestrator_request` 构建后追加 top-level 提取，覆盖 `context` 内同名字段。
 
-- [ ] **Step 1: 写失败测试 — API top-level parcel 透传**
+- [x] **Step 1: 写失败测试 — API top-level parcel 透传**
 
 追加到 `tests/test_agent_integration.py` 末尾：
 
@@ -948,12 +948,12 @@ def test_chat_api_no_parcel_when_absent():
     print("✓ body 无 parcel 标识符时 orchestrator request 不含")
 ```
 
-- [ ] **Step 2: 运行测试验证失败**
+- [x] **Step 2: 运行测试验证失败**
 
 Run: `python tests/test_agent_integration.py test_chat_api_passes_top_level_parcel_id_and_code`
 Expected: FAIL — `AssertionError: parcel_id 未透传`（因 `chat.py` 当前未提取 top-level `parcel_id`/`parcel_code`）
 
-- [ ] **Step 3: 修改 chat.py 追加 top-level parcel 提取**
+- [x] **Step 3: 修改 chat.py 追加 top-level parcel 提取**
 
 在 `framework/api/routes/chat.py` 的 `chat()` 函数中（约第 76-77 行），将：
 
@@ -974,7 +974,7 @@ Expected: FAIL — `AssertionError: parcel_id 未透传`（因 `chat.py` 当前�
     result = multi_agent_orchestrator.run(orchestrator_request, conversation_history=history)
 ```
 
-- [ ] **Step 4: 运行新测试验证通过**
+- [x] **Step 4: 运行新测试验证通过**
 
 Run:
 ```
@@ -984,12 +984,12 @@ python tests/test_agent_integration.py test_chat_api_no_parcel_when_absent
 ```
 Expected: 全部 PASS。
 
-- [ ] **Step 5: 运行全套集成测试验证不回归**
+- [x] **Step 5: 运行全套集成测试验证不回归**
 
 Run: `python tests/test_agent_integration.py`
 Expected: 全部 PASS。`test_chat_api_returns_structured_multi_agent_result` 不传 parcel 标识符，行为不变。
 
-- [ ] **Step 6: 提交**
+- [x] **Step 6: 提交**
 
 ```bash
 git add framework/api/routes/chat.py tests/test_agent_integration.py
@@ -1020,7 +1020,7 @@ git commit -m "feat(api): /api/v1/chat/ 接受 top-level parcel_id/parcel_code
 - county/province 问题：不预设（model-1/3 按 `area_code` 查询）
 - 用 `RoleRouter.identify_role(q) == "farmer"` 判断 farmer 问题（比关键词匹配更稳健）
 
-- [ ] **Step 1: 修改 `run_one_question` 签名与 body**
+- [x] **Step 1: 修改 `run_one_question` 签名与 body**
 
 在 `scripts/gen_full_verification_report.py` 中，将 `run_one_question` 函数（约第 47-108 行）改为：
 
@@ -1097,7 +1097,7 @@ def run_one_question(q_type: int, q: str,
 
 注意：返回值新增 `parcel_id`/`parcel_code` 字段供报告显示。
 
-- [ ] **Step 2: 修改 `main()` 调用处按角色预设 parcel 标识符**
+- [x] **Step 2: 修改 `main()` 调用处按角色预设 parcel 标识符**
 
 在 `scripts/gen_full_verification_report.py` 的 `main()` 函数中（约第 372-389 行），将：
 
@@ -1148,7 +1148,7 @@ def run_one_question(q_type: int, q: str,
             r = run_one_question(q_type, q, parcel_id=parcel_id, parcel_code=parcel_code)
 ```
 
-- [ ] **Step 3: 修改 `type_labels` dict 新增 key 5**
+- [x] **Step 3: 修改 `type_labels` dict 新增 key 5**
 
 在 `scripts/gen_full_verification_report.py` 的 `build_markdown` 函数中（约第 168-173 行），将：
 
@@ -1173,7 +1173,7 @@ def run_one_question(q_type: int, q: str,
     }
 ```
 
-- [ ] **Step 4: 修改角色路由表文案 + model-7 说明**
+- [x] **Step 4: 修改角色路由表文案 + model-7 说明**
 
 在 `scripts/gen_full_verification_report.py` 的 `build_markdown` 函数中（约第 148-156 行），将：
 
@@ -1194,7 +1194,7 @@ def run_one_question(q_type: int, q: str,
               "（status=`skipped`, reason=`question_not_related`）。")
 ```
 
-- [ ] **Step 5: 修改"关键观察"追加 diagnosis_results 局限说明**
+- [x] **Step 5: 修改"关键观察"追加 diagnosis_results 局限说明**
 
 在 `scripts/gen_full_verification_report.py` 的 `build_markdown` 函数中（约第 303-323 行），在现有第 5 点之后追加第 6 点：
 
@@ -1213,7 +1213,7 @@ def run_one_question(q_type: int, q: str,
               "数据填充后管道自动生效（非本次引入）。")
 ```
 
-- [ ] **Step 6: 运行验证脚本生成新报告**
+- [x] **Step 6: 运行验证脚本生成新报告**
 
 Run: `python scripts/gen_full_verification_report.py`
 Expected:
@@ -1224,7 +1224,7 @@ Expected:
 - 原始 JSON 写入 `verification_raw_outputs.json`
 - 控制台汇总 `问题库回答率: X/23`, `问题类型识别准确率: Y/23`
 
-- [ ] **Step 7: 验证报告内容**
+- [x] **Step 7: 验证报告内容**
 
 打开 `verification_full_report.md` 检查：
 
@@ -1240,7 +1240,7 @@ Run（grep 关键行）:
 python -c "content = open('verification_full_report.md', encoding='utf-8').read(); assert '类型5：质量等级评价（3 题）' in content, '缺 type 5 章节'; assert 'model-7' in content; print('报告内容检查通过')"
 ```
 
-- [ ] **Step 8: 提交**
+- [x] **Step 8: 提交**
 
 ```bash
 git add scripts/gen_full_verification_report.py verification_full_report.md verification_raw_outputs.json
@@ -1266,7 +1266,7 @@ git commit -m "feat(verify): 验证脚本预设 parcel 标识符 + type 5 覆盖
 
 **背景**：对应 tasks.md 7.3-7.6 的验收场景。通过验证脚本 + 手动检查确认 5 个场景的行为符合 spec。
 
-- [ ] **Step 1: 验证场景 A — type 5 触发 model-7 真实 fortran exe**
+- [x] **Step 1: 验证场景 A — type 5 触发 model-7 真实 fortran exe**
 
 Run:
 ```
@@ -1292,7 +1292,7 @@ print('场景 A 通过：type 5 触发 model-7 真实 fortran exe 结果')
 ```
 Expected: 输出 `场景 A 通过：type 5 触发 model-7 真实 fortran exe 结果`
 
-- [ ] **Step 2: 验证场景 B — farmer 肥力问题 + parcel_id 触发真实 DB**
+- [x] **Step 2: 验证场景 B — farmer 肥力问题 + parcel_id 触发真实 DB**
 
 Run:
 ```
@@ -1314,7 +1314,7 @@ Expected: 输出 `场景 B 部分通过：farmer 肥力问题 model-7 被跳过`
 
 注意：model-1/4 真实 DB 记录验证依赖 Task 7 Step 7 的报告检查（type 1-4 farmer 问题的 model-1/4 `simulated: False`）。若 fortran exe 或 DB 部署缺失，agents 走 mock 回退，不报错。
 
-- [ ] **Step 3: 验证场景 D — model-2/5 收到 parcel_id 仍返回 stub**
+- [x] **Step 3: 验证场景 D — model-2/5 收到 parcel_id 仍返回 stub**
 
 Run:
 ```
@@ -1333,7 +1333,7 @@ print('场景 D 通过：model-5 收到 parcel_id 不报错，返回 stub 回复
 ```
 Expected: 输出 `场景 D 通过：model-5 收到 parcel_id 不报错，返回 stub 回复`
 
-- [ ] **Step 4: 验证场景 E — 未传 parcel_id 时 agents 返回 mock + need_input**
+- [x] **Step 4: 验证场景 E — 未传 parcel_id 时 agents 返回 mock + need_input**
 
 Run:
 ```
@@ -1353,7 +1353,7 @@ print('场景 E 通过：未传 parcel_code 时 model-7 走 mock 回退（不抛
 ```
 Expected: 输出 `场景 E 通过：未传 parcel_code 时 model-7 走 mock 回退（不抛异常）`
 
-- [ ] **Step 5: 验证场景 — county/province 问题不预设 parcel_id 仍正常工作**
+- [x] **Step 5: 验证场景 — county/province 问题不预设 parcel_id 仍正常工作**
 
 Run:
 ```
@@ -1372,7 +1372,7 @@ print('场景通过：county/province 问题不预设 parcel_id 正常工作')
 ```
 Expected: 输出 `场景通过：county/province 问题不预设 parcel_id 正常工作`
 
-- [ ] **Step 6: 不提交（仅验证）**
+- [x] **Step 6: 不提交（仅验证）**
 
 本任务不产生文件变更，无需提交。若 Task 7 已提交报告，则所有验证基于已生成的报告 + 实时调用。
 
@@ -1388,7 +1388,7 @@ Expected: 输出 `场景通过：county/province 问题不预设 parcel_id 正�
 
 **背景**：对应 tasks.md 7.1-7.2。运行全套 `tests/` 测试，确认无破坏性回归。重点关注 `test_role_router`（无独立文件，断言在 `test_agent_manager.py`）、`test_question_type_keywords`、`test_agent_integration`、`test_interfaces`。
 
-- [ ] **Step 1: 运行全套测试**
+- [x] **Step 1: 运行全套测试**
 
 Run: `python -m pytest tests/ -v`
 Expected: 全部 PASS（或仅预存在的、与本次变更无关的失败）。
@@ -1401,7 +1401,7 @@ Expected: 全部 PASS（或仅预存在的、与本次变更无关的失败）�
 - `tests/test_interfaces.py`（接口契约测试，不应回归）
 - `tests/test_multi_agent.py`（多智能体测试，不应回归）
 
-- [ ] **Step 2: 检查测试覆盖**
+- [x] **Step 2: 检查测试覆盖**
 
 Run: `python -m pytest tests/test_question_type_keywords.py tests/test_agent_manager.py tests/test_agent_integration.py tests/test_execute_models_pipeline.py -v --tb=short`
 Expected: 全部 PASS。统计测试数：
@@ -1410,11 +1410,11 @@ Expected: 全部 PASS。统计测试数：
 - `test_agent_integration.py`：原有 ~8 个 + 新增 3 个 API parcel 测试 = ~11 个
 - `test_execute_models_pipeline.py`：新建 3 个
 
-- [ ] **Step 3: 验证无预存在回归**
+- [x] **Step 3: 验证无预存在回归**
 
 若 `tests/` 中有与本次变更无关的失败测试（如依赖外部服务的测试），记录测试名并确认与本次变更无关。本次变更涉及的 4 个文件（`router.py`, `manager.py`, `nodes.py`, `chat.py`）的相关测试必须全部通过。
 
-- [ ] **Step 4: 不提交（仅验证）**
+- [x] **Step 4: 不提交（仅验证）**
 
 本任务不产生文件变更。若 Step 1-2 全部通过，回归验证完成。
 
