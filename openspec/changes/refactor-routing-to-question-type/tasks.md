@@ -32,9 +32,9 @@
 
 ## 6. 端到端验证
 
-- [ ] 6.1 运行 `python scripts/gen_full_verification_report.py` 确认 23 个问题回答结果不变（特别是 type 5 的 Q21/Q22/Q23 仍返回真实 model-7 结果）
-- [ ] 6.2 验证 API 响应字段符合 spec：无 `role` 字段，含 `question_type`、`agents_invoked`；type 5 问题的 `agents_invoked` 仅含 `model-7`
-- [ ] 6.3 新增知识性问题验证用例：确认「什么是土壤酸化」「耕地质量等级是什么意思」走 RAG 而非专业模型
+- [x] 6.1 运行 `python scripts/gen_full_verification_report.py` 确认 23 个问题回答结果不变（特别是 type 5 的 Q21/Q22/Q23 仍返回真实 model-7 结果）
+- [x] 6.2 验证 API 响应字段符合 spec：无 `role` 字段，含 `question_type`、`agents_invoked`；type 5 问题的 `agents_invoked` 仅含 `model-7`
+- [x] 6.3 新增知识性问题验证用例：确认「什么是土壤酸化」「耕地质量等级是什么意思」走 RAG 而非专业模型
 
 ## 7. 知识性问题检测（TDD）
 
