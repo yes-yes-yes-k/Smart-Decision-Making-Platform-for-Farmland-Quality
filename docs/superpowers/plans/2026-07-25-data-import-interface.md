@@ -1247,7 +1247,7 @@ git commit -m "feat: add data deployer with backup and rollback"
 - Consumes: 无
 - Produces: `log_data_import(username, data_type, filename, deployed_path, trigger_result, success, message='', restored_from_backup=False)`
 
-- [ ] **Step 1: 编写 `tests/test_audit_logger.py` 的失败测试**
+- [x] **Step 1: 编写 `tests/test_audit_logger.py` 的失败测试**
 
 创建 `tests/test_audit_logger.py`：
 
@@ -1333,7 +1333,7 @@ def test_log_data_import_appends_multiple():
         assert len(lines) == 3
 ```
 
-- [ ] **Step 2: 运行测试验证失败**
+- [x] **Step 2: 运行测试验证失败**
 
 运行：
 
@@ -1343,7 +1343,7 @@ python -m pytest tests/test_audit_logger.py -v
 
 预期：FAIL，报 `ModuleNotFoundError`
 
-- [ ] **Step 3: 实现 `framework/upload/audit_logger.py`**
+- [x] **Step 3: 实现 `framework/upload/audit_logger.py`**
 
 创建 `framework/upload/audit_logger.py`：
 
@@ -1407,7 +1407,7 @@ def log_data_import(
         f.write(json.dumps(entry, ensure_ascii=False) + '\n')
 ```
 
-- [ ] **Step 4: 运行测试验证通过**
+- [x] **Step 4: 运行测试验证通过**
 
 运行：
 
@@ -1417,7 +1417,7 @@ python -m pytest tests/test_audit_logger.py -v
 
 预期：全部 PASS
 
-- [ ] **Step 5: 提交**
+- [x] **Step 5: 提交**
 
 ```bash
 git add framework/upload/audit_logger.py tests/test_audit_logger.py
@@ -1444,7 +1444,7 @@ git commit -m "feat: add audit logger for data import operations"
   - `trigger_dat_check() -> Dict`
   - 超时抛 `TimeoutError`
 
-- [ ] **Step 1: 编写 `tests/test_data_trigger.py` 的失败测试**
+- [x] **Step 1: 编写 `tests/test_data_trigger.py` 的失败测试**
 
 创建 `tests/test_data_trigger.py`：
 
@@ -1521,7 +1521,7 @@ def test_trigger_csv_evaluate_timeout():
                 trigger_csv_evaluate('/fake/test.csv')
 ```
 
-- [ ] **Step 2: 运行测试验证失败**
+- [x] **Step 2: 运行测试验证失败**
 
 运行：
 
@@ -1531,7 +1531,7 @@ python -m pytest tests/test_data_trigger.py -v
 
 预期：FAIL，报 `ModuleNotFoundError`
 
-- [ ] **Step 3: 实现 `framework/upload/data_trigger.py`**
+- [x] **Step 3: 实现 `framework/upload/data_trigger.py`**
 
 创建 `framework/upload/data_trigger.py`：
 
@@ -1602,7 +1602,7 @@ def trigger_dat_check() -> dict:
     return _run_with_timeout(core_engine.check_grade_eval_deployment)
 ```
 
-- [ ] **Step 4: 运行测试验证通过**
+- [x] **Step 4: 运行测试验证通过**
 
 运行：
 
@@ -1612,7 +1612,7 @@ python -m pytest tests/test_data_trigger.py -v
 
 预期：全部 PASS
 
-- [ ] **Step 5: 提交**
+- [x] **Step 5: 提交**
 
 ```bash
 git add framework/upload/data_trigger.py tests/test_data_trigger.py
@@ -1636,7 +1636,7 @@ git commit -m "feat: add data triggers with timeout control"
 - Consumes: `validate_csv` / `validate_shapefile_zip` / `validate_dat`、`backup_existing` / `deploy_csv` / `deploy_shapefile` / `deploy_dat` / `cleanup_backups` / `restore_from_backup`、`trigger_csv_evaluate` / `trigger_shapefile_precompute` / `trigger_dat_check`、`log_data_import`、`Config`、`User.is_admin()`
 - Produces: `data_import_bp` Blueprint，挂载到 `/api/v1/data`，提供 `POST /import`
 
-- [ ] **Step 1: 编写 `tests/test_data_import_route.py` 的失败测试**
+- [x] **Step 1: 编写 `tests/test_data_import_route.py` 的失败测试**
 
 创建 `tests/test_data_import_route.py`：
 
@@ -1830,7 +1830,7 @@ def test_import_invalid_data_type(client):
         assert resp.status_code == 400
 ```
 
-- [ ] **Step 2: 运行测试验证失败**
+- [x] **Step 2: 运行测试验证失败**
 
 运行：
 
@@ -1840,7 +1840,7 @@ python -m pytest tests/test_data_import_route.py -v
 
 预期：FAIL，报 `ModuleNotFoundError: No module named 'framework.api.routes.data_import'`
 
-- [ ] **Step 3: 实现 `framework/api/routes/data_import.py`**
+- [x] **Step 3: 实现 `framework/api/routes/data_import.py`**
 
 创建 `framework/api/routes/data_import.py`：
 
@@ -2041,7 +2041,7 @@ def _get_suffix(data_type: str, filename: str) -> str:
     return ''
 ```
 
-- [ ] **Step 4: 在 `framework/api/app.py` 注册 Blueprint**
+- [x] **Step 4: 在 `framework/api/app.py` 注册 Blueprint**
 
 修改 `framework/api/app.py`，在 `report_bp` 导入行之后新增导入，在 `register_blueprint(report_bp, ...)` 行之后新增注册：
 
@@ -2055,7 +2055,7 @@ from framework.api.routes.data_import import data_import_bp  # 新增
     app.register_blueprint(data_import_bp, url_prefix='/api/v1/data')  # 新增
 ```
 
-- [ ] **Step 5: 运行测试验证通过**
+- [x] **Step 5: 运行测试验证通过**
 
 运行：
 
@@ -2065,7 +2065,7 @@ python -m pytest tests/test_data_import_route.py -v
 
 预期：全部 PASS
 
-- [ ] **Step 6: 提交**
+- [x] **Step 6: 提交**
 
 ```bash
 git add framework/api/routes/data_import.py framework/api/app.py tests/test_data_import_route.py
@@ -2087,7 +2087,7 @@ git commit -m "feat: add POST /api/v1/data/import route with full orchestration"
 - Consumes: 所有 Task 1-8 的产物
 - Produces: 端到端测试覆盖 CSV / shapefile / .dat 三类导入 + 回滚 + 备份保留
 
-- [ ] **Step 1: 编写 `tests/test_data_import_integration.py`**
+- [x] **Step 1: 编写 `tests/test_data_import_integration.py`**
 
 创建 `tests/test_data_import_integration.py`：
 
@@ -2320,7 +2320,7 @@ def test_backup_retention_keeps_3(integration_env):
         assert len(subdirs) <= 3
 ```
 
-- [ ] **Step 2: 运行集成测试验证通过**
+- [x] **Step 2: 运行集成测试验证通过**
 
 运行：
 
@@ -2330,7 +2330,7 @@ python -m pytest tests/test_data_import_integration.py -v
 
 预期：5 个测试全部 PASS
 
-- [ ] **Step 3: 提交**
+- [x] **Step 3: 提交**
 
 ```bash
 git add tests/test_data_import_integration.py
@@ -2351,7 +2351,7 @@ git commit -m "test: add end-to-end integration tests for data import"
 - Modify: `data/farmland_stability/README.md`
 - Modify: `bin/farmland_quality_eval/README.md`
 
-- [ ] **Step 1: 确认依赖已就绪**
+- [x] **Step 1: 确认依赖已就绪**
 
 运行：
 
@@ -2361,7 +2361,7 @@ python -c "import geopandas; import pandas; print('deps ok')"
 
 预期输出：`deps ok`（geopandas 和 pandas 已在 pyproject.toml 中，上一轮已添加）
 
-- [ ] **Step 2: 创建 `docs/api/data_import.md` API 契约文档**
+- [x] **Step 2: 创建 `docs/api/data_import.md` API 契约文档**
 
 创建 `docs/api/data_import.md`：
 
@@ -2482,7 +2482,7 @@ shapefile 类型响应中用 `deployed_files`（文件名列表）替代 `deploy
 本接口 v1 不加并发锁。请避免同时发起多个导入请求，否则可能导致文件冲突。
 ````
 
-- [ ] **Step 3: 更新 `data/farmland_diagnosis/README.md`**
+- [x] **Step 3: 更新 `data/farmland_diagnosis/README.md`**
 
 在 `## 部署方式` 小节末尾追加：
 
@@ -2502,7 +2502,7 @@ curl -X POST http://localhost:5000/api/v1/data/import \
 API 会自动完成校验（14 项必需列）、备份现有文件、部署（重命名为 `test.csv`）、触发 `bulk_evaluate` 批量评价。详见 `docs/api/data_import.md`。
 ```
 
-- [ ] **Step 4: 更新 `data/farmland_stability/README.md`**
+- [x] **Step 4: 更新 `data/farmland_stability/README.md`**
 
 在 `## 部署方式` 小节末尾追加：
 
@@ -2535,7 +2535,7 @@ curl -X POST http://localhost:5000/api/v1/data/import \
 API 会自动完成校验、备份、解压部署、触发 `precompute.main`（run_all_models → DB 持久化 → 文件输出）。详见 `docs/api/data_import.md`。
 ```
 
-- [ ] **Step 5: 更新 `bin/farmland_quality_eval/README.md`**
+- [x] **Step 5: 更新 `bin/farmland_quality_eval/README.md`**
 
 在 `## 部署方式` 小节末尾追加：
 
@@ -2557,7 +2557,7 @@ API 会自动完成校验、备份、部署（重命名为 `Farmlands_Quality_Le
 注意：exe 不通过 API 部署，仍由运维手动部署。
 ```
 
-- [ ] **Step 6: 提交**
+- [x] **Step 6: 提交**
 
 ```bash
 git add docs/api/data_import.md data/farmland_diagnosis/README.md data/farmland_stability/README.md bin/farmland_quality_eval/README.md
