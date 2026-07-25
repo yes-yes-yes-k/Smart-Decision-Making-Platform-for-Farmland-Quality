@@ -4,20 +4,18 @@
 
 ## 当前状态
 
-- **plan task**: Task 3 — Adapter 扩展（3 个新方法）
+- **plan task**: Task 4 — 数据校验器
 - **阶段**: implementing
 - **review_mode**: standard
 - **tdd_mode**: tdd
-- **build_mode**: subagent-driven-development
-- **isolation**: branch (feature/20260725/add-data-import-interface)
-- **base-ref**: ce3c7c2fe3d0e2d7c1c7169141b60cc37d477d3
+- **base-ref**: ce3c7c2fe3d0e2d7c1c7169141b60cc37d477d3d
 
-## Task 3 派发记录
+## Task 4 派发记录
 
 - **派发时间**: 2026-07-25
 - **model**: sonnet
-- **允许修改文件**: framework/core_engine/adapter.py, tests/test_precompute.py（追加测试）
-- **风险信号预判**: 可能命中"跨模块/跨子系统协调改动"（adapter 桥接 framework/ 与 src/ai_culti_demo/ 三个子系统）→ 若命中将派发每任务 reviewer
+- **允许修改文件**: framework/upload/data_validator.py, tests/test_data_validator.py
+- **风险信号预判**: 可能命中"安全敏感面"（处理外部上传文件、路径穿越/zip bomb 校验）→ 若命中将派发每任务 reviewer
 - **RED/GREEN 证据**: 待回报
 - **实现提交哈希**: 待回报
 
@@ -29,21 +27,23 @@
 ## 已完成任务
 
 ### Task 1 — 配置项与基础设施 ✅
-- 提交: 4403871
-- 风险信号: 无 → 未派发每任务 reviewer
+- 提交: 4403871 | 风险信号: 无 → 未派发 reviewer
 
 ### Task 2 — precompute.py 模块 ✅
-- 提交: b57ec29
-- 变更文件: precompute.py (88行) + test_precompute.py (86行)
-- 风险信号: 无 → 未派发每任务 reviewer
-- 顾虑（已记录）: 测试需用 d:\miniconda3\python.exe（有 geopandas）；test_main 用全 mock 未覆盖真实 I/O（设计如此，集成测试 Task 9 覆盖端到端）
+- 提交: b57ec29 | 风险信号: 无 → 未派发 reviewer
+- 顾虑: 测试需用 miniconda python；test_main 全 mock（设计如此）
+
+### Task 3 — Adapter 扩展 ✅
+- 提交: 8c180d3 | 风险信号: 命中2项（跨模块协调+公共API变更）→ 派发 reviewer
+- 审查: PASS（0 CRITICAL, 0 IMPORTANT, 3 MINOR 可选增强）
+- MINOR 记录: precompute_stability 异常路径未测、check_grade_eval_deployment 异常路径未测、falsy 分支未测
 
 ## 已知问题
 
-- PowerShell 传递中文参数到 node.exe 时编码损坏，task-checkoff 脚本验证失败；改用 Select-String 验证 checkbox 状态
-- 测试需用 `d:\miniconda3\python.exe -m pytest` 运行（默认 python 无 geopandas）
+- PowerShell 中文参数编码损坏 → 用 Select-String 验证 checkbox
+- 测试需用 `d:\miniconda3\python.exe -m pytest`
 
 ## 环境提示（传递给后续 implementer）
 
-- 运行 pytest 必须用 `d:\miniconda3\python.exe -m pytest`，不要用默认 `python`
-- farmland_stability/__init__.py 顶部 import geopandas，缺 geopandas 会报错
+- 运行 pytest 必须用 `d:\miniconda3\python.exe -m pytest`
+- Task 4 的 validator 不依赖 geopandas（仅 pandas + zipfile），可用默认 python 测试，但建议统一用 miniconda

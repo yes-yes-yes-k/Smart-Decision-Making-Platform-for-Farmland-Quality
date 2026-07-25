@@ -521,7 +521,7 @@ git commit -m "feat: extend CoreEngine adapter with data import methods"
 - Consumes: `Config.MAX_DATA_IMPORT_SIZE`、`pandas`
 - Produces: `validate_csv(file_path) -> Tuple[bool, str]`、`validate_shapefile_zip(zip_path) -> Tuple[bool, str, dict]`、`validate_dat(file_path) -> Tuple[bool, str]`
 
-- [ ] **Step 1: 编写 `tests/test_data_validator.py` 的失败测试**
+- [x] **Step 1: 编写 `tests/test_data_validator.py` 的失败测试**
 
 创建 `tests/test_data_validator.py`：
 
@@ -701,7 +701,7 @@ def test_validate_shapefile_zip_manifest_missing_field():
     os.unlink(zip_path)
 ```
 
-- [ ] **Step 2: 运行测试验证失败**
+- [x] **Step 2: 运行测试验证失败**
 
 运行：
 
@@ -711,7 +711,7 @@ python -m pytest tests/test_data_validator.py -v
 
 预期：FAIL，报 `ModuleNotFoundError: No module named 'framework.upload.data_validator'`
 
-- [ ] **Step 3: 实现 `framework/upload/data_validator.py`**
+- [x] **Step 3: 实现 `framework/upload/data_validator.py`**
 
 创建 `framework/upload/data_validator.py`：
 
@@ -855,7 +855,7 @@ def validate_shapefile_zip(zip_path: str) -> Tuple[bool, str, Dict[str, Any]]:
         return False, f"zip 校验失败: {e}", {}
 ```
 
-- [ ] **Step 4: 运行测试验证通过**
+- [x] **Step 4: 运行测试验证通过**
 
 运行：
 
@@ -865,7 +865,7 @@ python -m pytest tests/test_data_validator.py -v
 
 预期：全部 PASS
 
-- [ ] **Step 5: 提交**
+- [x] **Step 5: 提交**
 
 ```bash
 git add framework/upload/data_validator.py tests/test_data_validator.py

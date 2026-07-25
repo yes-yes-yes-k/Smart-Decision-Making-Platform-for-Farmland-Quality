@@ -7,11 +7,11 @@
 
 ## 2. 数据校验器（framework/upload/data_validator.py）
 
-- [ ] 2.1 创建 `framework/upload/data_validator.py` 模块
-- [ ] 2.2 实现 `validate_csv(file_path) -> Tuple[bool, str]`：用 pandas 读取 CSV（UTF-8 失败回退 GBK），校验 14 项必需列（`一级农业区`/`二级农业区`/`pH`/`有机质`/`有效磷`/`速效钾`/`容重`/`耕层质地`/`灌溉能力`/`排水能力`/`地形部位`/`质地构型`/`有效土层`/`耕层厚度`），返回 (ok, error_msg)
-- [ ] 2.3 实现 `validate_shapefile_zip(zip_path) -> Tuple[bool, str, dict]`：解压前校验总大小 ≤ 200MB、文件数 ≤ 30、路径无穿越；解压后校验 `manifest.json` 字段完整（current_year/history_years/years/current_filename/history_filenames）；校验每期 shapefile 5 组件齐全（.shp/.cpg/.dbf/.prj/.shx）；返回 (ok, error_msg, manifest)
-- [ ] 2.4 实现 `validate_dat(file_path) -> Tuple[bool, str]`：校验文件大小 > 0 且 ≤ 200MB
-- [ ] 2.5 编写 `tests/test_data_validator.py` 覆盖各校验器的成功和失败场景（缺列、GBK 编码、zip 缺 manifest、组件不完整、路径穿越、空 .dat 等）
+- [x] 2.1 创建 `framework/upload/data_validator.py` 模块
+- [x] 2.2 实现 `validate_csv(file_path) -> Tuple[bool, str]`：用 pandas 读取 CSV（UTF-8 失败回退 GBK），校验 14 项必需列（`一级农业区`/`二级农业区`/`pH`/`有机质`/`有效磷`/`速效钾`/`容重`/`耕层质地`/`灌溉能力`/`排水能力`/`地形部位`/`质地构型`/`有效土层`/`耕层厚度`），返回 (ok, error_msg)
+- [x] 2.3 实现 `validate_shapefile_zip(zip_path) -> Tuple[bool, str, dict]`：解压前校验总大小 ≤ 200MB、文件数 ≤ 30、路径无穿越；解压后校验 `manifest.json` 字段完整（current_year/history_years/years/current_filename/history_filenames）；校验每期 shapefile 5 组件齐全（.shp/.cpg/.dbf/.prj/.shx）；返回 (ok, error_msg, manifest)
+- [x] 2.4 实现 `validate_dat(file_path) -> Tuple[bool, str]`：校验文件大小 > 0 且 ≤ 200MB
+- [x] 2.5 编写 `tests/test_data_validator.py` 覆盖各校验器的成功和失败场景（缺列、GBK 编码、zip 缺 manifest、组件不完整、路径穿越、空 .dat 等）
 
 ## 3. 数据部署器（framework/upload/data_deployer.py）
 
