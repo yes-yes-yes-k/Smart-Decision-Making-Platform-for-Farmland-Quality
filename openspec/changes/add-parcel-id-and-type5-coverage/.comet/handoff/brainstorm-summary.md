@@ -40,3 +40,8 @@
 ## Spec Patch
 
 无。Open 阶段 delta spec 已包含完整验收场景（地块标识符上下文透传、Type 5 质量等级评价问题库、model-7 问题感知过滤、生产 API 接受地块标识符），无需补充。
+
+## 用户认可记录
+
+- **2026-07-25**：用户对上述技术方案（T1-T4 实现决策、type 5 问题集、预存在数据缺口处理策略）明确认可，要求"在报告里注明然后开工"。认可范围覆盖：双 ID 并存（parcel_id 数字 / parcel_code 字母数字，不互转）、model-7 仅加 farmer 角色、type 5 仅 farmer 触发、model-7 经 GRADE_KEYWORDS 本地副本做问题感知过滤、execute_models top-level 透传、chat.py top-level 优先、验证脚本按角色预设真实 ID。diagnosis_results 空表与 diagnosis_db 路径不一致作为预存在数据缺口在验证报告中注明，本次只接通管道不填充数据。
+- 据此进入 build 阶段执行：build_mode=subagent-driven-development，tdd_mode=tdd，review_mode=standard，isolation=branch（feature/20260725/add-parcel-id-and-type5-coverage）。
