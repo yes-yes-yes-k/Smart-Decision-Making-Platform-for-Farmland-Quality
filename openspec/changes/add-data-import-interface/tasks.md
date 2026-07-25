@@ -26,19 +26,19 @@
 
 ## 4. 触发器封装（framework/upload/data_trigger.py）
 
-- [ ] 4.1 创建 `framework/upload/data_trigger.py` 模块
-- [ ] 4.2 实现 `trigger_csv_evaluate(csv_path) -> dict`：通过 `framework/core_engine/adapter.py` 调用 `src.ai_culti_demo.farmland_diagnosis.evaluation.bulk_evaluate(csv_path)`，返回结果字典
-- [ ] 4.3 实现 `trigger_shapefile_precompute(target_dir, manifest) -> dict`：通过 adapter 调用 `src.ai_culti_demo.farmland_stability.precompute.main(shapefile_dir, manifest)`（封装 run_all_models + 持久化），返回结果摘要（含 processed 地块数、saved_to_db、output_files）
-- [ ] 4.4 实现 `trigger_dat_check(target_dir) -> dict`：通过 adapter 调用 `src.ai_culti_demo.farmland_grade_eval.runner.FarmlandGradeRunner.check_deployment()`，返回 `{'deployment_ok': True/False, 'detail': ...}`
-- [ ] 4.5 实现超时控制：用 `concurrent.futures.ThreadPoolExecutor` + `future.result(timeout=DATA_IMPORT_TIMEOUT)` 包裹触发调用，超时抛 `TimeoutError`
-- [ ] 4.6 编写 `tests/test_data_trigger.py` 用 monkeypatch 模拟 adapter 调用，覆盖成功、返回错误字典、抛异常、超时场景
+- [x] 4.1 创建 `framework/upload/data_trigger.py` 模块
+- [x] 4.2 实现 `trigger_csv_evaluate(csv_path, timeout=None) -> dict`：通过 `framework/core_engine/adapter.py` 调用 `bulk_evaluate_csv(csv_path)`，透传返回字典
+- [x] 4.3 实现 `trigger_shapefile_precompute(target_dir, manifest, timeout=None) -> dict`：通过 adapter 调用 `precompute_stability(shapefile_dir, manifest)`，透传返回字典（含 processed/saved_to_db/output_files）
+- [x] 4.4 实现 `trigger_dat_check(target_dir, timeout=None) -> dict`：通过 adapter 调用 `check_grade_eval_deployment()`（无参数，target_dir 仅用于签名一致性），返回 `{'deployment_ok': True/False, 'detail': ...}`
+- [x] 4.5 实现超时控制：用 `concurrent.futures.ThreadPoolExecutor(max_workers=1)` + `future.result(timeout=DATA_IMPORT_TIMEOUT)` 包裹触发调用，超时抛内置 `TimeoutError`（捕获 `concurrent.futures.TimeoutError` 后转换）
+- [x] 4.6 编写 `tests/test_data_trigger.py` 用 monkeypatch 模拟 adapter 调用，覆盖成功、返回错误字典、抛异常、超时场景（7 测试：csv 成功/错误字典/异常、shapefile 成功、dat 成功、超时、默认 timeout 用 Config）
 
 ## 5. 审计日志（framework/upload/audit_logger.py）
 
-- [ ] 5.1 创建 `framework/upload/audit_logger.py` 模块
-- [ ] 5.2 实现 `log_data_import(username, data_type, filename, deployed_path, trigger_result, success, message='')`：写入结构化日志到 `logs/data_import.log`（或 SQLite 表 `data_import_audit`，二选一，建议先用日志文件）
-- [ ] 5.3 日志字段：timestamp、username、data_type、filename、deployed_path、trigger_result_summary、success、message、restored_from_backup
-- [ ] 5.4 编写 `tests/test_audit_logger.py` 验证日志写入和字段完整性
+- [x] 5.1 创建 `framework/upload/audit_logger.py` 模块
+- [x] 5.2 实现 `log_data_import(username, data_type, filename, deployed_path, trigger_result, success, message='', restored_from_backup=False)`：写入结构化 JSON 行日志到 `logs/data_import.log`（可通过 `set_log_path` 覆盖用于测试）
+- [x] 5.3 日志字段：timestamp、username、data_type、filename、deployed_path、trigger_result、success、message、restored_from_backup
+- [x] 5.4 编写 `tests/test_audit_logger.py` 验证日志写入和字段完整性（3 测试：成功条目/失败回滚/多次追加）
 
 ## 6. API 路由（framework/api/routes/data_import.py）
 
