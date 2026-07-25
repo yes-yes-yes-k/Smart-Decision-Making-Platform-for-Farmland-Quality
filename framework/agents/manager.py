@@ -2,7 +2,7 @@ from __future__ import annotations
 from typing import Any, Dict, List
 
 from .base import BaseAgent
-from .router import RoleRouter
+from .router import QuestionTypeRouter
 
 
 # 肥力相关关键词（与 FertilityMLAgent.FERTILITY_KEYWORDS 保持一致）
@@ -48,7 +48,7 @@ class AgentManager:
 
     def __init__(self):
         self.agents: Dict[str, BaseAgent] = {}
-        self.router = RoleRouter()
+        self.router = QuestionTypeRouter()
         self._register_agents()
 
     def _register_agents(self) -> None:
