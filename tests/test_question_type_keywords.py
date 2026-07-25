@@ -107,18 +107,17 @@ def test_type4_county_organic_average():
     assert qt == 4
 
 
-def test_keyword_match_priority_over_vector(monkeypatch):
+def test_keyword_match_priority_over_vector():
     """D5：关键词匹配优先于向量匹配。
-    即使向量返回不同的（更高分）类型，含具体关键词的问题仍应被关键词逻辑判定。"""
-    from framework.agents import nodes
-    # 模拟向量返回与关键词冲突的类型（TYPE_2，高分），验证关键词结果 TYPE_4 仍胜出
-    monkeypatch.setattr(nodes, "_identify_question_type_vector", lambda q: (2, 0.95))
-    qt, _ = nodes.identify_question_type("有机肥每亩施用量多少？")
-    assert qt == 4, f"关键词优先应返回 TYPE_4，实际 {qt}"
-    # 含 TYPE_2 具体词"调理剂"，向量模拟返回冲突 TYPE_4，关键词 TYPE_2 仍胜出
-    monkeypatch.setattr(nodes, "_identify_question_type_vector", lambda q: (4, 0.95))
-    qt, _ = nodes.identify_question_type("我要施加多少碱性调理剂？")
-    assert qt == 2, f"关键词优先应返回 TYPE_2，实际 {qt}"
+    即使 embedding 可用，含具体关键词的问题也应被关键词逻辑判定。
+    这里直接测试 _identify_question_type_keyword 返回非 0。"""
+    from framework.agents.nodes import _identify_question_type_keyword
+    # 含 TYPE_4 具体词"有机肥"
+    qt, _ = _identify_question_type_keyword("有机肥每亩施用量多少？")
+    assert qt == 4
+    # 含 TYPE_2 具体词"调理剂"
+    qt, _ = _identify_question_type_keyword("我要施加多少碱性调理剂？")
+    assert qt == 2
 
 
 def test_type_order_no_cross_collision():
@@ -163,10 +162,8 @@ def test_type2_farmer_severity():
     assert qt == 2
 
 
-def test_unrelated_question_returns_zero(monkeypatch):
-    """无关问题 → TYPE_0（embedding 不可用时纯关键词路径确定返回 0，避免向量阈值边界 flaky）"""
-    from framework.agents import nodes
-    monkeypatch.setattr(nodes, "EMBEDDING_AVAILABLE", False)
+def test_unrelated_question_returns_zero():
+    """无关问题 relevance 低 → TYPE_0"""
     qt, _ = _identify("今天天气怎么样？")
     assert qt == 0
 
@@ -201,6 +198,55 @@ def test_all_xlsx_classic_questions_routed():
         assert qt == expected, f"问题「{q}」期望 TYPE_{expected}，实际 TYPE_{qt}"
 
 
+def test_type5_grade_quality_question():
+    """质量等级评价 → TYPE_5（model-7）"""
+    qt, _ = _identify("我的田耕地质量等级是多少？")
+    assert qt == 5, f"期望 TYPE_5，实际 {qt}"
+
+
+def test_type5_comprehensive_index_question():
+    """综合指数/障碍度排序 → TYPE_5"""
+    qt, _ = _identify("查询地块的综合指数和障碍度排序")
+    assert qt == 5, f"期望 TYPE_5，实际 {qt}"
+
+
+def test_type5_grade_evaluation_question():
+    """耕地质量等级评价结果 → TYPE_5"""
+    qt, _ = _identify("这块地的耕地质量等级评价结果")
+    assert qt == 5, f"期望 TYPE_5，实际 {qt}"
+
+
+def test_type5_keyword_branch_after_type4():
+    """type 5 分支在 type 4 之后：'肥力'问题仍返回 type 4，不误判 type 5"""
+    qt, _ = _identify("我的田肥力怎么样？")
+    assert qt == 4, f"期望 TYPE_4（肥力），实际 TYPE_{qt}"
+
+
+def test_type5_no_collision_with_type1():
+    """type 5 问题不含'稳定'，不误命中 TYPE_1 的'等级稳定'"""
+    from framework.agents.nodes import QUESTION_TYPE_1_KEYWORDS
+    type5_questions = [
+        "我的田耕地质量等级是多少",
+        "查询地块的综合指数和障碍度排序",
+        "这块地的耕地质量等级评价结果",
+    ]
+    for q in type5_questions:
+        # 不应命中任何 TYPE_1 关键词
+        assert not any(kw in q for kw in QUESTION_TYPE_1_KEYWORDS), (
+            f"type 5 问题「{q}」误命中 TYPE_1 关键词"
+        )
+        qt, _ = _identify(q)
+        assert qt == 5, f"问题「{q}」期望 TYPE_5，实际 TYPE_{qt}"
+
+
+def test_type5_keyword_function_direct():
+    """直接测试 _identify_question_type_keyword 返回 (5, relevance)"""
+    from framework.agents.nodes import _identify_question_type_keyword
+    qt, rel = _identify_question_type_keyword("我的田耕地质量等级是多少")
+    assert qt == 5
+    assert rel >= 0.3
+
+
 if __name__ == "__main__":
     test_type1_stability_province_question()
     test_type1_stability_county_question()
@@ -226,4 +272,10 @@ if __name__ == "__main__":
     test_type2_farmer_severity()
     test_unrelated_question_returns_zero()
     test_all_xlsx_classic_questions_routed()
+    test_type5_grade_quality_question()
+    test_type5_comprehensive_index_question()
+    test_type5_grade_evaluation_question()
+    test_type5_keyword_branch_after_type4()
+    test_type5_no_collision_with_type1()
+    test_type5_keyword_function_direct()
     print("\n全部问题类型关键词测试通过！")

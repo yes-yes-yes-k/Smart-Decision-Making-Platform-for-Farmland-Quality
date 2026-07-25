@@ -192,6 +192,8 @@ def _identify_question_type_keyword(question: str) -> tuple[int, float]:
         return 3, relevance
     elif any(keyword in question for keyword in QUESTION_TYPE_4_KEYWORDS):
         return 4, relevance
+    elif any(keyword in question for keyword in QUESTION_TYPE_5_KEYWORDS):
+        return 5, relevance
     else:
         return 0, relevance
 
