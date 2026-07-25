@@ -283,8 +283,9 @@ async def _execute_model_dependent(model_name: str, func: Callable, dep_result: 
 QUESTION_TYPE_TO_MODEL_ID = {
     1: "model-1",
     2: "model-4",
-    3: "model-2,model-3",
-    4: "model-5,model-6",
+    3: "model-2,model-3",  # 保留原值（此字典用于 fallback，不影响 AgentManager 路由）
+    4: "model-5,model-6",  # 保留原值
+    5: "model-7",          # 新增：type 5 fallback 路径
 }
 
 def execute_models(state: MultiAgentState) -> MultiAgentState:
@@ -296,6 +297,7 @@ def execute_models(state: MultiAgentState) -> MultiAgentState:
         context = {
             "area_code": state["request"].get("area_code", "lechang"),
             "data": state.get("data", {}),
+            "question_type": state.get("question_type"),
         }
         # 透传可能的土壤参数与地块标识符
         # parcel_id（数字字符串）给 model-1/3/4 查 DB，parcel_code（字母数字）给 model-7 调 fortran exe
