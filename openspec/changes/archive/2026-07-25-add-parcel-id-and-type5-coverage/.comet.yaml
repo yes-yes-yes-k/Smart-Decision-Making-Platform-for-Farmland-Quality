@@ -18,7 +18,7 @@ verification_report: docs/superpowers/reports/2026-07-26-add-parcel-id-and-type5
 branch_status: handled
 created_at: 2026-07-25
 verified_at: 2026-07-25
-archived: false
+archived: true
 direct_override: null
 handoff_context: openspec/changes/add-parcel-id-and-type5-coverage/.comet/handoff/design-context.json
 handoff_hash: d06f4ab204d19b60a1cb75a42722e3561e78c3e9f9d0166e2ec706e6b15ac37c

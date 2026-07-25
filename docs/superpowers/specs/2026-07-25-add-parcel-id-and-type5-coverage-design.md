@@ -2,6 +2,8 @@
 comet_change: add-parcel-id-and-type5-coverage
 role: technical-design
 canonical_spec: openspec
+archived-with: 2026-07-25-add-parcel-id-and-type5-coverage
+status: final
 ---
 
 # Design Doc: add-parcel-id-and-type5-coverage
@@ -253,3 +255,4 @@ agent.answer_question(question, context):
 - 不改 storage 层和 fortran exe 本身
 - 不改 county/province 角色（model-7 仅加到 farmer）
 - 不填充 `diagnosis_results` 表数据（预存在缺口，另行处理）
+

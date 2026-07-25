@@ -4,5 +4,6 @@
   "openspec_tasks": "openspec/changes/add-parcel-id-and-type5-coverage/tasks.md",
   "openspec_delta_spec": "openspec/changes/add-parcel-id-and-type5-coverage/specs/multi-agent-orchestrator/spec.md",
   "handoff_context": "openspec/changes/add-parcel-id-and-type5-coverage/.comet/handoff/design-context.json",
-  "handoff_markdown": "openspec/changes/add-parcel-id-and-type5-coverage/.comet/handoff/design-context.md"
+  "handoff_markdown": "openspec/changes/add-parcel-id-and-type5-coverage/.comet/handoff/design-context.md",
+  "archive_directory": "openspec/changes/archive/2026-07-25-add-parcel-id-and-type5-coverage"
 }

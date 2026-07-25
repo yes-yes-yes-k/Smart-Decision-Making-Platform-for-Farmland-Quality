@@ -2,6 +2,7 @@
 change: add-parcel-id-and-type5-coverage
 design-doc: docs/superpowers/specs/2026-07-25-add-parcel-id-and-type5-coverage-design.md
 base-ref: 5d8659d3478984c576fc453150ee38615821ee31
+archived-with: 2026-07-25-add-parcel-id-and-type5-coverage
 ---
 
 # add-parcel-id-and-type5-coverage 实施计划
@@ -24,6 +25,7 @@ base-ref: 5d8659d3478984c576fc453150ee38615821ee31
 - **测试模式**：遵循现有 `tests/` 模式——文件顶部 `sys.path.insert(0, ...)`，函数式测试（非 class），末尾 `if __name__ == "__main__"` 块顺序调用所有测试函数。
 - **资源就绪状态**（2026-07-25 已验证）：`stability_db` 5488 条（`parcel_id="1"` 存在）；`acidification_results` 14585 条（`parcel_id="1"` 存在）；`diagnosis_results` 0 条（预存在数据缺口，非本次引入）；fortran exe 933KB + dat 204KB 已部署到 `bin/farmland_quality_eval/`；`parcel_code="A0001"` 在 fortran exe 数据库中存在。
 
+archived-with: 2026-07-25-add-parcel-id-and-type5-coverage
 ---
 
 ## File Structure
@@ -40,6 +42,7 @@ base-ref: 5d8659d3478984c576fc453150ee38615821ee31
 | `tests/test_agent_integration.py` | 端到端集成测试 | 修改：更新 farmer agents_invoked 断言 + 追加 API parcel 透传测试 |
 | `tests/test_execute_models_pipeline.py` | execute_models 管道透传测试 | 新建：monkeypatch `agent_manager.process` 拦截 context 验证 parcel 透传 |
 
+archived-with: 2026-07-25-add-parcel-id-and-type5-coverage
 ---
 
 ## Task 1: 路由层 — farmer 角色追加 model-7
@@ -150,6 +153,7 @@ git commit -m "feat(routing): farmer 角色追加 model-7（4 个 agent）
 - model-7 实际执行受 _should_execute_agent 关键词过滤约束（Task 2 实现）"
 ```
 
+archived-with: 2026-07-25-add-parcel-id-and-type5-coverage
 ---
 
 ## Task 2: AgentManager — model-7 问题感知过滤
@@ -297,6 +301,7 @@ git commit -m "feat(manager): model-7 问题感知过滤（仅质量等级问题
 - 非质量等级 farmer 问题不再调 fortran exe，节省 30s 超时"
 ```
 
+archived-with: 2026-07-25-add-parcel-id-and-type5-coverage
 ---
 
 ## Task 3: 问题类型识别 — type 5 关键词分支
@@ -440,6 +445,7 @@ git commit -m "feat(nodes): _identify_question_type_keyword 新增 type 5 分支
 - 关键词碰撞已验证：type 5 问题不含'稳定'，不误命中 TYPE_1"
 ```
 
+archived-with: 2026-07-25-add-parcel-id-and-type5-coverage
 ---
 
 ## Task 4: 问题库 — REFERENCE_QUESTIONS 新增 type 5
@@ -560,6 +566,7 @@ git commit -m "feat(nodes): REFERENCE_QUESTIONS 新增 type 5（3 个质量等�
 - 验证脚本遍历 REFERENCE_QUESTIONS 时自动覆盖 type 5"
 ```
 
+archived-with: 2026-07-25-add-parcel-id-and-type5-coverage
 ---
 
 ## Task 5: 管道接通 — execute_models 透传 parcel 标识符
@@ -763,6 +770,7 @@ git commit -m "feat(nodes): execute_models 透传 parcel_id/parcel_code 到 cont
 - 未传时 context 不含这两个字段，agents 维持 mock + need_input 行为（非破坏性）"
 ```
 
+archived-with: 2026-07-25-add-parcel-id-and-type5-coverage
 ---
 
 ## Task 6: 生产 API — chat.py 接受 parcel_id/parcel_code
@@ -1000,6 +1008,7 @@ git commit -m "feat(api): /api/v1/chat/ 接受 top-level parcel_id/parcel_code
 - 未传时行为不变（现有 mock + need_input 提示）"
 ```
 
+archived-with: 2026-07-25-add-parcel-id-and-type5-coverage
 ---
 
 ## Task 7: 验证脚本 — 预设 parcel 标识符 + type 5 覆盖
@@ -1254,6 +1263,7 @@ git commit -m "feat(verify): 验证脚本预设 parcel 标识符 + type 5 覆盖
 - 重新生成 verification_full_report.md（23 题，含 type 5）"
 ```
 
+archived-with: 2026-07-25-add-parcel-id-and-type5-coverage
 ---
 
 ## Task 8: 端到端验证 — 场景验收
@@ -1376,6 +1386,7 @@ Expected: 输出 `场景通过：county/province 问题不预设 parcel_id 正�
 
 本任务不产生文件变更，无需提交。若 Task 7 已提交报告，则所有验证基于已生成的报告 + 实时调用。
 
+archived-with: 2026-07-25-add-parcel-id-and-type5-coverage
 ---
 
 ## Task 9: 回归测试 — 全套测试套件
@@ -1418,6 +1429,7 @@ Expected: 全部 PASS。统计测试数：
 
 本任务不产生文件变更。若 Step 1-2 全部通过，回归验证完成。
 
+archived-with: 2026-07-25-add-parcel-id-and-type5-coverage
 ---
 
 ## Self-Review 清单
@@ -1477,3 +1489,4 @@ Expected: 全部 PASS。统计测试数：
 - **Task 5.3（API 文档）**：未单独建任务。`parcel_id`/`parcel_code` 字段说明已在 `chat.py` 代码注释中体现（Task 6 Step 3）。若需独立 README 更新，可在 Task 6 后追加。
 - **diagnosis_results 空表**：预存在数据缺口，非本次引入。Task 7 Step 5 在报告"关键观察"中注明此局限。model-3 仍返回 mock，但管道已接通，数据填充后自动生效。
 - **fortran exe 30s 超时**：Task 2 的 `_should_execute_agent` 关键词过滤已规避——非质量等级问题跳过 model-7，不调 exe。质量等级问题调 exe 时已有超时机制，超时走 mock 回退不阻断。
+
