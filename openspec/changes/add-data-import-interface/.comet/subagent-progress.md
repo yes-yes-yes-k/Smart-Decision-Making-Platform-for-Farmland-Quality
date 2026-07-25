@@ -4,24 +4,24 @@
 
 ## 当前状态
 
-- **plan task**: Task 8 — API 路由（对应 tasks.md 第 6 节 6.1-6.12）
+- **plan task**: Task 9 — 集成测试（对应 tasks.md 第 7 节 7.1-7.5）
 - **阶段**: implementing
 - **review_mode**: standard
 - **tdd_mode**: tdd
 - **base-ref**: ce3c7c2fe3d0e2d7c1c7169141b60cc37d477d3d
 
-## Task 8 派发记录
+## Task 9 派发记录
 
 - **派发时间**: 待派发
 - **model**: sonnet
-- **允许修改文件**: framework/api/routes/data_import.py, framework/api/app.py, tests/test_data_import_route.py
+- **允许修改文件**: tests/test_data_import_integration.py
 - **RED/GREEN 证据**: 待回报
 - **实现提交哈希**: 待回报
 
 ## 审查-修复轮次
 
 - standard 模式：每任务 reviewer 仅风险任务触发，最多 1 轮；最终轻量审查 1 次
-- 当前任务轮次: 0/1（API 路由属高风险任务，预计派发 reviewer）
+- 当前任务轮次: 0/1（集成测试属低风险，预计不派发 reviewer）
 
 ## 已完成任务
 
@@ -52,6 +52,12 @@
 - 提交: 2abd4ac | 风险信号: 无（thin wrapper，透传 adapter，无风险 I/O） → 未派发 reviewer
 - 测试: 7/7 PASS（csv 成功/错误字典/异常、shapefile 成功、dat 成功、超时、默认 timeout 用 Config）
 - 实现: 3 触发函数 + 1 辅助函数 `_run_with_timeout`（ThreadPoolExecutor + future.result，超时抛内置 TimeoutError）
+
+### Task 8 — API 路由 ✅
+- 提交: a50cea7 | 风险信号: 高风险任务（API 集成点，auth + 文件 I/O + 回滚 + config 改动） → 派发 reviewer → PASS
+- 测试: 12/12 PASS + test_docs_dedup.py 9/9 无回归
+- reviewer 发现: 无 CRITICAL/IMPORTANT，3 项 MINOR（app.py import 顺序无害偏差、异常消息返回客户端 brief 允许、deploy 异常路径未测 brief 未要求）
+- 实现: 1 路由函数 `import_data` + @admin_required + 双大小校验 + 3 回滚路径 + 审计日志 + 临时文件 finally 清理
 
 ## 已知问题
 

@@ -42,18 +42,18 @@
 
 ## 6. API 路由（framework/api/routes/data_import.py）
 
-- [ ] 6.1 创建 `framework/api/routes/data_import.py` Blueprint：`data_import_bp = Blueprint('data_import', __name__)`
-- [ ] 6.2 实现 `POST /import` 路由：`@jwt_required()` + admin 角色校验（`User.is_admin()`，非 admin 返回 403）
-- [ ] 6.3 解析 multipart form：`data_type` 字段 + `file` 字段；缺失返回 400
-- [ ] 6.4 文件大小校验：`Content-Length` 或读取后大小 > `MAX_DATA_IMPORT_SIZE` 返回 413
-- [ ] 6.5 临时保存上传文件到 `tempfile`，按 data_type 调用对应校验器；校验失败返回 400 + 错误信息
-- [ ] 6.6 校验通过后调用部署器：`backup_existing` → `deploy_*` → `cleanup_backups`
-- [ ] 6.7 部署成功后调用触发器：`trigger_*`，捕获超时（返回 504）、异常（尝试回滚后返回 500）、错误字典（尝试回滚后返回 500）
-- [ ] 6.8 触发失败时调用 `restore_from_backup` 回滚；回滚失败时记录警告并返回 500
-- [ ] 6.9 全程调用审计日志记录器写入审计条目
-- [ ] 6.10 成功路径返回 200 + 完整响应体（status/data_type/deployed_path/backup_path/trigger_result）
-- [ ] 6.11 在 `framework/api/app.py` 注册 `data_import_bp` 到 `/api/v1/data` 前缀
-- [ ] 6.12 编写 `tests/test_data_import_route.py` 覆盖：admin 成功上传三种类型、非 admin 403、未携带 JWT 401、缺 data_type 400、缺文件 400、文件超限 413、校验失败 400、触发失败回滚 500/504
+- [x] 6.1 创建 `framework/api/routes/data_import.py` Blueprint：`data_import_bp = Blueprint('data_import', __name__)`
+- [x] 6.2 实现 `POST /import` 路由：用 `@admin_required` 装饰器（组合 `@jwt_required()` + admin 角色校验，非 admin 返回 403，无 JWT 返回 401）
+- [x] 6.3 解析 multipart form：`data_type` 字段 + `file` 字段；缺失返回 400
+- [x] 6.4 文件大小校验：`Content-Length` 头 + 实际文件大小 > `MAX_DATA_IMPORT_SIZE` 返回 413
+- [x] 6.5 临时保存上传文件到 `tempfile`，按 data_type 调用对应校验器；校验失败返回 400 + 错误信息
+- [x] 6.6 校验通过后调用部署器：`backup_existing` → `deploy_*` → 成功时 `cleanup_backups`
+- [x] 6.7 部署成功后调用触发器：`trigger_*`，捕获超时（返回 504）、异常（尝试回滚后返回 500）、错误字典（尝试回滚后返回 500）
+- [x] 6.8 触发失败时调用 `restore_from_backup` 回滚；回滚结果记录到审计日志
+- [x] 6.9 全程调用审计日志记录器写入审计条目（成功/校验失败/触发失败均记录）
+- [x] 6.10 成功路径返回 200 + 完整响应体（status/data_type/deployed_path/backup_path/trigger_result）
+- [x] 6.11 在 `framework/api/app.py` 注册 `data_import_bp` 到 `/api/v1/data` 前缀
+- [x] 6.12 编写 `tests/test_data_import_route.py` 覆盖 12 场景：admin 成功上传三种类型、非 admin 403、未携带 JWT 401、缺 data_type 400、缺文件 400、文件超限 413、校验失败 400、触发异常回滚 500、触发超时回滚 504、触发错误字典回滚 500
 
 ## 7. 集成测试
 
