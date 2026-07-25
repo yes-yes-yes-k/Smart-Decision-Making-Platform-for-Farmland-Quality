@@ -119,7 +119,7 @@ def test_router_get_agents_for_role():
     router = RoleRouter()
     assert router.get_agents_for_role("province") == ["model-1", "model-3"]
     assert router.get_agents_for_role("county") == ["model-1", "model-3", "model-2"]
-    assert router.get_agents_for_role("farmer") == ["model-4", "model-5", "model-6"]
+    assert router.get_agents_for_role("farmer") == ["model-4", "model-5", "model-6", "model-7"]
     print("✓ RoleRouter 返回正确的智能体组合")
 
 
