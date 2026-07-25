@@ -1,5 +1,6 @@
 import subprocess
 import os
+import re
 import time
 from typing import Dict, Any, Optional
 from pathlib import Path
@@ -43,57 +44,86 @@ class FarmlandGradeRunner:
 
         current_section = None
 
+        # 指标行正则：指标名(代码): 值
+        indicator_pattern = re.compile(r'^(.+?)\((.+?)\)\s*[:：]\s*(.+)$')
+        # 障碍度行正则：指标名 : 障碍度值 障碍类型
+        obstacle_pattern = re.compile(r'^(.+?)\s*[:：]\s*([\d.]+)\s+(.+)$')
+
         for line in lines:
             line = line.strip()
             if not line:
                 continue
 
-            if '地块信息' in line:
-                current_section = 'parcel'
-                continue
-            elif '指标评价' in line:
+            # section 标记识别（匹配 exe 实际输出关键词）
+            if '原始指标值' in line:
                 current_section = 'indicators'
                 continue
-            elif '综合评价' in line:
-                current_section = 'composite'
-                continue
-            elif '障碍度排序' in line:
+            elif '障碍度因子' in line:
                 current_section = 'obstacle'
                 continue
+            elif line.startswith('---'):
+                # 普通分隔线，重置 section
+                current_section = None
+                continue
+            elif line.startswith('地块代码') and ('：' in line or ':' in line):
+                current_section = 'parcel'
+            elif '耕地质量综合指数' in line:
+                current_section = 'composite'
+            elif '耕地质量等级' in line:
+                current_section = 'composite'
 
             if current_section == 'parcel':
-                if ':' in line:
+                # parcel_info：用中文 '：' 或英文 ':' 分隔
+                if '：' in line:
+                    key, value = line.split('：', 1)
+                    result["parcel_info"][key.strip()] = value.strip()
+                elif ':' in line:
                     key, value = line.split(':', 1)
                     result["parcel_info"][key.strip()] = value.strip()
 
             elif current_section == 'indicators':
-                parts = line.split()
-                if len(parts) >= 4:
+                # indicators：指标名(代码): 值
+                m = indicator_pattern.match(line)
+                if m:
                     indicator = {
-                        "name": parts[0],
-                        "raw_value": parts[1],
-                        "membership": parts[2],
-                        "weight": parts[3]
+                        "name": m.group(1).strip(),
+                        "code": m.group(2).strip(),
+                        "raw_value": m.group(3).strip()
                     }
                     result["indicators"].append(indicator)
 
             elif current_section == 'composite':
-                if '综合指数' in line:
-                    parts = line.split('：')
-                    if len(parts) > 1:
-                        result["composite_index"] = float(parts[1].strip())
-                elif '质量等级' in line:
-                    parts = line.split('：')
-                    if len(parts) > 1:
-                        result["quality_grade"] = parts[1].strip()
+                # composite：综合指数和质量等级
+                if '耕地质量综合指数' in line:
+                    m = re.search(r'([\d.]+)', line)
+                    if m:
+                        try:
+                            result["composite_index"] = float(m.group(1))
+                        except ValueError:
+                            pass
+                elif '耕地质量等级' in line:
+                    if '：' in line:
+                        parts = line.split('：', 1)
+                        if len(parts) > 1:
+                            result["quality_grade"] = parts[1].strip()
+                    elif ':' in line:
+                        parts = line.split(':', 1)
+                        if len(parts) > 1:
+                            result["quality_grade"] = parts[1].strip()
 
             elif current_section == 'obstacle':
-                parts = line.split()
-                if len(parts) >= 3:
+                # obstacle：指标名 : 障碍度值 障碍类型
+                m = obstacle_pattern.match(line)
+                if m:
+                    try:
+                        degree = float(m.group(2))
+                    except ValueError:
+                        continue
                     obstacle = {
-                        "rank": int(parts[0]),
-                        "indicator": parts[1],
-                        "degree": float(parts[2])
+                        "rank": len(result["obstacle_degree"]) + 1,
+                        "indicator": m.group(1).strip(),
+                        "degree": degree,
+                        "level": m.group(3).strip()
                     }
                     result["obstacle_degree"].append(obstacle)
 
