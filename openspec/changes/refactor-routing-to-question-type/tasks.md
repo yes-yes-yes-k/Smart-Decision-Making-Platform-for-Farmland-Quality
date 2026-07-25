@@ -38,8 +38,8 @@
 
 ## 7. 知识性问题检测（TDD）
 
-- [ ] 7.1 编写 `_is_knowledge_question` 单元测试：验证开头匹配（"什么是X"、"何为X"、"解释X"）和包含匹配（"X是什么意思"、"X什么意思"、"X定义"、"X概念"、"X含义"）均返回 True；验证具体诊断问题（"我的田耕地质量等级是多少"、"我的田酸化严重吗"）返回 False
-- [ ] 7.2 在 `framework/agents/nodes.py` 中新增 `KNOWLEDGE_QUESTION_PATTERNS_START`、`KNOWLEDGE_QUESTION_PATTERNS_CONTAIN` 常量和 `_is_knowledge_question` 函数
-- [ ] 7.3 修改 `identify_question_type` 函数：在最前端调用 `_is_knowledge_question`，命中则返回 `(0, 1.0)` 走 RAG
-- [ ] 7.4 编写 `identify_question_type` 集成测试：验证「什么是土壤酸化」返回 type 0（而非 type 2）；「耕地质量等级是什么意思」返回 type 0（而非 type 5）；「我的田耕地质量等级是多少」仍返回 type 5
-- [ ] 7.5 验证知识性问题检测测试通过，且不影响现有 type 1-5 路由测试
+- [x] 7.1 编写 `_is_knowledge_question` 单元测试：验证开头匹配（"什么是X"、"何为X"、"解释X"）和包含匹配（"X是什么意思"、"X什么意思"、"X定义"、"X概念"、"X含义"）均返回 True；验证具体诊断问题（"我的田耕地质量等级是多少"、"我的田酸化严重吗"）返回 False
+- [x] 7.2 在 `framework/agents/nodes.py` 中新增 `KNOWLEDGE_QUESTION_PATTERNS_START`、`KNOWLEDGE_QUESTION_PATTERNS_CONTAIN` 常量和 `_is_knowledge_question` 函数
+- [x] 7.3 修改 `identify_question_type` 函数：在最前端调用 `_is_knowledge_question`，命中则返回 `(0, 1.0)` 走 RAG
+- [x] 7.4 编写 `identify_question_type` 集成测试：验证「什么是土壤酸化」返回 type 0（而非 type 2）；「耕地质量等级是什么意思」返回 type 0（而非 type 5）；「我的田耕地质量等级是多少」仍返回 type 5
+- [x] 7.5 验证知识性问题检测测试通过，且不影响现有 type 1-5 路由测试
