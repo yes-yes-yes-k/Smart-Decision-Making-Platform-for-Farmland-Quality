@@ -348,16 +348,138 @@ def test_chat_api_no_parcel_when_absent():
     print("✓ body 无 parcel 标识符时 orchestrator request 不含")
 
 
+def test_chat_api_type5_routes_to_model7_only():
+    """Task 6.2: type 5 问题经 API 路由后 agents_invoked 仅含 model-7，无 role 字段"""
+    from framework.api.app import create_app
+
+    app = create_app()
+    app.config["TESTING"] = True
+
+    with app.app_context():
+        from framework.models.user import db, User
+        db.create_all()
+        user = User.query.filter_by(username="tester").first()
+        if not user:
+            user = User(username="tester", password="x")
+            db.session.add(user)
+            db.session.commit()
+        user_id = user.id
+        from flask_jwt_extended import create_access_token
+        access_token = create_access_token(identity=str(user_id))
+
+    client = app.test_client()
+    with app.app_context():
+        resp = client.post(
+            "/api/v1/chat/",
+            json={
+                "message": "我的田耕地质量等级是多少",
+                "parcel_id": "1",
+                "parcel_code": "A0001",
+            },
+            headers={"Authorization": f"Bearer {access_token}"},
+        )
+    assert resp.status_code == 200
+    payload = resp.get_json()
+    assert payload["status"] == "ok"
+    data = payload["data"]
+    # spec 验证：无 role 字段
+    assert "role" not in data, f"响应不应含 role 字段: {data}"
+    # type 5 路由到 model-7（1:1 映射）
+    qt = data.get("question_type")
+    agents_invoked = data.get("agents_invoked", [])
+    assert qt == 5, f"质量等级问题期望 type 5，实际 type {qt}"
+    assert agents_invoked == ["model-7"], f"type 5 应仅调 model-7: {agents_invoked}"
+    print(f"✓ Task 6.2: type 5 API 路由正确 (type={qt}, agents={agents_invoked}, 无 role)")
+
+
+def test_chat_api_knowledge_question_routes_to_rag():
+    """Task 6.3: 知识性问题「什么是土壤酸化」经 API 路由后 question_type=0（走 RAG）"""
+    from framework.api.app import create_app
+
+    app = create_app()
+    app.config["TESTING"] = True
+
+    with app.app_context():
+        from framework.models.user import db, User
+        db.create_all()
+        user = User.query.filter_by(username="tester").first()
+        if not user:
+            user = User(username="tester", password="x")
+            db.session.add(user)
+            db.session.commit()
+        user_id = user.id
+        from flask_jwt_extended import create_access_token
+        access_token = create_access_token(identity=str(user_id))
+
+    client = app.test_client()
+    with app.app_context():
+        resp = client.post(
+            "/api/v1/chat/",
+            json={"message": "什么是土壤酸化"},
+            headers={"Authorization": f"Bearer {access_token}"},
+        )
+    assert resp.status_code == 200
+    payload = resp.get_json()
+    assert payload["status"] == "ok"
+    data = payload["data"]
+    # 知识性问题应返回 type 0（走 RAG），不路由到专业模型
+    qt = data.get("question_type")
+    assert qt == 0, f"知识性问题「什么是土壤酸化」期望 type 0，实际 type {qt}"
+    # type 0 不应有 agents_invoked（走 RAG 而非 execute_models）
+    agents_invoked = data.get("agents_invoked", [])
+    assert agents_invoked == [] or "agents_invoked" not in data, (
+        f"知识性问题不应调用专业模型: {agents_invoked}"
+    )
+    print(f"✓ Task 6.3: 知识性问题走 RAG (type={qt}, 无专业模型调用)")
+
+
+def test_chat_api_knowledge_question_概念_pattern():
+    """Task 6.3: 「耕地质量等级是什么意思」也应走 RAG（type 0）"""
+    from framework.api.app import create_app
+
+    app = create_app()
+    app.config["TESTING"] = True
+
+    with app.app_context():
+        from framework.models.user import db, User
+        db.create_all()
+        user = User.query.filter_by(username="tester").first()
+        if not user:
+            user = User(username="tester", password="x")
+            db.session.add(user)
+            db.session.commit()
+        user_id = user.id
+        from flask_jwt_extended import create_access_token
+        access_token = create_access_token(identity=str(user_id))
+
+    client = app.test_client()
+    with app.app_context():
+        resp = client.post(
+            "/api/v1/chat/",
+            json={"message": "耕地质量等级是什么意思"},
+            headers={"Authorization": f"Bearer {access_token}"},
+        )
+    assert resp.status_code == 200
+    payload = resp.get_json()
+    data = payload["data"]
+    qt = data.get("question_type")
+    assert qt == 0, f"知识性问题期望 type 0，实际 type {qt}"
+    print(f"✓ Task 6.3: 「耕地质量等级是什么意思」走 RAG (type={qt})")
+
+
 if __name__ == "__main__":
-    test_execute_models_invokes_agent_manager_farmer()
-    test_execute_models_invokes_agent_manager_province()
+    test_execute_models_invokes_agent_manager_type4()
+    test_execute_models_invokes_agent_manager_type1()
     test_execute_models_writes_structured_result()
     test_chat_api_returns_structured_multi_agent_result()
-    test_e2e_province_role_routing()
-    test_e2e_county_role_routing()
-    test_e2e_farmer_role_routing()
+    test_e2e_type1_stability_routing()
+    test_e2e_type1_county_stability_routing()
+    test_e2e_type4_fertility_routing()
     test_e2e_recommendations_aggregated()
     test_chat_api_passes_top_level_parcel_id_and_code()
     test_chat_api_top_level_parcel_overrides_context()
     test_chat_api_no_parcel_when_absent()
+    test_chat_api_type5_routes_to_model7_only()
+    test_chat_api_knowledge_question_routes_to_rag()
+    test_chat_api_knowledge_question_概念_pattern()
     print("\n所有端到端验证与集成测试通过！")
