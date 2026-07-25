@@ -153,6 +153,172 @@ def test_e2e_recommendations_aggregated():
     print("✓ recommendations 字段已聚合各智能体建议")
 
 
+def test_chat_api_passes_top_level_parcel_id_and_code():
+    """POST body 含 top-level parcel_id/parcel_code → 透传到 orchestrator request"""
+    from framework.api.app import create_app
+    from framework.agents.orchestrator import multi_agent_orchestrator
+
+    app = create_app()
+    app.config["TESTING"] = True
+
+    with app.app_context():
+        from framework.models.user import db, User
+        db.create_all()
+        user = User.query.filter_by(username="tester").first()
+        if not user:
+            user = User(username="tester", password="x")
+            db.session.add(user)
+            db.session.commit()
+        user_id = user.id
+        from flask_jwt_extended import create_access_token
+        access_token = create_access_token(identity=str(user_id))
+
+    captured = {}
+
+    def fake_run(req, conversation_history=None):
+        captured["request"] = req
+        return {
+            "answer": "ok",
+            "question_type": 5,
+            "model_results": {
+                "data": {
+                    "role": "farmer",
+                    "agents_invoked": ["model-4", "model-5", "model-6", "model-7"],
+                    "summary": "",
+                    "details": {},
+                    "recommendations": [],
+                }
+            },
+        }
+
+    real_run = multi_agent_orchestrator.run
+    multi_agent_orchestrator.run = fake_run
+    client = app.test_client()
+    try:
+        with app.app_context():
+            resp = client.post(
+                "/api/v1/chat/",
+                json={
+                    "message": "我的田耕地质量等级是多少",
+                    "parcel_id": "1",
+                    "parcel_code": "A0001",
+                },
+                headers={"Authorization": f"Bearer {access_token}"},
+            )
+    finally:
+        multi_agent_orchestrator.run = real_run
+
+    assert resp.status_code == 200
+    req = captured["request"]
+    assert req.get("parcel_id") == "1", f"parcel_id 未透传: {req}"
+    assert req.get("parcel_code") == "A0001", f"parcel_code 未透传: {req}"
+    assert req.get("question") == "我的田耕地质量等级是多少"
+    print("✓ /api/v1/chat/ 透传 top-level parcel_id/parcel_code")
+
+
+def test_chat_api_top_level_parcel_overrides_context():
+    """top-level parcel_id 优先于 context.parcel_id"""
+    from framework.api.app import create_app
+    from framework.agents.orchestrator import multi_agent_orchestrator
+
+    app = create_app()
+    app.config["TESTING"] = True
+
+    with app.app_context():
+        from framework.models.user import db, User
+        db.create_all()
+        user = User.query.filter_by(username="tester").first()
+        if not user:
+            user = User(username="tester", password="x")
+            db.session.add(user)
+            db.session.commit()
+        user_id = user.id
+        from flask_jwt_extended import create_access_token
+        access_token = create_access_token(identity=str(user_id))
+
+    captured = {}
+
+    def fake_run(req, conversation_history=None):
+        captured["request"] = req
+        return {
+            "answer": "ok",
+            "question_type": 5,
+            "model_results": {"data": {"role": "farmer", "agents_invoked": [], "summary": "", "details": {}, "recommendations": []}},
+        }
+
+    real_run = multi_agent_orchestrator.run
+    multi_agent_orchestrator.run = fake_run
+    client = app.test_client()
+    try:
+        with app.app_context():
+            resp = client.post(
+                "/api/v1/chat/",
+                json={
+                    "message": "我的田质量等级",
+                    "parcel_id": "1",            # top-level 优先
+                    "context": {"parcel_id": "999"},  # 应被覆盖
+                },
+                headers={"Authorization": f"Bearer {access_token}"},
+            )
+    finally:
+        multi_agent_orchestrator.run = real_run
+
+    assert resp.status_code == 200
+    req = captured["request"]
+    assert req.get("parcel_id") == "1", f"top-level 应优先，实际: {req}"
+    print("✓ top-level parcel_id 优先于 context.parcel_id")
+
+
+def test_chat_api_no_parcel_when_absent():
+    """POST body 不含 parcel_id/parcel_code → orchestrator request 不含（现有行为不变）"""
+    from framework.api.app import create_app
+    from framework.agents.orchestrator import multi_agent_orchestrator
+
+    app = create_app()
+    app.config["TESTING"] = True
+
+    with app.app_context():
+        from framework.models.user import db, User
+        db.create_all()
+        user = User.query.filter_by(username="tester").first()
+        if not user:
+            user = User(username="tester", password="x")
+            db.session.add(user)
+            db.session.commit()
+        user_id = user.id
+        from flask_jwt_extended import create_access_token
+        access_token = create_access_token(identity=str(user_id))
+
+    captured = {}
+
+    def fake_run(req, conversation_history=None):
+        captured["request"] = req
+        return {
+            "answer": "ok",
+            "question_type": 0,
+            "model_results": {},
+        }
+
+    real_run = multi_agent_orchestrator.run
+    multi_agent_orchestrator.run = fake_run
+    client = app.test_client()
+    try:
+        with app.app_context():
+            resp = client.post(
+                "/api/v1/chat/",
+                json={"message": "你好"},
+                headers={"Authorization": f"Bearer {access_token}"},
+            )
+    finally:
+        multi_agent_orchestrator.run = real_run
+
+    assert resp.status_code == 200
+    req = captured["request"]
+    assert "parcel_id" not in req, f"不应含 parcel_id: {req}"
+    assert "parcel_code" not in req, f"不应含 parcel_code: {req}"
+    print("✓ body 无 parcel 标识符时 orchestrator request 不含")
+
+
 if __name__ == "__main__":
     test_execute_models_invokes_agent_manager_farmer()
     test_execute_models_invokes_agent_manager_province()
@@ -162,4 +328,7 @@ if __name__ == "__main__":
     test_e2e_county_role_routing()
     test_e2e_farmer_role_routing()
     test_e2e_recommendations_aggregated()
+    test_chat_api_passes_top_level_parcel_id_and_code()
+    test_chat_api_top_level_parcel_overrides_context()
+    test_chat_api_no_parcel_when_absent()
     print("\n所有端到端验证与集成测试通过！")
