@@ -297,8 +297,10 @@ def execute_models(state: MultiAgentState) -> MultiAgentState:
             "area_code": state["request"].get("area_code", "lechang"),
             "data": state.get("data", {}),
         }
-        # 透传可能的土壤参数
-        for key in ("longitude", "latitude", "target_ph", "context"):
+        # 透传可能的土壤参数与地块标识符
+        # parcel_id（数字字符串）给 model-1/3/4 查 DB，parcel_code（字母数字）给 model-7 调 fortran exe
+        for key in ("longitude", "latitude", "target_ph", "context",
+                    "parcel_id", "parcel_code"):
             if key in state["request"]:
                 context[key] = state["request"][key]
 
