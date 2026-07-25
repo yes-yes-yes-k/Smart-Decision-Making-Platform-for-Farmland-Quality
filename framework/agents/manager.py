@@ -2,23 +2,7 @@ from __future__ import annotations
 from typing import Any, Dict, List
 
 from .base import BaseAgent
-from .router import RoleRouter
-
-
-# 肥力相关关键词（与 FertilityMLAgent.FERTILITY_KEYWORDS 保持一致）
-FERTILITY_KEYWORDS = [
-    "有机碳", "SOC", "soc",
-    "施用量", "施肥量", "施肥", "Dose", "dose", "剂量", "施多少肥",
-    "肥力", "综合肥力",
-    "秸秆", "有机肥", "培肥",
-]
-
-# 质量等级相关关键词（与 nodes.QUESTION_TYPE_5_KEYWORDS 保持一致）
-# 不从 nodes.py import 以避免循环依赖（nodes.py 已 from manager import agent_manager）
-GRADE_KEYWORDS = [
-    "质量等级", "等级评价", "综合指数", "指标隶属度", "障碍度排序",
-    "耕地质量等级", "质量评价", "等级评定", "指标权重",
-]
+from .router import QuestionTypeRouter
 
 
 class _StubAgent(BaseAgent):
@@ -48,7 +32,7 @@ class AgentManager:
 
     def __init__(self):
         self.agents: Dict[str, BaseAgent] = {}
-        self.router = RoleRouter()
+        self.router = QuestionTypeRouter()
         self._register_agents()
 
     def _register_agents(self) -> None:
@@ -73,7 +57,7 @@ class AgentManager:
         # 显式声明依赖关系
         self.agents["model-1"].dependencies = []
         self.agents["model-2"].dependencies = []
-        self.agents["model-3"].dependencies = ["model-2"]
+        self.agents["model-3"].dependencies = []
         self.agents["model-4"].dependencies = []
         self.agents["model-5"].dependencies = []
         self.agents["model-6"].dependencies = []
@@ -127,12 +111,26 @@ class AgentManager:
 
     def process(self, question: str, context: Dict[str, Any]) -> Dict[str, Any]:
         """处理用户问题，返回综合结果。"""
-        role = self.router.identify_role(question)
-        agent_ids = self.router.get_agents_for_role(role)
+        question_type = context.get("question_type")
+        agent_ids = self.router.get_agents_for_type(question_type)
+
+        if not agent_ids:
+            # 防御性：question_type 为 None/0/未知时返回 no_routing
+            return {
+                "status": "no_routing",
+                "data": {
+                    "question_type": question_type,
+                    "agents_invoked": [],
+                    "summary": "未识别问题类型",
+                    "details": {},
+                    "recommendations": [],
+                },
+            }
+
         results = self._execute_with_dependencies(agent_ids, question, context)
         return {
             "status": "ok",
-            "data": self._summarize(role, agent_ids, results),
+            "data": self._summarize(question_type, agent_ids, results),
         }
 
     def _execute_with_dependencies(
@@ -144,19 +142,6 @@ class AgentManager:
         results: Dict[str, Dict[str, Any]] = {}
 
         for agent_id in ordered:
-            # 按需过滤：非肥力问题跳过 model-6
-            if not self._should_execute_agent(agent_id, question):
-                results[agent_id] = {
-                    "status": "skipped",
-                    "reason": "question_not_related",
-                    "answer": "",
-                    "evidence": [],
-                    "confidence": 0.0,
-                    "simulated": True,
-                }
-                accumulated[agent_id] = results[agent_id]
-                continue
-
             agent = self.agents[agent_id]
             try:
                 result = agent.answer_question(question, accumulated)
@@ -194,15 +179,6 @@ class AgentManager:
 
         return order
 
-    def _should_execute_agent(self, agent_id: str, question: str) -> bool:
-        """问题感知过滤：model-6 仅肥力问题执行，model-7 仅质量等级问题执行。"""
-        if agent_id == "model-6":
-            q_lower = (question or "").lower()
-            return any(kw.lower() in q_lower for kw in FERTILITY_KEYWORDS)
-        if agent_id == "model-7":
-            return any(kw in (question or "") for kw in GRADE_KEYWORDS)
-        return True
-
     def _synthesize_comprehensive_result(self, results: Dict[str, Dict[str, Any]]) -> Dict[str, Any]:
         """综合模型1（退化风险）和模型3（障碍诊断）的结果。"""
         model1_result = results.get("model-1", {})
@@ -228,7 +204,7 @@ class AgentManager:
 
     def _summarize(
         self,
-        role: str,
+        question_type: int,
         agent_ids: List[str],
         results: Dict[str, Dict[str, Any]],
     ) -> Dict[str, Any]:
@@ -259,7 +235,7 @@ class AgentManager:
                     recommendations.append(text)
 
         return {
-            "role": role,
+            "question_type": question_type,
             "agents_invoked": ordered_invoked,
             "summary": summary,
             "details": details,

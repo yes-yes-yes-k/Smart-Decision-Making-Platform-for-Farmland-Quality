@@ -35,8 +35,8 @@ def _stub_process_return():
     return {
         "status": "ok",
         "data": {
-            "role": "farmer",
-            "agents_invoked": ["model-4", "model-5", "model-6", "model-7"],
+            "question_type": 5,
+            "agents_invoked": ["model-7"],
             "summary": "",
             "details": {},
             "recommendations": [],
@@ -68,6 +68,8 @@ def test_execute_models_passes_parcel_id_and_parcel_code_to_context():
     assert ctx.get("parcel_code") == "A0001", f"parcel_code 未透传到 context top-level: {ctx}"
     # area_code 仍应存在（现有行为不变）
     assert ctx.get("area_code") == "lechang"
+    # question_type 应从 state 透传到 context
+    assert ctx.get("question_type") == 1, f"question_type 未透传到 context: {ctx}"
     print("✓ execute_models 透传 parcel_id/parcel_code 到 context top-level")
 
 

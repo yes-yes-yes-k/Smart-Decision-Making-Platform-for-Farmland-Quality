@@ -1,0 +1,8 @@
+{
+  "openspec_proposal": "openspec/changes/refactor-routing-to-question-type/proposal.md",
+  "openspec_design": "openspec/changes/refactor-routing-to-question-type/design.md",
+  "openspec_tasks": "openspec/changes/refactor-routing-to-question-type/tasks.md",
+  "openspec_delta_spec": "openspec/changes/refactor-routing-to-question-type/specs/multi-agent-orchestrator/spec.md",
+  "handoff_context": "openspec/changes/refactor-routing-to-question-type/.comet/handoff/design-context.json",
+  "handoff_markdown": "openspec/changes/refactor-routing-to-question-type/.comet/handoff/design-context.md"
+}

@@ -35,14 +35,14 @@ def test_manager_topological_sort_farmer():
     print("✓ 拓扑排序包含 farmer 角色全部三个智能体")
 
 
-def test_manager_process_farmer_returns_structured_result():
-    """process 返回符合 API 规范的结构化字典"""
+def test_manager_process_type4_returns_structured_result():
+    """process 返回符合 API 规范的结构化字典（type 4 → model-6）"""
     mgr = AgentManager()
-    result = mgr.process("我的田施肥施多少", {"area_code": "lechang"})
+    result = mgr.process("我的田施肥施多少", {"question_type": 4, "area_code": "lechang"})
     assert result["status"] == "ok"
     data = result["data"]
-    assert data["role"] == "farmer"
-    assert data["agents_invoked"] == ["model-4", "model-5", "model-6", "model-7"]
+    assert data["question_type"] == 4
+    assert data["agents_invoked"] == ["model-6"]
     assert "summary" in data and isinstance(data["summary"], str)
     assert "details" in data and isinstance(data["details"], dict)
     assert "recommendations" in data and isinstance(data["recommendations"], list)
@@ -52,40 +52,13 @@ def test_manager_process_farmer_returns_structured_result():
     print("✓ AgentManager.process 返回符合规范的结构化结果")
 
 
-def test_manager_process_unknown_question_defaults_farmer():
-    """无关键词问题默认路由到 farmer"""
+def test_manager_process_no_question_type_returns_no_routing():
+    """无 question_type 的问题返回 no_routing（不再默认 farmer）"""
     mgr = AgentManager()
     result = mgr.process("你好", {})
-    assert result["data"]["role"] == "farmer"
-    print("✓ 未知问题默认路由到 farmer")
-
-
-def test_should_execute_model6_fertility_question():
-    """问'肥力' → _should_execute_agent('model-6', ...) = True"""
-    from framework.agents.manager import AgentManager, FERTILITY_KEYWORDS
-    mgr = AgentManager()
-    assert mgr._should_execute_agent("model-6", "我的田肥力怎么样？") is True
-    assert mgr._should_execute_agent("model-6", "有机碳含量多少？") is True
-    assert mgr._should_execute_agent("model-6", "需要施多少肥？") is True
-    print("✓ 肥力相关问题触发 model-6 执行")
-
-
-def test_should_skip_model6_non_fertility_question():
-    """问'pH' → _should_execute_agent('model-6', ...) = False"""
-    from framework.agents.manager import AgentManager
-    mgr = AgentManager()
-    assert mgr._should_execute_agent("model-6", "我的田pH如何？") is False
-    assert mgr._should_execute_agent("model-6", "你好") is False
-    print("✓ 非肥力问题跳过 model-6")
-
-
-def test_should_execute_other_agents_always():
-    """非 model-6 的 agent 始终执行"""
-    from framework.agents.manager import AgentManager
-    mgr = AgentManager()
-    assert mgr._should_execute_agent("model-4", "任何问题") is True
-    assert mgr._should_execute_agent("model-5", "任何问题") is True
-    print("✓ 非 model-6 agent 始终执行")
+    assert result["status"] == "no_routing"
+    assert result["data"]["agents_invoked"] == []
+    print("✓ 无 question_type 返回 no_routing")
 
 
 def test_model6_dependencies_empty():
@@ -107,18 +80,6 @@ def test_topological_sort_model6_no_dep():
     print("✓ model-6 在拓扑排序中无依赖约束")
 
 
-def test_model6_skipped_in_details_for_non_fertility():
-    """非肥力问题 → details['model-6'] 含 skipped 状态"""
-    from framework.agents.manager import AgentManager
-    mgr = AgentManager()
-    result = mgr.process("我的田pH如何？", {})
-    details = result["data"]["details"]
-    # model-6 应被跳过（status 标记或 skipped 标记）
-    m6 = details.get("model-6", {})
-    assert m6.get("status") == "skipped" or m6.get("simulated") is True
-    print("✓ 非肥力问题 model-6 被跳过")
-
-
 def test_manager_loads_fertility_ml_agent():
     """_load_real_agents 加载 FertilityMLAgent"""
     from framework.agents.manager import AgentManager
@@ -128,82 +89,168 @@ def test_manager_loads_fertility_ml_agent():
     print("✓ AgentManager 加载 FertilityMLAgent")
 
 
-def test_farmer_role_includes_model_7():
-    """farmer 角色应包含 model-7（共 4 个 agent）"""
-    from framework.agents.router import RoleRouter
-    router = RoleRouter()
-    agents = router.get_agents_for_role("farmer")
-    assert "model-7" in agents, f"farmer 角色未含 model-7: {agents}"
-    assert agents == ["model-4", "model-5", "model-6", "model-7"], f"farmer agents 不符: {agents}"
-    print("✓ farmer 角色含 model-7（4 个 agent）")
+def test_type5_routes_to_model7():
+    """type=5 应路由到 model-7（1:1 映射）"""
+    from framework.agents.router import QuestionTypeRouter
+    router = QuestionTypeRouter()
+    agents = router.get_agents_for_type(5)
+    assert agents == ["model-7"], f"type 5 应仅映射 model-7: {agents}"
+    print("✓ type 5 路由到 model-7（1:1 映射）")
 
 
-def test_should_execute_model7_grade_question():
-    """问'质量等级' → _should_execute_agent('model-7', ...) = True"""
-    from framework.agents.manager import AgentManager, GRADE_KEYWORDS
+def test_model7_executed_for_type5_question():
+    """type=5 问题 → details['model-7'] 被执行（不 skipped）"""
     mgr = AgentManager()
-    assert mgr._should_execute_agent("model-7", "我的田耕地质量等级是多少？") is True
-    assert mgr._should_execute_agent("model-7", "查询地块的综合指数和障碍度排序") is True
-    assert mgr._should_execute_agent("model-7", "这块地的耕地质量等级评价结果") is True
-    print("✓ 质量等级相关问题触发 model-7 执行")
-
-
-def test_should_skip_model7_non_grade_question():
-    """非质量等级问题 → _should_execute_agent('model-7', ...) = False"""
-    from framework.agents.manager import AgentManager
-    mgr = AgentManager()
-    assert mgr._should_execute_agent("model-7", "我的田肥力怎么样？") is False
-    assert mgr._should_execute_agent("model-7", "我的田酸化严重吗？") is False
-    assert mgr._should_execute_agent("model-7", "你好") is False
-    print("✓ 非质量等级问题跳过 model-7")
-
-
-def test_grade_keywords_mirrors_question_type_5():
-    """GRADE_KEYWORDS 应镜像 nodes.QUESTION_TYPE_5_KEYWORDS"""
-    from framework.agents.manager import GRADE_KEYWORDS
-    from framework.agents.nodes import QUESTION_TYPE_5_KEYWORDS
-    assert GRADE_KEYWORDS == QUESTION_TYPE_5_KEYWORDS, (
-        f"GRADE_KEYWORDS 与 QUESTION_TYPE_5_KEYWORDS 不一致：\n"
-        f"  manager: {GRADE_KEYWORDS}\n  nodes: {QUESTION_TYPE_5_KEYWORDS}"
-    )
-    print("✓ GRADE_KEYWORDS 镜像 QUESTION_TYPE_5_KEYWORDS")
-
-
-def test_model7_skipped_in_details_for_non_grade_farmer_question():
-    """farmer 问非质量等级问题 → details['model-7'] 含 skipped 状态"""
-    from framework.agents.manager import AgentManager
-    mgr = AgentManager()
-    result = mgr.process("我的田肥力怎么样？", {})
-    details = result["data"]["details"]
-    m7 = details.get("model-7", {})
-    assert m7.get("status") == "skipped", f"model-7 应被跳过，实际: {m7}"
-    assert m7.get("reason") == "question_not_related"
-    print("✓ 非质量等级 farmer 问题 model-7 被跳过")
-
-
-def test_model7_executed_for_grade_farmer_question():
-    """farmer 问质量等级问题 → details['model-7'] 不含 skipped 状态"""
-    from framework.agents.manager import AgentManager
-    mgr = AgentManager()
-    result = mgr.process("我的田耕地质量等级是多少？", {"parcel_code": "A0001"})
+    result = mgr.process("我的田耕地质量等级是多少？", {"question_type": 5, "parcel_code": "A0001"})
     details = result["data"]["details"]
     m7 = details.get("model-7", {})
     assert m7.get("status") != "skipped", f"model-7 不应被跳过，实际: {m7}"
     # parcel_code 已传，model-7 应调 fortran exe（若部署就绪）或走 mock 回退
     assert "answer" in m7 or "simulated" in m7
-    print("✓ 质量等级 farmer 问题 model-7 被执行")
+    print("✓ type=5 质量等级问题 model-7 被执行")
+
+
+def test_process_type1_routes_to_model1_only():
+    """type=1 → 仅调 model-1，不调 model-2/3"""
+    mgr = AgentManager()
+    result = mgr.process("查询区域内耕地质量等级整体稳定吗", {"question_type": 1})
+    assert result["status"] == "ok"
+    assert result["data"]["agents_invoked"] == ["model-1"]
+    assert result["data"]["question_type"] == 1
+    print("✓ type=1 路由到 model-1")
+
+
+def test_process_type2_routes_to_model4_only():
+    """type=2 → 仅调 model-4"""
+    mgr = AgentManager()
+    result = mgr.process("我的田酸化严重吗", {"question_type": 2})
+    assert result["data"]["agents_invoked"] == ["model-4"]
+    assert result["data"]["question_type"] == 2
+    print("✓ type=2 路由到 model-4")
+
+
+def test_process_type3_routes_to_model3_only():
+    """type=3 → 仅调 model-3，不调 model-2"""
+    mgr = AgentManager()
+    result = mgr.process("我这块地到底有啥毛病", {"question_type": 3})
+    assert result["data"]["agents_invoked"] == ["model-3"]
+    assert "model-2" not in result["data"]["agents_invoked"]
+    print("✓ type=3 路由到 model-3（不调 model-2）")
+
+
+def test_process_type4_routes_to_model6_only():
+    """type=4 → 仅调 model-6，不调 model-5"""
+    mgr = AgentManager()
+    result = mgr.process("我的田肥力怎么样", {"question_type": 4})
+    assert result["data"]["agents_invoked"] == ["model-6"]
+    assert "model-5" not in result["data"]["agents_invoked"]
+    assert "model-4" not in result["data"]["agents_invoked"]
+    print("✓ type=4 路由到 model-6（不调 model-4/5）")
+
+
+def test_process_type5_routes_to_model7_only():
+    """type=5 → 仅调 model-7，不调 model-4/5/6"""
+    mgr = AgentManager()
+    result = mgr.process("我的田耕地质量等级是多少", {"question_type": 5, "parcel_code": "A0001"})
+    assert result["data"]["agents_invoked"] == ["model-7"]
+    assert "model-4" not in result["data"]["agents_invoked"]
+    assert "model-5" not in result["data"]["agents_invoked"]
+    assert "model-6" not in result["data"]["agents_invoked"]
+    print("✓ type=5 路由到 model-7（不调 model-4/5/6）")
+
+
+def test_process_no_routing_when_question_type_none():
+    """question_type=None（context 缺失）→ no_routing 空结果"""
+    mgr = AgentManager()
+    result = mgr.process("你好", {})
+    assert result["status"] == "no_routing"
+    assert result["data"]["agents_invoked"] == []
+    assert result["data"]["summary"] == "未识别问题类型"
+    print("✓ question_type=None 返回 no_routing")
+
+
+def test_process_no_routing_when_question_type_zero():
+    """question_type=0 → no_routing（route_models 保证不进入，此处为防御性）"""
+    mgr = AgentManager()
+    result = mgr.process("什么是土壤酸化", {"question_type": 0})
+    assert result["status"] == "no_routing"
+    assert result["data"]["agents_invoked"] == []
+    print("✓ question_type=0 返回 no_routing")
+
+
+def test_process_no_routing_when_question_type_unknown():
+    """question_type=6（超出范围）→ no_routing"""
+    mgr = AgentManager()
+    result = mgr.process("未知问题", {"question_type": 6})
+    assert result["status"] == "no_routing"
+    assert result["data"]["question_type"] == 6
+    print("✓ 未知 question_type 返回 no_routing")
+
+
+def test_no_skipped_entries_in_details_for_type4():
+    """type=4 路由到 model-6，details 中 model-6 不应有 skipped 状态"""
+    mgr = AgentManager()
+    result = mgr.process("我的田肥力怎么样", {"question_type": 4})
+    details = result["data"]["details"]
+    m6 = details.get("model-6", {})
+    assert m6.get("status") != "skipped", f"model-6 不应被 skipped: {m6}"
+    assert m6.get("reason") != "question_not_related"
+    print("✓ type=4 details 中 model-6 未被 skipped")
+
+
+def test_no_skipped_entries_in_details_for_type5():
+    """type=5 路由到 model-7，details 中 model-7 不应有 skipped 状态"""
+    mgr = AgentManager()
+    result = mgr.process("我的田耕地质量等级是多少", {"question_type": 5, "parcel_code": "A0001"})
+    details = result["data"]["details"]
+    m7 = details.get("model-7", {})
+    assert m7.get("status") != "skipped", f"model-7 不应被 skipped: {m7}"
+    print("✓ type=5 details 中 model-7 未被 skipped")
+
+
+def test_should_execute_agent_method_removed():
+    """_should_execute_agent 方法应已删除"""
+    mgr = AgentManager()
+    assert not hasattr(mgr, "_should_execute_agent"), "_should_execute_agent 仍存在"
+    print("✓ _should_execute_agent 已移除")
+
+
+def test_fertility_keywords_constant_removed():
+    """FERTILITY_KEYWORDS 常量应已删除"""
+    import framework.agents.manager as mgr_mod
+    assert not hasattr(mgr_mod, "FERTILITY_KEYWORDS"), "FERTILITY_KEYWORDS 仍存在"
+    print("✓ FERTILITY_KEYWORDS 已移除")
+
+
+def test_grade_keywords_constant_removed():
+    """GRADE_KEYWORDS 常量应已删除"""
+    import framework.agents.manager as mgr_mod
+    assert not hasattr(mgr_mod, "GRADE_KEYWORDS"), "GRADE_KEYWORDS 仍存在"
+    print("✓ GRADE_KEYWORDS 已移除")
 
 
 if __name__ == "__main__":
     test_manager_register_seven_agents()
     test_manager_topological_sort_province()
     test_manager_topological_sort_farmer()
-    test_manager_process_farmer_returns_structured_result()
-    test_manager_process_unknown_question_defaults_farmer()
-    test_farmer_role_includes_model_7()
-    test_should_execute_model7_grade_question()
-    test_should_skip_model7_non_grade_question()
-    test_grade_keywords_mirrors_question_type_5()
-    test_model7_skipped_in_details_for_non_grade_farmer_question()
-    test_model7_executed_for_grade_farmer_question()
+    test_manager_process_type4_returns_structured_result()
+    test_manager_process_no_question_type_returns_no_routing()
+    test_model6_dependencies_empty()
+    test_topological_sort_model6_no_dep()
+    test_manager_loads_fertility_ml_agent()
+    test_type5_routes_to_model7()
+    test_model7_executed_for_type5_question()
+    test_process_type1_routes_to_model1_only()
+    test_process_type2_routes_to_model4_only()
+    test_process_type3_routes_to_model3_only()
+    test_process_type4_routes_to_model6_only()
+    test_process_type5_routes_to_model7_only()
+    test_process_no_routing_when_question_type_none()
+    test_process_no_routing_when_question_type_zero()
+    test_process_no_routing_when_question_type_unknown()
+    test_no_skipped_entries_in_details_for_type4()
+    test_no_skipped_entries_in_details_for_type5()
+    test_should_execute_agent_method_removed()
+    test_fertility_keywords_constant_removed()
+    test_grade_keywords_constant_removed()
     print("\n所有 AgentManager 测试通过！")

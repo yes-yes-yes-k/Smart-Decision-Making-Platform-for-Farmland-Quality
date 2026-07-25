@@ -2,30 +2,26 @@ from __future__ import annotations
 from typing import Dict, List
 
 
-class RoleRouter:
-    """用户角色路由器，基于关键词匹配识别角色并返回对应智能体组合。"""
+# question_type → 单一智能体的 1:1 映射
+# - type 1: 稳定性/退化风险 → model-1 (StabilityRiskAgent)
+# - type 2: 酸化改良 → model-4 (AcidificationRemediationAgent)
+# - type 3: 障碍诊断 → model-3 (ProblemIdentificationAgent)
+# - type 4: 肥力/SOC/Dose → model-6 (FertilityMLAgent)
+# - type 5: 耕地质量等级评价 → model-7 (FarmlandGradeAgent)
+TYPE_AGENTS: Dict[int, List[str]] = {
+    1: ["model-1"],
+    2: ["model-4"],
+    3: ["model-3"],
+    4: ["model-6"],
+    5: ["model-7"],
+}
 
-    ROLE_KEYWORDS: Dict[str, List[str]] = {
-        "province": ["全省", "全市", "全局", "政策", "省市"],
-        "county": ["本县", "乡镇", "片区", "任务", "县域"],
-        "farmer": ["我的田", "这块地", "施氮肥", "施多少", "农户"],
-    }
 
-    ROLE_AGENTS: Dict[str, List[str]] = {
-        "province": ["model-1", "model-3"],
-        "county": ["model-1", "model-3", "model-2"],
-        "farmer": ["model-4", "model-5", "model-6", "model-7"],
-    }
+class QuestionTypeRouter:
+    """基于问题类型的路由器，1:1 映射 question_type 到单一智能体。"""
 
-    def identify_role(self, question: str) -> str:
-        """基于关键词匹配识别用户角色。无匹配时默认返回 'farmer'。"""
-        if not question:
-            return "farmer"
-        for role, keywords in self.ROLE_KEYWORDS.items():
-            if any(kw in question for kw in keywords):
-                return role
-        return "farmer"
+    TYPE_AGENTS = TYPE_AGENTS
 
-    def get_agents_for_role(self, role: str) -> List[str]:
-        """返回该角色对应的智能体 ID 列表。未知角色回退到 farmer。"""
-        return list(self.ROLE_AGENTS.get(role, self.ROLE_AGENTS["farmer"]))
+    def get_agents_for_type(self, question_type: int) -> List[str]:
+        """返回该问题类型对应的智能体 ID 列表。未知类型返回空列表。"""
+        return list(self.TYPE_AGENTS.get(question_type, []))

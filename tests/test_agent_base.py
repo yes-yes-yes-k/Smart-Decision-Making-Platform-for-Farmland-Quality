@@ -88,41 +88,6 @@ def test_mock_data_apply_threshold():
     print("✓ MockDataLoader.apply_threshold 按顺序匹配规则")
 
 
-def test_router_identify_role_province():
-    from framework.agents.router import RoleRouter
-    router = RoleRouter()
-    assert router.identify_role("全省耕地酸化程度如何") == "province"
-    assert router.identify_role("全市政策建议") == "province"
-    print("✓ RoleRouter 识别省市角色")
-
-
-def test_router_identify_role_county():
-    from framework.agents.router import RoleRouter
-    router = RoleRouter()
-    assert router.identify_role("本县乡镇任务如何分配") == "county"
-    assert router.identify_role("片区县域情况") == "county"
-    print("✓ RoleRouter 识别县域角色")
-
-
-def test_router_identify_role_farmer_default():
-    from framework.agents.router import RoleRouter
-    router = RoleRouter()
-    assert router.identify_role("我的田施氮肥施多少") == "farmer"
-    assert router.identify_role("这块地质量怎么样") == "farmer"
-    # 无关键词时默认 farmer
-    assert router.identify_role("你好") == "farmer"
-    print("✓ RoleRouter 识别农户角色与默认值")
-
-
-def test_router_get_agents_for_role():
-    from framework.agents.router import RoleRouter
-    router = RoleRouter()
-    assert router.get_agents_for_role("province") == ["model-1", "model-3"]
-    assert router.get_agents_for_role("county") == ["model-1", "model-3", "model-2"]
-    assert router.get_agents_for_role("farmer") == ["model-4", "model-5", "model-6", "model-7"]
-    print("✓ RoleRouter 返回正确的智能体组合")
-
-
 if __name__ == "__main__":
     test_baseagent_cannot_instantiate()
     test_baseagent_subclass_must_implement_methods()
@@ -130,8 +95,4 @@ if __name__ == "__main__":
     test_mock_data_merge_defaults()
     test_mock_data_mark_simulated()
     test_mock_data_apply_threshold()
-    test_router_identify_role_province()
-    test_router_identify_role_county()
-    test_router_identify_role_farmer_default()
-    test_router_get_agents_for_role()
-    print("\n所有 BaseAgent、MockDataLoader、RoleRouter 测试通过！")
+    print("\n所有 BaseAgent、MockDataLoader 测试通过！")

@@ -88,7 +88,6 @@ def chat():
 
     # 解析 AgentManager 结构化结果（若存在）
     agent_data = model_results.get("data", {}) if isinstance(model_results, dict) else {}
-    role = agent_data.get("role")
     agents_invoked = agent_data.get("agents_invoked", [])
     recommendations = agent_data.get("recommendations", [])
     multi_agent_summary = agent_data.get("summary", "")
@@ -109,8 +108,6 @@ def chat():
         "model_results": model_results,
         "message_id": assistant_message.id,
     }
-    if role:
-        response_data["role"] = role
     if agents_invoked:
         response_data["agents_invoked"] = agents_invoked
     if recommendations:

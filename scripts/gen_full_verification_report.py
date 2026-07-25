@@ -174,17 +174,19 @@ def build_markdown(report: Dict[str, Any]) -> str:
     for k, v in report["resources"].items():
         md.append(f"- {'✓' if v else '✗'} `{k}`: `{v}`")
     md.append("")
-    md.append("**角色路由表（RoleRouter.ROLE_AGENTS）：**")
+    md.append("**问题类型路由表（QuestionTypeRouter.TYPE_AGENTS，1:1 映射）：**")
     md.append("")
-    md.append("| role | 触发关键词 | 调用 agents |")
+    md.append("| question_type | 语义 | 调用 agent |")
     md.append("|---|---|---|")
-    md.append("| `province` | 全省 / 全市 / 全局 / 政策 / 省市 | model-1, model-3 |")
-    md.append("| `county` | 本县 / 乡镇 / 片区 / 任务 / 县域 | model-1, model-2, model-3 |")
-    md.append("| `farmer`（默认） | 我的田 / 这块地 / 施氮肥 / 施多少 / 农户 | model-4, model-5, model-6, model-7 |")
+    md.append("| `1` | 稳定性/退化风险 | model-1 |")
+    md.append("| `2` | 酸化改良 | model-4 |")
+    md.append("| `3` | 障碍诊断 | model-3 |")
+    md.append("| `4` | 肥力/SOC/Dose | model-6 |")
+    md.append("| `5` | 耕地质量等级评价 | model-7 |")
+    md.append("| `0` | 知识性问题（什么是X/X是什么意思） | 走 RAG，不调专业模型 |")
     md.append("")
-    md.append("> model-7（Fortran exe）仅在 question_type=5（显式 `质量等级` 关键词）时执行；"
-              "非质量等级 farmer 问题经 `_should_execute_agent` 关键词过滤跳过 model-7 "
-              "（status=`skipped`, reason=`question_not_related`）。")
+    md.append("> 知识性问题（含「什么是」「何为」「解释」「是什么意思」「定义」「概念」「含义」等模式）"
+              "经 `_is_knowledge_question` 预检后返回 type 0，直接走 RAG 知识库，不进入专业模型路由。")
     md.append("")
     md.append("---")
     md.append("")
@@ -345,23 +347,22 @@ def build_markdown(report: Dict[str, Any]) -> str:
               "model-6 因 `.joblib` 文件缺失走 fallback（训练集均值）。"
               "本次 model-7 在 Q21/Q22/Q23（type 5）均返回真实结果："
               "质量等级 `10等`、综合指数 `0.6728`、12 个指标、12 个障碍度因子。"
-              "但因 RoleRouter 按角色路由，每题只调用 2-4 个 agent，并非每题都触及全部真实模型。")
+              "QuestionTypeRouter 采用 1:1 映射，每题只调用 1 个对应 agent，精准匹配问题类型。")
     md.append("3. **资源就绪状态汇总误判说明**：本章「资源就绪状态」中 `grade_exe_exists=False` "
               "和 `grade_dat_exists=False` 是 `verify_agent_capabilities.py` 的路径检查问题"
               "（预存在，非本次 change 引入），实际 `bin/farmland_quality_eval/` 下 exe 和 dat 均存在，"
               "model-7 在 type 5 问题中真实调用成功。model-6 的 `soc_joblib_exists=False` / "
               "`dose_joblib_exists=False` 是真实缺失，需补齐 `.joblib` 文件后才能真实计算。")
-    md.append("4. **路由细节**：`province` → model-1, model-3；`county` → model-1, model-2, model-3；"
-              "`farmer` → model-4, model-5, model-6, model-7。"
-              "model-7 的执行由 `AgentManager._should_execute_agent` 的关键词过滤（`GRADE_KEYWORDS`，"
-              "含「质量等级」「等级评价」「综合指数」「障碍度排序」等）决定，**与 question_type 解耦**——"
-              "只要问题文本含 `GRADE_KEYWORDS` 任一词即触发 model-7，无论 question_type 为何。"
-              "因此 type 1-4 中含「质量等级」字面词的问题也会触发 model-7：例如 "
-              "Q1「查询区域内耕地质量等级整体稳定吗」（type 1）、Q4「我的这块田质量等级稳不稳」（type 1）"
-              "均会执行 model-7。这是已知的关键词碰撞，每次调用约 0.06s Fortran exe 开销，非正确性问题。")
-    md.append("5. **model-6 问题感知过滤**：AgentManager._should_execute_agent 对 model-6 做关键词过滤，"
-              "非肥力问题（不含 有机碳/SOC/施用量/施肥量/肥力/秸秆/有机肥/培肥/Dose 等）会跳过 model-6 "
-              "（status=`skipped`, reason=`question_not_related`）。这就是 Q1-Q15 中 model-6 大量被跳过的原因。")
+    md.append("4. **路由细节**：`type 1` → model-1；`type 2` → model-4；`type 3` → model-3；"
+              "`type 4` → model-6；`type 5` → model-7。"
+              "QuestionTypeRouter 采用 1:1 映射，每个 question_type 仅对应一个 agent，"
+              "不再有 role-based 的多 agent 组合或 `_should_execute_agent` 关键词过滤。"
+              "问题类型由 `identify_question_type` 通过关键词匹配（优先）和向量匹配（降级）判定，"
+              "知识性问题（含「什么是」「是什么意思」等模式）经 `_is_knowledge_question` 预检返回 type 0 走 RAG。")
+    md.append("5. **知识性问题路由**：`_is_knowledge_question` 在 `identify_question_type` 最前端预检，"
+              "命中「什么是」「何为」「解释」开头或「是什么意思」「什么意思」「定义」「概念」「含义」包含模式时"
+              "返回 (0, 1.0)，直接走 RAG 知识库，不进入专业模型路由。"
+              "诊断性问题（如「我的田耕地质量等级是多少」「我的田酸化严重吗」）不受影响，仍路由到对应专业模型。")
     md.append("6. **simulated 标志解读**：AgentManager 通过 `MockDataLoader.mark_simulated(payload)` "
               "在结果顶层强制写入 `simulated=True`，即使 model-6 这种真实计算 agent 也显示 sim。"
               "**因此 `simulated=True` 不能作为真实/模拟的判据**。是否真实计算应以：")
@@ -422,9 +423,13 @@ def main() -> int:
     # 二、问题库完整回答
     print("\n[2/3] 跑问题库（实时调用 orchestrator，可能耗时）...")
     from framework.agents.nodes import REFERENCE_QUESTIONS
-    from framework.agents.router import RoleRouter
 
-    router = RoleRouter()
+    # 农户端问题关键词：含这些标记的问题需要预设 parcel_id/parcel_code
+    FARMER_MARKERS = ["我的田", "我这块地", "我的这块田", "我这块田"]
+
+    def _is_farmer_question(question: str) -> bool:
+        """简单判定是否为农户端问题（含「我的田/地」「我这块田/地」等）。"""
+        return any(marker in question for marker in FARMER_MARKERS)
 
     details: List[Dict[str, Any]] = []
     raw_outputs: List[Dict[str, Any]] = []
@@ -435,12 +440,13 @@ def main() -> int:
     for q_type, questions in REFERENCE_QUESTIONS.items():
         for q in questions:
             total += 1
-            # 按角色预设 parcel 标识符：
-            # - farmer 问题（含 type 5 全部）预设 parcel_id="1" + parcel_code="A0001"
+            # 按问题类型预设 parcel 标识符：
+            # - type 5（质量等级评价，调 model-7 Fortran exe）全部预设 parcel_code
+            # - 农户端问题（含「我的田/地」等）预设 parcel_id + parcel_code
             # - county/province 问题不预设（model-1/3 按 area_code 查询）
             parcel_id = None
             parcel_code = None
-            if q_type == 5 or router.identify_role(q) == "farmer":
+            if q_type == 5 or _is_farmer_question(q):
                 parcel_id = "1"
                 parcel_code = "A0001"
             print(f"  [{total}/{total_count}] type={q_type} -> {q[:40]}..."

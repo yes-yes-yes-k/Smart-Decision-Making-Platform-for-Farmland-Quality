@@ -1,5 +1,5 @@
 from .base import BaseAgent
-from .router import RoleRouter
+from .router import QuestionTypeRouter
 from .manager import agent_manager, AgentManager
 
-__all__ = ["BaseAgent", "RoleRouter", "AgentManager", "agent_manager"]
+__all__ = ["BaseAgent", "QuestionTypeRouter", "AgentManager", "agent_manager"]
