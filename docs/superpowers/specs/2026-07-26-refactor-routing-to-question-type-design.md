@@ -2,6 +2,8 @@
 comet_change: refactor-routing-to-question-type
 role: technical-design
 canonical_spec: openspec
+archived-with: 2026-07-25-refactor-routing-to-question-type
+status: final
 ---
 
 # Design Doc: 重构路由为 question_type-based 1:1 映射
@@ -349,3 +351,4 @@ QUESTION_TYPE_TO_MODEL_ID = {
 - 集成测试：知识性问题走 RAG，具体问题走对应模型
 - 端到端：23 个问题回答不变 + 知识性问题验证
 - API：响应无 role 字段，含 question_type
+

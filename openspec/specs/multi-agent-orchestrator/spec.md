@@ -100,31 +100,27 @@ The system SHALL ensure that the `/api/v1/chat/` response only includes model re
 - **AND** SHALL NOT 抛出异常
 
 ### Requirement: Type 5 质量等级评价问题库
-系统 SHALL 在 `REFERENCE_QUESTIONS` 字典中新增 key `5`，包含至少 3 个质量等级评价问题（如「我的田耕地质量等级是多少」「查询地块的综合指数和障碍度排序」「这块地的耕地质量等级评价结果」），使验证脚本能覆盖 model-7。
+系统 SHALL 在 `REFERENCE_QUESTIONS` 字典中维护 key `5`，包含至少 3 个质量等级评价问题（如「我的田耕地质量等级是多少」「查询地块的综合指数和障碍度排序」「这块地的耕地质量等级评价结果」），使验证脚本能覆盖 model-7。
 
-`_identify_question_type_keyword` 函数 SHALL 新增 type 5 分支，当问题命中 `QUESTION_TYPE_5_KEYWORDS`（"质量等级"、"等级评价"、"综合指数"、"指标隶属度"、"障碍度排序"、"耕地质量等级"、"质量评价"、"等级评定"、"指标权重"）时返回 `(5, relevance)`。
+`_identify_question_type_keyword` 函数 SHALL 维护 type 5 分支，当问题命中 `QUESTION_TYPE_5_KEYWORDS`（"质量等级"、"等级评价"、"综合指数"、"指标隶属度"、"障碍度排序"、"耕地质量等级"、"质量评价"、"等级评定"、"指标权重"）时返回 `(5, relevance)`。
+
+`TYPE_AGENTS` 映射表 SHALL 将 question_type=5 严格映射到 `["model-7"]`（1:1 映射），SHALL NOT 包含 model-4/5/6。type 5 问题的路由 SHALL NOT 依赖用户角色识别（role-based 路由已移除）。
 
 #### Scenario: 识别质量等级问题为 type 5
 - **WHEN** 用户询问「我的田耕地质量等级是多少」
 - **THEN** `identify_question_type` SHALL 返回 `question_type=5`
 
-#### Scenario: type 5 问题路由到含 model-7 的 agent 组合
-- **WHEN** 问题被识别为 type 5 且角色为 farmer
-- **THEN** RoleRouter SHALL 路由到 `["model-4", "model-5", "model-6", "model-7"]`
-- **AND** model-7 SHALL 被执行（非 skipped）
+#### Scenario: type 5 问题仅路由到 model-7
+- **WHEN** 问题被识别为 type 5
+- **THEN** `QuestionTypeRouter.get_agents_for_type(5)` SHALL 返回 `["model-7"]`
+- **AND** `AgentManager.process` SHALL 仅调用 model-7（FarmlandGradeAgent）
+- **AND** SHALL NOT 调用 model-4/5/6
+- **AND** model-7 SHALL 被执行（status ≠ `skipped`），无需 `_should_execute_agent` 二次过滤
 
-### Requirement: model-7 问题感知过滤
-系统 SHALL 在 `AgentManager._should_execute_agent` 中对 model-7 增加关键词过滤：只有问题含 `QUESTION_TYPE_5_KEYWORDS` 中的任一关键词时才执行 model-7，否则跳过（status=`skipped`, reason=`question_not_related`）。
-
-#### Scenario: 非质量等级问题跳过 model-7
-- **WHEN** farmer 角色问题不含质量等级关键词（如「我的田肥力怎么样」）
-- **THEN** AgentManager SHALL 跳过 model-7（status=`skipped`, reason=`question_not_related`）
-- **AND** SHALL NOT 调用 fortran exe
-
-#### Scenario: 质量等级问题执行 model-7
-- **WHEN** farmer 角色问题含「质量等级」关键词
-- **THEN** AgentManager SHALL 执行 model-7
-- **AND** model-7 SHALL 调用 fortran exe（如 parcel_code 可用）
+#### Scenario: 非 type 5 问题不调用 model-7
+- **WHEN** 问题被识别为 type 1/2/3/4（如「我的田肥力怎么样」识别为 type 4）
+- **THEN** `AgentManager.process` SHALL NOT 调用 model-7
+- **AND** SHALL NOT 在 `details` 中出现 model-7 的 `skipped` 条目（因路由未包含 model-7）
 
 ### Requirement: 生产 API 接受地块标识符
 系统 SHALL 在 `POST /api/v1/chat/` 请求体中支持可选的 `parcel_id`（string，数字格式）和 `parcel_code`（string，字母数字格式）字段，并透传到 `multi_agent_orchestrator.run(request)`。

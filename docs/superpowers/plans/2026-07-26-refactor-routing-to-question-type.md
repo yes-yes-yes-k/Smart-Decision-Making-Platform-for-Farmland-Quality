@@ -1,3 +1,7 @@
+---
+archived-with: 2026-07-25-refactor-routing-to-question-type
+status: final
+---
 ﻿---
 change: refactor-routing-to-question-type
 design-doc: docs/superpowers/specs/2026-07-26-refactor-routing-to-question-type-design.md
