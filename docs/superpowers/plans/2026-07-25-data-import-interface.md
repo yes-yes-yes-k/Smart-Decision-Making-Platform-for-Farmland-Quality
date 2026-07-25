@@ -894,7 +894,7 @@ git commit -m "feat: add data validators for CSV/shapefile/dat"
   - `cleanup_backups(target_dir, keep=3)`
   - `restore_from_backup(target_dir) -> bool`
 
-- [ ] **Step 1: 编写 `tests/test_data_deployer.py` 的失败测试**
+- [x] **Step 1: 编写 `tests/test_data_deployer.py` 的失败测试**
 
 创建 `tests/test_data_deployer.py`：
 
@@ -1053,7 +1053,7 @@ def test_restore_from_backup_no_backup():
         assert ok is False
 ```
 
-- [ ] **Step 2: 运行测试验证失败**
+- [x] **Step 2: 运行测试验证失败**
 
 运行：
 
@@ -1063,7 +1063,7 @@ python -m pytest tests/test_data_deployer.py -v
 
 预期：FAIL，报 `ModuleNotFoundError`
 
-- [ ] **Step 3: 实现 `framework/upload/data_deployer.py`**
+- [x] **Step 3: 实现 `framework/upload/data_deployer.py`**
 
 创建 `framework/upload/data_deployer.py`：
 
@@ -1214,7 +1214,7 @@ def restore_from_backup(target_dir: str) -> bool:
         return False
 ```
 
-- [ ] **Step 4: 运行测试验证通过**
+- [x] **Step 4: 运行测试验证通过**
 
 运行：
 
@@ -1224,7 +1224,7 @@ python -m pytest tests/test_data_deployer.py -v
 
 预期：全部 PASS
 
-- [ ] **Step 5: 提交**
+- [x] **Step 5: 提交**
 
 ```bash
 git add framework/upload/data_deployer.py tests/test_data_deployer.py

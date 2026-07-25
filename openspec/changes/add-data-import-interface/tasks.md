@@ -15,14 +15,14 @@
 
 ## 3. 数据部署器（framework/upload/data_deployer.py）
 
-- [ ] 3.1 创建 `framework/upload/data_deployer.py` 模块
-- [ ] 3.2 实现 `backup_existing(target_dir) -> Optional[str]`：将 target_dir 下现有数据文件（排除 README.md 和 backup/ 子目录）移动到 `target_dir/backup/YYYYMMDD-HHMMSS/`；无文件时返回 None
-- [ ] 3.3 实现 `deploy_csv(src_path, target_dir) -> str`：备份后写入 `target_dir/test.csv`（固定文件名，下游 bulk_evaluate 依赖），返回部署路径
-- [ ] 3.4 实现 `deploy_shapefile(zip_path, target_dir, manifest) -> List[str]`：备份后解压 zip 内容到 target_dir，返回部署的文件名列表
-- [ ] 3.5 实现 `deploy_dat(src_path, target_dir) -> str`：备份后写入 `target_dir/Farmlands_Quality_Level_Database.dat`（固定文件名），返回部署路径
-- [ ] 3.6 实现 `cleanup_backups(target_dir, keep=3)`：扫描 `target_dir/backup/` 下时间戳目录，按目录名倒序保留前 keep 份，删除其余
-- [ ] 3.7 实现 `restore_from_backup(target_dir) -> bool`：将最近一次 `backup/` 子目录内容移动回 target_dir，返回是否成功
-- [ ] 3.8 编写 `tests/test_data_deployer.py` 覆盖备份、部署、清理、回滚场景
+- [x] 3.1 创建 `framework/upload/data_deployer.py` 模块
+- [x] 3.2 实现 `backup_existing(target_dir) -> Optional[str]`：将 target_dir 下现有数据文件（排除 README.md 和 backup/ 子目录）移动到 `target_dir/backup/YYYYMMDD-HHMMSS/`；无文件时返回 None
+- [x] 3.3 实现 `deploy_csv(src_path, target_dir) -> str`：备份后写入 `target_dir/test.csv`（固定文件名，下游 bulk_evaluate 依赖），返回部署路径
+- [x] 3.4 实现 `deploy_shapefile(zip_path, target_dir, manifest) -> List[str]`：备份后解压 zip 内容到 target_dir，返回部署的文件名列表
+- [x] 3.5 实现 `deploy_dat(src_path, target_dir) -> str`：备份后写入 `target_dir/Farmlands_Quality_Level_Database.dat`（固定文件名），返回部署路径
+- [x] 3.6 实现 `cleanup_backups(target_dir, keep=3)`：扫描 `target_dir/backup/` 下时间戳目录，按目录名倒序保留前 keep 份，删除其余
+- [x] 3.7 实现 `restore_from_backup(target_dir) -> bool`：将最近一次 `backup/` 子目录内容移动回 target_dir，返回是否成功
+- [x] 3.8 编写 `tests/test_data_deployer.py` 覆盖备份、部署、清理、回滚场景
 
 ## 4. 触发器封装（framework/upload/data_trigger.py）
 
