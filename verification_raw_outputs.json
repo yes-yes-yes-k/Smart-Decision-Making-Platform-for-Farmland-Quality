@@ -1,0 +1,1977 @@
+[
+  {
+    "question": "查询区域内耕地质量等级整体稳定吗",
+    "expected_type": 1,
+    "raw_output": {
+      "status": "ok",
+      "question": "查询区域内耕地质量等级整体稳定吗",
+      "question_type": 1,
+      "relevance": 1.0,
+      "model_results": {
+        "status": "ok",
+        "data": {
+          "role": "farmer",
+          "agents_invoked": [
+            "model-4",
+            "model-5",
+            "model-6",
+            "model-7"
+          ],
+          "summary": "[model-4] 土壤 pH=5.5（弱酸性），建议石灰施用量 50.0 kg/亩。\n[model-5] 有机质 22.0 g/kg（中），建议施有机肥 1000.0 kg/亩。\n[model-6] \n[model-7] 耕地质量等级评价结果：质量等级为None级，综合指数：None。共0个指标参与评价。",
+          "details": {
+            "model-4": {
+              "answer": "土壤 pH=5.5（弱酸性），建议石灰施用量 50.0 kg/亩。",
+              "evidence": [
+                {
+                  "metric": "ph",
+                  "value": 5.5
+                },
+                {
+                  "metric": "lime_dosage",
+                  "value": 50.0
+                }
+              ],
+              "confidence": 0.8,
+              "simulated": true
+            },
+            "model-5": {
+              "answer": "有机质 22.0 g/kg（中），建议施有机肥 1000.0 kg/亩。",
+              "evidence": [
+                {
+                  "metric": "level",
+                  "value": "中"
+                },
+                {
+                  "metric": "manure_dosage",
+                  "value": 1000.0
+                }
+              ],
+              "confidence": 0.78,
+              "simulated": true
+            },
+            "model-6": {
+              "status": "skipped",
+              "reason": "question_not_related",
+              "answer": "",
+              "evidence": [],
+              "confidence": 0.0,
+              "simulated": true
+            },
+            "model-7": {
+              "answer": "耕地质量等级评价结果：质量等级为None级，综合指数：None。共0个指标参与评价。",
+              "evidence": [
+                {
+                  "metric": "质量等级",
+                  "value": null
+                },
+                {
+                  "metric": "综合指数",
+                  "value": null
+                }
+              ],
+              "confidence": 0.9,
+              "simulated": false,
+              "grade_detail": {
+                "status": "ok",
+                "parcel_code": "A0001",
+                "execution_time": 0.04,
+                "parcel_info": {},
+                "indicators": [],
+                "composite_index": null,
+                "quality_grade": null,
+                "obstacle_degree": [],
+                "raw_output": "成功读取 1193 个采样点数据。\r\n\r\n请输入要查询的地块代码 (输入 quit 退出): ------------------------------------------------\r\n地块代码：A0001\r\n经度：  112.973801\r\n纬度：   25.324301\r\n县区名称：武江区\r\n二级农业区名称：闽南粤中农林水产区\r\n------------------- 原始指标值 -------------------\r\n酸碱度(SJD):    4.600\r\n有机质含量(YJZ):   16.200\r\n有效磷含量(YXL):   66.900\r\n速效钾含量(SXJ):   51.700\r\n土壤容重(TRRZ):    1.240\r\n有效土层厚度(YXTCHD):  120.000\r\n耕层厚度(GCHD):   17.000\r\n耕层质地(GCZD): 黏壤土              \r\n排水能力(PSNL): 基本满足            \r\n灌溉能力(GGNL): 满足                \r\n地形部位(DXBW): 丘陵下部            \r\n质地构型(ZDGX): 薄层型              \r\n------------------------------------------------\r\n耕地质量综合指数：  0.6728\r\n耕地质量等级：10等\r\n------------ 障碍度因子（从大到小） ------------\r\n质地构型    :  0.1690  中度障碍    \r\n地形部位    :  0.1516  中度障碍    \r\n有机质      :  0.1484  中度障碍    \r\n速效钾      :  0.1384  中度障碍    \r\n排水能力    :  0.1292  中度障碍    \r\n酸碱度      :  0.1008  中度障碍    \r\n灌溉能力    :  0.0766  轻度障碍    \r\n质地构成    :  0.0506  轻度障碍    \r\n耕层厚度    :  0.0294  轻度障碍    \r\n土壤容重    :  0.0059  轻度障碍    \r\n有效磷      :  0.0000  无障碍      \r\n有效土层厚度:  0.0000  无障碍      \r\n------------------------------------------------\r\n\r\n|----------------------------------------------------------------------------------------|\r\n|   评价指标   |  原数据  |  潜力值  |  原综合指数  |  潜在指数  |  原等级  |  潜在等级  |\r\n|----------------------------------------------------------------------------------------|\r\n| 灌溉能力     | 满足     | 充分满足 |       0.6728 |     0.6979 |     10等 |       10等 |\r\n| 排水能力     | 基本满足 | 充分满足 |       0.6728 |     0.7151 |     10等 |        9等 |\r\n| 有机质       |   16.200 |   38.000 |       0.6728 |     0.7214 |     10等 |        9等 |\r\n| 速效钾       |   51.700 |  205.000 |       0.6728 |     0.7181 |     10等 |        9等 |\r\n| 土壤容重     |    1.240 |    1.350 |       0.6728 |     0.6748 |     10等 |       10等 |\r\n| 酸碱度       |    4.600 |    6.700 |       0.6728 |     0.7058 |     10等 |        9等 |\r\n| 耕层厚度     |   17.000 |   20.200 |       0.6728 |     0.6825 |     10等 |       10等 |\r\n|----------------------------------------------------------------------------------------|\r\n| 原耕地质量综合指数为            0.6728，耕地质量等级为       10等\r\n| 全部指标改良后潜在综合指数为    0.8786，潜在耕地质量等级为    2等\r\n------------------------------------------------------------------------------------------\r\n请输入要查询的地块代码 (输入 quit 退出): 程序结束。\r\n"
+              }
+            }
+          },
+          "recommendations": []
+        }
+      },
+      "llm_response": "抱歉，AI服务暂时不可用，请稍后重试。",
+      "answer": "抱歉，AI服务暂时不可用，请稍后重试。",
+      "sources": []
+    }
+  },
+  {
+    "question": "查询区域内哪些高等级耕地存在退化风险",
+    "expected_type": 1,
+    "raw_output": {
+      "status": "ok",
+      "question": "查询区域内哪些高等级耕地存在退化风险",
+      "question_type": 1,
+      "relevance": 1.0,
+      "model_results": {
+        "status": "ok",
+        "data": {
+          "role": "farmer",
+          "agents_invoked": [
+            "model-4",
+            "model-5",
+            "model-6",
+            "model-7"
+          ],
+          "summary": "[model-4] 土壤 pH=5.5（弱酸性），建议石灰施用量 50.0 kg/亩。\n[model-5] 有机质 22.0 g/kg（中），建议施有机肥 1000.0 kg/亩。\n[model-6] \n[model-7] ",
+          "details": {
+            "model-4": {
+              "answer": "土壤 pH=5.5（弱酸性），建议石灰施用量 50.0 kg/亩。",
+              "evidence": [
+                {
+                  "metric": "ph",
+                  "value": 5.5
+                },
+                {
+                  "metric": "lime_dosage",
+                  "value": 50.0
+                }
+              ],
+              "confidence": 0.8,
+              "simulated": true
+            },
+            "model-5": {
+              "answer": "有机质 22.0 g/kg（中），建议施有机肥 1000.0 kg/亩。",
+              "evidence": [
+                {
+                  "metric": "level",
+                  "value": "中"
+                },
+                {
+                  "metric": "manure_dosage",
+                  "value": 1000.0
+                }
+              ],
+              "confidence": 0.78,
+              "simulated": true
+            },
+            "model-6": {
+              "status": "skipped",
+              "reason": "question_not_related",
+              "answer": "",
+              "evidence": [],
+              "confidence": 0.0,
+              "simulated": true
+            },
+            "model-7": {
+              "status": "skipped",
+              "reason": "question_not_related",
+              "answer": "",
+              "evidence": [],
+              "confidence": 0.0,
+              "simulated": true
+            }
+          },
+          "recommendations": []
+        }
+      },
+      "llm_response": "根据提供的数据，该区域耕地土壤pH为5.5（弱酸性），有机质含量为22.0 g/kg（中等），表明存在土壤酸化和有机质退化风险，属于高等级耕地退化风险区域。建议施用石灰50.0 kg/亩和有机肥1000.0 kg/亩进行改良。",
+      "answer": "根据提供的数据，该区域耕地土壤pH为5.5（弱酸性），有机质含量为22.0 g/kg（中等），表明存在土壤酸化和有机质退化风险，属于高等级耕地退化风险区域。建议施用石灰50.0 kg/亩和有机肥1000.0 kg/亩进行改良。",
+      "sources": []
+    }
+  },
+  {
+    "question": "本县哪些乡镇或地块等级稳定性较弱需要现场复核",
+    "expected_type": 1,
+    "raw_output": {
+      "status": "ok",
+      "question": "本县哪些乡镇或地块等级稳定性较弱需要现场复核",
+      "question_type": 1,
+      "relevance": 1.0,
+      "model_results": {
+        "status": "ok",
+        "data": {
+          "role": "county",
+          "agents_invoked": [
+            "model-1",
+            "model-2",
+            "model-3"
+          ],
+          "summary": "[model-1] 您的地块耕地质量稳定性评价结果：稳定性得分 0.85，稳定性等级：稳定。\n[model-2] 耕地质量提升潜力等级为 中潜力，平均障碍度值 30.85，主要障碍因素：有效磷, 速效钾, 阳离子交换量。\n[model-3] 县域障碍诊断：主要障碍因素 有机质, 全氮；次要障碍因素 pH, 黏粒含量, 孔隙度, 容重, 有效磷, 耕层厚度, 阳离子交换量, 速效钾。 结合模型2目标 pH=6.5，每个指标按 1~10 级频数统计，最后一列标注是否主要/次要障碍因素。障碍组合：无明显复合障碍。",
+          "details": {
+            "model-1": {
+              "answer": "您的地块耕地质量稳定性评价结果：稳定性得分 0.85，稳定性等级：稳定。",
+              "evidence": [
+                {
+                  "metric": "稳定性得分",
+                  "value": 0.85
+                },
+                {
+                  "metric": "稳定性等级",
+                  "value": "稳定"
+                }
+              ],
+              "confidence": 0.85,
+              "simulated": true
+            },
+            "model-2": {
+              "answer": "耕地质量提升潜力等级为 中潜力，平均障碍度值 30.85，主要障碍因素：有效磷, 速效钾, 阳离子交换量。",
+              "evidence": [
+                {
+                  "indicator": "有效磷",
+                  "obstacle_degree": 52.0,
+                  "potential_level": "中潜力"
+                },
+                {
+                  "indicator": "速效钾",
+                  "obstacle_degree": 46.67,
+                  "potential_level": "中潜力"
+                },
+                {
+                  "indicator": "阳离子交换量",
+                  "obstacle_degree": 43.33,
+                  "potential_level": "中潜力"
+                },
+                {
+                  "target_ph": 6.5,
+                  "recommendation": "目标 pH 供下游模型3使用"
+                }
+              ],
+              "confidence": 0.8,
+              "target_ph": 6.5,
+              "simulated": true
+            },
+            "model-3": {
+              "answer": "县域障碍诊断：主要障碍因素 有机质, 全氮；次要障碍因素 pH, 黏粒含量, 孔隙度, 容重, 有效磷, 耕层厚度, 阳离子交换量, 速效钾。 结合模型2目标 pH=6.5，每个指标按 1~10 级频数统计，最后一列标注是否主要/次要障碍因素。障碍组合：无明显复合障碍。",
+              "evidence": [
+                {
+                  "factor": "有机质",
+                  "severity": 6.08,
+                  "type": "primary"
+                },
+                {
+                  "factor": "全氮",
+                  "severity": 6.0,
+                  "type": "primary"
+                },
+                {
+                  "target_ph_from_model2": 6.5
+                }
+              ],
+              "confidence": 0.83,
+              "need_input": "parcel_id",
+              "hint": "当前为模拟数据。提供地块 ID（parcel_id）后可获取真实诊断结果，例如：'诊断地块 110105001 的障碍因素'。",
+              "simulated": true
+            }
+          },
+          "recommendations": [
+            "目标 pH 供下游模型3使用"
+          ]
+        }
+      },
+      "llm_response": "根据提供的数据，模型-1对该地块的耕地质量稳定性评价结果为稳定性得分0.85，稳定性等级为“稳定”，不属于稳定性较弱的情况。因此，本县当前没有需要现场复核的乡镇或地块。如需进一步排查其他地块，请提供具体的地块ID（parcel_id）以获取真实诊断结果。",
+      "answer": "根据提供的数据，模型-1对该地块的耕地质量稳定性评价结果为稳定性得分0.85，稳定性等级为“稳定”，不属于稳定性较弱的情况。因此，本县当前没有需要现场复核的乡镇或地块。如需进一步排查其他地块，请提供具体的地块ID（parcel_id）以获取真实诊断结果。",
+      "sources": []
+    }
+  },
+  {
+    "question": "我的这块田质量等级稳不稳",
+    "expected_type": 1,
+    "raw_output": {
+      "status": "ok",
+      "question": "我的这块田质量等级稳不稳",
+      "question_type": 1,
+      "relevance": 1.0,
+      "model_results": {
+        "status": "ok",
+        "data": {
+          "role": "farmer",
+          "agents_invoked": [
+            "model-4",
+            "model-5",
+            "model-6",
+            "model-7"
+          ],
+          "summary": "[model-4] 土壤 pH=5.5（弱酸性），建议石灰施用量 50.0 kg/亩。\n[model-5] 有机质 22.0 g/kg（中），建议施有机肥 1000.0 kg/亩。\n[model-6] \n[model-7] 耕地质量等级评价结果：质量等级为None级，综合指数：None。共0个指标参与评价。",
+          "details": {
+            "model-4": {
+              "answer": "土壤 pH=5.5（弱酸性），建议石灰施用量 50.0 kg/亩。",
+              "evidence": [
+                {
+                  "metric": "ph",
+                  "value": 5.5
+                },
+                {
+                  "metric": "lime_dosage",
+                  "value": 50.0
+                }
+              ],
+              "confidence": 0.8,
+              "simulated": true
+            },
+            "model-5": {
+              "answer": "有机质 22.0 g/kg（中），建议施有机肥 1000.0 kg/亩。",
+              "evidence": [
+                {
+                  "metric": "level",
+                  "value": "中"
+                },
+                {
+                  "metric": "manure_dosage",
+                  "value": 1000.0
+                }
+              ],
+              "confidence": 0.78,
+              "simulated": true
+            },
+            "model-6": {
+              "status": "skipped",
+              "reason": "question_not_related",
+              "answer": "",
+              "evidence": [],
+              "confidence": 0.0,
+              "simulated": true
+            },
+            "model-7": {
+              "answer": "耕地质量等级评价结果：质量等级为None级，综合指数：None。共0个指标参与评价。",
+              "evidence": [
+                {
+                  "metric": "质量等级",
+                  "value": null
+                },
+                {
+                  "metric": "综合指数",
+                  "value": null
+                }
+              ],
+              "confidence": 0.9,
+              "simulated": false,
+              "grade_detail": {
+                "status": "ok",
+                "parcel_code": "A0001",
+                "execution_time": 0.05,
+                "parcel_info": {},
+                "indicators": [],
+                "composite_index": null,
+                "quality_grade": null,
+                "obstacle_degree": [],
+                "raw_output": "成功读取 1193 个采样点数据。\r\n\r\n请输入要查询的地块代码 (输入 quit 退出): ------------------------------------------------\r\n地块代码：A0001\r\n经度：  112.973801\r\n纬度：   25.324301\r\n县区名称：武江区\r\n二级农业区名称：闽南粤中农林水产区\r\n------------------- 原始指标值 -------------------\r\n酸碱度(SJD):    4.600\r\n有机质含量(YJZ):   16.200\r\n有效磷含量(YXL):   66.900\r\n速效钾含量(SXJ):   51.700\r\n土壤容重(TRRZ):    1.240\r\n有效土层厚度(YXTCHD):  120.000\r\n耕层厚度(GCHD):   17.000\r\n耕层质地(GCZD): 黏壤土              \r\n排水能力(PSNL): 基本满足            \r\n灌溉能力(GGNL): 满足                \r\n地形部位(DXBW): 丘陵下部            \r\n质地构型(ZDGX): 薄层型              \r\n------------------------------------------------\r\n耕地质量综合指数：  0.6728\r\n耕地质量等级：10等\r\n------------ 障碍度因子（从大到小） ------------\r\n质地构型    :  0.1690  中度障碍    \r\n地形部位    :  0.1516  中度障碍    \r\n有机质      :  0.1484  中度障碍    \r\n速效钾      :  0.1384  中度障碍    \r\n排水能力    :  0.1292  中度障碍    \r\n酸碱度      :  0.1008  中度障碍    \r\n灌溉能力    :  0.0766  轻度障碍    \r\n质地构成    :  0.0506  轻度障碍    \r\n耕层厚度    :  0.0294  轻度障碍    \r\n土壤容重    :  0.0059  轻度障碍    \r\n有效磷      :  0.0000  无障碍      \r\n有效土层厚度:  0.0000  无障碍      \r\n------------------------------------------------\r\n\r\n|----------------------------------------------------------------------------------------|\r\n|   评价指标   |  原数据  |  潜力值  |  原综合指数  |  潜在指数  |  原等级  |  潜在等级  |\r\n|----------------------------------------------------------------------------------------|\r\n| 灌溉能力     | 满足     | 充分满足 |       0.6728 |     0.6979 |     10等 |       10等 |\r\n| 排水能力     | 基本满足 | 充分满足 |       0.6728 |     0.7151 |     10等 |        9等 |\r\n| 有机质       |   16.200 |   38.000 |       0.6728 |     0.7214 |     10等 |        9等 |\r\n| 速效钾       |   51.700 |  205.000 |       0.6728 |     0.7181 |     10等 |        9等 |\r\n| 土壤容重     |    1.240 |    1.350 |       0.6728 |     0.6748 |     10等 |       10等 |\r\n| 酸碱度       |    4.600 |    6.700 |       0.6728 |     0.7058 |     10等 |        9等 |\r\n| 耕层厚度     |   17.000 |   20.200 |       0.6728 |     0.6825 |     10等 |       10等 |\r\n|----------------------------------------------------------------------------------------|\r\n| 原耕地质量综合指数为            0.6728，耕地质量等级为       10等\r\n| 全部指标改良后潜在综合指数为    0.8786，潜在耕地质量等级为    2等\r\n------------------------------------------------------------------------------------------\r\n请输入要查询的地块代码 (输入 quit 退出): 程序结束。\r\n"
+              }
+            }
+          },
+          "recommendations": []
+        }
+      },
+      "llm_response": "根据您的田块评价数据，当前耕地质量等级为 **10等**（最低等级），综合指数为 **0.6728**。同时，评价结果显示存在多个中度障碍因子（如质地构型、地形部位、有机质、速效钾等），且通过改良这些指标，潜在等级可提升至 **2等**。因此，目前的质量等级并不稳定，有较大的改良空间和提升潜力。\n\n建议您针对障碍因子采取相应措施（如增施有机肥、调节酸碱度、改善灌溉排水等），以稳定并提高耕地质量等级。",
+      "answer": "根据您的田块评价数据，当前耕地质量等级为 **10等**（最低等级），综合指数为 **0.6728**。同时，评价结果显示存在多个中度障碍因子（如质地构型、地形部位、有机质、速效钾等），且通过改良这些指标，潜在等级可提升至 **2等**。因此，目前的质量等级并不稳定，有较大的改良空间和提升潜力。\n\n建议您针对障碍因子采取相应措施（如增施有机肥、调节酸碱度、改善灌溉排水等），以稳定并提高耕地质量等级。",
+      "sources": []
+    }
+  },
+  {
+    "question": "查询区域内哪些对象需要纳入重点关注清单",
+    "expected_type": 1,
+    "raw_output": {
+      "status": "ok",
+      "question": "查询区域内哪些对象需要纳入重点关注清单",
+      "question_type": 1,
+      "relevance": 0.6666666666666666,
+      "model_results": {
+        "status": "ok",
+        "data": {
+          "role": "farmer",
+          "agents_invoked": [
+            "model-4",
+            "model-5",
+            "model-6",
+            "model-7"
+          ],
+          "summary": "[model-4] 土壤 pH=5.5（弱酸性），建议石灰施用量 50.0 kg/亩。\n[model-5] 有机质 22.0 g/kg（中），建议施有机肥 1000.0 kg/亩。\n[model-6] \n[model-7] ",
+          "details": {
+            "model-4": {
+              "answer": "土壤 pH=5.5（弱酸性），建议石灰施用量 50.0 kg/亩。",
+              "evidence": [
+                {
+                  "metric": "ph",
+                  "value": 5.5
+                },
+                {
+                  "metric": "lime_dosage",
+                  "value": 50.0
+                }
+              ],
+              "confidence": 0.8,
+              "simulated": true
+            },
+            "model-5": {
+              "answer": "有机质 22.0 g/kg（中），建议施有机肥 1000.0 kg/亩。",
+              "evidence": [
+                {
+                  "metric": "level",
+                  "value": "中"
+                },
+                {
+                  "metric": "manure_dosage",
+                  "value": 1000.0
+                }
+              ],
+              "confidence": 0.78,
+              "simulated": true
+            },
+            "model-6": {
+              "status": "skipped",
+              "reason": "question_not_related",
+              "answer": "",
+              "evidence": [],
+              "confidence": 0.0,
+              "simulated": true
+            },
+            "model-7": {
+              "status": "skipped",
+              "reason": "question_not_related",
+              "answer": "",
+              "evidence": [],
+              "confidence": 0.0,
+              "simulated": true
+            }
+          },
+          "recommendations": []
+        }
+      },
+      "llm_response": "根据提供的数据，区域内需要纳入重点关注清单的对象包括：\n\n- **土壤pH**：值为5.5（弱酸性），建议施用石灰50.0 kg/亩。\n- **有机质**：含量为22.0 g/kg（中等），建议施用有机肥1000.0 kg/亩。\n\n这两个指标均需采取相应措施，而其他模型（model-6、model-7）因问题不相关已被跳过，无需重点关注。",
+      "answer": "根据提供的数据，区域内需要纳入重点关注清单的对象包括：\n\n- **土壤pH**：值为5.5（弱酸性），建议施用石灰50.0 kg/亩。\n- **有机质**：含量为22.0 g/kg（中等），建议施用有机肥1000.0 kg/亩。\n\n这两个指标均需采取相应措施，而其他模型（model-6、model-7）因问题不相关已被跳过，无需重点关注。",
+      "sources": []
+    }
+  },
+  {
+    "question": "查询区域内农用地土壤酸化程度如何不同酸化等级比例分别多少",
+    "expected_type": 2,
+    "raw_output": {
+      "status": "ok",
+      "question": "查询区域内农用地土壤酸化程度如何不同酸化等级比例分别多少",
+      "question_type": 2,
+      "relevance": 1.0,
+      "model_results": {
+        "status": "ok",
+        "data": {
+          "role": "farmer",
+          "agents_invoked": [
+            "model-4",
+            "model-5",
+            "model-6",
+            "model-7"
+          ],
+          "summary": "[model-4] 当前土壤 pH=5.5，酸化程度为弱酸性。交换性铝=3.2 cmol/kg。（依据 GB/T 42817-2023 分级）\n[model-5] 有机质 22.0 g/kg（中），建议施有机肥 1000.0 kg/亩。\n[model-6] \n[model-7] ",
+          "details": {
+            "model-4": {
+              "answer": "当前土壤 pH=5.5，酸化程度为弱酸性。交换性铝=3.2 cmol/kg。（依据 GB/T 42817-2023 分级）",
+              "evidence": [
+                {
+                  "metric": "ph",
+                  "value": 5.5
+                },
+                {
+                  "metric": "degree",
+                  "value": "弱酸性"
+                },
+                {
+                  "metric": "exchangeable_al",
+                  "value": 3.2
+                },
+                {
+                  "standard": "GB/T 42817-2023"
+                }
+              ],
+              "confidence": 0.88,
+              "simulated": true
+            },
+            "model-5": {
+              "answer": "有机质 22.0 g/kg（中），建议施有机肥 1000.0 kg/亩。",
+              "evidence": [
+                {
+                  "metric": "level",
+                  "value": "中"
+                },
+                {
+                  "metric": "manure_dosage",
+                  "value": 1000.0
+                }
+              ],
+              "confidence": 0.78,
+              "simulated": true
+            },
+            "model-6": {
+              "status": "skipped",
+              "reason": "question_not_related",
+              "answer": "",
+              "evidence": [],
+              "confidence": 0.0,
+              "simulated": true
+            },
+            "model-7": {
+              "status": "skipped",
+              "reason": "question_not_related",
+              "answer": "",
+              "evidence": [],
+              "confidence": 0.0,
+              "simulated": true
+            }
+          },
+          "recommendations": []
+        }
+      },
+      "llm_response": "根据提供的数据，仅包含一个土壤样本的检测结果：pH=5.5，依据GB/T 42817-2023分级为弱酸性。数据中未提供区域内不同酸化等级（如强酸性、酸性、弱酸性、中性等）的比例分布信息，因此无法回答不同酸化等级的具体比例。",
+      "answer": "根据提供的数据，仅包含一个土壤样本的检测结果：pH=5.5，依据GB/T 42817-2023分级为弱酸性。数据中未提供区域内不同酸化等级（如强酸性、酸性、弱酸性、中性等）的比例分布信息，因此无法回答不同酸化等级的具体比例。",
+      "sources": []
+    }
+  },
+  {
+    "question": "我的田酸化了pH是多少我要施加多少碱性调理剂可以治理好",
+    "expected_type": 2,
+    "raw_output": {
+      "status": "ok",
+      "question": "我的田酸化了pH是多少我要施加多少碱性调理剂可以治理好",
+      "question_type": 2,
+      "relevance": 1.0,
+      "model_results": {
+        "status": "ok",
+        "data": {
+          "role": "farmer",
+          "agents_invoked": [
+            "model-4",
+            "model-5",
+            "model-6",
+            "model-7"
+          ],
+          "summary": "[model-4] 土壤酸化程度为弱酸性，建议施石灰 50.0 kg/亩，预计治理后 pH 提升至 5.6。（依据 GB/T 42817-2023 酸化等级判定与 NY/T 443-2019 调理剂施用量计算，分两次施用，结合翻耕作业）\n[model-5] 有机质 22.0 g/kg（中），建议施有机肥 1000.0 kg/亩。\n[model-6] \n[model-7] ",
+          "details": {
+            "model-4": {
+              "answer": "土壤酸化程度为弱酸性，建议施石灰 50.0 kg/亩，预计治理后 pH 提升至 5.6。（依据 GB/T 42817-2023 酸化等级判定与 NY/T 443-2019 调理剂施用量计算，分两次施用，结合翻耕作业）",
+              "evidence": [
+                {
+                  "metric": "ph",
+                  "value": 5.5
+                },
+                {
+                  "metric": "exchangeable_al",
+                  "value": 3.2,
+                  "unit": "cmol/kg"
+                },
+                {
+                  "metric": "lime_dosage",
+                  "value": 50.0,
+                  "unit": "kg/亩"
+                },
+                {
+                  "metric": "ph_after_remediation",
+                  "value": 5.6
+                },
+                {
+                  "standard": "GB/T 42817-2023"
+                },
+                {
+                  "standard": "NY/T 443-2019"
+                },
+                {
+                  "recommendation": "分两次施用，结合翻耕作业"
+                }
+              ],
+              "confidence": 0.85,
+              "simulated": true
+            },
+            "model-5": {
+              "answer": "有机质 22.0 g/kg（中），建议施有机肥 1000.0 kg/亩。",
+              "evidence": [
+                {
+                  "metric": "level",
+                  "value": "中"
+                },
+                {
+                  "metric": "manure_dosage",
+                  "value": 1000.0
+                }
+              ],
+              "confidence": 0.78,
+              "simulated": true
+            },
+            "model-6": {
+              "status": "skipped",
+              "reason": "question_not_related",
+              "answer": "",
+              "evidence": [],
+              "confidence": 0.0,
+              "simulated": true
+            },
+            "model-7": {
+              "status": "skipped",
+              "reason": "question_not_related",
+              "answer": "",
+              "evidence": [],
+              "confidence": 0.0,
+              "simulated": true
+            }
+          },
+          "recommendations": [
+            "分两次施用，结合翻耕作业"
+          ]
+        }
+      },
+      "llm_response": "根据提供的数据，您的土壤当前pH为5.5，属于弱酸性。建议施用碱性调理剂石灰50.0 kg/亩，分两次施用并结合翻耕作业，预计治理后pH可提升至5.6。",
+      "answer": "根据提供的数据，您的土壤当前pH为5.5，属于弱酸性。建议施用碱性调理剂石灰50.0 kg/亩，分两次施用并结合翻耕作业，预计治理后pH可提升至5.6。",
+      "sources": []
+    }
+  },
+  {
+    "question": "查询区域内不同土地利用类型的酸化程度",
+    "expected_type": 2,
+    "raw_output": {
+      "status": "ok",
+      "question": "查询区域内不同土地利用类型的酸化程度",
+      "question_type": 2,
+      "relevance": 0.6666666666666666,
+      "model_results": {
+        "status": "ok",
+        "data": {
+          "role": "farmer",
+          "agents_invoked": [
+            "model-4",
+            "model-5",
+            "model-6",
+            "model-7"
+          ],
+          "summary": "[model-4] 不同土地利用类型酸化程度：当前样本 pH=5.5（弱酸性）。建议按旱地、水田、园地、林地分别统计酸化等级及比例（依据 GB/T 42817-2023 分级）。\n[model-5] 有机质 22.0 g/kg（中），建议施有机肥 1000.0 kg/亩。\n[model-6] \n[model-7] ",
+          "details": {
+            "model-4": {
+              "answer": "不同土地利用类型酸化程度：当前样本 pH=5.5（弱酸性）。建议按旱地、水田、园地、林地分别统计酸化等级及比例（依据 GB/T 42817-2023 分级）。",
+              "evidence": [
+                {
+                  "metric": "ph",
+                  "value": 5.5
+                },
+                {
+                  "metric": "degree",
+                  "value": "弱酸性"
+                },
+                {
+                  "standard": "GB/T 42817-2023"
+                }
+              ],
+              "confidence": 0.84,
+              "simulated": true
+            },
+            "model-5": {
+              "answer": "有机质 22.0 g/kg（中），建议施有机肥 1000.0 kg/亩。",
+              "evidence": [
+                {
+                  "metric": "level",
+                  "value": "中"
+                },
+                {
+                  "metric": "manure_dosage",
+                  "value": 1000.0
+                }
+              ],
+              "confidence": 0.78,
+              "simulated": true
+            },
+            "model-6": {
+              "status": "skipped",
+              "reason": "question_not_related",
+              "answer": "",
+              "evidence": [],
+              "confidence": 0.0,
+              "simulated": true
+            },
+            "model-7": {
+              "status": "skipped",
+              "reason": "question_not_related",
+              "answer": "",
+              "evidence": [],
+              "confidence": 0.0,
+              "simulated": true
+            }
+          },
+          "recommendations": []
+        }
+      },
+      "llm_response": "根据提供的数据，当前样本的pH值为5.5，属于弱酸性。但数据中并未直接给出不同土地利用类型（如旱地、水田、园地、林地）的具体酸化程度，而是建议按照GB/T 42817-2023分级标准分别统计各类型的酸化等级及比例。",
+      "answer": "根据提供的数据，当前样本的pH值为5.5，属于弱酸性。但数据中并未直接给出不同土地利用类型（如旱地、水田、园地、林地）的具体酸化程度，而是建议按照GB/T 42817-2023分级标准分别统计各类型的酸化等级及比例。",
+      "sources": []
+    }
+  },
+  {
+    "question": "我的这块田酸化严重吗",
+    "expected_type": 2,
+    "raw_output": {
+      "status": "ok",
+      "question": "我的这块田酸化严重吗",
+      "question_type": 2,
+      "relevance": 0.6666666666666666,
+      "model_results": {
+        "status": "ok",
+        "data": {
+          "role": "farmer",
+          "agents_invoked": [
+            "model-4",
+            "model-5",
+            "model-6",
+            "model-7"
+          ],
+          "summary": "[model-4] 您的地块土壤 pH=5.5，酸化等级为弱酸性。（依据 GB/T 42817-2023：酸性 5.5≤pH<6.5、强酸性 4.5≤pH<5.5、极强酸性 pH<4.5）\n[model-5] 有机质 22.0 g/kg（中），建议施有机肥 1000.0 kg/亩。\n[model-6] \n[model-7] ",
+          "details": {
+            "model-4": {
+              "answer": "您的地块土壤 pH=5.5，酸化等级为弱酸性。（依据 GB/T 42817-2023：酸性 5.5≤pH<6.5、强酸性 4.5≤pH<5.5、极强酸性 pH<4.5）",
+              "evidence": [
+                {
+                  "metric": "ph",
+                  "value": 5.5
+                },
+                {
+                  "metric": "degree",
+                  "value": "弱酸性"
+                },
+                {
+                  "standard": "GB/T 42817-2023"
+                }
+              ],
+              "confidence": 0.86,
+              "simulated": true
+            },
+            "model-5": {
+              "answer": "有机质 22.0 g/kg（中），建议施有机肥 1000.0 kg/亩。",
+              "evidence": [
+                {
+                  "metric": "level",
+                  "value": "中"
+                },
+                {
+                  "metric": "manure_dosage",
+                  "value": 1000.0
+                }
+              ],
+              "confidence": 0.78,
+              "simulated": true
+            },
+            "model-6": {
+              "status": "skipped",
+              "reason": "question_not_related",
+              "answer": "",
+              "evidence": [],
+              "confidence": 0.0,
+              "simulated": true
+            },
+            "model-7": {
+              "status": "skipped",
+              "reason": "question_not_related",
+              "answer": "",
+              "evidence": [],
+              "confidence": 0.0,
+              "simulated": true
+            }
+          },
+          "recommendations": []
+        }
+      },
+      "llm_response": "根据您提供的数据，您的地块土壤pH值为5.5，依据GB/T 42817-2023标准，属于**弱酸性**（5.5≤pH<6.5），尚未达到强酸性或极强酸性等级，因此**酸化并不严重**。建议您关注土壤有机质含量（22.0 g/kg，中等水平），可适量施用有机肥以改善土壤健康。",
+      "answer": "根据您提供的数据，您的地块土壤pH值为5.5，依据GB/T 42817-2023标准，属于**弱酸性**（5.5≤pH<6.5），尚未达到强酸性或极强酸性等级，因此**酸化并不严重**。建议您关注土壤有机质含量（22.0 g/kg，中等水平），可适量施用有机肥以改善土壤健康。",
+      "sources": []
+    }
+  },
+  {
+    "question": "辖区耕地质量提升的总体潜力有多大可增产多少粮食",
+    "expected_type": 3,
+    "raw_output": {
+      "status": "ok",
+      "question": "辖区耕地质量提升的总体潜力有多大可增产多少粮食",
+      "question_type": 3,
+      "relevance": 1.0,
+      "model_results": {
+        "status": "ok",
+        "data": {
+          "role": "farmer",
+          "agents_invoked": [
+            "model-4",
+            "model-5",
+            "model-6",
+            "model-7"
+          ],
+          "summary": "[model-4] 土壤 pH=5.5（弱酸性），建议石灰施用量 50.0 kg/亩。\n[model-5] 有机质 22.0 g/kg（中），建议施有机肥 1000.0 kg/亩。\n[model-6] \n[model-7] ",
+          "details": {
+            "model-4": {
+              "answer": "土壤 pH=5.5（弱酸性），建议石灰施用量 50.0 kg/亩。",
+              "evidence": [
+                {
+                  "metric": "ph",
+                  "value": 5.5
+                },
+                {
+                  "metric": "lime_dosage",
+                  "value": 50.0
+                }
+              ],
+              "confidence": 0.8,
+              "simulated": true
+            },
+            "model-5": {
+              "answer": "有机质 22.0 g/kg（中），建议施有机肥 1000.0 kg/亩。",
+              "evidence": [
+                {
+                  "metric": "level",
+                  "value": "中"
+                },
+                {
+                  "metric": "manure_dosage",
+                  "value": 1000.0
+                }
+              ],
+              "confidence": 0.78,
+              "simulated": true
+            },
+            "model-6": {
+              "status": "skipped",
+              "reason": "question_not_related",
+              "answer": "",
+              "evidence": [],
+              "confidence": 0.0,
+              "simulated": true
+            },
+            "model-7": {
+              "status": "skipped",
+              "reason": "question_not_related",
+              "answer": "",
+              "evidence": [],
+              "confidence": 0.0,
+              "simulated": true
+            }
+          },
+          "recommendations": []
+        }
+      },
+      "llm_response": "根据现有数据，辖区耕地土壤pH为5.5（弱酸性），有机质含量为22.0 g/kg（中等），建议施用石灰50.0 kg/亩和有机肥1000.0 kg/亩以提升耕地质量。这些措施有助于改善土壤酸碱度和有机质状况，但数据中未提供具体的粮食增产潜力或增产数量，因此无法直接计算可增产多少粮食。如需准确评估，需结合当地作物种类、基础产量及管理措施进一步分析。",
+      "answer": "根据现有数据，辖区耕地土壤pH为5.5（弱酸性），有机质含量为22.0 g/kg（中等），建议施用石灰50.0 kg/亩和有机肥1000.0 kg/亩以提升耕地质量。这些措施有助于改善土壤酸碱度和有机质状况，但数据中未提供具体的粮食增产潜力或增产数量，因此无法直接计算可增产多少粮食。如需准确评估，需结合当地作物种类、基础产量及管理措施进一步分析。",
+      "sources": []
+    }
+  },
+  {
+    "question": "我们县划定的优先改良片区具体在哪几个村每块潜力多大",
+    "expected_type": 3,
+    "raw_output": {
+      "status": "ok",
+      "question": "我们县划定的优先改良片区具体在哪几个村每块潜力多大",
+      "question_type": 3,
+      "relevance": 1.0,
+      "model_results": {
+        "status": "ok",
+        "data": {
+          "role": "county",
+          "agents_invoked": [
+            "model-1",
+            "model-2",
+            "model-3"
+          ],
+          "summary": "[model-1] 稳定性评价结果：稳定性得分 0.85，风险等级：低风险。九模块评价均已完成。\n[model-2] 县域优先改良片区潜力分布：整体潜力等级 中潜力，平均障碍度值 30.85。建议以地块为单元绘制潜力分布图，颜色深浅表示潜力值，选中地块显示村名、地块编号、面积、当前等级、目标等级、潜力分值。\n[model-3] 县域障碍诊断：主要障碍因素 有机质, 全氮；次要障碍因素 pH, 黏粒含量, 孔隙度, 容重, 有效磷, 耕层厚度, 阳离子交换量, 速效钾。 结合模型2目标 pH=6.5，每个指标按 1~10 级频数统计，最后一列标注是否主要/次要障碍因素。障碍组合：无明显复合障碍。",
+          "details": {
+            "model-1": {
+              "answer": "稳定性评价结果：稳定性得分 0.85，风险等级：低风险。九模块评价均已完成。",
+              "evidence": [
+                {
+                  "metric": "稳定性得分",
+                  "value": 0.85
+                },
+                {
+                  "metric": "风险等级",
+                  "value": "低风险"
+                }
+              ],
+              "confidence": 0.85,
+              "simulated": true
+            },
+            "model-2": {
+              "answer": "县域优先改良片区潜力分布：整体潜力等级 中潜力，平均障碍度值 30.85。建议以地块为单元绘制潜力分布图，颜色深浅表示潜力值，选中地块显示村名、地块编号、面积、当前等级、目标等级、潜力分值。",
+              "evidence": [
+                {
+                  "indicator": "有效磷",
+                  "obstacle_degree": 52.0,
+                  "potential_level": "中潜力"
+                },
+                {
+                  "indicator": "速效钾",
+                  "obstacle_degree": 46.67,
+                  "potential_level": "中潜力"
+                },
+                {
+                  "indicator": "阳离子交换量",
+                  "obstacle_degree": 43.33,
+                  "potential_level": "中潜力"
+                }
+              ],
+              "confidence": 0.81,
+              "target_ph": 6.5,
+              "simulated": true
+            },
+            "model-3": {
+              "answer": "县域障碍诊断：主要障碍因素 有机质, 全氮；次要障碍因素 pH, 黏粒含量, 孔隙度, 容重, 有效磷, 耕层厚度, 阳离子交换量, 速效钾。 结合模型2目标 pH=6.5，每个指标按 1~10 级频数统计，最后一列标注是否主要/次要障碍因素。障碍组合：无明显复合障碍。",
+              "evidence": [
+                {
+                  "factor": "有机质",
+                  "severity": 6.08,
+                  "type": "primary"
+                },
+                {
+                  "factor": "全氮",
+                  "severity": 6.0,
+                  "type": "primary"
+                },
+                {
+                  "target_ph_from_model2": 6.5
+                }
+              ],
+              "confidence": 0.83,
+              "need_input": "parcel_id",
+              "hint": "当前为模拟数据。提供地块 ID（parcel_id）后可获取真实诊断结果，例如：'诊断地块 110105001 的障碍因素'。",
+              "simulated": true
+            }
+          },
+          "recommendations": []
+        }
+      },
+      "llm_response": "根据提供的数据，目前没有直接列出优先改良片区具体涉及哪些村庄以及每块地的潜力分值。模型-2的总结指出：**县域整体潜力等级为“中潜力”，平均障碍度值为30.85**，并建议以地块为单元绘制潜力分布图，选中地块后可显示村名、地块编号、面积、当前等级、目标等级、潜力分值。但当前数据仅包含整体统计和部分指标障碍度（如有效磷、速效钾、阳离子交换量），未提供具体村庄名称和各地块的潜力明细。\n\n如果需要获取每个村和每块地的具体潜力信息，可能需要进一步提供地块ID（parcel_id）进行详细诊断，或参考模型-2建议的潜力分布图（当前为模拟数据，真实应用时可从系统中获取）。",
+      "answer": "根据提供的数据，目前没有直接列出优先改良片区具体涉及哪些村庄以及每块地的潜力分值。模型-2的总结指出：**县域整体潜力等级为“中潜力”，平均障碍度值为30.85**，并建议以地块为单元绘制潜力分布图，选中地块后可显示村名、地块编号、面积、当前等级、目标等级、潜力分值。但当前数据仅包含整体统计和部分指标障碍度（如有效磷、速效钾、阳离子交换量），未提供具体村庄名称和各地块的潜力明细。\n\n如果需要获取每个村和每块地的具体潜力信息，可能需要进一步提供地块ID（parcel_id）进行详细诊断，或参考模型-2建议的潜力分布图（当前为模拟数据，真实应用时可从系统中获取）。",
+      "sources": []
+    }
+  },
+  {
+    "question": "我这块地到底有啥毛病",
+    "expected_type": 3,
+    "raw_output": {
+      "status": "ok",
+      "question": "我这块地到底有啥毛病",
+      "question_type": 3,
+      "relevance": 0.6666666666666666,
+      "model_results": {
+        "status": "ok",
+        "data": {
+          "role": "farmer",
+          "agents_invoked": [
+            "model-4",
+            "model-5",
+            "model-6",
+            "model-7"
+          ],
+          "summary": "[model-4] 土壤 pH=5.5（弱酸性），建议石灰施用量 50.0 kg/亩。\n[model-5] 有机质 22.0 g/kg（中），建议施有机肥 1000.0 kg/亩。\n[model-6] \n[model-7] ",
+          "details": {
+            "model-4": {
+              "answer": "土壤 pH=5.5（弱酸性），建议石灰施用量 50.0 kg/亩。",
+              "evidence": [
+                {
+                  "metric": "ph",
+                  "value": 5.5
+                },
+                {
+                  "metric": "lime_dosage",
+                  "value": 50.0
+                }
+              ],
+              "confidence": 0.8,
+              "simulated": true
+            },
+            "model-5": {
+              "answer": "有机质 22.0 g/kg（中），建议施有机肥 1000.0 kg/亩。",
+              "evidence": [
+                {
+                  "metric": "level",
+                  "value": "中"
+                },
+                {
+                  "metric": "manure_dosage",
+                  "value": 1000.0
+                }
+              ],
+              "confidence": 0.78,
+              "simulated": true
+            },
+            "model-6": {
+              "status": "skipped",
+              "reason": "question_not_related",
+              "answer": "",
+              "evidence": [],
+              "confidence": 0.0,
+              "simulated": true
+            },
+            "model-7": {
+              "status": "skipped",
+              "reason": "question_not_related",
+              "answer": "",
+              "evidence": [],
+              "confidence": 0.0,
+              "simulated": true
+            }
+          },
+          "recommendations": []
+        }
+      },
+      "llm_response": "根据数据分析，您的土壤主要存在以下问题：\n\n1. **土壤偏酸**：pH值为5.5（弱酸性），建议每亩施用石灰50公斤来调节酸碱度。\n2. **有机质含量中等**：有机质为22.0 g/kg，处于中等水平，建议每亩施用有机肥1000公斤，以提升土壤肥力。\n\n这两项是当前地块需要改善的关键点。",
+      "answer": "根据数据分析，您的土壤主要存在以下问题：\n\n1. **土壤偏酸**：pH值为5.5（弱酸性），建议每亩施用石灰50公斤来调节酸碱度。\n2. **有机质含量中等**：有机质为22.0 g/kg，处于中等水平，建议每亩施用有机肥1000公斤，以提升土壤肥力。\n\n这两项是当前地块需要改善的关键点。",
+      "sources": []
+    }
+  },
+  {
+    "question": "全省耕地质量存在哪些问题",
+    "expected_type": 3,
+    "raw_output": {
+      "status": "ok",
+      "question": "全省耕地质量存在哪些问题",
+      "question_type": 3,
+      "relevance": 1.0,
+      "model_results": {
+        "status": "ok",
+        "data": {
+          "role": "province",
+          "agents_invoked": [
+            "model-1",
+            "model-3"
+          ],
+          "summary": "[model-1] 稳定性评价结果：稳定性得分 0.85，风险等级：低风险。九模块评价均已完成。\n[model-3] 主要障碍因素：有机质, 全氮；次要障碍因素：pH, 黏粒含量, 孔隙度, 容重, 有效磷, 耕层厚度, 阳离子交换量, 速效钾。障碍组合：无明显复合障碍。",
+          "details": {
+            "model-1": {
+              "answer": "稳定性评价结果：稳定性得分 0.85，风险等级：低风险。九模块评价均已完成。",
+              "evidence": [
+                {
+                  "metric": "稳定性得分",
+                  "value": 0.85
+                },
+                {
+                  "metric": "风险等级",
+                  "value": "低风险"
+                }
+              ],
+              "confidence": 0.85,
+              "simulated": true
+            },
+            "model-3": {
+              "answer": "主要障碍因素：有机质, 全氮；次要障碍因素：pH, 黏粒含量, 孔隙度, 容重, 有效磷, 耕层厚度, 阳离子交换量, 速效钾。障碍组合：无明显复合障碍。",
+              "evidence": [
+                {
+                  "factor": "有机质",
+                  "severity": 6.08,
+                  "type": "primary"
+                },
+                {
+                  "factor": "全氮",
+                  "severity": 6.0,
+                  "type": "primary"
+                }
+              ],
+              "confidence": 0.83,
+              "need_input": "parcel_id",
+              "hint": "当前为模拟数据。提供地块 ID（parcel_id）后可获取真实诊断结果，例如：'诊断地块 110105001 的障碍因素'。",
+              "simulated": true
+            }
+          },
+          "recommendations": []
+        }
+      },
+      "llm_response": "根据提供的数据，全省耕地质量存在以下问题：\n\n- **主要障碍因素**：有机质、全氮。\n- **次要障碍因素**：pH、黏粒含量、孔隙度、容重、有效磷、耕层厚度、阳离子交换量、速效钾。\n- **障碍组合**：无明显复合障碍。\n- **稳定性评价**：稳定性得分0.85，风险等级为低风险，表明整体稳定性较好。\n\n因此，全省耕地质量的主要问题集中在有机质和全氮含量不足，同时多项理化指标存在不同程度的障碍。",
+      "answer": "根据提供的数据，全省耕地质量存在以下问题：\n\n- **主要障碍因素**：有机质、全氮。\n- **次要障碍因素**：pH、黏粒含量、孔隙度、容重、有效磷、耕层厚度、阳离子交换量、速效钾。\n- **障碍组合**：无明显复合障碍。\n- **稳定性评价**：稳定性得分0.85，风险等级为低风险，表明整体稳定性较好。\n\n因此，全省耕地质量的主要问题集中在有机质和全氮含量不足，同时多项理化指标存在不同程度的障碍。",
+      "sources": []
+    }
+  },
+  {
+    "question": "县乡镇里的耕地在哪些方面有问题",
+    "expected_type": 3,
+    "raw_output": {
+      "status": "ok",
+      "question": "县乡镇里的耕地在哪些方面有问题",
+      "question_type": 3,
+      "relevance": 1.0,
+      "model_results": {
+        "status": "ok",
+        "data": {
+          "role": "county",
+          "agents_invoked": [
+            "model-1",
+            "model-2",
+            "model-3"
+          ],
+          "summary": "[model-1] 稳定性评价结果：稳定性得分 0.85，风险等级：低风险。九模块评价均已完成。\n[model-2] 耕地质量提升潜力等级为 中潜力，平均障碍度值 30.85，主要障碍因素：有效磷, 速效钾, 阳离子交换量。\n[model-3] 县域障碍诊断：主要障碍因素 有机质, 全氮；次要障碍因素 pH, 黏粒含量, 孔隙度, 容重, 有效磷, 耕层厚度, 阳离子交换量, 速效钾。 结合模型2目标 pH=6.5，每个指标按 1~10 级频数统计，最后一列标注是否主要/次要障碍因素。障碍组合：无明显复合障碍。",
+          "details": {
+            "model-1": {
+              "answer": "稳定性评价结果：稳定性得分 0.85，风险等级：低风险。九模块评价均已完成。",
+              "evidence": [
+                {
+                  "metric": "稳定性得分",
+                  "value": 0.85
+                },
+                {
+                  "metric": "风险等级",
+                  "value": "低风险"
+                }
+              ],
+              "confidence": 0.85,
+              "simulated": true
+            },
+            "model-2": {
+              "answer": "耕地质量提升潜力等级为 中潜力，平均障碍度值 30.85，主要障碍因素：有效磷, 速效钾, 阳离子交换量。",
+              "evidence": [
+                {
+                  "indicator": "有效磷",
+                  "obstacle_degree": 52.0,
+                  "potential_level": "中潜力"
+                },
+                {
+                  "indicator": "速效钾",
+                  "obstacle_degree": 46.67,
+                  "potential_level": "中潜力"
+                },
+                {
+                  "indicator": "阳离子交换量",
+                  "obstacle_degree": 43.33,
+                  "potential_level": "中潜力"
+                },
+                {
+                  "target_ph": 6.5,
+                  "recommendation": "目标 pH 供下游模型3使用"
+                }
+              ],
+              "confidence": 0.8,
+              "target_ph": 6.5,
+              "simulated": true
+            },
+            "model-3": {
+              "answer": "县域障碍诊断：主要障碍因素 有机质, 全氮；次要障碍因素 pH, 黏粒含量, 孔隙度, 容重, 有效磷, 耕层厚度, 阳离子交换量, 速效钾。 结合模型2目标 pH=6.5，每个指标按 1~10 级频数统计，最后一列标注是否主要/次要障碍因素。障碍组合：无明显复合障碍。",
+              "evidence": [
+                {
+                  "factor": "有机质",
+                  "severity": 6.08,
+                  "type": "primary"
+                },
+                {
+                  "factor": "全氮",
+                  "severity": 6.0,
+                  "type": "primary"
+                },
+                {
+                  "target_ph_from_model2": 6.5
+                }
+              ],
+              "confidence": 0.83,
+              "need_input": "parcel_id",
+              "hint": "当前为模拟数据。提供地块 ID（parcel_id）后可获取真实诊断结果，例如：'诊断地块 110105001 的障碍因素'。",
+              "simulated": true
+            }
+          },
+          "recommendations": [
+            "目标 pH 供下游模型3使用"
+          ]
+        }
+      },
+      "llm_response": "根据提供的诊断数据，县乡镇耕地存在的主要问题包括：\n\n- **主要障碍因素**：有机质、全氮、有效磷、速效钾、阳离子交换量（其中有效磷、速效钾、阳离子交换量在模型2中列为主要障碍，模型3中列为次要，但均属重要问题）。\n- **次要障碍因素**：pH、黏粒含量、孔隙度、容重、耕层厚度。\n- **耕地质量提升潜力**：中潜力，平均障碍度值30.85。\n- **稳定性**：得分0.85，风险等级低，稳定性方面无明显问题。\n\n综上，耕地问题主要集中在养分缺乏（有机质、全氮、有效磷、速效钾、阳离子交换量）和部分物理性状（pH、黏粒含量、孔隙度、容重、耕层厚度）上，无明显复合障碍。",
+      "answer": "根据提供的诊断数据，县乡镇耕地存在的主要问题包括：\n\n- **主要障碍因素**：有机质、全氮、有效磷、速效钾、阳离子交换量（其中有效磷、速效钾、阳离子交换量在模型2中列为主要障碍，模型3中列为次要，但均属重要问题）。\n- **次要障碍因素**：pH、黏粒含量、孔隙度、容重、耕层厚度。\n- **耕地质量提升潜力**：中潜力，平均障碍度值30.85。\n- **稳定性**：得分0.85，风险等级低，稳定性方面无明显问题。\n\n综上，耕地问题主要集中在养分缺乏（有机质、全氮、有效磷、速效钾、阳离子交换量）和部分物理性状（pH、黏粒含量、孔隙度、容重、耕层厚度）上，无明显复合障碍。",
+      "sources": []
+    }
+  },
+  {
+    "question": "全省耕地土壤有机质含量如何空间分布情况",
+    "expected_type": 4,
+    "raw_output": {
+      "status": "ok",
+      "question": "全省耕地土壤有机质含量如何空间分布情况",
+      "question_type": 4,
+      "relevance": 1.0,
+      "model_results": {
+        "status": "ok",
+        "data": {
+          "role": "province",
+          "agents_invoked": [
+            "model-1",
+            "model-3"
+          ],
+          "summary": "[model-1] 稳定性评价结果：稳定性得分 0.85，风险等级：低风险。九模块评价均已完成。\n[model-3] 主要障碍因素：有机质, 全氮；次要障碍因素：pH, 黏粒含量, 孔隙度, 容重, 有效磷, 耕层厚度, 阳离子交换量, 速效钾。障碍组合：无明显复合障碍。",
+          "details": {
+            "model-1": {
+              "answer": "稳定性评价结果：稳定性得分 0.85，风险等级：低风险。九模块评价均已完成。",
+              "evidence": [
+                {
+                  "metric": "稳定性得分",
+                  "value": 0.85
+                },
+                {
+                  "metric": "风险等级",
+                  "value": "低风险"
+                }
+              ],
+              "confidence": 0.85,
+              "simulated": true
+            },
+            "model-3": {
+              "answer": "主要障碍因素：有机质, 全氮；次要障碍因素：pH, 黏粒含量, 孔隙度, 容重, 有效磷, 耕层厚度, 阳离子交换量, 速效钾。障碍组合：无明显复合障碍。",
+              "evidence": [
+                {
+                  "factor": "有机质",
+                  "severity": 6.08,
+                  "type": "primary"
+                },
+                {
+                  "factor": "全氮",
+                  "severity": 6.0,
+                  "type": "primary"
+                }
+              ],
+              "confidence": 0.83,
+              "need_input": "parcel_id",
+              "hint": "当前为模拟数据。提供地块 ID（parcel_id）后可获取真实诊断结果，例如：'诊断地块 110105001 的障碍因素'。",
+              "simulated": true
+            }
+          },
+          "recommendations": []
+        }
+      },
+      "llm_response": "根据提供的数据，无法直接回答“全省耕地土壤有机质含量如何空间分布”的问题。数据中仅提到有机质是全省耕地的主要障碍因素之一（严重度6.08），但未给出任何空间分布信息（如不同区域的含量差异、分布图等）。要获取空间分布情况，可能需要结合其他数据源或提供具体地块ID进行详细诊断。",
+      "answer": "根据提供的数据，无法直接回答“全省耕地土壤有机质含量如何空间分布”的问题。数据中仅提到有机质是全省耕地的主要障碍因素之一（严重度6.08），但未给出任何空间分布信息（如不同区域的含量差异、分布图等）。要获取空间分布情况，可能需要结合其他数据源或提供具体地块ID进行详细诊断。",
+      "sources": []
+    }
+  },
+  {
+    "question": "为了提升耕地土壤有机质有机肥或者秸秆每亩施用量多少",
+    "expected_type": 4,
+    "raw_output": {
+      "status": "ok",
+      "question": "为了提升耕地土壤有机质有机肥或者秸秆每亩施用量多少",
+      "question_type": 4,
+      "relevance": 1.0,
+      "model_results": {
+        "status": "ok",
+        "data": {
+          "role": "farmer",
+          "agents_invoked": [
+            "model-4",
+            "model-5",
+            "model-6",
+            "model-7"
+          ],
+          "summary": "[model-4] 土壤 pH=5.5（弱酸性），建议石灰施用量 50.0 kg/亩。\n[model-5] 有机质等级为中，建议有机肥施用量 1000.0 kg/亩，秸秆还田参考同等养分替代量，预期有机质提升 1.5 g/kg。\n[model-6] 基于 ML 预测，建议施肥量约 100.00 t/ha（模型不可用，返回训练集均值估算）\n[model-7] ",
+          "details": {
+            "model-4": {
+              "answer": "土壤 pH=5.5（弱酸性），建议石灰施用量 50.0 kg/亩。",
+              "evidence": [
+                {
+                  "metric": "ph",
+                  "value": 5.5
+                },
+                {
+                  "metric": "lime_dosage",
+                  "value": 50.0
+                }
+              ],
+              "confidence": 0.8,
+              "simulated": true
+            },
+            "model-5": {
+              "answer": "有机质等级为中，建议有机肥施用量 1000.0 kg/亩，秸秆还田参考同等养分替代量，预期有机质提升 1.5 g/kg。",
+              "evidence": [
+                {
+                  "metric": "organic_matter",
+                  "value": 22.0,
+                  "unit": "g/kg"
+                },
+                {
+                  "metric": "manure_dosage",
+                  "value": 1000.0,
+                  "unit": "kg/亩"
+                },
+                {
+                  "metric": "potential_increase",
+                  "value": 1.5,
+                  "unit": "g/kg"
+                },
+                {
+                  "recommendation": "优先选用腐熟农家肥或商品有机肥，分季施用"
+                }
+              ],
+              "confidence": 0.82,
+              "simulated": true
+            },
+            "model-6": {
+              "answer": "基于 ML 预测，建议施肥量约 100.00 t/ha（模型不可用，返回训练集均值估算）",
+              "evidence": [
+                {
+                  "metric": "dose_prediction",
+                  "value": 100.0,
+                  "unit": "t/ha"
+                },
+                {
+                  "metric": "dose_confidence",
+                  "value": 0.3
+                }
+              ],
+              "sources": [],
+              "simulated": true
+            },
+            "model-7": {
+              "status": "skipped",
+              "reason": "question_not_related",
+              "answer": "",
+              "evidence": [],
+              "confidence": 0.0,
+              "simulated": true
+            }
+          },
+          "recommendations": [
+            "优先选用腐熟农家肥或商品有机肥，分季施用"
+          ]
+        }
+      },
+      "llm_response": "为了提升耕地土壤有机质，根据数据中的建议，有机肥的施用量为 **1000.0 kg/亩**。秸秆还田可参考同等养分替代量，但未给出具体数值。",
+      "answer": "为了提升耕地土壤有机质，根据数据中的建议，有机肥的施用量为 **1000.0 kg/亩**。秸秆还田可参考同等养分替代量，但未给出具体数值。",
+      "sources": []
+    }
+  },
+  {
+    "question": "本县耕地土壤有机质平均含量是多少",
+    "expected_type": 4,
+    "raw_output": {
+      "status": "ok",
+      "question": "本县耕地土壤有机质平均含量是多少",
+      "question_type": 4,
+      "relevance": 1.0,
+      "model_results": {
+        "status": "ok",
+        "data": {
+          "role": "county",
+          "agents_invoked": [
+            "model-1",
+            "model-2",
+            "model-3"
+          ],
+          "summary": "[model-1] 稳定性评价结果：稳定性得分 0.85，风险等级：低风险。九模块评价均已完成。\n[model-2] 耕地质量提升潜力等级为 中潜力，平均障碍度值 30.85，主要障碍因素：有效磷, 速效钾, 阳离子交换量。\n[model-3] 县域障碍诊断：主要障碍因素 有机质, 全氮；次要障碍因素 pH, 黏粒含量, 孔隙度, 容重, 有效磷, 耕层厚度, 阳离子交换量, 速效钾。 结合模型2目标 pH=6.5，每个指标按 1~10 级频数统计，最后一列标注是否主要/次要障碍因素。障碍组合：无明显复合障碍。",
+          "details": {
+            "model-1": {
+              "answer": "稳定性评价结果：稳定性得分 0.85，风险等级：低风险。九模块评价均已完成。",
+              "evidence": [
+                {
+                  "metric": "稳定性得分",
+                  "value": 0.85
+                },
+                {
+                  "metric": "风险等级",
+                  "value": "低风险"
+                }
+              ],
+              "confidence": 0.85,
+              "simulated": true
+            },
+            "model-2": {
+              "answer": "耕地质量提升潜力等级为 中潜力，平均障碍度值 30.85，主要障碍因素：有效磷, 速效钾, 阳离子交换量。",
+              "evidence": [
+                {
+                  "indicator": "有效磷",
+                  "obstacle_degree": 52.0,
+                  "potential_level": "中潜力"
+                },
+                {
+                  "indicator": "速效钾",
+                  "obstacle_degree": 46.67,
+                  "potential_level": "中潜力"
+                },
+                {
+                  "indicator": "阳离子交换量",
+                  "obstacle_degree": 43.33,
+                  "potential_level": "中潜力"
+                },
+                {
+                  "target_ph": 6.5,
+                  "recommendation": "目标 pH 供下游模型3使用"
+                }
+              ],
+              "confidence": 0.8,
+              "target_ph": 6.5,
+              "simulated": true
+            },
+            "model-3": {
+              "answer": "县域障碍诊断：主要障碍因素 有机质, 全氮；次要障碍因素 pH, 黏粒含量, 孔隙度, 容重, 有效磷, 耕层厚度, 阳离子交换量, 速效钾。 结合模型2目标 pH=6.5，每个指标按 1~10 级频数统计，最后一列标注是否主要/次要障碍因素。障碍组合：无明显复合障碍。",
+              "evidence": [
+                {
+                  "factor": "有机质",
+                  "severity": 6.08,
+                  "type": "primary"
+                },
+                {
+                  "factor": "全氮",
+                  "severity": 6.0,
+                  "type": "primary"
+                },
+                {
+                  "target_ph_from_model2": 6.5
+                }
+              ],
+              "confidence": 0.83,
+              "need_input": "parcel_id",
+              "hint": "当前为模拟数据。提供地块 ID（parcel_id）后可获取真实诊断结果，例如：'诊断地块 110105001 的障碍因素'。",
+              "simulated": true
+            }
+          },
+          "recommendations": [
+            "目标 pH 供下游模型3使用"
+          ]
+        }
+      },
+      "llm_response": "根据提供的数据，无法直接得出本县耕地土壤有机质平均含量的具体数值。数据中仅显示有机质被列为县域主要障碍因素，其严重程度（severity）为6.08，但未提供平均含量（如g/kg或%等）的定量信息。如需获取该数值，可能需要补充更详细的土壤检测数据或原始调查结果。",
+      "answer": "根据提供的数据，无法直接得出本县耕地土壤有机质平均含量的具体数值。数据中仅显示有机质被列为县域主要障碍因素，其严重程度（severity）为6.08，但未提供平均含量（如g/kg或%等）的定量信息。如需获取该数值，可能需要补充更详细的土壤检测数据或原始调查结果。",
+      "sources": []
+    }
+  },
+  {
+    "question": "我的田肥力怎么样",
+    "expected_type": 4,
+    "raw_output": {
+      "status": "ok",
+      "question": "我的田肥力怎么样",
+      "question_type": 4,
+      "relevance": 0.3333333333333333,
+      "model_results": {
+        "status": "ok",
+        "data": {
+          "role": "farmer",
+          "agents_invoked": [
+            "model-4",
+            "model-5",
+            "model-6",
+            "model-7"
+          ],
+          "summary": "[model-4] 土壤 pH=5.5（弱酸性），建议石灰施用量 50.0 kg/亩。\n[model-5] 有机质 22.0 g/kg（中），建议施有机肥 1000.0 kg/亩。\n[model-6] 耕地综合地力改良提升综合诊断（基于 ML 预测）：\n- SOC（土壤有机碳）：12.00 g/kg（置信度 30%）\n- Dose（施肥量）：100.00 t/ha（置信度 30%，模型不可用，返回训练集均值估算）\n（模型不可用，以上为训练集均值估算）\n[model-7] ",
+          "details": {
+            "model-4": {
+              "answer": "土壤 pH=5.5（弱酸性），建议石灰施用量 50.0 kg/亩。",
+              "evidence": [
+                {
+                  "metric": "ph",
+                  "value": 5.5
+                },
+                {
+                  "metric": "lime_dosage",
+                  "value": 50.0
+                }
+              ],
+              "confidence": 0.8,
+              "simulated": true
+            },
+            "model-5": {
+              "answer": "有机质 22.0 g/kg（中），建议施有机肥 1000.0 kg/亩。",
+              "evidence": [
+                {
+                  "metric": "level",
+                  "value": "中"
+                },
+                {
+                  "metric": "manure_dosage",
+                  "value": 1000.0
+                }
+              ],
+              "confidence": 0.78,
+              "simulated": true
+            },
+            "model-6": {
+              "answer": "耕地综合地力改良提升综合诊断（基于 ML 预测）：\n- SOC（土壤有机碳）：12.00 g/kg（置信度 30%）\n- Dose（施肥量）：100.00 t/ha（置信度 30%，模型不可用，返回训练集均值估算）\n（模型不可用，以上为训练集均值估算）",
+              "evidence": [
+                {
+                  "metric": "soc_prediction",
+                  "value": 12.0,
+                  "unit": "g/kg"
+                },
+                {
+                  "metric": "soc_confidence",
+                  "value": 0.3
+                },
+                {
+                  "metric": "dose_prediction",
+                  "value": 100.0,
+                  "unit": "t/ha"
+                },
+                {
+                  "metric": "dose_confidence",
+                  "value": 0.3
+                }
+              ],
+              "sources": [],
+              "simulated": true
+            },
+            "model-7": {
+              "status": "skipped",
+              "reason": "question_not_related",
+              "answer": "",
+              "evidence": [],
+              "confidence": 0.0,
+              "simulated": true
+            }
+          },
+          "recommendations": []
+        }
+      },
+      "llm_response": "根据您提供的数据，您的田肥力情况如下：\n\n- **土壤pH**：5.5（弱酸性），需要施用石灰（建议50.0 kg/亩）来调节。\n- **有机质含量**：22.0 g/kg（中等水平），建议增施有机肥（1000.0 kg/亩）以提高肥力。\n- **土壤有机碳（SOC）**：预测值为12.00 g/kg，但该结果置信度较低（30%），仅供参考。\n\n总体来看，您的田肥力处于中等水平，但存在土壤偏酸和有机质不足的问题，通过施用石灰和有机肥可以有效改善。建议按照上述推荐进行改良。",
+      "answer": "根据您提供的数据，您的田肥力情况如下：\n\n- **土壤pH**：5.5（弱酸性），需要施用石灰（建议50.0 kg/亩）来调节。\n- **有机质含量**：22.0 g/kg（中等水平），建议增施有机肥（1000.0 kg/亩）以提高肥力。\n- **土壤有机碳（SOC）**：预测值为12.00 g/kg，但该结果置信度较低（30%），仅供参考。\n\n总体来看，您的田肥力处于中等水平，但存在土壤偏酸和有机质不足的问题，通过施用石灰和有机肥可以有效改善。建议按照上述推荐进行改良。",
+      "sources": []
+    }
+  },
+  {
+    "question": "我的田土壤有机碳含量大概多少",
+    "expected_type": 4,
+    "raw_output": {
+      "status": "ok",
+      "question": "我的田土壤有机碳含量大概多少",
+      "question_type": 4,
+      "relevance": 0.6666666666666666,
+      "model_results": {
+        "status": "ok",
+        "data": {
+          "role": "farmer",
+          "agents_invoked": [
+            "model-4",
+            "model-5",
+            "model-6",
+            "model-7"
+          ],
+          "summary": "[model-4] 土壤 pH=5.5（弱酸性），建议石灰施用量 50.0 kg/亩。\n[model-5] 全省耕地有机质含量平均 22.0 g/kg，等级为中。全氮 1.2 g/kg，碳氮比 11.5。空间分布建议按高/中/低等级占比与地形梯度分析。\n[model-6] 基于 ML 预测，您的土壤有机碳（SOC）预测值约 12.00 g/kg（模型不可用，返回训练集均值估算）\n[model-7] ",
+          "details": {
+            "model-4": {
+              "answer": "土壤 pH=5.5（弱酸性），建议石灰施用量 50.0 kg/亩。",
+              "evidence": [
+                {
+                  "metric": "ph",
+                  "value": 5.5
+                },
+                {
+                  "metric": "lime_dosage",
+                  "value": 50.0
+                }
+              ],
+              "confidence": 0.8,
+              "simulated": true
+            },
+            "model-5": {
+              "answer": "全省耕地有机质含量平均 22.0 g/kg，等级为中。全氮 1.2 g/kg，碳氮比 11.5。空间分布建议按高/中/低等级占比与地形梯度分析。",
+              "evidence": [
+                {
+                  "metric": "organic_matter",
+                  "value": 22.0,
+                  "unit": "g/kg"
+                },
+                {
+                  "metric": "level",
+                  "value": "中"
+                },
+                {
+                  "metric": "total_nitrogen",
+                  "value": 1.2,
+                  "unit": "g/kg"
+                },
+                {
+                  "metric": "cn_ratio",
+                  "value": 11.5
+                }
+              ],
+              "confidence": 0.84,
+              "simulated": true
+            },
+            "model-6": {
+              "answer": "基于 ML 预测，您的土壤有机碳（SOC）预测值约 12.00 g/kg（模型不可用，返回训练集均值估算）",
+              "evidence": [
+                {
+                  "metric": "soc_prediction",
+                  "value": 12.0,
+                  "unit": "g/kg"
+                },
+                {
+                  "metric": "soc_confidence",
+                  "value": 0.3
+                }
+              ],
+              "sources": [],
+              "simulated": true
+            },
+            "model-7": {
+              "status": "skipped",
+              "reason": "question_not_related",
+              "answer": "",
+              "evidence": [],
+              "confidence": 0.0,
+              "simulated": true
+            }
+          },
+          "recommendations": []
+        }
+      },
+      "llm_response": "根据提供的数据，您的土壤有机碳（SOC）含量预测值约为 **12.00 g/kg**（基于模型估算，置信度较低）。同时，全省耕地有机质含量平均为 22.0 g/kg（等级中），换算后有机碳含量也接近该数值。",
+      "answer": "根据提供的数据，您的土壤有机碳（SOC）含量预测值约为 **12.00 g/kg**（基于模型估算，置信度较低）。同时，全省耕地有机质含量平均为 22.0 g/kg（等级中），换算后有机碳含量也接近该数值。",
+      "sources": []
+    }
+  },
+  {
+    "question": "我这块地大概需要施多少有机肥",
+    "expected_type": 4,
+    "raw_output": {
+      "status": "ok",
+      "question": "我这块地大概需要施多少有机肥",
+      "question_type": 4,
+      "relevance": 0.6666666666666666,
+      "model_results": {
+        "status": "ok",
+        "data": {
+          "role": "farmer",
+          "agents_invoked": [
+            "model-4",
+            "model-5",
+            "model-6",
+            "model-7"
+          ],
+          "summary": "[model-4] 土壤 pH=5.5（弱酸性），建议石灰施用量 50.0 kg/亩。\n[model-5] 有机质等级为中，建议有机肥施用量 1000.0 kg/亩，秸秆还田参考同等养分替代量，预期有机质提升 1.5 g/kg。\n[model-6] 耕地综合地力改良提升综合诊断（基于 ML 预测）：\n- SOC（土壤有机碳）：12.00 g/kg（置信度 30%）\n- Dose（施肥量）：100.00 t/ha（置信度 30%，模型不可用，返回训练集均值估算）\n（模型不可用，以上为训练集均值估算）\n[model-7] ",
+          "details": {
+            "model-4": {
+              "answer": "土壤 pH=5.5（弱酸性），建议石灰施用量 50.0 kg/亩。",
+              "evidence": [
+                {
+                  "metric": "ph",
+                  "value": 5.5
+                },
+                {
+                  "metric": "lime_dosage",
+                  "value": 50.0
+                }
+              ],
+              "confidence": 0.8,
+              "simulated": true
+            },
+            "model-5": {
+              "answer": "有机质等级为中，建议有机肥施用量 1000.0 kg/亩，秸秆还田参考同等养分替代量，预期有机质提升 1.5 g/kg。",
+              "evidence": [
+                {
+                  "metric": "organic_matter",
+                  "value": 22.0,
+                  "unit": "g/kg"
+                },
+                {
+                  "metric": "manure_dosage",
+                  "value": 1000.0,
+                  "unit": "kg/亩"
+                },
+                {
+                  "metric": "potential_increase",
+                  "value": 1.5,
+                  "unit": "g/kg"
+                },
+                {
+                  "recommendation": "优先选用腐熟农家肥或商品有机肥，分季施用"
+                }
+              ],
+              "confidence": 0.82,
+              "simulated": true
+            },
+            "model-6": {
+              "answer": "耕地综合地力改良提升综合诊断（基于 ML 预测）：\n- SOC（土壤有机碳）：12.00 g/kg（置信度 30%）\n- Dose（施肥量）：100.00 t/ha（置信度 30%，模型不可用，返回训练集均值估算）\n（模型不可用，以上为训练集均值估算）",
+              "evidence": [
+                {
+                  "metric": "soc_prediction",
+                  "value": 12.0,
+                  "unit": "g/kg"
+                },
+                {
+                  "metric": "soc_confidence",
+                  "value": 0.3
+                },
+                {
+                  "metric": "dose_prediction",
+                  "value": 100.0,
+                  "unit": "t/ha"
+                },
+                {
+                  "metric": "dose_confidence",
+                  "value": 0.3
+                }
+              ],
+              "sources": [],
+              "simulated": true
+            },
+            "model-7": {
+              "status": "skipped",
+              "reason": "question_not_related",
+              "answer": "",
+              "evidence": [],
+              "confidence": 0.0,
+              "simulated": true
+            }
+          },
+          "recommendations": [
+            "优先选用腐熟农家肥或商品有机肥，分季施用"
+          ]
+        }
+      },
+      "llm_response": "根据土壤检测结果，您的耕地有机质等级为中等，建议有机肥施用量为 **1000.0 kg/亩**（即每亩施用1000公斤）。同时可结合秸秆还田，预期有机质可提升约1.5 g/kg。优先选用腐熟农家肥或商品有机肥，并分季施用。",
+      "answer": "根据土壤检测结果，您的耕地有机质等级为中等，建议有机肥施用量为 **1000.0 kg/亩**（即每亩施用1000公斤）。同时可结合秸秆还田，预期有机质可提升约1.5 g/kg。优先选用腐熟农家肥或商品有机肥，并分季施用。",
+      "sources": []
+    }
+  },
+  {
+    "question": "我的田耕地质量等级是多少",
+    "expected_type": 5,
+    "raw_output": {
+      "status": "ok",
+      "question": "我的田耕地质量等级是多少",
+      "question_type": 5,
+      "relevance": 1.0,
+      "model_results": {
+        "status": "ok",
+        "data": {
+          "role": "farmer",
+          "agents_invoked": [
+            "model-4",
+            "model-5",
+            "model-6",
+            "model-7"
+          ],
+          "summary": "[model-4] 土壤 pH=5.5（弱酸性），建议石灰施用量 50.0 kg/亩。\n[model-5] 有机质 22.0 g/kg（中），建议施有机肥 1000.0 kg/亩。\n[model-6] \n[model-7] 耕地质量等级评价结果：质量等级为None级，综合指数：None。共0个指标参与评价。",
+          "details": {
+            "model-4": {
+              "answer": "土壤 pH=5.5（弱酸性），建议石灰施用量 50.0 kg/亩。",
+              "evidence": [
+                {
+                  "metric": "ph",
+                  "value": 5.5
+                },
+                {
+                  "metric": "lime_dosage",
+                  "value": 50.0
+                }
+              ],
+              "confidence": 0.8,
+              "simulated": true
+            },
+            "model-5": {
+              "answer": "有机质 22.0 g/kg（中），建议施有机肥 1000.0 kg/亩。",
+              "evidence": [
+                {
+                  "metric": "level",
+                  "value": "中"
+                },
+                {
+                  "metric": "manure_dosage",
+                  "value": 1000.0
+                }
+              ],
+              "confidence": 0.78,
+              "simulated": true
+            },
+            "model-6": {
+              "status": "skipped",
+              "reason": "question_not_related",
+              "answer": "",
+              "evidence": [],
+              "confidence": 0.0,
+              "simulated": true
+            },
+            "model-7": {
+              "answer": "耕地质量等级评价结果：质量等级为None级，综合指数：None。共0个指标参与评价。",
+              "evidence": [
+                {
+                  "metric": "质量等级",
+                  "value": null
+                },
+                {
+                  "metric": "综合指数",
+                  "value": null
+                }
+              ],
+              "confidence": 0.9,
+              "simulated": false,
+              "grade_detail": {
+                "status": "ok",
+                "parcel_code": "A0001",
+                "execution_time": 0.06,
+                "parcel_info": {},
+                "indicators": [],
+                "composite_index": null,
+                "quality_grade": null,
+                "obstacle_degree": [],
+                "raw_output": "成功读取 1193 个采样点数据。\r\n\r\n请输入要查询的地块代码 (输入 quit 退出): ------------------------------------------------\r\n地块代码：A0001\r\n经度：  112.973801\r\n纬度：   25.324301\r\n县区名称：武江区\r\n二级农业区名称：闽南粤中农林水产区\r\n------------------- 原始指标值 -------------------\r\n酸碱度(SJD):    4.600\r\n有机质含量(YJZ):   16.200\r\n有效磷含量(YXL):   66.900\r\n速效钾含量(SXJ):   51.700\r\n土壤容重(TRRZ):    1.240\r\n有效土层厚度(YXTCHD):  120.000\r\n耕层厚度(GCHD):   17.000\r\n耕层质地(GCZD): 黏壤土              \r\n排水能力(PSNL): 基本满足            \r\n灌溉能力(GGNL): 满足                \r\n地形部位(DXBW): 丘陵下部            \r\n质地构型(ZDGX): 薄层型              \r\n------------------------------------------------\r\n耕地质量综合指数：  0.6728\r\n耕地质量等级：10等\r\n------------ 障碍度因子（从大到小） ------------\r\n质地构型    :  0.1690  中度障碍    \r\n地形部位    :  0.1516  中度障碍    \r\n有机质      :  0.1484  中度障碍    \r\n速效钾      :  0.1384  中度障碍    \r\n排水能力    :  0.1292  中度障碍    \r\n酸碱度      :  0.1008  中度障碍    \r\n灌溉能力    :  0.0766  轻度障碍    \r\n质地构成    :  0.0506  轻度障碍    \r\n耕层厚度    :  0.0294  轻度障碍    \r\n土壤容重    :  0.0059  轻度障碍    \r\n有效磷      :  0.0000  无障碍      \r\n有效土层厚度:  0.0000  无障碍      \r\n------------------------------------------------\r\n\r\n|----------------------------------------------------------------------------------------|\r\n|   评价指标   |  原数据  |  潜力值  |  原综合指数  |  潜在指数  |  原等级  |  潜在等级  |\r\n|----------------------------------------------------------------------------------------|\r\n| 灌溉能力     | 满足     | 充分满足 |       0.6728 |     0.6979 |     10等 |       10等 |\r\n| 排水能力     | 基本满足 | 充分满足 |       0.6728 |     0.7151 |     10等 |        9等 |\r\n| 有机质       |   16.200 |   38.000 |       0.6728 |     0.7214 |     10等 |        9等 |\r\n| 速效钾       |   51.700 |  205.000 |       0.6728 |     0.7181 |     10等 |        9等 |\r\n| 土壤容重     |    1.240 |    1.350 |       0.6728 |     0.6748 |     10等 |       10等 |\r\n| 酸碱度       |    4.600 |    6.700 |       0.6728 |     0.7058 |     10等 |        9等 |\r\n| 耕层厚度     |   17.000 |   20.200 |       0.6728 |     0.6825 |     10等 |       10等 |\r\n|----------------------------------------------------------------------------------------|\r\n| 原耕地质量综合指数为            0.6728，耕地质量等级为       10等\r\n| 全部指标改良后潜在综合指数为    0.8786，潜在耕地质量等级为    2等\r\n------------------------------------------------------------------------------------------\r\n请输入要查询的地块代码 (输入 quit 退出): 程序结束。\r\n"
+              }
+            }
+          },
+          "recommendations": []
+        }
+      },
+      "llm_response": "抱歉，AI服务暂时不可用，请稍后重试。",
+      "answer": "抱歉，AI服务暂时不可用，请稍后重试。",
+      "sources": []
+    }
+  },
+  {
+    "question": "查询地块的综合指数和障碍度排序",
+    "expected_type": 5,
+    "raw_output": {
+      "status": "ok",
+      "question": "查询地块的综合指数和障碍度排序",
+      "question_type": 5,
+      "relevance": 1.0,
+      "model_results": {
+        "status": "ok",
+        "data": {
+          "role": "farmer",
+          "agents_invoked": [
+            "model-4",
+            "model-5",
+            "model-6",
+            "model-7"
+          ],
+          "summary": "[model-4] 土壤 pH=5.5（弱酸性），建议石灰施用量 50.0 kg/亩。\n[model-5] 有机质 22.0 g/kg（中），建议施有机肥 1000.0 kg/亩。\n[model-6] \n[model-7] 障碍度排序结果：无明显障碍。质量等级为None级。",
+          "details": {
+            "model-4": {
+              "answer": "土壤 pH=5.5（弱酸性），建议石灰施用量 50.0 kg/亩。",
+              "evidence": [
+                {
+                  "metric": "ph",
+                  "value": 5.5
+                },
+                {
+                  "metric": "lime_dosage",
+                  "value": 50.0
+                }
+              ],
+              "confidence": 0.8,
+              "simulated": true
+            },
+            "model-5": {
+              "answer": "有机质 22.0 g/kg（中），建议施有机肥 1000.0 kg/亩。",
+              "evidence": [
+                {
+                  "metric": "level",
+                  "value": "中"
+                },
+                {
+                  "metric": "manure_dosage",
+                  "value": 1000.0
+                }
+              ],
+              "confidence": 0.78,
+              "simulated": true
+            },
+            "model-6": {
+              "status": "skipped",
+              "reason": "question_not_related",
+              "answer": "",
+              "evidence": [],
+              "confidence": 0.0,
+              "simulated": true
+            },
+            "model-7": {
+              "answer": "障碍度排序结果：无明显障碍。质量等级为None级。",
+              "evidence": [
+                {
+                  "metric": "质量等级",
+                  "value": null
+                },
+                {
+                  "metric": "障碍度排序",
+                  "value": "无明显障碍"
+                }
+              ],
+              "confidence": 0.88,
+              "simulated": false,
+              "grade_detail": {
+                "status": "ok",
+                "parcel_code": "A0001",
+                "execution_time": 0.05,
+                "parcel_info": {},
+                "indicators": [],
+                "composite_index": null,
+                "quality_grade": null,
+                "obstacle_degree": [],
+                "raw_output": "成功读取 1193 个采样点数据。\r\n\r\n请输入要查询的地块代码 (输入 quit 退出): ------------------------------------------------\r\n地块代码：A0001\r\n经度：  112.973801\r\n纬度：   25.324301\r\n县区名称：武江区\r\n二级农业区名称：闽南粤中农林水产区\r\n------------------- 原始指标值 -------------------\r\n酸碱度(SJD):    4.600\r\n有机质含量(YJZ):   16.200\r\n有效磷含量(YXL):   66.900\r\n速效钾含量(SXJ):   51.700\r\n土壤容重(TRRZ):    1.240\r\n有效土层厚度(YXTCHD):  120.000\r\n耕层厚度(GCHD):   17.000\r\n耕层质地(GCZD): 黏壤土              \r\n排水能力(PSNL): 基本满足            \r\n灌溉能力(GGNL): 满足                \r\n地形部位(DXBW): 丘陵下部            \r\n质地构型(ZDGX): 薄层型              \r\n------------------------------------------------\r\n耕地质量综合指数：  0.6728\r\n耕地质量等级：10等\r\n------------ 障碍度因子（从大到小） ------------\r\n质地构型    :  0.1690  中度障碍    \r\n地形部位    :  0.1516  中度障碍    \r\n有机质      :  0.1484  中度障碍    \r\n速效钾      :  0.1384  中度障碍    \r\n排水能力    :  0.1292  中度障碍    \r\n酸碱度      :  0.1008  中度障碍    \r\n灌溉能力    :  0.0766  轻度障碍    \r\n质地构成    :  0.0506  轻度障碍    \r\n耕层厚度    :  0.0294  轻度障碍    \r\n土壤容重    :  0.0059  轻度障碍    \r\n有效磷      :  0.0000  无障碍      \r\n有效土层厚度:  0.0000  无障碍      \r\n------------------------------------------------\r\n\r\n|----------------------------------------------------------------------------------------|\r\n|   评价指标   |  原数据  |  潜力值  |  原综合指数  |  潜在指数  |  原等级  |  潜在等级  |\r\n|----------------------------------------------------------------------------------------|\r\n| 灌溉能力     | 满足     | 充分满足 |       0.6728 |     0.6979 |     10等 |       10等 |\r\n| 排水能力     | 基本满足 | 充分满足 |       0.6728 |     0.7151 |     10等 |        9等 |\r\n| 有机质       |   16.200 |   38.000 |       0.6728 |     0.7214 |     10等 |        9等 |\r\n| 速效钾       |   51.700 |  205.000 |       0.6728 |     0.7181 |     10等 |        9等 |\r\n| 土壤容重     |    1.240 |    1.350 |       0.6728 |     0.6748 |     10等 |       10等 |\r\n| 酸碱度       |    4.600 |    6.700 |       0.6728 |     0.7058 |     10等 |        9等 |\r\n| 耕层厚度     |   17.000 |   20.200 |       0.6728 |     0.6825 |     10等 |       10等 |\r\n|----------------------------------------------------------------------------------------|\r\n| 原耕地质量综合指数为            0.6728，耕地质量等级为       10等\r\n| 全部指标改良后潜在综合指数为    0.8786，潜在耕地质量等级为    2等\r\n------------------------------------------------------------------------------------------\r\n请输入要查询的地块代码 (输入 quit 退出): 程序结束。\r\n"
+              }
+            }
+          },
+          "recommendations": []
+        }
+      },
+      "llm_response": "根据提供的模拟数据，地块 A0001 的耕地质量综合指数为 **0.6728**，耕地质量等级为 **10等**。障碍度排序（从大到小）如下：\n\n| 障碍因子 | 障碍度 | 障碍程度 |\n|----------|--------|----------|\n| 质地构型 | 0.1690 | 中度障碍 |\n| 地形部位 | 0.1516 | 中度障碍 |\n| 有机质   | 0.1484 | 中度障碍 |\n| 速效钾   | 0.1384 | 中度障碍 |\n| 排水能力 | 0.1292 | 中度障碍 |\n| 酸碱度   | 0.1008 | 中度障碍 |\n| 灌溉能力 | 0.0766 | 轻度障碍 |\n| 质地构成 | 0.0506 | 轻度障碍 |\n| 耕层厚度 | 0.0294 | 轻度障碍 |\n| 土壤容重 | 0.0059 | 轻度障碍 |\n| 有效磷   | 0.0000 | 无障碍   |\n| 有效土层厚度 | 0.0000 | 无障碍   |\n\n注：原始输出中 model-7 的摘要显示“无明显障碍”与详细模拟结果不符，此处以实际计算数据为准。",
+      "answer": "根据提供的模拟数据，地块 A0001 的耕地质量综合指数为 **0.6728**，耕地质量等级为 **10等**。障碍度排序（从大到小）如下：\n\n| 障碍因子 | 障碍度 | 障碍程度 |\n|----------|--------|----------|\n| 质地构型 | 0.1690 | 中度障碍 |\n| 地形部位 | 0.1516 | 中度障碍 |\n| 有机质   | 0.1484 | 中度障碍 |\n| 速效钾   | 0.1384 | 中度障碍 |\n| 排水能力 | 0.1292 | 中度障碍 |\n| 酸碱度   | 0.1008 | 中度障碍 |\n| 灌溉能力 | 0.0766 | 轻度障碍 |\n| 质地构成 | 0.0506 | 轻度障碍 |\n| 耕层厚度 | 0.0294 | 轻度障碍 |\n| 土壤容重 | 0.0059 | 轻度障碍 |\n| 有效磷   | 0.0000 | 无障碍   |\n| 有效土层厚度 | 0.0000 | 无障碍   |\n\n注：原始输出中 model-7 的摘要显示“无明显障碍”与详细模拟结果不符，此处以实际计算数据为准。",
+      "sources": []
+    }
+  },
+  {
+    "question": "这块地的耕地质量等级评价结果",
+    "expected_type": 5,
+    "raw_output": {
+      "status": "ok",
+      "question": "这块地的耕地质量等级评价结果",
+      "question_type": 5,
+      "relevance": 1.0,
+      "model_results": {
+        "status": "ok",
+        "data": {
+          "role": "farmer",
+          "agents_invoked": [
+            "model-4",
+            "model-5",
+            "model-6",
+            "model-7"
+          ],
+          "summary": "[model-4] 土壤 pH=5.5（弱酸性），建议石灰施用量 50.0 kg/亩。\n[model-5] 有机质 22.0 g/kg（中），建议施有机肥 1000.0 kg/亩。\n[model-6] \n[model-7] 耕地质量等级评价结果：质量等级为None级，综合指数：None。共0个指标参与评价。",
+          "details": {
+            "model-4": {
+              "answer": "土壤 pH=5.5（弱酸性），建议石灰施用量 50.0 kg/亩。",
+              "evidence": [
+                {
+                  "metric": "ph",
+                  "value": 5.5
+                },
+                {
+                  "metric": "lime_dosage",
+                  "value": 50.0
+                }
+              ],
+              "confidence": 0.8,
+              "simulated": true
+            },
+            "model-5": {
+              "answer": "有机质 22.0 g/kg（中），建议施有机肥 1000.0 kg/亩。",
+              "evidence": [
+                {
+                  "metric": "level",
+                  "value": "中"
+                },
+                {
+                  "metric": "manure_dosage",
+                  "value": 1000.0
+                }
+              ],
+              "confidence": 0.78,
+              "simulated": true
+            },
+            "model-6": {
+              "status": "skipped",
+              "reason": "question_not_related",
+              "answer": "",
+              "evidence": [],
+              "confidence": 0.0,
+              "simulated": true
+            },
+            "model-7": {
+              "answer": "耕地质量等级评价结果：质量等级为None级，综合指数：None。共0个指标参与评价。",
+              "evidence": [
+                {
+                  "metric": "质量等级",
+                  "value": null
+                },
+                {
+                  "metric": "综合指数",
+                  "value": null
+                }
+              ],
+              "confidence": 0.9,
+              "simulated": false,
+              "grade_detail": {
+                "status": "ok",
+                "parcel_code": "A0001",
+                "execution_time": 0.06,
+                "parcel_info": {},
+                "indicators": [],
+                "composite_index": null,
+                "quality_grade": null,
+                "obstacle_degree": [],
+                "raw_output": "成功读取 1193 个采样点数据。\r\n\r\n请输入要查询的地块代码 (输入 quit 退出): ------------------------------------------------\r\n地块代码：A0001\r\n经度：  112.973801\r\n纬度：   25.324301\r\n县区名称：武江区\r\n二级农业区名称：闽南粤中农林水产区\r\n------------------- 原始指标值 -------------------\r\n酸碱度(SJD):    4.600\r\n有机质含量(YJZ):   16.200\r\n有效磷含量(YXL):   66.900\r\n速效钾含量(SXJ):   51.700\r\n土壤容重(TRRZ):    1.240\r\n有效土层厚度(YXTCHD):  120.000\r\n耕层厚度(GCHD):   17.000\r\n耕层质地(GCZD): 黏壤土              \r\n排水能力(PSNL): 基本满足            \r\n灌溉能力(GGNL): 满足                \r\n地形部位(DXBW): 丘陵下部            \r\n质地构型(ZDGX): 薄层型              \r\n------------------------------------------------\r\n耕地质量综合指数：  0.6728\r\n耕地质量等级：10等\r\n------------ 障碍度因子（从大到小） ------------\r\n质地构型    :  0.1690  中度障碍    \r\n地形部位    :  0.1516  中度障碍    \r\n有机质      :  0.1484  中度障碍    \r\n速效钾      :  0.1384  中度障碍    \r\n排水能力    :  0.1292  中度障碍    \r\n酸碱度      :  0.1008  中度障碍    \r\n灌溉能力    :  0.0766  轻度障碍    \r\n质地构成    :  0.0506  轻度障碍    \r\n耕层厚度    :  0.0294  轻度障碍    \r\n土壤容重    :  0.0059  轻度障碍    \r\n有效磷      :  0.0000  无障碍      \r\n有效土层厚度:  0.0000  无障碍      \r\n------------------------------------------------\r\n\r\n|----------------------------------------------------------------------------------------|\r\n|   评价指标   |  原数据  |  潜力值  |  原综合指数  |  潜在指数  |  原等级  |  潜在等级  |\r\n|----------------------------------------------------------------------------------------|\r\n| 灌溉能力     | 满足     | 充分满足 |       0.6728 |     0.6979 |     10等 |       10等 |\r\n| 排水能力     | 基本满足 | 充分满足 |       0.6728 |     0.7151 |     10等 |        9等 |\r\n| 有机质       |   16.200 |   38.000 |       0.6728 |     0.7214 |     10等 |        9等 |\r\n| 速效钾       |   51.700 |  205.000 |       0.6728 |     0.7181 |     10等 |        9等 |\r\n| 土壤容重     |    1.240 |    1.350 |       0.6728 |     0.6748 |     10等 |       10等 |\r\n| 酸碱度       |    4.600 |    6.700 |       0.6728 |     0.7058 |     10等 |        9等 |\r\n| 耕层厚度     |   17.000 |   20.200 |       0.6728 |     0.6825 |     10等 |       10等 |\r\n|----------------------------------------------------------------------------------------|\r\n| 原耕地质量综合指数为            0.6728，耕地质量等级为       10等\r\n| 全部指标改良后潜在综合指数为    0.8786，潜在耕地质量等级为    2等\r\n------------------------------------------------------------------------------------------\r\n请输入要查询的地块代码 (输入 quit 退出): 程序结束。\r\n"
+              }
+            }
+          },
+          "recommendations": []
+        }
+      },
+      "llm_response": "根据提供的耕地质量评价数据，该地块（地块代码A0001）的耕地质量等级为**10等**，综合指数为**0.6728**。",
+      "answer": "根据提供的耕地质量评价数据，该地块（地块代码A0001）的耕地质量等级为**10等**，综合指数为**0.6728**。",
+      "sources": []
+    }
+  }
+]
