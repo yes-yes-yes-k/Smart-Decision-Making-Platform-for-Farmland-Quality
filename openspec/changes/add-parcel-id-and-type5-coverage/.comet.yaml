@@ -14,7 +14,7 @@ base_ref: 602f9b1614296020b51bd9f3a605be3a85d6f82b
 design_doc: docs/superpowers/specs/2026-07-25-add-parcel-id-and-type5-coverage-design.md
 plan: docs/superpowers/plans/2026-07-25-add-parcel-id-and-type5-coverage.md
 verify_result: pending
-verification_report: null
+verification_report: docs/superpowers/reports/2026-07-25-add-parcel-id-and-type5-coverage-verify.md
 branch_status: pending
 created_at: 2026-07-25
 verified_at: null
