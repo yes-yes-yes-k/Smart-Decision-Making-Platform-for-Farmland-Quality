@@ -194,6 +194,83 @@ def test_model7_executed_for_grade_farmer_question():
     print("✓ 质量等级 farmer 问题 model-7 被执行")
 
 
+def test_process_type1_routes_to_model1_only():
+    """type=1 → 仅调 model-1，不调 model-2/3"""
+    mgr = AgentManager()
+    result = mgr.process("查询区域内耕地质量等级整体稳定吗", {"question_type": 1})
+    assert result["status"] == "ok"
+    assert result["data"]["agents_invoked"] == ["model-1"]
+    assert result["data"]["question_type"] == 1
+    print("✓ type=1 路由到 model-1")
+
+
+def test_process_type2_routes_to_model4_only():
+    """type=2 → 仅调 model-4"""
+    mgr = AgentManager()
+    result = mgr.process("我的田酸化严重吗", {"question_type": 2})
+    assert result["data"]["agents_invoked"] == ["model-4"]
+    assert result["data"]["question_type"] == 2
+    print("✓ type=2 路由到 model-4")
+
+
+def test_process_type3_routes_to_model3_only():
+    """type=3 → 仅调 model-3，不调 model-2"""
+    mgr = AgentManager()
+    result = mgr.process("我这块地到底有啥毛病", {"question_type": 3})
+    assert result["data"]["agents_invoked"] == ["model-3"]
+    assert "model-2" not in result["data"]["agents_invoked"]
+    print("✓ type=3 路由到 model-3（不调 model-2）")
+
+
+def test_process_type4_routes_to_model6_only():
+    """type=4 → 仅调 model-6，不调 model-5"""
+    mgr = AgentManager()
+    result = mgr.process("我的田肥力怎么样", {"question_type": 4})
+    assert result["data"]["agents_invoked"] == ["model-6"]
+    assert "model-5" not in result["data"]["agents_invoked"]
+    assert "model-4" not in result["data"]["agents_invoked"]
+    print("✓ type=4 路由到 model-6（不调 model-4/5）")
+
+
+def test_process_type5_routes_to_model7_only():
+    """type=5 → 仅调 model-7，不调 model-4/5/6"""
+    mgr = AgentManager()
+    result = mgr.process("我的田耕地质量等级是多少", {"question_type": 5, "parcel_code": "A0001"})
+    assert result["data"]["agents_invoked"] == ["model-7"]
+    assert "model-4" not in result["data"]["agents_invoked"]
+    assert "model-5" not in result["data"]["agents_invoked"]
+    assert "model-6" not in result["data"]["agents_invoked"]
+    print("✓ type=5 路由到 model-7（不调 model-4/5/6）")
+
+
+def test_process_no_routing_when_question_type_none():
+    """question_type=None（context 缺失）→ no_routing 空结果"""
+    mgr = AgentManager()
+    result = mgr.process("你好", {})
+    assert result["status"] == "no_routing"
+    assert result["data"]["agents_invoked"] == []
+    assert result["data"]["summary"] == "未识别问题类型"
+    print("✓ question_type=None 返回 no_routing")
+
+
+def test_process_no_routing_when_question_type_zero():
+    """question_type=0 → no_routing（route_models 保证不进入，此处为防御性）"""
+    mgr = AgentManager()
+    result = mgr.process("什么是土壤酸化", {"question_type": 0})
+    assert result["status"] == "no_routing"
+    assert result["data"]["agents_invoked"] == []
+    print("✓ question_type=0 返回 no_routing")
+
+
+def test_process_no_routing_when_question_type_unknown():
+    """question_type=6（超出范围）→ no_routing"""
+    mgr = AgentManager()
+    result = mgr.process("未知问题", {"question_type": 6})
+    assert result["status"] == "no_routing"
+    assert result["data"]["question_type"] == 6
+    print("✓ 未知 question_type 返回 no_routing")
+
+
 if __name__ == "__main__":
     test_manager_register_seven_agents()
     test_manager_topological_sort_province()
