@@ -314,14 +314,21 @@ def build_markdown(report: Dict[str, Any]) -> str:
     md.append("### 关键观察")
     md.append("")
     md.append("1. **LLM 可用性**：本次运行 LLM 服务初始化成功（`deepseek-ai/DeepSeek-V4-Flash`），"
-              "所有 20 题均通过 LLM 生成自然语言 `answer`；若 LLM 超时降级，"
-              "answer 字段为空，最终回答会取自 AgentManager 的 `summary`（模板拼接）。")
+              "所有 23 题（20 题 type 1-4 + 3 题 type 5）均通过 LLM 生成自然语言 `answer`；"
+              "LLM 一般可用，但偶有不可用（本次观察到 Q1、Q21），此时 `answer` 字段为空或为降级提示"
+              "（「抱歉，AI服务暂时不可用，请稍后重试。」），最终回答回退取自 AgentManager 的 "
+              "`summary`（模板拼接）。若 LLM 超时降级，行为同上。")
     md.append("2. **真实计算 agent**：model-1（stability_db）、model-3/4（diagnosis_db）、"
               "model-6（.joblib）、model-7（Fortran exe+dat）资源均已部署，"
               "但因 RoleRouter 按角色路由，每题只调用 2-3 个 agent，并非每题都触及全部真实模型。")
     md.append("3. **路由细节**：`province` → model-1, model-3；`county` → model-1, model-2, model-3；"
-              "`farmer` → model-4, model-5, model-6。model-7 仅在 question_type=5 "
-              "（`质量等级` 关键词）触发，本次问题库 type 1-4 未覆盖到 model-7。")
+              "`farmer` → model-4, model-5, model-6, model-7。"
+              "model-7 的执行由 `AgentManager._should_execute_agent` 的关键词过滤（`GRADE_KEYWORDS`，"
+              "含「质量等级」「等级评价」「综合指数」「障碍度排序」等）决定，**与 question_type 解耦**——"
+              "只要问题文本含 `GRADE_KEYWORDS` 任一词即触发 model-7，无论 question_type 为何。"
+              "因此 type 1-4 中含「质量等级」字面词的问题也会触发 model-7：例如 "
+              "Q1「查询区域内耕地质量等级整体稳定吗」（type 1）、Q4「我的这块田质量等级稳不稳」（type 1）"
+              "均会执行 model-7。这是已知的关键词碰撞，每次调用约 30s Fortran exe 开销，非正确性问题。")
     md.append("4. **model-6 问题感知过滤**：AgentManager._should_execute_agent 对 model-6 做关键词过滤，"
               "非肥力问题（不含 有机碳/SOC/施用量/施肥量/肥力/秸秆/有机肥/培肥/Dose 等）会跳过 model-6 "
               "（status=`skipped`, reason=`question_not_related`）。这就是 Q1-Q15 中 model-6 大量被跳过的原因。")
