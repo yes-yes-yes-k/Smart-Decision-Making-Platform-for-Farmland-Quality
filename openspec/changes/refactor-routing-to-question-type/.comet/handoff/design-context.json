@@ -1,0 +1,15 @@
+{
+  "change": "refactor-routing-to-question-type",
+  "phase": "design",
+  "mode": "compact",
+  "canonical_spec": "openspec",
+  "generated_by": "comet-handoff.sh",
+  "context_hash": "4d42c6133688692823917074884f3277bee7008934247803141a92964a2ba548",
+  "files": [
+    { "path": "openspec/changes/refactor-routing-to-question-type/proposal.md", "sha256": "6963c4384c913262dca7ead18b6fce9d61cf6376f033f6fad69fa8955006fead" },
+    { "path": "openspec/changes/refactor-routing-to-question-type/design.md", "sha256": "95ee9bbe23ffd58d4edb7fc70388694a3d05e3d40a7a366f220b82b9b52ab982" },
+    { "path": "openspec/changes/refactor-routing-to-question-type/tasks.md", "sha256": "990b4882248fa7bd4f5d3d5e058d6d041af5efe36d8d5c6b62983f1939531d69" },
+    { "path": "openspec/changes/refactor-routing-to-question-type/specs/multi-agent-orchestrator/spec.md", "sha256": "cc0230dfb3de6b7dcb4aa7edb2513a03af0fb55272020e4a469a068e8728ca81" },
+    { "path": "openspec/changes/refactor-routing-to-question-type/specs/role-based-routing/spec.md", "sha256": "abd837f6383796d792f15b3d73e42f0c712f07fe69319975ee742340599c7025" }
+  ]
+}
