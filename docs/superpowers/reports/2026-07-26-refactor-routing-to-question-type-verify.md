@@ -11,18 +11,19 @@ verify_mode: full
 
 | 项 | 结果 |
 |---|---|
-| 验证模式 | full（25 任务、2 delta specs、35 文件） |
+| 验证模式 | full（29 任务、2 delta specs、38 文件） |
 | 测试套件 | 134/134 PASSED |
 | 端到端验证 | 23/23 问题回答成功，23/23 类型识别准确 |
 | API spec 验证 | 无 role 字段，含 question_type/agents_invoked |
 | 知识性问题路由 | 「什么是土壤酸化」→ type 0（RAG），「耕地质量等级是什么意思」→ type 0 |
 | type 5 真实计算 | Q21/Q22/Q23 返回真实 model-7 结果（10等, 0.6728, 12 指标） |
+| 文档同步（Task 8） | openapi.json/api.md/README 全部更新，无残留 RoleRouter/6 个智能体表述 |
 
 ## 2. 完整验证检查项（7 项）
 
 ### 2.1 tasks.md 全部任务已完成 ✓
 
-25 个任务全部勾选 `[x]`，覆盖 7 个任务组：
+29 个任务全部勾选 `[x]`，覆盖 8 个任务组：
 - Task 1: Router 重构（TDD）— 3/3
 - Task 2: AgentManager 重构（TDD）— 5/5
 - Task 3: nodes.py 透传 question_type — 3/3
@@ -30,6 +31,7 @@ verify_mode: full
 - Task 5: 测试套件更新 — 4/4
 - Task 6: 端到端验证 — 3/3
 - Task 7: 知识性问题检测（TDD）— 5/5
+- Task 8: 文档同步更新（OpenAPI / API 文档 / README）— 4/4
 
 ### 2.2 实现符合 design.md 高层设计决策 ✓
 
@@ -154,6 +156,21 @@ Type 5 问题（Q21/Q22/Q23）返回真实 model-7 结果：
 - model-7 在 agent 加载状态检查中显示"回退模拟"，但实际 type 5 问题中真实调用成功（exe/dat 已部署）
 - `src/ai_culti_demo/` 中的 RoleRouter 引用属于保留的原始核心引擎代码（项目硬约束），不应修改
 
+## 5.1 文档同步验证（Task 8）
+
+归档前用户要求同步更新 OpenAPI/API 文档/README 以反映路由架构变更。本次更新覆盖：
+
+| 文件 | 更新内容 | 验证结果 |
+|------|---------|---------|
+| `docs/openapi.json` | v1.3.0 → v1.4.0；移除 chat 响应 `role` 字段和 `MultiAgentResult.data.role`；新增 `parcel_id`/`parcel_code` 请求参数；更新 `question_type` 描述（0-5）；更新 `agents_invoked` 示例为 1:1 映射；专题模型数量 6 → 8 | ✓ JSON 有效，无残留 role 字段 |
+| `docs/api.md` | 重写 `/api/v1/chat/` 路由说明（type 0-5）；新增 `parcel_id`/`parcel_code` 字段；补充 `agents_invoked`/`recommendations` 响应字段；更新模型列表为 8 个专题模型；新增 role 字段移除说明 | ✓ 与 openapi.json 一致 |
+| `README.md` | `RoleRouter` → `QuestionTypeRouter`；6 → 7 专业智能体；6 → 8 专题模型；重写架构图（1:1 映射）；测试数 78 → 134；更新 `specialized/` 和 `router.py` 注释 | ✓ 无残留 RoleRouter/6 个表述 |
+
+**一致性验证**：
+- openapi.json 与 api.md 的 question_type 描述（0-5）一致
+- README 与代码实现一致（7 个专业智能体 + 1:1 映射）
+- 无残留 `RoleRouter` / `role 字段`（chat 响应）/ `6 个智能体` 等过时表述
+
 ## 6. 验证结论
 
-**验证通过**。所有 7 项检查全部 PASS，无 CRITICAL 或 IMPORTANT 问题。实现与 proposal.md、design.md、delta spec 完全一致，134 个测试通过，23 个端到端问题全部回答正确。
+**验证通过**。所有 7 项检查全部 PASS，无 CRITICAL 或 IMPORTANT 问题。实现与 proposal.md、design.md、delta spec 完全一致，134 个测试通过，23 个端到端问题全部回答正确。Task 8 文档同步更新完成，openapi.json/api.md/README 与 question_type-based 路由架构一致。
