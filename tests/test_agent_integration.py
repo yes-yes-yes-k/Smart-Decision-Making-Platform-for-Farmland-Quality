@@ -31,7 +31,7 @@ def test_execute_models_invokes_agent_manager_farmer():
     assert mr.get("status") == "ok"
     data = mr.get("data", {})
     assert data.get("role") == "farmer"
-    assert data.get("agents_invoked") == ["model-4", "model-5", "model-6"]
+    assert data.get("agents_invoked") == ["model-4", "model-5", "model-6", "model-7"]
     print("✓ execute_models 通过 AgentManager 路由到 farmer")
 
 
@@ -92,7 +92,7 @@ def test_chat_api_returns_structured_multi_agent_result():
     data = payload["data"]
     # 多智能体结构化字段
     assert data.get("role") == "farmer"
-    assert data.get("agents_invoked") == ["model-4", "model-5", "model-6"]
+    assert data.get("agents_invoked") == ["model-4", "model-5", "model-6", "model-7"]
     # recommendations 字段仅在非空时写入响应（chat.py:111-112），
     # 因此使用默认值 [] 兼容 model-6 被跳过且 model-4/5 else 分支无 recommendation 的场景
     assert isinstance(data.get("recommendations", []), list)
@@ -133,9 +133,9 @@ def test_e2e_farmer_role_routing():
     result = execute_models(state)
     data = result["model_results"]["data"]
     assert data["role"] == "farmer"
-    assert data["agents_invoked"] == ["model-4", "model-5", "model-6"]
-    # model-6 应排在最后
-    assert data["agents_invoked"][-1] == "model-6"
+    assert data["agents_invoked"] == ["model-4", "model-5", "model-6", "model-7"]
+    # model-7 应排在最后（追加在 farmer 列表末尾，无依赖）
+    assert data["agents_invoked"][-1] == "model-7"
     # model-6 为独立 ML 预测（不依赖 model-4/5），evidence 含 ML 预测 metric
     m6_evidence = str(data["details"]["model-6"]["evidence"])
     assert "dose_prediction" in m6_evidence or "soc_prediction" in m6_evidence

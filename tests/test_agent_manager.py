@@ -27,8 +27,8 @@ def test_manager_topological_sort_province():
 
 
 def test_manager_topological_sort_farmer():
-    """farmer 角色 [model-4, model-5, model-6]，model-6 依赖为空，
-    三个 agent 均无互相依赖，拓扑排序包含全部三个。"""
+    """farmer 角色 [model-4, model-5, model-6, model-7]，model-6/model-7 依赖为空，
+    四个 agent 均无互相依赖，拓扑排序包含全部四个。"""
     mgr = AgentManager()
     ordered = mgr._topological_sort(["model-4", "model-5", "model-6"])
     assert set(ordered) == {"model-4", "model-5", "model-6"}
@@ -42,7 +42,7 @@ def test_manager_process_farmer_returns_structured_result():
     assert result["status"] == "ok"
     data = result["data"]
     assert data["role"] == "farmer"
-    assert data["agents_invoked"] == ["model-4", "model-5", "model-6"]
+    assert data["agents_invoked"] == ["model-4", "model-5", "model-6", "model-7"]
     assert "summary" in data and isinstance(data["summary"], str)
     assert "details" in data and isinstance(data["details"], dict)
     assert "recommendations" in data and isinstance(data["recommendations"], list)
@@ -128,10 +128,21 @@ def test_manager_loads_fertility_ml_agent():
     print("✓ AgentManager 加载 FertilityMLAgent")
 
 
+def test_farmer_role_includes_model_7():
+    """farmer 角色应包含 model-7（共 4 个 agent）"""
+    from framework.agents.router import RoleRouter
+    router = RoleRouter()
+    agents = router.get_agents_for_role("farmer")
+    assert "model-7" in agents, f"farmer 角色未含 model-7: {agents}"
+    assert agents == ["model-4", "model-5", "model-6", "model-7"], f"farmer agents 不符: {agents}"
+    print("✓ farmer 角色含 model-7（4 个 agent）")
+
+
 if __name__ == "__main__":
     test_manager_register_seven_agents()
     test_manager_topological_sort_province()
     test_manager_topological_sort_farmer()
     test_manager_process_farmer_returns_structured_result()
     test_manager_process_unknown_question_defaults_farmer()
+    test_farmer_role_includes_model_7()
     print("\n所有 AgentManager 测试通过！")

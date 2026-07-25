@@ -14,7 +14,7 @@ class RoleRouter:
     ROLE_AGENTS: Dict[str, List[str]] = {
         "province": ["model-1", "model-3"],
         "county": ["model-1", "model-3", "model-2"],
-        "farmer": ["model-4", "model-5", "model-6"],
+        "farmer": ["model-4", "model-5", "model-6", "model-7"],
     }
 
     def identify_role(self, question: str) -> str:
