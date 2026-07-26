@@ -55,7 +55,27 @@ class BaseAgent(ABC):
             context_parts.append(f"文档{i+1}({source}): {content}")
         return "\n\n".join(context_parts)
 
-    def _generate_with_rag(self, question: str, domain_context: str = "") -> Dict[str, Any]:
+    def _generate_with_rag(
+        self,
+        question: str,
+        domain_context: str = "",
+        *,
+        enable_llm: bool = False,
+    ) -> Dict[str, Any]:
+        """按需使用 RAG + LLM。
+
+        多智能体路径默认关闭该调用：每个专业智能体先生成可解释的规则结果，
+        由编排器在末尾仅调用一次 LLM 进行统一润色，避免串行放大上游时延。
+        """
+        if not enable_llm:
+            return {
+                "answer": "",
+                "sources": [],
+                "success": False,
+                "retrieved_count": 0,
+                "skipped": True,
+            }
+
         retrieval = self._retrieve_knowledge(question)
         rag_context = self._build_rag_context(retrieval)
 

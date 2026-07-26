@@ -1,5 +1,6 @@
 from __future__ import annotations
 import os
+import time
 from typing import Any, Dict, Optional
 from langchain_openai import ChatOpenAI
 from framework.config import Config
@@ -30,7 +31,8 @@ class LLMService:
                     base_url=api_base,
                     temperature=0.3,
                     max_tokens=2048,
-                    timeout=30,
+                    timeout=Config.SILICONFLOW_LLM_TIMEOUT,
+                    max_retries=Config.SILICONFLOW_LLM_MAX_RETRIES,
                 )
                 self._initialized = True
                 print(f"[LLM] 初始化成功 - 模型: {Config.SILICONFLOW_CHAT_MODEL}")
@@ -50,6 +52,12 @@ class LLMService:
         if not self.is_available():
             return self._get_fallback_response(prompt)
 
+        started_at = time.perf_counter()
+        print(
+            f"[LLM] 调用开始 - 模型: {Config.SILICONFLOW_CHAT_MODEL}, "
+            f"提示长度: {len(prompt)}, 历史消息: {len(messages or [])}",
+            flush=True,
+        )
         try:
             if messages:
                 full_messages = messages.copy()
@@ -59,6 +67,10 @@ class LLMService:
 
             response = self._client.invoke(full_messages)
             content = response.content if hasattr(response, "content") else str(response)
+            print(
+                f"[LLM] 调用成功 - 耗时: {time.perf_counter() - started_at:.2f}s",
+                flush=True,
+            )
 
             return {
                 "success": True,
@@ -67,7 +79,11 @@ class LLMService:
                 "type": "llm",
             }
         except Exception as e:
-            print(f"LLM调用失败，使用降级模式: {e}")
+            print(
+                f"[LLM] 调用失败 - 耗时: {time.perf_counter() - started_at:.2f}s, "
+                f"错误: {type(e).__name__}: {e}；使用专业结果降级",
+                flush=True,
+            )
             return self._get_fallback_response(prompt)
 
     def _get_fallback_response(self, prompt: str) -> Dict[str, Any]:
