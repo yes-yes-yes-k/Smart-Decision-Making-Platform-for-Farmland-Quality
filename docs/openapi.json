@@ -665,10 +665,76 @@
                 },
                 "required": ["model_id"]
               },
-              "example": {
-                "model_id": "acidification-governance",
-                "area_code": "lechang",
-                "target_ph": 6.0
+              "examples": {
+                "spatial_structure_analysis": {
+                  "summary": "空间结构解析",
+                  "value": {
+                    "model_id": "spatial-structure-analysis",
+                    "area_code": "lechang"
+                  }
+                },
+                "soil_indicator_analysis": {
+                  "summary": "土壤关键指标多维解析",
+                  "value": {
+                    "model_id": "soil-indicator-analysis",
+                    "area_code": "lechang",
+                    "indicators": {
+                      "ph": 5.2,
+                      "organic_matter": 18.5,
+                      "available_nitrogen": 92
+                    }
+                  }
+                },
+                "obstacle_factor_identification": {
+                  "summary": "主要障碍因素识别",
+                  "value": {
+                    "model_id": "obstacle-factor-identification",
+                    "area_code": "lechang",
+                    "longitude": 113.3565,
+                    "latitude": 25.1288
+                  }
+                },
+                "acidification_governance": {
+                  "summary": "土壤酸化治理",
+                  "value": {
+                    "model_id": "acidification-governance",
+                    "area_code": "lechang",
+                    "longitude": 113.3565,
+                    "latitude": 25.1288,
+                    "indicators": {
+                      "ph": 5.2
+                    }
+                  }
+                },
+                "organic_matter_improvement": {
+                  "summary": "土壤有机质提升",
+                  "value": {
+                    "model_id": "organic-matter-improvement",
+                    "area_code": "lechang",
+                    "longitude": 113.3565,
+                    "latitude": 25.1288,
+                    "indicators": {
+                      "organic_matter": 18.5
+                    }
+                  }
+                },
+                "multi_factor_collaborative_improvement": {
+                  "summary": "多项协同提升",
+                  "value": {
+                    "model_id": "multi-factor-collaborative-improvement",
+                    "area_code": "lechang",
+                    "longitude": 113.3565,
+                    "latitude": 25.1288,
+                    "indicators": {
+                      "ph": 5.2,
+                      "organic_matter": 18.5
+                    },
+                    "context": {
+                      "request_id": "model-demo-001",
+                      "source": "api-documentation-example"
+                    }
+                  }
+                }
               }
             }
           }
@@ -689,6 +755,73 @@
                       "$ref": "#/components/schemas/ModelRunResult"
                     }
                   }
+                },
+                "example": {
+                  "status": "ok",
+                  "data": {
+                    "status": "ok",
+                    "model": {
+                      "model_id": "multi-factor-collaborative-improvement",
+                      "name": "耕地质量多项协同提升模型",
+                      "purpose": "综合多个专题模型的占位结果，形成分区分类的综合提升建议。",
+                      "minimum_inputs": ["area_code"],
+                      "recommended_layers": ["quality-overview", "acidification-risk", "organic-matter"],
+                      "dependent_models": ["acidification-governance", "organic-matter-improvement", "obstacle-factor-identification"]
+                    },
+                    "area": {
+                      "code": "lechang",
+                      "name": "乐昌市",
+                      "level": "county",
+                      "province": "广东省"
+                    },
+                    "summary": "多项协同提升模型已综合多个专题模型的 Demo 结果，形成分区分类的综合建议。",
+                    "findings": [
+                      {
+                        "title": "协同组合",
+                        "content": "协同提升模型综合酸化治理、障碍识别和有机质提升等专题结果生成总建议。"
+                      },
+                      {
+                        "title": "分区分类",
+                        "content": "首版按全县重点治理区、常规提升区和持续监测区三类输出综合方向。"
+                      }
+                    ],
+                    "recommended_layers": ["quality-overview", "acidification-risk", "organic-matter"],
+                    "recommendations": ["先按主要障碍与提升主题划分重点治理区。", "后续可在镇域或格网尺度叠加真实模型输出做精细分区。"],
+                    "lineage": {
+                      "catalog": "data/lechang/catalog.json",
+                      "referenced_assets": ["external/AcidMap", "external/AcidificationModel/api"],
+                      "runtime_dependency": "none",
+                      "recommended_layers": ["quality-overview", "acidification-risk", "organic-matter"]
+                    },
+                    "reliability": {
+                      "level": "demo_stub",
+                      "message": "当前专题模型结果仅用于 Demo 演示多模型调用契约，不代表真实专业模型结论。"
+                    },
+                    "fallback": {
+                      "used": false,
+                      "fields": [],
+                      "strategy": "缺少坐标时按县域级占位结果返回；缺少指标时使用 Demo 默认上下文补齐。"
+                    },
+                    "context": {
+                      "request_id": "model-demo-001",
+                      "source": "api-documentation-example"
+                    },
+                    "dependent_models": ["acidification-governance", "organic-matter-improvement", "obstacle-factor-identification"],
+                    "zoning_recommendations": [
+                      {
+                        "zone": "重点治理区",
+                        "focus": "酸化风险与综合障碍叠加区域优先核验并治理。"
+                      },
+                      {
+                        "zone": "常规提升区",
+                        "focus": "以有机质提升和耕地培肥措施为主，保持常态化改良。"
+                      },
+                      {
+                        "zone": "持续监测区",
+                        "focus": "维持监测和图层复核，为后续真实模型替换保留比对基线。"
+                      }
+                    ]
+                  }
                 }
               }
             }
@@ -699,6 +832,13 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/ErrorResponse"
+                },
+                "example": {
+                  "status": "error",
+                  "error": {
+                    "code": "MISSING_MODEL_ID",
+                    "message": "调用专题模型时必须提供 model_id"
+                  }
                 }
               }
             }
