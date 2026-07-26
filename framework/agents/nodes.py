@@ -433,7 +433,14 @@ def llm_generate(state: MultiAgentState) -> MultiAgentState:
         return {**state, "llm_response": {}, "error": None}
 
     try:
-        prompt = f"基于以下数据回答问题：\n问题类型: {question_type}\n问题: {question}\n数据: {state.get('model_results', {})}"
+        # 专业智能体不再各自调用 LLM；此处是模型路线唯一的 LLM 总结调用。
+        prompt = (
+            "你是耕地质量与土壤改良领域的助手。请基于专业智能体结果，"
+            "整合成一份准确、简洁、可执行的中文答复。不要编造未提供的数据，"
+            "保留明确的数值、单位和建议。\n"
+            f"用户问题：{question}\n"
+            f"专业智能体结果：{state.get('model_results', {})}"
+        )
         llm_result = llm_service.generate(prompt)
         return {**state, "llm_response": llm_result, "error": None}
     except Exception as e:
@@ -463,8 +470,34 @@ def aggregate_results(state: MultiAgentState) -> MultiAgentState:
         else:
             final_result["model_results"] = model_results
             final_result["llm_response"] = llm_response.get("content", "")
-            final_result["answer"] = llm_response.get("content", "")
-            final_result["sources"] = []
+
+            agent_data = model_results.get("data", {}) if isinstance(model_results, dict) else {}
+            agent_summary = agent_data.get("summary", "")
+            agent_details = agent_data.get("details", {}) if isinstance(agent_data, dict) else {}
+
+            all_sources = []
+            if isinstance(agent_details, dict):
+                for agent_id, detail in agent_details.items():
+                    if isinstance(detail, dict):
+                        sources = detail.get("sources", [])
+                        if sources:
+                            all_sources.extend(sources)
+                        evidence = detail.get("evidence", [])
+                        if evidence and not sources:
+                            for ev in evidence:
+                                if isinstance(ev, dict) and ev.get("doc_name"):
+                                    all_sources.append(ev)
+
+            if llm_response.get("success") and llm_response.get("content"):
+                final_result["answer"] = llm_response.get("content", "")
+            elif agent_summary:
+                final_result["answer"] = agent_summary
+            else:
+                final_result["answer"] = llm_response.get("content", "")
+
+            final_result["sources"] = all_sources if all_sources else []
+            if not final_result["sources"] and rag_response.get("sources"):
+                final_result["sources"] = rag_response.get("sources", [])
 
         return {**state, "model_results": final_result, "status": "completed", "error": None}
     except Exception as e:
