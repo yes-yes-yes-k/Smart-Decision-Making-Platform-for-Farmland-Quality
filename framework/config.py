@@ -31,7 +31,7 @@ class Config:
     JWT_SECRET_KEY = os.environ.get('JWT_SECRET_KEY') or SECRET_KEY
     JWT_ACCESS_TOKEN_EXPIRES = 24 * 60 * 60
 
-    SILICONFLOW_API_KEY = os.environ.get('SILICONFLOW_API_KEY') or ''
+    SILICONFLOW_API_KEY = os.environ.get('SILICONFLOW_API_KEY') or 'sk-truhokzloepabjhdeepqtrzifzwaoyffocmaodsyqfepzwfy'
     SILICONFLOW_CHAT_MODEL = os.environ.get('SILICONFLOW_CHAT_MODEL') or 'deepseek-ai/DeepSeek-V4-Flash'
     SILICONFLOW_EMBED_MODEL = os.environ.get('SILICONFLOW_EMBED_MODEL') or 'BAAI/bge-m3'
     SILICONFLOW_BASE_URL = os.environ.get('SILICONFLOW_BASE_URL') or 'https://api.siliconflow.cn/v1'

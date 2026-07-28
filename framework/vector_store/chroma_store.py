@@ -1,10 +1,36 @@
 from __future__ import annotations
 import os
+import shutil
 from typing import Optional, List, Dict, Any
 import chromadb
+from chromadb.api.types import EmbeddingFunction, Documents, Embeddings
 from chromadb.config import Settings
 from framework.config import Config
 from framework.embedding.service import embedding_service
+
+
+class NoOpEmbeddingFunction(EmbeddingFunction[Documents]):
+    """空操作 embedding function，仅用于阻止 ChromaDB 下载默认 ONNX 模型。
+    实际的 embeddings 由 add_documents 方法直接传入。"""
+
+    def __init__(self):
+        pass
+
+    def __call__(self, input: Documents) -> Embeddings:
+        # 这个方法不应该被 ChromaDB 调用，因为我们总是直接传入 embeddings
+        raise RuntimeError("NoOpEmbeddingFunction 不应被调用，请直接传入 embeddings")
+
+    @staticmethod
+    def name() -> str:
+        return "noop"
+
+    def get_config(self) -> Dict[str, Any]:
+        return {"type": "noop"}
+
+    @staticmethod
+    def build_from_config(config: Dict[str, Any]) -> "NoOpEmbeddingFunction":
+        return NoOpEmbeddingFunction()
+
 
 class ChromaVectorStore:
     def __init__(self):
@@ -13,7 +39,7 @@ class ChromaVectorStore:
         self._init_client()
 
     def _init_client(self):
-        persist_dir = Config.CHROMA_PERSIST_DIR
+        persist_dir = os.path.abspath(Config.CHROMA_PERSIST_DIR)
         collection_name = Config.CHROMA_COLLECTION_NAME
 
         os.makedirs(persist_dir, exist_ok=True)
@@ -26,19 +52,70 @@ class ChromaVectorStore:
                     allow_reset=False,
                 )
             )
-            self._collection = self._client.get_or_create_collection(name=collection_name)
+
+            need_recreate = False
+            try:
+                existing = self._client.get_collection(name=collection_name)
+                existing_ef = None
+                if hasattr(existing, 'metadata') and existing.metadata:
+                    existing_ef = existing.metadata.get("embedding_function", None)
+                print(f"[Chroma] 检测到旧集合，embedding_function={existing_ef}")
+                if existing_ef != "noop":
+                    print(f"[Chroma] 需要重建集合以使用自定义 embedding function")
+                    need_recreate = True
+            except Exception:
+                print(f"[Chroma] 集合不存在或无法读取，将直接创建")
+                pass
+
+            if need_recreate:
+                try:
+                    self._client.delete_collection(name=collection_name)
+                    print(f"[Chroma] 旧集合已删除")
+                except Exception as e:
+                    print(f"[Chroma] 删除旧集合失败: {e}，尝试删除整个持久化目录")
+                    try:
+                        shutil.rmtree(persist_dir, ignore_errors=True)
+                        os.makedirs(persist_dir, exist_ok=True)
+                        self._client = chromadb.PersistentClient(
+                            path=persist_dir,
+                            settings=Settings(
+                                anonymized_telemetry=False,
+                                allow_reset=False,
+                            )
+                        )
+                        print(f"[Chroma] 持久化目录已清理")
+                    except Exception as e2:
+                        print(f"[Chroma] 删除持久化目录失败: {e2}")
+
+            self._collection = self._client.create_collection(
+                name=collection_name,
+                embedding_function=NoOpEmbeddingFunction(),
+            )
+            print(f"[Chroma] 集合 '{collection_name}' 初始化完成")
         except Exception as e:
             print(f"Chroma初始化失败: {e}")
+            import traceback
+            traceback.print_exc()
 
     def add_documents(self, texts: List[str], metadatas: Optional[List[Dict]] = None, ids: Optional[List[str]] = None) -> int:
+        """添加文档到向量库，直接使用 embedding_service 获取 embeddings，
+        不依赖 ChromaDB 的 embedding_function（避免触发 ONNX 下载）。"""
         if not self._collection:
             return 0
 
+        if not embedding_service.is_available():
+            print("[Chroma] embedding_service 不可用，跳过向量化")
+            return 0
+
         try:
+            # 直接获取 embeddings，不通过 ChromaDB 的 embedding_function
+            embeddings = embedding_service.embed_documents(texts)
+
             self._collection.add(
+                ids=ids or [f"doc_{i}" for i in range(len(texts))],
+                embeddings=embeddings,
                 documents=texts,
                 metadatas=metadatas or [],
-                ids=ids or [f"doc_{i}" for i in range(len(texts))]
             )
             return len(texts)
         except Exception as e:
@@ -49,9 +126,15 @@ class ChromaVectorStore:
         if not self._collection:
             return {"results": [], "count": 0}
 
+        if not embedding_service.is_available():
+            print("[Chroma] embedding_service 不可用，无法搜索")
+            return {"results": [], "count": 0}
+
         try:
+            query_embedding = embedding_service.embed_query(query)
+
             results = self._collection.query(
-                query_texts=[query],
+                query_embeddings=[query_embedding],
                 n_results=n_results,
                 where=filters,
             )
@@ -111,7 +194,6 @@ class ChromaVectorStore:
             count_before = self._collection.count()
             if count_before == 0:
                 return 0
-            # 获取所有 id 然后删除
             all_data = self._collection.get()
             ids = all_data.get("ids", [])
             if ids:
