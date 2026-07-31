@@ -518,3 +518,105 @@ class TestModel6ShaoguanRouting:
         from framework.domain.other_models.model_6 import model_6_execution
         result = model_6_execution(FULL_VALID_INPUT)
         assert result["status"] == "success"
+
+
+# ---- Task 6: FertilityMLAgent 透传测试 ----
+
+class TestFertilityMLAgentPassthrough:
+    def test_execute_passes_land_type_to_model_6(self, monkeypatch):
+        """execute(task) 应从 task['land_type'] 提取并传给 model_6_execution"""
+        _setup_mock_models(monkeypatch)
+        _setup_mock_sg_models(monkeypatch)
+        from framework.agents.specialized.fertility_ml_agent import FertilityMLAgent
+
+        captured = {}
+        def spy_model_6(inp, land_type="upland"):
+            captured["land_type"] = land_type
+            captured["area_code"] = inp.get("area_code")
+            return {
+                "status": "success",
+                "soc_prediction": 42.0, "soc_confidence": 0.91,
+                "dose_prediction": 42.0, "dose_confidence": 0.62,
+                "dose_warning": "韶关旱地 RF 模型 R²=0.62",
+                "imputed_features": [], "imputation_applied": False,
+                "model_version": "ETR_v1_20260713",
+            }
+        monkeypatch.setattr(
+            "framework.agents.specialized.fertility_ml_agent.model_6_execution",
+            spy_model_6,
+        )
+
+        agent = FertilityMLAgent()
+        task = dict(FULL_VALID_INPUT, area_code="lechang", land_type="upland")
+        agent.execute(task)
+        assert captured["land_type"] == "upland"
+        assert captured["area_code"] == "lechang"
+
+    def test_execute_default_land_type_when_missing(self, monkeypatch):
+        """task 不含 land_type → 默认 upland 传给 model_6"""
+        _setup_mock_models(monkeypatch)
+        from framework.agents.specialized.fertility_ml_agent import FertilityMLAgent
+
+        captured = {}
+        def spy_model_6(inp, land_type="upland"):
+            captured["land_type"] = land_type
+            return {"status": "success", "soc_prediction": 1.0, "soc_confidence": 0.5,
+                    "dose_prediction": 1.0, "dose_confidence": 0.5, "dose_warning": "x",
+                    "imputed_features": [], "imputation_applied": False, "model_version": "v"}
+        monkeypatch.setattr(
+            "framework.agents.specialized.fertility_ml_agent.model_6_execution",
+            spy_model_6,
+        )
+
+        agent = FertilityMLAgent()
+        agent.execute({"pH": 6.5})
+        assert captured["land_type"] == "upland"
+
+    def test_answer_question_enriches_task_with_context_area_code(self, monkeypatch):
+        """answer_question 应从 context 顶层提取 area_code/land_type 注入 task"""
+        _setup_mock_models(monkeypatch)
+        _setup_mock_sg_models(monkeypatch)
+        from framework.agents.specialized.fertility_ml_agent import FertilityMLAgent
+
+        captured = {}
+        def spy_model_6(inp, land_type="upland"):
+            captured["area_code"] = inp.get("area_code")
+            captured["land_type"] = land_type
+            return {"status": "success", "soc_prediction": 1.0, "soc_confidence": 0.5,
+                    "dose_prediction": 1.0, "dose_confidence": 0.5, "dose_warning": "x",
+                    "imputed_features": [], "imputation_applied": False, "model_version": "v"}
+        monkeypatch.setattr(
+            "framework.agents.specialized.fertility_ml_agent.model_6_execution",
+            spy_model_6,
+        )
+
+        agent = FertilityMLAgent()
+        # context 顶层有 area_code/land_type，data 里没有
+        context = {"area_code": "lechang", "land_type": "paddy", "data": {"pH": 6.5}}
+        agent.answer_question("施肥量多少", context)
+        assert captured["area_code"] == "lechang"
+        assert captured["land_type"] == "paddy"
+
+    def test_answer_question_task_data_takes_precedence(self, monkeypatch):
+        """context['data'] 内的 area_code 优先于 context 顶层"""
+        _setup_mock_models(monkeypatch)
+        from framework.agents.specialized.fertility_ml_agent import FertilityMLAgent
+
+        captured = {}
+        def spy_model_6(inp, land_type="upland"):
+            captured["area_code"] = inp.get("area_code")
+            return {"status": "success", "soc_prediction": 1.0, "soc_confidence": 0.5,
+                    "dose_prediction": 1.0, "dose_confidence": 0.5, "dose_warning": "x",
+                    "imputed_features": [], "imputation_applied": False, "model_version": "v"}
+        monkeypatch.setattr(
+            "framework.agents.specialized.fertility_ml_agent.model_6_execution",
+            spy_model_6,
+        )
+
+        agent = FertilityMLAgent()
+        context = {
+            "area_code": "other",
+            "data": {"pH": 6.5, "area_code": "lechang"},  # data 内优先
+        }
+        agent.answer_question("施肥量", context)
+        assert captured["area_code"] == "lechang"
