@@ -57,8 +57,15 @@ def test_invalid_land_fertilizer_fallback():
 
 
 def test_missing_input_rejected():
+    # SJD(pHstart) 缺失
     r = calculate_acidification_amendment(None,1.56,4.08)
     assert r["status"] == "rejected" and r["reason"] == "missing_input"
+    # JHX(Hex) 缺失
+    r_hex = calculate_acidification_amendment(4.31,None,4.08)
+    assert r_hex["status"] == "rejected" and r_hex["reason"] == "missing_input"
+    # JLA(Alex) 缺失
+    r_alex = calculate_acidification_amendment(4.31,1.56,None)
+    assert r_alex["status"] == "rejected" and r_alex["reason"] == "missing_input"
 
 
 def test_out_of_range_rejected():
@@ -66,6 +73,9 @@ def test_out_of_range_rejected():
     assert r1["status"]=="rejected" and r1["reason"]=="input_out_of_range"
     r2 = calculate_acidification_amendment(4.31,-1.0,4.08)
     assert r2["status"]=="rejected" and r2["reason"]=="input_out_of_range"
+    # JLA(Alex) 负数
+    r3 = calculate_acidification_amendment(4.31,1.56,-1.0)
+    assert r3["status"]=="rejected" and r3["reason"]=="input_out_of_range"
 
 
 def test_optional_param_override():
