@@ -2,6 +2,8 @@
 comet_change: align-model3-to-field-standard
 role: technical-design
 canonical_spec: openspec
+archived-with: 2026-07-31-align-model3-to-field-standard
+status: final
 ---
 
 # Design Doc: align-model3-to-field-standard
@@ -187,3 +189,4 @@ V2.0 的 `main()` 是一次性批处理脚本（无 DB），本项目不照搬�
 8. tests/test_farmland_diagnosis.py（全量更新 + 新增）
 9. 验证：单测 + 整体回归
 10. 文档纳入：docs/model-integration-analysis.md, docs/model-provider-spec.md
+

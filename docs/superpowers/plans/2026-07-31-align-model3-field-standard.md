@@ -1,3 +1,7 @@
+---
+archived-with: 2026-07-31-align-model3-to-field-standard
+status: final
+---
 ﻿---
 change: align-model3-to-field-standard
 design-doc: docs/superpowers/specs/2026-07-31-align-model3-field-standard-design.md
