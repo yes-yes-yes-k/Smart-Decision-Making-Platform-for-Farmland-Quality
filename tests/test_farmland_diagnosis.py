@@ -394,14 +394,15 @@ def test_generate_amendment_no_need():
 def test_evaluate_acidification_flow():
     with tempfile.TemporaryDirectory() as tmpdir:
         csv_path = os.path.join(tmpdir, 'test.csv')
+        # CSV 表头改标准码；用 CJ 一级区验证 region_code 正确分区（不再恒 HN）
         with open(csv_path, 'w', encoding='utf-8') as f:
-            f.write('''一级农业区,二级农业区,pH,有机质,有效磷,速效钾,容重,耕层质地,灌溉能力,排水能力,地形部位,质地构型,有效土层,耕层厚度
-华南区,闽南粤中农林水产区,4.5,10,5,50,1.8,粘土,基本满足,基本满足,丘陵岗地,夹砂型,60,15
+            f.write('''YJNYQ,EJNYQ,SJD,YJZ,YXL,SXJ,TRRZ,GCZD,GGNL,PSNL,DXBW,ZDGX,YXTCHD,GCHD
+长江中下游区,闽南粤中农林水产区,4.5,10,5,50,1.8,黏土,基本满足,基本满足,丘陵上部,夹层型,60,15
 ''')
 
         db_path = os.path.join(tmpdir, 'test.db')
         bulk_evaluate(csv_path, db_path)
-        diagnose(db_path)  # 需要先运行诊断确保 is_ready 返回 True
+        diagnose(db_path)  # 确保 is_ready 返回 True
         result = evaluate_acidification(db_path)
 
         assert result['status'] == 'ok'
@@ -410,3 +411,25 @@ def test_evaluate_acidification_flow():
         query_result = query_acidification('0', db_path)
         assert query_result['status'] == 'ok'
         assert 'acidification' in query_result
+
+def test_evaluate_acidification_uses_region_code():
+    # 验证酸化评估按地块实际 region_code 分区，不恒回退 HN
+    with tempfile.TemporaryDirectory() as tmpdir:
+        csv_path = os.path.join(tmpdir, 'test.csv')
+        with open(csv_path, 'w', encoding='utf-8') as f:
+            f.write('''YJNYQ,EJNYQ,SJD,YJZ,YXL,SXJ,TRRZ,GCZD,GGNL,PSNL,DXBW,ZDGX,YXTCHD,GCHD
+长江中下游区,闽南粤中农林水产区,4.4,10,5,50,1.8,黏土,基本满足,基本满足,丘陵上部,夹层型,60,15
+''')
+        db_path = os.path.join(tmpdir, 'test.db')
+        bulk_evaluate(csv_path, db_path)
+        diagnose(db_path)
+        evaluate_acidification(db_path)
+
+        # 直接查 evaluation_results 确认 region_code 为 CJ
+        storage = DiagnosisStorage(db_path)
+        eval_row = storage.get_evaluation('0')
+        assert eval_row['region_code'] == 'CJ'
+        # CJ 区强酸性 pH=4.4 应触发改良
+        acid = storage.get_acidification('0')
+        assert acid is not None
+        assert acid['acidification_level'] == '强酸性'
