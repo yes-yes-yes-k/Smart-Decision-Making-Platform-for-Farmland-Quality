@@ -1,4 +1,4 @@
----
+﻿---
 change: replace-acidification-with-process-model
 design-doc: docs/superpowers/specs/2026-08-01-replace-acidification-with-process-model-design.md
 base-ref: ca6f94be5aeff8a33812bedee05bc8407f042420
@@ -6,7 +6,7 @@ base-ref: ca6f94be5aeff8a33812bedee05bc8407f042420
 
 # 用过程模型替换酸化改良逻辑 实施计划
 
-> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
+> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [x]`) syntax for tracking.
 
 **Goal:** 将 model-4 酸化改良从「规则导向 + DB 查询」替换为移植自模型5的 4 子过程模型（水田/旱地 × 尿素/复合肥），统一入口 `calculate_acidification_amendment` 计算 YTK（亿土康）与 MBNT（木本泥炭），并贯穿 API → nodes → Agent → model_4 全链路。
 
@@ -147,7 +147,7 @@ git commit -m "feat(acidification): add JHX/JLA standard indicator codes"
 - 缺 JHX/JLA → `status="rejected"`, `reason="missing_input"`；SJD=2.5 或 JHX=-1 → `reason="input_out_of_range"`。
 - `FertN=200` → `customized_params={"FertN":200}` 且 ytk/mbnt 与默认不同。
 
-- [ ] **Step 1: 从模型5源码提取期望值（断言锚点）**
+- [x] **Step 1: 从模型5源码提取期望值（断言锚点）**
 
 读取 `D:\destkop\模型5\02_酸化模型计算-地块.py`，对 4 子模型分别用 `pHstart=4.31, Hex=1.56, Alex=4.08`（默认参数）运行，记录 YTK/MBNT 期望值。在测试文件顶部以常量记录：
 
@@ -163,7 +163,7 @@ EXPECTED = {
 
 > 实施者必须先用源码跑出真实数值填入 `<源码值>`，再继续后续步骤。此为正确性闸门。
 
-- [ ] **Step 2: 编写失败测试（计算正确性 + 子模型选择，覆盖 6.1/6.2）**
+- [x] **Step 2: 编写失败测试（计算正确性 + 子模型选择，覆盖 6.1/6.2）**
 
 ```python
 # tests/test_model4_acidification.py
@@ -198,12 +198,12 @@ def test_submodel_selection():
     assert calculate_acidification_amendment(PHSTART,HEX,ALEX,land_type="paddy",fertilizer_type="urea")["sub_model"]=="paddy_urea"
 ```
 
-- [ ] **Step 3: 运行测试确认失败**
+- [x] **Step 3: 运行测试确认失败**
 
 Run: `python -m pytest tests/test_model4_acidification.py -v`
 Expected: FAIL（`calculate_acidification_amendment` 不存在或未实现）
 
-- [ ] **Step 4: 实现 acidification.py 默认参数集合（tasks 2.3）**
+- [x] **Step 4: 实现 acidification.py 默认参数集合（tasks 2.3）**
 
 完全重写 `src/ai_culti_demo/farmland_diagnosis/acidification.py`。先写默认参数与可配白名单：
 
@@ -245,7 +245,7 @@ _UPLAND_COMPOUND_EXTRA = {"YN": 1.91, "SN": 0.66}
 
 > 上述元素含量默认值为占位；实施时必须以 `D:\destkop\模型5\02_酸化模型计算-地块.py` 中的实际数值替换。Step 1 的断言锚点会捕获任何偏差。
 
-- [ ] **Step 5: 实现通用计算基元（Adep/Acrop/ANcy/Aagri/Aback，设计文档 §1.2）**
+- [x] **Step 5: 实现通用计算基元（Adep/Acrop/ANcy/Aagri/Aback，设计文档 §1.2）**
 
 ```python
 def _adep(RPH: float, R: float) -> float:
@@ -263,7 +263,7 @@ def _hcrop(Y: float, S: float, ec: Dict[str, float]) -> float:
 
 > 注意：`_hcrop` 的化学计量系数与符号必须与模型5源码一致。若 Step 1 断言失败，回到源码修正此处除数/符号，直至 4 子模型全部通过 ±0.01。
 
-- [ ] **Step 6: 实现 4 个子模型（tasks 2.1，差异矩阵见设计文档 §1.3）**
+- [x] **Step 6: 实现 4 个子模型（tasks 2.1，差异矩阵见设计文档 §1.3）**
 
 ```python
 def _paddy_urea(pHstart, Hex, Alex, p):
@@ -327,7 +327,7 @@ _SUB_MODEL_MAP = {
 
 > `Ano3_runoff`/`Avol` 的「FertN 项」具体表达式设计文档未完全展开，标 `以源码为准`。实施时必须从模型5源码补全这两个表达式，断言锚点会捕获错误。
 
-- [ ] **Step 7: 实现统一入口（校验 + 选择 + 可选参数覆盖，tasks 2.2/2.4/2.5/2.6）**
+- [x] **Step 7: 实现统一入口（校验 + 选择 + 可选参数覆盖，tasks 2.2/2.4/2.5/2.6）**
 
 ```python
 def calculate_acidification_amendment(
@@ -389,7 +389,7 @@ def calculate_acidification_amendment(
     return result
 ```
 
-- [ ] **Step 8: 编写剩余单元测试（非法回退/校验/覆盖，覆盖 6.3/6.4/6.5）**
+- [x] **Step 8: 编写剩余单元测试（非法回退/校验/覆盖，覆盖 6.3/6.4/6.5）**
 
 ```python
 def test_invalid_land_fertilizer_fallback():
@@ -415,12 +415,12 @@ def test_optional_param_override():
     assert abs(custom["ytk"] - default["ytk"]) > 0.01 or abs(custom["mbnt"] - default["mbnt"]) > 0.01
 ```
 
-- [ ] **Step 9: 运行全部测试确认通过**
+- [x] **Step 9: 运行全部测试确认通过**
 
 Run: `python -m pytest tests/test_model4_acidification.py -v`
 Expected: PASS（若 4 子模型断言失败，回到 Step 5/6 对照源码修正系数，直至 ±0.01 通过）
 
-- [ ] **Step 10: 旧函数委托（tasks 2.7，设计文档 §2.6）**
+- [x] **Step 10: 旧函数委托（tasks 2.7，设计文档 §2.6）**
 
 在 `acidification.py` 末尾保留旧函数，标记 deprecated 并委托：
 
@@ -468,7 +468,7 @@ def calculate_amendment_rate(pH):
     return 0.0
 ```
 
-- [ ] **Step 11: 更新 `__init__.py` 导出**
+- [x] **Step 11: 更新 `__init__.py` 导出**
 
 将 `acidification` 导入改为：
 
@@ -483,12 +483,12 @@ from .acidification import (
 ```
 并在 `__all__` 加入 `'calculate_acidification_amendment'`、`'MODEL_VERSION'`。
 
-- [ ] **Step 12: 回归导入与旧测试**
+- [x] **Step 12: 回归导入与旧测试**
 
 Run: `python -m pytest tests/ -k "acidification or config" -v`
 Expected: 现有依赖 `query_acidification`/`evaluate_acidification` 导入的测试不因签名变化报 ImportError（行为变化允许，但导入须成功）
 
-- [ ] **Step 13: Commit**
+- [x] **Step 13: Commit**
 
 ```bash
 git add src/ai_culti_demo/farmland_diagnosis/acidification.py src/ai_culti_demo/farmland_diagnosis/__init__.py tests/test_model4_acidification.py
@@ -513,7 +513,7 @@ git commit -m "feat(acidification): implement process model with 4 submodels and
 - `parcel_id="999"`（mock DB 无数据）→ `status="rejected"`, `reason="cannot_get_ph"`。
 - 缺 JHX/JLA → `reason="missing_input"`。
 
-- [ ] **Step 1: 编写失败测试**
+- [x] **Step 1: 编写失败测试**
 
 ```python
 # tests/test_model4_acidification.py 追加
@@ -544,12 +544,12 @@ def test_model4_execution_missing_input():
     assert r["status"]=="rejected" and r["reason"]=="missing_input"
 ```
 
-- [ ] **Step 2: 运行测试确认失败**
+- [x] **Step 2: 运行测试确认失败**
 
 Run: `python -m pytest tests/test_model4_acidification.py -k model4_execution -v`
 Expected: FAIL（占位实现返回 success 但无 ytk/sub_model）
 
-- [ ] **Step 3: 实现 model_4.py（tasks 3.1/3.2/3.3/3.4）**
+- [x] **Step 3: 实现 model_4.py（tasks 3.1/3.2/3.3/3.4）**
 
 ```python
 # framework/domain/other_models/model_4.py
@@ -640,12 +640,12 @@ def model_4_execution(
     return out
 ```
 
-- [ ] **Step 4: 运行测试确认通过**
+- [x] **Step 4: 运行测试确认通过**
 
 Run: `python -m pytest tests/test_model4_acidification.py -k model4_execution -v`
 Expected: PASS
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add framework/domain/other_models/model_4.py tests/test_model4_acidification.py
@@ -669,7 +669,7 @@ git commit -m "feat(model_4): implement model_4_execution with parcel_id SJD sup
 - `answer_question` 透传 `land_type`/`fertilizer_type`。
 - answer 文本不含 `GB/T 42817-2023`。
 
-- [ ] **Step 1: 更新测试（mock model_4_execution）**
+- [x] **Step 1: 更新测试（mock model_4_execution）**
 
 替换 `tests/test_agent_specialized.py` 中 `test_acidification_agent_*` 三个用例：
 
@@ -723,12 +723,12 @@ def test_acidification_agent_answer_no_gb_standard(monkeypatch):
     assert "亿土康" in out["answer"] or "ytk" in str(out["evidence"]).lower() or "木本泥炭" in out["answer"]
 ```
 
-- [ ] **Step 2: 运行测试确认失败**
+- [x] **Step 2: 运行测试确认失败**
 
 Run: `python -m pytest tests/test_agent_specialized.py -k acidification -v`
 Expected: FAIL（旧实现返回 degree/lime_dosage）
 
-- [ ] **Step 3: 重写 acidification_agent.py（tasks 4.1-4.5，设计文档 §2.5）**
+- [x] **Step 3: 重写 acidification_agent.py（tasks 4.1-4.5，设计文档 §2.5）**
 
 ```python
 from __future__ import annotations
@@ -834,12 +834,12 @@ class AcidificationRemediationAgent(BaseAgent):
         }
 ```
 
-- [ ] **Step 4: 运行测试确认通过**
+- [x] **Step 4: 运行测试确认通过**
 
 Run: `python -m pytest tests/test_agent_specialized.py -k acidification -v`
 Expected: PASS（三个用例全绿，answer 不含 GB/T 42817-2023）
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add framework/agents/specialized/acidification_agent.py tests/test_agent_specialized.py
@@ -864,7 +864,7 @@ git commit -m "refactor(acidification_agent): adapt to process model ytk/mbnt, d
 - `nodes.execute_models` 将 `fertilizer_type` 加入 context（与 `land_type` 并列）。
 - `question_type=2` 仍路由到 model-4（回归）。
 
-- [ ] **Step 1: 编写失败测试**
+- [x] **Step 1: 编写失败测试**
 
 ```python
 # tests/test_nodes_passthrough.py
@@ -890,12 +890,12 @@ def test_execute_models_passes_fertilizer_type(monkeypatch):
 
 > 若 `agent_manager` 注入路径与实际不符，调整 monkeypatch 目标为 `framework.agents.manager.agent_manager` 或在 `execute_models` 内部 `from framework.agents.manager import agent_manager` 处用 `monkeypatch.setattr("framework.agents.manager.agent_manager", FakeManager())`。
 
-- [ ] **Step 2: 运行测试确认失败**
+- [x] **Step 2: 运行测试确认失败**
 
 Run: `python -m pytest tests/test_nodes_passthrough.py -v`
 Expected: FAIL（`fertilizer_type` 不在 context）
 
-- [ ] **Step 3: 修改 nodes.py（tasks 5.1）**
+- [x] **Step 3: 修改 nodes.py（tasks 5.1）**
 
 将 `framework/agents/nodes.py:244` 的透传列表加入 `fertilizer_type`：
 
@@ -906,7 +906,7 @@ Expected: FAIL（`fertilizer_type` 不在 context）
                 context[key] = state["request"][key]
 ```
 
-- [ ] **Step 4: 修改 chat.py（tasks 5.2/5.3）**
+- [x] **Step 4: 修改 chat.py（tasks 5.2/5.3）**
 
 将 `framework/api/routes/chat.py:79-81` 的顶层提取列表加入 `fertilizer_type`：
 
@@ -918,12 +918,12 @@ Expected: FAIL（`fertilizer_type` 不在 context）
             orchestrator_request[k] = data[k]
 ```
 
-- [ ] **Step 5: 运行测试确认通过**
+- [x] **Step 5: 运行测试确认通过**
 
 Run: `python -m pytest tests/test_nodes_passthrough.py -v`
 Expected: PASS
 
-- [ ] **Step 6: 回归 question_type=2 路由（tasks 6.8）**
+- [x] **Step 6: 回归 question_type=2 路由（tasks 6.8）**
 
 ```python
 def test_question_type_2_routes_to_model_4():
@@ -935,7 +935,7 @@ def test_question_type_2_routes_to_model_4():
 Run: `python -m pytest tests/ -k "router or question_type or route" -v`
 Expected: PASS（路由不变）
 
-- [ ] **Step 7: Commit**
+- [x] **Step 7: Commit**
 
 ```bash
 git add framework/agents/nodes.py framework/api/routes/chat.py tests/test_nodes_passthrough.py
@@ -959,27 +959,27 @@ git commit -m "feat(api): pass through fertilizer_type from chat to model-4 agen
 - `import ai_culti_demo.farmland_diagnosis` 与 `from framework.domain.other_models.model_4 import model_4_execution` 均成功。
 - 旧函数 `query_acidification`/`evaluate_acidification` 可导入且调用返回 deprecated/委托结果。
 
-- [ ] **Step 1: 全量测试**
+- [x] **Step 1: 全量测试**
 
 Run: `python -m pytest tests/ -v`
 Expected: 全部 PASS（或仅 Pre-existing 与本变更无关的失败）
 
-- [ ] **Step 2: 路由回归**
+- [x] **Step 2: 路由回归**
 
 Run: `python -m pytest tests/ -k "router or stability or potential or problem or organic or fertility" -v`
 Expected: 其他 model（1/2/3/5/6）测试不受影响
 
-- [ ] **Step 3: 导入链路检查**
+- [x] **Step 3: 导入链路检查**
 
 Run: `python -c "from framework.domain.other_models.model_4 import model_4_execution; from ai_culti_demo.farmland_diagnosis import calculate_acidification_amendment, query_acidification; print('OK')"`
 Expected: 输出 `OK`
 
-- [ ] **Step 4: 手动端到端冒烟（可选，若 DB 可用）**
+- [x] **Step 4: 手动端到端冒烟（可选，若 DB 可用）**
 
 Run: `python -c "from framework.agents.specialized.acidification_agent import AcidificationRemediationAgent; a=AcidificationRemediationAgent(); print(a.answer_question('如何改良酸化？', {'data':{'SJD':4.31,'JHX':1.56,'JLA':4.08,'land_type':'upland','fertilizer_type':'urea'}}))"`
 Expected: 返回含 ytk/mbnt 的 answer，无 GB/T 42817-2023
 
-- [ ] **Step 5: Commit（若 Step 1 触发任何修复）**
+- [x] **Step 5: Commit（若 Step 1 触发任何修复）**
 
 ```bash
 git add -A
@@ -1005,7 +1005,7 @@ git commit -m "test(acidification): regression fixes for process model integrati
 - `api.md` 酸化改良章节描述 4 子模型与 `land_type`/`fertilizer_type` 参数。
 - `README.md` 酸化模型描述从「规则导向」改为「过程模型，4 子模型」。
 
-- [ ] **Step 1: 更新 openapi.json（tasks 7.1）**
+- [x] **Step 1: 更新 openapi.json（tasks 7.1）**
 
 在 `/api/v1/chat/` POST 请求体 schema 中新增：
 
@@ -1019,23 +1019,23 @@ git commit -m "test(acidification): regression fixes for process model integrati
 ```
 并在酸化改良响应示例中将 `lime_demand` 替换/补充为 `ytk`（亿土康 kg/ha）与 `mbnt`（木本泥炭 kg/ha）字段。
 
-- [ ] **Step 2: 更新 api.md（tasks 7.2）**
+- [x] **Step 2: 更新 api.md（tasks 7.2）**
 
 新增「酸化改良（model-4）」小节，说明：
 - 必填输入：`SJD`(pH)、`JHX`(交换性氢)、`JLA`(交换性铝)
 - 可选：`land_type`(upland/paddy)、`fertilizer_type`(compound/urea)、`parcel_id`（自动补 SJD）
 - 响应字段：`ytk`、`mbnt`、`sub_model`、`customized_params`、`model_version`
 
-- [ ] **Step 3: 更新 README.md（tasks 7.3）**
+- [x] **Step 3: 更新 README.md（tasks 7.3）**
 
 将酸化模型描述改为：基于过程模型（移植自模型5）的 4 子模型（水田/旱地 × 尿素/复合肥），计算亿土康（YTK）与木本泥炭（MBNT）需求量。
 
-- [ ] **Step 4: 校验文档一致性**
+- [x] **Step 4: 校验文档一致性**
 
 Run: `python -c "import json; json.load(open('docs/openapi.json', encoding='utf-8')); print('openapi valid')"`
 Expected: 输出 `openapi valid`
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add docs/openapi.json docs/api.md README.md
