@@ -8,7 +8,7 @@
 - **核心引擎**：县域概览、结构化诊断、8 个专题模型、报告汇总（`src/ai_culti_demo`）
 - **多智能体编排**：7 个专业智能体 + AgentManager + QuestionTypeRouter（基于 question_type 1:1 映射）
   - model-1 稳定性风险识别 / model-2 潜力评估 / model-3 问题识别
-  - model-4 酸化改良 / model-5 有机质培肥 / model-6 综合地力提升（ML 预测）
+  - model-4 酸化改良（过程模型，4 子模型：水田/旱地 × 尿素/复合肥，输出 YTK/MBNT） / model-5 有机质培肥 / model-6 综合地力提升（ML 预测）
   - model-7 耕地质量等级评价（Fortran exe）
 - **RAG 知识检索**：基于 ChromaDB 的向量检索与 SiliconFlow LLM 问答，知识性问题自动路由到 RAG
 - **Function Calling**：工具注册表 + LangChain Tools 集成 + 自定义工具接口
@@ -244,7 +244,7 @@ route_models（路由分发）
        ↓
        QuestionTypeRouter（1:1 映射）
        ├─ type 1 → model-1（稳定性风险）
-       ├─ type 2 → model-4（酸化改良）
+       ├─ type 2 → model-4（酸化改良，过程模型 4 子模型）
        ├─ type 3 → model-3（障碍诊断）
        ├─ type 4 → model-6（肥力 ML 预测）
        └─ type 5 → model-7（耕地质量等级评价）
@@ -255,6 +255,8 @@ route_models（路由分发）
 ```
 
 7 个专业智能体基于 [src/ai_culti_demo/thematic_models.py](src/ai_culti_demo/thematic_models.py) 的 8 个专题模型实现，通过 [framework/core_engine/adapter.py](framework/core_engine/adapter.py) 桥接调用。model-2（潜力评估）和 model-5（有机质培肥）保留注册但不被 question_type 路由调用，仅用于向后兼容。
+
+**酸化改良（model-4）过程模型**：已从规则导向（GB/T 42817-2023 石灰剂量）替换为过程模型（移植自模型5源码），按 `land_type`（水田 paddy / 旱地 upland）× `fertilizer_type`（尿素 urea / 复合肥 compound）组合选择 4 个子模型之一，计算亿土康（YTK）与木本泥炭（MBNT）需求量（kg/ha）。必填输入为 SJD（pH）、JHX（交换性氢）、JLA（交换性铝）；`parcel_id` 可自动补 SJD。模型版本 `process_v1_20260801`。详见 [docs/api.md](docs/api.md) 酸化改良章节。
 
 ## 配置说明
 

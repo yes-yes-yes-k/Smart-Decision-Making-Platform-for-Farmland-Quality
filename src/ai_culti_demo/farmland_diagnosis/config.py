@@ -14,10 +14,13 @@ SECONDARY_REGION_MAP = {
 }
 
 # 标准指标码（按输出顺序）
-ALL_INDICATORS = ['SJD', 'YJZ', 'YXL', 'SXJ', 'TRRZ', 'GCZD', 'GGNL', 'PSNL', 'DXBW', 'ZDGX', 'YXTCHD', 'GCHD']
-CONTINUOUS_INDICATORS = ['SJD', 'YJZ', 'YXL', 'SXJ', 'TRRZ', 'YXTCHD', 'GCHD']
+ALL_INDICATORS = ['SJD', 'YJZ', 'YXL', 'SXJ', 'TRRZ', 'GCZD', 'GGNL', 'PSNL', 'DXBW', 'ZDGX', 'YXTCHD', 'GCHD', 'JHX', 'JLA']
+CONTINUOUS_INDICATORS = ['SJD', 'YJZ', 'YXL', 'SXJ', 'TRRZ', 'YXTCHD', 'GCHD', 'JHX', 'JLA']
 DISCRETE_INDICATORS = ['GCZD', 'GGNL', 'PSNL', 'DXBW', 'ZDGX']
 WEIGHTED_INDICATORS = ALL_INDICATORS  # 参与加权和障碍诊断
+
+# 酸化模型专用指标（非耕地质量评价必填，bulk_evaluate 中作为可选列）
+ACIDIFICATION_INDICATORS = ['JHX', 'JLA']
 
 # 离散指标中文值 → 代码（用于将 CSV 中的中文转为系数查找所需的代码）
 DISCRETE_CN_MAP = {
@@ -111,6 +114,8 @@ INDICATOR_DISPLAY_MAP = {
     'DXBW': '地形部位',
     'ZDGX': '质地构型',
     'GCHD': '耕层厚度',
+    'JHX': '交换性氢',
+    'JLA': '交换性铝',
 }
 
 # 综合等级划分（一级区 -> (边界, 等级标签)）

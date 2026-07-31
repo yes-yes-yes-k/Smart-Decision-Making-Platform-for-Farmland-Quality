@@ -31,7 +31,7 @@ def test_grade_config_exists():
     assert len(GRADE_CONFIG['HN'][0]) == 11  # 10 个边界 + inf
 
 def test_indicator_constants():
-    assert len(ALL_INDICATORS) == 12
+    assert len(ALL_INDICATORS) == 14
     assert set(CONTINUOUS_INDICATORS) | set(DISCRETE_INDICATORS) == set(ALL_INDICATORS)
     assert set(CONTINUOUS_INDICATORS) & set(DISCRETE_INDICATORS) == set()
 
@@ -403,14 +403,16 @@ def test_evaluate_acidification_flow():
         db_path = os.path.join(tmpdir, 'test.db')
         bulk_evaluate(csv_path, db_path)
         diagnose(db_path)  # 确保 is_ready 返回 True
+        # evaluate_acidification 已废弃，改用 calculate_acidification_amendment 按需计算；
+        # 调用仅返回 deprecated 状态，不再批量落库。
         result = evaluate_acidification(db_path)
 
-        assert result['status'] == 'ok'
-        assert result['evaluated'] == 1
+        assert result['status'] == 'deprecated'
 
+        # query_acidification 改为从 evaluation_results 取 SJD/JHX/JLA 调用新模型按需计算；
+        # 本 CSV 缺 JHX/JLA 列，DB 中也缺，应返回 not_ready 或 missing_input。
         query_result = query_acidification('0', db_path)
-        assert query_result['status'] == 'ok'
-        assert 'acidification' in query_result
+        assert query_result['status'] in ('not_ready', 'missing_input')
 
 def test_evaluate_acidification_uses_region_code():
     # 验证酸化评估按地块实际 region_code 分区，不恒回退 HN
@@ -423,16 +425,14 @@ def test_evaluate_acidification_uses_region_code():
         db_path = os.path.join(tmpdir, 'test.db')
         bulk_evaluate(csv_path, db_path)
         diagnose(db_path)
-        evaluate_acidification(db_path)
+        # 酸化改为按需计算，不再批量落库；evaluate_acidification 仅返回 deprecated。
+        result = evaluate_acidification(db_path)
+        assert result['status'] == 'deprecated'
 
-        # 直接查 evaluation_results 确认 region_code 为 CJ
+        # region_code 分区仍由 bulk_evaluate 正确处理，直接查 evaluation_results 确认 CJ。
         storage = DiagnosisStorage(db_path)
         eval_row = storage.get_evaluation('0')
         assert eval_row['region_code'] == 'CJ'
-        # CJ 区强酸性 pH=4.4 应触发改良
-        acid = storage.get_acidification('0')
-        assert acid is not None
-        assert acid['acidification_level'] == '强酸性'
 
 
 # Task 8: 跨模块/边界测试

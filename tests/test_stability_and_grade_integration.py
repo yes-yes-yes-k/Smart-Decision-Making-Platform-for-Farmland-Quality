@@ -376,13 +376,13 @@ class TestAgentRouting:
         assert "主要障碍因素" in out["answer"]
 
     def test_acidification_agent_handles_acidification_question(self):
-        """9.4 AcidificationRemediationAgent 处理酸化问题"""
+        """9.4 AcidificationRemediationAgent 处理酸化问题（过程模型 YTK/MBNT）"""
         from framework.agents.specialized.acidification_agent import AcidificationRemediationAgent
 
         out = AcidificationRemediationAgent().answer_question(
             "查询区域内农用地土壤酸化程度如何？", {})
         assert "answer" in out
-        assert "酸化" in out["answer"]
+        assert "亿土康" in out["answer"] or "木本泥炭" in out["answer"]
 
     def test_grade_agent_hint_when_parcel_code_missing(self):
         """10.7 实际模型可用但缺少地块代码时附加提示"""
@@ -407,17 +407,14 @@ class TestAgentRouting:
         assert "hint" in out or "need_input" in out
 
     def test_acidification_agent_hint_when_parcel_id_missing(self):
-        """10.7 AcidificationRemediationAgent 缺少 parcel_id 时附加提示"""
-        from framework.agents.specialized.acidification_agent import (
-            AcidificationRemediationAgent, ACIDIFICATION_MODEL_AVAILABLE
-        )
+        """10.7 AcidificationRemediationAgent 过程模型用 MOCK_INPUTS 兜底（不再需要 parcel_id 提示）"""
+        from framework.agents.specialized.acidification_agent import AcidificationRemediationAgent
 
-        if not ACIDIFICATION_MODEL_AVAILABLE:
-            pytest.skip("ACIDIFICATION_MODEL_AVAILABLE 为 False，跳过提示测试")
-
+        # 新过程模型 agent 用 MOCK_INPUTS 兜底，空 context 时直接计算 YTK/MBNT
         out = AcidificationRemediationAgent().answer_question(
             "我的田酸化了，pH是5.0，要施加多少碱性调理剂？", {})
-        assert "hint" in out or "need_input" in out
+        assert "answer" in out
+        assert "亿土康" in out["answer"] or "木本泥炭" in out["answer"]
 
 
 # ---------------------------------------------------------------------------

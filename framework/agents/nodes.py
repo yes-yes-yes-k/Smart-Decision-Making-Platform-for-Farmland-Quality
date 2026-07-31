@@ -241,7 +241,7 @@ def execute_models(state: MultiAgentState) -> MultiAgentState:
             "data": state.get("data", {}),
         }
         # 透传可能的土壤参数与区域/土地类型
-        for key in ("longitude", "latitude", "target_ph", "context", "land_type"):
+        for key in ("longitude", "latitude", "target_ph", "context", "land_type", "fertilizer_type"):
             if key in state["request"]:
                 context[key] = state["request"][key]
 

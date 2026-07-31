@@ -6,7 +6,7 @@ from typing import Optional, List, Dict, Any
 
 
 # 标准指标码（与 config.ALL_INDICATORS 一致，此处本地声明避免循环导入）
-_ALL_INDICATORS = ['SJD', 'YJZ', 'YXL', 'SXJ', 'TRRZ', 'GCZD', 'GGNL', 'PSNL', 'DXBW', 'ZDGX', 'YXTCHD', 'GCHD']
+_ALL_INDICATORS = ['SJD', 'YJZ', 'YXL', 'SXJ', 'TRRZ', 'GCZD', 'GGNL', 'PSNL', 'DXBW', 'ZDGX', 'YXTCHD', 'GCHD', 'JHX', 'JLA']
 _DISCRETE_INDICATORS = {'GCZD', 'GGNL', 'PSNL', 'DXBW', 'ZDGX'}
 
 

@@ -6,7 +6,7 @@ from .config import (
     REGION_MAP, SECONDARY_REGION_MAP,
     COEFFICIENTS, WEIGHTS, DISCRETE_CN_MAP, GRADE_CONFIG,
     ALL_INDICATORS, CONTINUOUS_INDICATORS, DISCRETE_INDICATORS, WEIGHTED_INDICATORS,
-    INDICATOR_DISPLAY_MAP, calc_obstacle_level,
+    INDICATOR_DISPLAY_MAP, ACIDIFICATION_INDICATORS, calc_obstacle_level,
 )
 from .storage import DiagnosisStorage
 
@@ -141,7 +141,8 @@ def bulk_evaluate(input_csv: str, output_db_path: str = None) -> Dict[str, Any]:
         df = pd.read_csv(input_csv, encoding='gbk')
 
     # CSV 直接使用标准码表头，不再 COLUMN_RENAME
-    required = ['YJNYQ', 'EJNYQ'] + ALL_INDICATORS
+    # 必填列：评价所需指标（排除酸化专用可选字段 JHX/JLA）
+    required = ['YJNYQ', 'EJNYQ'] + [i for i in ALL_INDICATORS if i not in ACIDIFICATION_INDICATORS]
     missing = [c for c in required if c not in df.columns]
     if missing:
         return {"status": "error", "message": f"Missing columns: {missing}"}

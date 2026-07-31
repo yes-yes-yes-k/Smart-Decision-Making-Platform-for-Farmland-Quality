@@ -283,6 +283,8 @@
 | `area_code` | string | 否 | 区域代码（默认 "lechang"，model-1/3/4 按 area_code 查 DB） |
 | `parcel_id` | string | 否 | 地块 ID（数字字符串，给 model-1/3/4 查 DB），农户端问题或 type 5 问题建议携带 |
 | `parcel_code` | string | 否 | 地块代码（字母数字，给 model-7 调 Fortran exe），type 5 质量等级评价必需 |
+| `land_type` | string | 否 | 土地利用类型（`upland` 旱地 / `paddy` 水田，默认 `upland`，酸化改良 model-4 使用，与 `fertilizer_type` 组合选择 4 子模型） |
+| `fertilizer_type` | string | 否 | 肥料类型（`compound` 复合肥 / `urea` 尿素，默认 `compound`，酸化改良 model-4 使用，与 `land_type` 组合选择 4 子模型） |
 | `context` | object | 否 | 专业模型参数 |
 
 context 参数说明：
@@ -341,6 +343,135 @@ context 参数说明：
 
 ---
 
+### 酸化改良（model-4，question_type=2）
+
+酸化改良模型已从规则导向（GB/T 42817-2023 石灰剂量）替换为**过程模型**（移植自模型5源码），按 `land_type` × `fertilizer_type` 组合选择 4 个子模型之一，计算亿土康（YTK）与木本泥炭（MBNT）需求量。
+
+#### 4 个子模型
+
+| land_type | fertilizer_type | sub_model 名称 |
+|-----------|-----------------|----------------|
+| `paddy`（水田） | `urea`（尿素） | `paddy_urea` |
+| `paddy`（水田） | `compound`（复合肥） | `paddy_compound` |
+| `upland`（旱地） | `urea`（尿素） | `upland_urea` |
+| `upland`（旱地） | `compound`（复合肥） | `upland_compound` |
+
+#### 输入参数
+
+模型输入通过 `context.data`（或 `context.task`）传递，`land_type` / `fertilizer_type` / `parcel_id` 也可在请求体顶层传递（顶层优先级高于 context）。
+
+**必填输入：**
+
+| 字段 | 类型 | 说明 |
+|------|------|------|
+| `SJD` | float | 土壤 pH 值（三普标准指标代码，对应 pHstart） |
+| `JHX` | float | 交换性氢（cmol/kg，对应 Hex） |
+| `JLA` | float | 交换性铝（cmol/kg，对应 Alex） |
+
+**可选输入：**
+
+| 字段 | 类型 | 默认值 | 说明 |
+|------|------|--------|------|
+| `land_type` | string | `upland` | 土地利用类型（`upland` 旱地 / `paddy` 水田），非法值回退 `upland` 并发 warning |
+| `fertilizer_type` | string | `compound` | 肥料类型（`compound` 复合肥 / `urea` 尿素），非法值回退 `compound` 并发 warning |
+| `parcel_id` | string | - | 地块 ID；当 `SJD` 缺失时自动从 DB 查询 SJD（基于 `evaluation_results` 表） |
+| `RPH` | float | 5.5 | 降水 pH 年均值（可配参数白名单） |
+| `R` | float | 1893.0 | 年降水量 mm（可配参数白名单） |
+| `Y` | float | 6700.0（旱地）/ 5109.0（水田） | 籽粒产量 kg/ha/yr（可配参数白名单） |
+| `S` | float | 6968.0（旱地）/ 5109.0（水田） | 秸秆产量 kg/ha/yr（可配参数白名单） |
+| `FertN` | float | 180.0 | 施肥量（以 N 计）kg/ha（可配参数白名单） |
+| `Ndep` | float | 47.6 | N 沉降 kg/ha（可配参数白名单） |
+| `pHtarget` | float | 6.0（旱地）/ 6.5（水田） | 目标 pH（可配参数白名单） |
+
+> 可配参数白名单为 `{RPH, R, Y, S, FertN, Ndep, pHtarget}`，覆盖后的值记入响应 `customized_params`；元素含量等内置参数不允许 API 覆盖。
+
+#### 响应字段
+
+`question_type=2` 时，`model_results.data.details["model-4"]` 返回 `acidification_detail` 对象：
+
+| 字段 | 类型 | 说明 |
+|------|------|------|
+| `acidification_detail.status` | string | 执行状态：`success` / `rejected` |
+| `acidification_detail.result.ytk` | float | 亿土康施用量（kg/ha），rejected 时为 `null` |
+| `acidification_detail.result.mbnt` | float | 木本泥炭施用量（kg/ha），rejected 时为 `null` |
+| `acidification_detail.result.sub_model` | string | 命中的子模型名称（如 `upland_compound`） |
+| `acidification_detail.result.customized_params` | object | API 覆盖的可配参数，空对象表示全用默认值 |
+| `acidification_detail.metadata.model_version` | string | 过程模型版本号（`process_v1_20260801`） |
+| `acidification_detail.metadata.warning` | string | 警告信息（如 land_type/fertilizer_type 非法回退），无警告时缺省 |
+| `acidification_detail.metadata.reason` | string | rejected 原因：`missing_input` / `input_out_of_range` / `cannot_get_ph` / `model_unavailable` |
+
+#### 响应示例（question_type=2 酸化改良）
+
+```json
+{
+    "status": "ok",
+    "data": {
+        "answer": "基于过程模型（upland_compound）计算，建议亿土康（YTK）施用量约 6413.6 kg/ha，木本泥炭（MBNT）约 11814.1 kg/ha（土地利用类型：upland，肥料类型：compound）。",
+        "sources": [],
+        "question_type": 2,
+        "model_results": {
+            "status": "ok",
+            "data": {
+                "question_type": 2,
+                "agents_invoked": ["model-4"],
+                "summary": "[model-4] 酸化改良：亿土康 6413.6 kg/ha, 木本泥炭 11814.1 kg/ha (upland_compound)",
+                "details": {
+                    "model-4": {
+                        "answer": "基于过程模型（upland_compound）计算，建议亿土康（YTK）施用量约 6413.6 kg/ha，木本泥炭（MBNT）约 11814.1 kg/ha（土地利用类型：upland，肥料类型：compound）。",
+                        "evidence": [
+                            {"metric": "ytk", "value": 6413.6, "unit": "kg/ha"},
+                            {"metric": "mbnt", "value": 11814.1, "unit": "kg/ha"},
+                            {"metric": "sub_model", "value": "upland_compound"},
+                            {"metric": "land_type", "value": "upland"},
+                            {"metric": "fertilizer_type", "value": "compound"}
+                        ],
+                        "confidence": 0.88,
+                        "acidification_detail": {
+                            "status": "success",
+                            "result": {
+                                "ytk": 6413.6,
+                                "mbnt": 11814.1,
+                                "sub_model": "upland_compound",
+                                "customized_params": {}
+                            },
+                            "metadata": {
+                                "model_version": "process_v1_20260801",
+                                "warning": null,
+                                "reason": null
+                            }
+                        },
+                        "simulated": false
+                    }
+                },
+                "recommendations": ["建议施用亿土康（YTK）约 6413.6 kg/ha 调节土壤酸度", "配合木本泥炭（MBNT）约 11814.1 kg/ha 提升有机质"]
+            }
+        },
+        "agents_invoked": ["model-4"],
+        "recommendations": ["建议施用亿土康（YTK）约 6413.6 kg/ha 调节土壤酸度", "配合木本泥炭（MBNT）约 11814.1 kg/ha 提升有机质"],
+        "message_id": 4
+    }
+}
+```
+
+#### rejected 响应示例（缺少必填输入）
+
+```json
+{
+    "acidification_detail": {
+        "status": "rejected",
+        "result": {"ytk": null, "mbnt": null, "sub_model": null, "customized_params": {}},
+        "metadata": {
+            "model_version": "process_v1_20260801",
+            "reason": "cannot_get_ph"
+        }
+    }
+}
+```
+
+> `reason` 取值：`missing_input`（SJD/JHX/JLA 任一缺失）、`input_out_of_range`（pHstart 不在 [3,10] 或 Hex/Alex < 0）、`cannot_get_ph`（parcel_id 查 DB 未取到 SJD）、`model_unavailable`（acidification 模块不可用，优雅降级）。
+
+---
+
 ## 模型接口
 
 ### 获取可用模型列表
@@ -355,7 +486,7 @@ context 参数说明：
         {"name": "spatial-structure-analysis", "description": "按区域、类型和图层组织县域耕地质量空间结构，用于总览和空间分区研判。"},
         {"name": "soil-indicator-analysis", "description": "围绕 pH、有机质和养分等关键指标做多维占位解析，用于支撑专题判断。"},
         {"name": "obstacle-factor-identification", "description": "基于耕地质量评价结果，识别限制耕地质量提升的主要障碍因素，判定障碍类型（单一障碍/多障碍），并输出分级治理方向。"},
-        {"name": "acidification-governance", "description": "对酸化问题进行分区识别、治理需求分析和改良措施匹配，生成针对性的酸化改良方案。"},
+        {"name": "acidification-governance", "description": "基于过程模型（4 子模型：水田/旱地 × 尿素/复合肥）计算酸化改良剂需求，输出亿土康（YTK）与木本泥炭（MBNT）施用量。"},
         {"name": "organic-matter-improvement", "description": "对有机质不足问题进行占位识别、提升需求分析和措施匹配。"},
         {"name": "stability-risk-evaluation", "description": "基于3期历史数据，通过九模块综合评价耕地质量稳定性和退化风险。"},
         {"name": "quality-grade-evaluation", "description": "通过Fortran exe进行耕地质量等级评价，输出12指标原始值/隶属度、综合指数、质量等级和障碍度排序。"},

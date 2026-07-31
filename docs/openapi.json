@@ -271,6 +271,18 @@
                     "type": "string",
                     "description": "地块代码（字母数字，给 model-7 调 Fortran exe），type 5 质量等级评价必需",
                     "example": "A0001"
+                  },
+                  "land_type": {
+                    "type": "string",
+                    "enum": ["upland", "paddy"],
+                    "description": "土地利用类型（酸化改良模型 model-4 使用，与 fertilizer_type 组合选择 4 子模型）",
+                    "default": "upland"
+                  },
+                  "fertilizer_type": {
+                    "type": "string",
+                    "enum": ["compound", "urea"],
+                    "description": "肥料类型（酸化改良模型 model-4 使用，与 land_type 组合选择 4 子模型）",
+                    "default": "compound"
                   }
                 },
                 "required": ["message"]
@@ -307,7 +319,7 @@
                         "answer": {
                           "type": "string",
                           "description": "综合回答内容",
-                          "example": "根据评估结果，建议施用石灰..."
+                          "example": "基于过程模型（upland_compound）计算，建议亿土康（YTK）施用量约 6413.6 kg/ha，木本泥炭（MBNT）约 11814.1 kg/ha..."
                         },
                         "sources": {
                           "type": "array",
@@ -331,7 +343,7 @@
                             "type": "string"
                           },
                           "description": "调用的智能体ID列表（1:1 映射，仅含单一模型），仅在触发多智能体时返回",
-                          "example": ["model-7"]
+                          "example": ["model-4"]
                         },
                         "recommendations": {
                           "type": "array",
@@ -339,7 +351,7 @@
                             "type": "string"
                           },
                           "description": "综合建议列表，仅在触发多智能体时返回",
-                          "example": ["建议施用石灰50kg/亩调节土壤酸度", "增施有机肥提升有机质含量"]
+                          "example": ["建议施用亿土康（YTK）约 6413.6 kg/ha 调节土壤酸度", "配合木本泥炭（MBNT）约 11814.1 kg/ha 提升有机质"]
                         }
                       }
                     }
@@ -1521,7 +1533,7 @@
               "question_type": {
                 "type": "integer",
                 "description": "问题类型（1-5），用于路由到对应单一专业智能体",
-                "example": 5
+                "example": 2
               },
               "agents_invoked": {
                 "type": "array",
@@ -1529,11 +1541,12 @@
                   "type": "string"
                 },
                 "description": "调用的智能体ID列表（1:1 映射，仅含单一模型）",
-                "example": ["model-7"]
+                "example": ["model-4"]
               },
               "summary": {
                 "type": "string",
-                "description": "多智能体综合摘要"
+                "description": "多智能体综合摘要",
+                "example": "[model-4] 酸化改良：亿土康 6413.6 kg/ha, 木本泥炭 11814.1 kg/ha (upland_compound)"
               },
               "details": {
                 "type": "object",
@@ -1548,13 +1561,67 @@
                     "evidence": {
                       "type": "array",
                       "items": {
-                        "type": "string"
+                        "type": "object"
                       },
-                      "description": "证据列表"
+                      "description": "证据列表（酸化改良包含 ytk/mbnt/sub_model/land_type/fertilizer_type 指标）"
                     },
                     "confidence": {
                       "type": "number",
                       "description": "置信度(0-1)"
+                    },
+                    "acidification_detail": {
+                      "type": "object",
+                      "description": "酸化改良（model-4）过程模型详细结果，仅 question_type=2 时返回",
+                      "properties": {
+                        "status": {
+                          "type": "string",
+                          "description": "执行状态：success / rejected",
+                          "example": "success"
+                        },
+                        "result": {
+                          "type": "object",
+                          "properties": {
+                            "ytk": {
+                              "type": "number",
+                              "description": "亿土康施用量（kg/ha）",
+                              "example": 6413.6
+                            },
+                            "mbnt": {
+                              "type": "number",
+                              "description": "木本泥炭施用量（kg/ha）",
+                              "example": 11814.1
+                            },
+                            "sub_model": {
+                              "type": "string",
+                              "description": "命中的子模型名称：paddy_urea / paddy_compound / upland_urea / upland_compound",
+                              "example": "upland_compound"
+                            },
+                            "customized_params": {
+                              "type": "object",
+                              "description": "API 覆盖的可配参数（RPH/R/Y/S/FertN/Ndep/pHtarget），空对象表示使用默认值",
+                              "example": {}
+                            }
+                          }
+                        },
+                        "metadata": {
+                          "type": "object",
+                          "properties": {
+                            "model_version": {
+                              "type": "string",
+                              "description": "过程模型版本号",
+                              "example": "process_v1_20260801"
+                            },
+                            "warning": {
+                              "type": "string",
+                              "description": "警告信息（如 land_type/fertilizer_type 非法回退），无警告时缺省"
+                            },
+                            "reason": {
+                              "type": "string",
+                              "description": "rejected 原因：missing_input / input_out_of_range / cannot_get_ph / model_unavailable"
+                            }
+                          }
+                        }
+                      }
                     }
                   }
                 }
