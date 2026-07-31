@@ -1,8 +1,8 @@
 ## 1. 字段标准码新增
 
-- [ ] 1.1 在 `src/ai_culti_demo/farmland_diagnosis/config.py` 的 `ALL_INDICATORS` 列表新增 `JHX`（交换性氢）和 `JLA`（交换性铝）
-- [ ] 1.2 在 `CONTINUOUS_INDICATORS` 列表新增 `JHX` 和 `JLA`（两者均为连续指标）
-- [ ] 1.3 在 `INDICATOR_DISPLAY_MAP` 新增 `'JHX': '交换性氢'` 和 `'JLA': '交换性铝'` 映射
+- [x] 1.1 在 `src/ai_culti_demo/farmland_diagnosis/config.py` 的 `ALL_INDICATORS` 列表新增 `JHX`（交换性氢）和 `JLA`（交换性铝）
+- [x] 1.2 在 `CONTINUOUS_INDICATORS` 列表新增 `JHX` 和 `JLA`（两者均为连续指标）
+- [x] 1.3 在 `INDICATOR_DISPLAY_MAP` 新增 `'JHX': '交换性氢'` 和 `'JLA': '交换性铝'` 映射
 
 ## 2. 过程模型核心实现
 

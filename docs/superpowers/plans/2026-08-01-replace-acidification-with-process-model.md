@@ -62,7 +62,7 @@ Task 1 (字段标准码) ──► Task 2 (过程模型核心) ──► Task 3 
 
 **验证标准:** `JHX`/`JLA` 同时出现在 `ALL_INDICATORS` 与 `CONTINUOUS_INDICATORS`；`INDICATOR_DISPLAY_MAP` 含两条映射；`storage._ALL_INDICATORS` 与 `config.ALL_INDICATORS` 一致；现有 `calc_obstacle_level` 不为 JHX/JLA 报错（落入 else → nan）。
 
-- [ ] **Step 1: 编写失败测试**
+- [x] **Step 1: 编写失败测试**
 
 ```python
 # tests/test_config_indicators.py
@@ -84,12 +84,12 @@ def test_storage_all_indicators_matches_config():
     assert _ALL_INDICATORS == ALL_INDICATORS
 ```
 
-- [ ] **Step 2: 运行测试确认失败**
+- [x] **Step 2: 运行测试确认失败**
 
 Run: `python -m pytest tests/test_config_indicators.py -v`
 Expected: FAIL（`JHX` not in `ALL_INDICATORS`）
 
-- [ ] **Step 3: 修改 config.py**
+- [x] **Step 3: 修改 config.py**
 
 在 `ALL_INDICATORS` 末尾追加 `'JHX', 'JLA'`；在 `CONTINUOUS_INDICATORS` 末尾追加 `'JHX', 'JLA'`；在 `INDICATOR_DISPLAY_MAP` 末尾追加：
 
@@ -100,23 +100,23 @@ Expected: FAIL（`JHX` not in `ALL_INDICATORS`）
 }
 ```
 
-- [ ] **Step 4: 同步 storage.py 的 `_ALL_INDICATORS`**
+- [x] **Step 4: 同步 storage.py 的 `_ALL_INDICATORS`**
 
 ```python
 _ALL_INDICATORS = ['SJD', 'YJZ', 'YXL', 'SXJ', 'TRRZ', 'GCZD', 'GGNL', 'PSNL', 'DXBW', 'ZDGX', 'YXTCHD', 'GCHD', 'JHX', 'JLA']
 ```
 
-- [ ] **Step 5: 运行测试确认通过**
+- [x] **Step 5: 运行测试确认通过**
 
 Run: `python -m pytest tests/test_config_indicators.py -v`
 Expected: PASS
 
-- [ ] **Step 6: 回归现有 config 测试**
+- [x] **Step 6: 回归现有 config 测试**
 
 Run: `python -m pytest tests/ -k "config or indicator or obstacle" -v`
 Expected: 无新增失败（`calc_obstacle_level` 对 JHX/JLA 走 else 返回 nan，不报错）
 
-- [ ] **Step 7: Commit**
+- [x] **Step 7: Commit**
 
 ```bash
 git add src/ai_culti_demo/farmland_diagnosis/config.py src/ai_culti_demo/farmland_diagnosis/storage.py tests/test_config_indicators.py
