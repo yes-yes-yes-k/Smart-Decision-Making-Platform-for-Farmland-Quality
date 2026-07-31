@@ -468,7 +468,7 @@ git commit -m "refactor(model-3): config.py 字段命名对齐标准码，新增
 - Consumes: 无（Task 1 的常量此处不直接使用）
 - Produces: `DiagnosisStorage`，其 `evaluation_results` 表列名为标准码（`SJD`/`YJZ`/.../`SJDLSD`/.../`ZHQZ`/`GDZLDJ`/`region_code`/`secondary_region_code`/`parcel_id`/时间戳）；`diagnosis_results` 表含 `ZALX`/`ZYZAYS`/`CYZAYS` 及各 `xxxZADJ`(TEXT)/`xxxZAD`(REAL)；`acidification_results` 表不变。`save_evaluation`/`save_diagnosis` 适配新列；`get_diagnosis` 不再对 `ZYZAYS`/`CYZAYS` 做 JSON loads（直接 TEXT）；`get_acidification` 的 `measures` 仍 JSON loads。
 
-- [ ] **Step 1: 更新 storage 测试为标准码字段（红）**
+- [x] **Step 1: 更新 storage 测试为标准码字段（红）**
 
 把 `tests/test_farmland_diagnosis.py` 中 storage 测试段改为：
 
@@ -593,12 +593,12 @@ def test_storage_is_ready():
         assert storage.is_ready()
 ```
 
-- [ ] **Step 2: 运行 storage 测试确认失败**
+- [x] **Step 2: 运行 storage 测试确认失败**
 
 Run: `pytest tests/test_farmland_diagnosis.py -k "storage" -v`
 Expected: FAIL（列名不存在 / save_evaluation 字段不匹配）
 
-- [ ] **Step 3: 重写 storage.py 表结构与 CRUD（绿）**
+- [x] **Step 3: 重写 storage.py 表结构与 CRUD（绿）**
 
 用以下内容完整替换 `src/ai_culti_demo/farmland_diagnosis/storage.py`：
 
@@ -834,7 +834,7 @@ class DiagnosisStorage:
         return eval_exists and diag_exists and eval_count > 0 and diag_count > 0
 ```
 
-- [ ] **Step 4: 删除旧 DB 文件以触发重建**
+- [x] **Step 4: 删除旧 DB 文件以触发重建**
 
 旧库列名与新 schema 不兼容，需删除现存 `farmland_diagnosis.db`（位于 `data/farmland_diagnosis/` 下；测试用 tempfile 不受影响）。执行：
 
@@ -844,12 +844,12 @@ python -c "import os; p='data/farmland_diagnosis/farmland_diagnosis.db'; os.remo
 
 Expected: 输出 `no db to remove` 或无输出（已删除）。注意：本步骤仅清理本地开发库；生产部署时由 `create_tables` 重建。
 
-- [ ] **Step 5: 运行 storage 测试确认通过**
+- [x] **Step 5: 运行 storage 测试确认通过**
 
 Run: `pytest tests/test_farmland_diagnosis.py -k "storage" -v`
 Expected: PASS
 
-- [ ] **Step 6: 提交**
+- [x] **Step 6: 提交**
 
 ```bash
 git add src/ai_culti_demo/farmland_diagnosis/storage.py tests/test_farmland_diagnosis.py
