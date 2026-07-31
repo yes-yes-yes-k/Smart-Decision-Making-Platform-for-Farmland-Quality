@@ -1,8 +1,8 @@
 ## 1. SG 模型训练数据准备
 
-- [ ] 1.1 将韶关旱地 Dose 预切分数据（`SG旱地-Dose-RF_Manual_splits.xlsx`）复制到 `data/fertility/` 目录
-- [ ] 1.2 将韶关水田 Dose 预切分数据（`SG水田-Dose-RF_Manual_splits.xlsx`）复制到 `data/fertility/` 目录
-- [ ] 1.3 检查水田模型训练样本量和特征列，确认与旱地一致（pH/SOMbe/TN/TP/TK/AP/AK/Gap/Fertilizer type）
+- [x] 1.1 将韶关旱地 Dose 预切分数据（`SG旱地-Dose-RF_Manual_splits.xlsx`）复制到 `data/fertility/` 目录
+- [x] 1.2 将韶关水田 Dose 预切分数据（`SG水田-Dose-RF_Manual_splits.xlsx`）复制到 `data/fertility/` 目录
+- [x] 1.3 检查水田模型训练样本量和特征列，确认与旱地一致（pH/SOMbe/TN/TP/TK/AP/AK/Gap/Fertilizer type）
 
 ## 2. 扩展训练脚本支持 SG RF 模型
 

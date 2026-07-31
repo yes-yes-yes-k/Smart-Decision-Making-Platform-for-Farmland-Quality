@@ -57,19 +57,19 @@ base-ref: 8e0dbc8a01730495c0a1d0e21165e0346ce775c5
 - Consumes: 源文件 `D:\destkop\SG-旱地和水田-Dose预测模型\SG-旱地和水田-Dose预测模型\SG旱地-Dose-RF_Manual_splits.xlsx` 与 `SG水田-Dose-RF_Manual_splits.xlsx`
 - Produces: `data/fertility/` 下两个 xlsx，供 Task 2/3 训练脚本读取
 
-- [ ] **Step 1: 复制韶关旱地数据**
+- [x] **Step 1: 复制韶关旱地数据**
 
 ```powershell
 Copy-Item "D:\destkop\SG-旱地和水田-Dose预测模型\SG-旱地和水田-Dose预测模型\SG旱地-Dose-RF_Manual_splits.xlsx" "d:\17417\Documents\agent_culti_demo\data\fertility\SG旱地-Dose-RF_Manual_splits.xlsx" -Force
 ```
 
-- [ ] **Step 2: 复制韶关水田数据**
+- [x] **Step 2: 复制韶关水田数据**
 
 ```powershell
 Copy-Item "D:\destkop\SG-旱地和水田-Dose预测模型\SG-旱地和水田-Dose预测模型\SG水田-Dose-RF_Manual_splits.xlsx" "d:\17417\Documents\agent_culti_demo\data\fertility\SG水田-Dose-RF_Manual_splits.xlsx" -Force
 ```
 
-- [ ] **Step 3: 验证文件存在与大小**
+- [x] **Step 3: 验证文件存在与大小**
 
 ```powershell
 Get-ChildItem "d:\17417\Documents\agent_culti_demo\data\fertility\SG*.xlsx" | Select-Object Name, Length
@@ -77,7 +77,7 @@ Get-ChildItem "d:\17417\Documents\agent_culti_demo\data\fertility\SG*.xlsx" | Se
 
 预期：两个文件均存在，旱地 ~20924 字节、水田 ~138812 字节。
 
-- [ ] **Step 4: 验证 xlsx sheet 结构与特征列**
+- [x] **Step 4: 验证 xlsx sheet 结构与特征列**
 
 ```powershell
 python -c "import pandas as pd; xl=pd.ExcelFile(r'data\fertility\SG旱地-Dose-RF_Manual_splits.xlsx'); print('旱地 sheets:', xl.sheet_names); df=pd.read_excel(xl, sheet_name=xl.sheet_names[0]); print('旱地 Xtrain 列:', list(df.columns)); print('旱地 Xtrain 样本数:', len(df))"
@@ -86,7 +86,7 @@ python -c "import pandas as pd; xl=pd.ExcelFile(r'data\fertility\SG水田-Dose-R
 
 预期：两个 xlsx 均含 Xtrain/Xtest/Ytrain/Ytest 四个 sheet（容错大小写/空格）；特征列含 `pH, SOMbe, TN, TP, TK, AP, AK, Gap, Fertilizer type`（9 个，无 Dose 自身）；旱地 Xtrain 样本数 ~185，水田样本数记录待确认（若水田 <30 则后续 Task 5 需触发低置信度提示）。
 
-- [ ] **Step 5: 提交**
+- [x] **Step 5: 提交**
 
 ```bash
 git add "data/fertility/SG旱地-Dose-RF_Manual_splits.xlsx" "data/fertility/SG水田-Dose-RF_Manual_splits.xlsx"
