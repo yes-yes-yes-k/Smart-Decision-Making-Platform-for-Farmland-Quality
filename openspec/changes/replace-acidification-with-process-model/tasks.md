@@ -6,13 +6,13 @@
 
 ## 2. 过程模型核心实现
 
-- [ ] 2.1 在 `src/ai_culti_demo/farmland_diagnosis/acidification.py` 实现4个过程子模型函数：`paddy_urea`、`paddy_compound`、`upland_urea`、`upland_compound`（移植自模型5源码 02_酸化模型计算-地块.py）
-- [ ] 2.2 实现统一入口函数 `calculate_acidification_amendment(pHstart, Hex, Alex, land_type, fertilizer_type, **optional_params)` → 返回 `{ytk, mbnt, sub_model, ...}`
-- [ ] 2.3 定义4个子模型的默认参数集合（DEFAULT_PARAMS），包含 RPH/R/Y/S/元素含量/FertN/Ndep/pHtarget 等~15个参数
-- [ ] 2.4 实现可选参数覆盖逻辑：API 传入的可选参数（RPH/R/Y/S/FertN/Ndep/pHtarget）覆盖默认值，元素含量参数（Yp/Yk/Yca/Ymg/Sp/Sk/Sca/Smg/YN/SN）保持内置
-- [ ] 2.5 实现输入校验：SJD 范围 [3.0, 10.0]、JHX/JLA 非负；越界返回 `status="rejected"` + 越界字段列表
-- [ ] 2.6 实现子模型选择逻辑：land_type × fertilizer_type → 4子模型之一；非法值回退默认（upland + compound）并追加 warning
-- [ ] 2.7 保留旧函数 `classify_acidification`/`generate_amendment`/`calculate_lime_demand` 标记为 deprecated（不删除，避免破坏其他引用），但 `query_acidification`/`evaluate_acidification` 改为委托新模型或标记 deprecated
+- [x] 2.1 在 `src/ai_culti_demo/farmland_diagnosis/acidification.py` 实现4个过程子模型函数：`paddy_urea`、`paddy_compound`、`upland_urea`、`upland_compound`（移植自模型5源码 02_酸化模型计算-地块.py）
+- [x] 2.2 实现统一入口函数 `calculate_acidification_amendment(pHstart, Hex, Alex, land_type, fertilizer_type, **optional_params)` → 返回 `{ytk, mbnt, sub_model, ...}`
+- [x] 2.3 定义4个子模型的默认参数集合（DEFAULT_PARAMS），包含 RPH/R/Y/S/元素含量/FertN/Ndep/pHtarget 等~15个参数
+- [x] 2.4 实现可选参数覆盖逻辑：API 传入的可选参数（RPH/R/Y/S/FertN/Ndep/pHtarget）覆盖默认值，元素含量参数（Yp/Yk/Yca/Ymg/Sp/Sk/Sca/Smg/YN/SN）保持内置不可配
+- [x] 2.5 实现输入校验：SJD 范围 [3.0, 10.0]、JHX/JLA 非负；越界返回 `status="rejected"` + 越界字段列表
+- [x] 2.6 实现子模型选择逻辑：land_type × fertilizer_type → 4子模型之一；非法值回退默认（upland + compound）并追加 warning
+- [x] 2.7 保留旧函数 `classify_acidification`/`generate_amendment`/`calculate_lime_demand` 标记为 deprecated（不删除，避免破坏其他引用），但 `query_acidification`/`evaluate_acidification` 改为委托新模型或标记 deprecated
 
 ## 3. model_4.py 入口实现
 

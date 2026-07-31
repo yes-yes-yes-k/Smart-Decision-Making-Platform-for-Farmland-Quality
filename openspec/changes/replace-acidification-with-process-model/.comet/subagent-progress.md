@@ -12,7 +12,7 @@ Plan commit (BASE for Task 1): b9cefe6
 | Task | Status | Stage | Commits | Risk | Review | Notes |
 |------|--------|-------|---------|------|--------|-------|
 | 1 | complete | done | 26c79d4, 85ac287 | hit (DONE_WITH_CONCERNS) | Approved | 字段标准码 JHX/JLA + bulk_evaluate 回归修复；review 通过 |
-| 2 | pending | - | - | - | - | 过程模型核心 |
+| 2 | complete | done | 8951b4f, 7a6eca7, aa294fe | hit (multi) | Approved | 4子模型偏差<1e-9；I1/I2测试缺口已补；W1/W2/W3 controller 已确认 |
 | 3 | pending | - | - | - | - | model_4 入口 |
 | 4 | pending | - | - | - | - | Agent 适配 |
 | 5 | pending | - | - | - | - | API 透传 |
@@ -33,9 +33,9 @@ Plan commit (BASE for Task 1): b9cefe6
 
 ## Current Task Checkpoint
 
-- Task: 2 (过程模型核心实现)
-- Stage: pending-dispatch
-- Implementer dispatch BASE: 85ac287
-- RED/GREEN evidence: pending
-- Risk signals hit: 待 implementer 自报（预期命中：单任务 diff 可能超 200 行、跨模块）
+- Task: 3 (model_4.py 入口实现)
+- Stage: dispatching
+- Implementer dispatch BASE: aa294fe
+- Plan: docs/superpowers/plans/2026-08-01-replace-acidification-with-process-model.md Task 3
+- Brief: .superpowers/sdd/task-3-brief.md
 - Review round (standard, risk tasks only): 0/1
