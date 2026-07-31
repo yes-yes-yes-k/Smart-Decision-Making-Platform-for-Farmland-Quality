@@ -111,14 +111,14 @@ def test_storage_save_and_get_evaluation():
             'parcel_id': 'test-001',
             'region_code': 'HN',
             'secondary_region_code': 'MNY',
-            'PH': 6.5, 'YJ': 25, 'YXP': 30, 'SXK': 150, 'RZ': 1.2,
-            'GZ': 'RT', 'GG': 'FS', 'PS': 'CM', 'DX': 'PLT', 'ZD': 'TLBC',
-            'YXT': 100, 'GCH': 20,
-            'PH_LD': 1.0, 'YJ_LD': 1.0, 'YXP_LD': 0.8, 'SXK_LD': 0.8, 'RZ_LD': 1.0,
-            'GZ_LD': 1.0, 'GG_LD': 1.0, 'PS_LD': 1.0, 'DX_LD': 1.0, 'ZD_LD': 1.0,
-            'YXT_LD': 1.0, 'GCH_LD': 1.0,
-            'composite_weight': 0.85,
-            'grade': '3'
+            'SJD': 6.5, 'YJZ': 25, 'YXL': 30, 'SXJ': 150, 'TRRZ': 1.2,
+            'GCZD': 'RT', 'GGNL': 'FS', 'PSNL': 'CM', 'DXBW': 'PLT', 'ZDGX': 'TLBC',
+            'YXTCHD': 100, 'GCHD': 20,
+            'SJDLSD': 1.0, 'YJZLSD': 1.0, 'YXLLSD': 0.8, 'SXJLSD': 0.8, 'TRRZLSD': 1.0,
+            'GCZDLSD': 1.0, 'GGNLLSD': 1.0, 'PSNLLSD': 1.0, 'DXBWLSD': 1.0, 'ZDGXLSD': 1.0,
+            'YXTCHDLSD': 1.0, 'GCHDLSD': 1.0,
+            'ZHQZ': 0.85,
+            'GDZLDJ': '3',
         }
 
         count = storage.save_evaluation([record])
@@ -127,7 +127,9 @@ def test_storage_save_and_get_evaluation():
         result = storage.get_evaluation('test-001')
         assert result is not None
         assert result['parcel_id'] == 'test-001'
-        assert result['PH'] == 6.5
+        assert result['SJD'] == 6.5
+        assert result['ZHQZ'] == 0.85
+        assert result['GDZLDJ'] == '3'
 
 def test_storage_save_and_get_diagnosis():
     with tempfile.TemporaryDirectory() as tmpdir:
@@ -138,30 +140,34 @@ def test_storage_save_and_get_diagnosis():
         eval_record = {
             'parcel_id': 'test-001',
             'region_code': 'HN', 'secondary_region_code': 'MNY',
-            'PH': 5.0, 'YJ': 25, 'YXP': 30, 'SXK': 150, 'RZ': 1.2,
-            'GZ': 'RT', 'GG': 'FS', 'PS': 'CM', 'DX': 'PLT', 'ZD': 'TLBC',
-            'YXT': 100, 'GCH': 20,
-            'PH_LD': 0.5, 'YJ_LD': 1.0, 'YXP_LD': 0.8, 'SXK_LD': 0.8, 'RZ_LD': 1.0,
-            'GZ_LD': 1.0, 'GG_LD': 1.0, 'PS_LD': 1.0, 'DX_LD': 1.0, 'ZD_LD': 1.0,
-            'YXT_LD': 1.0, 'GCH_LD': 1.0,
-            'composite_weight': 0.85, 'grade': '3'
+            'SJD': 5.0, 'YJZ': 25, 'YXL': 30, 'SXJ': 150, 'TRRZ': 1.2,
+            'GCZD': 'RT', 'GGNL': 'FS', 'PSNL': 'CM', 'DXBW': 'PLT', 'ZDGX': 'TLBC',
+            'YXTCHD': 100, 'GCHD': 20,
+            'SJDLSD': 0.5, 'YJZLSD': 1.0, 'YXLLSD': 0.8, 'SXJLSD': 0.8, 'TRRZLSD': 1.0,
+            'GCZDLSD': 1.0, 'GGNLLSD': 1.0, 'PSNLLSD': 1.0, 'DXBWLSD': 1.0, 'ZDGXLSD': 1.0,
+            'YXTCHDLSD': 1.0, 'GCHDLSD': 1.0,
+            'ZHQZ': 0.85, 'GDZLDJ': '3',
         }
         storage.save_evaluation([eval_record])
 
         diag_record = {
             'parcel_id': 'test-001',
-            'obstacle_type': '单一障碍',
-            'main_factors': ['pH(中度障碍, 25.0%)'],
-            'secondary_factors': [],
-            'PH_obstacle_level': '中度障碍',
-            'PH_obstacle_degree': 0.25
+            'ZALX': '单一障碍',
+            'ZYZAYS': 'pH(中度酸化, 25.0%)',
+            'CYZAYS': '无',
+            'SJDZADJ': '中度酸化',
+            'SJDZAD': 0.25,
         }
         storage.save_diagnosis([diag_record])
 
         result = storage.get_diagnosis('test-001')
         assert result is not None
-        assert result['obstacle_type'] == '单一障碍'
-        assert result['main_factors'] == ['pH(中度障碍, 25.0%)']
+        assert result['ZALX'] == '单一障碍'
+        # ZYZAYS/CYZAYS 是 TEXT 字符串，不再是 JSON list
+        assert result['ZYZAYS'] == 'pH(中度酸化, 25.0%)'
+        assert result['CYZAYS'] == '无'
+        assert result['SJDZADJ'] == '中度酸化'
+        assert result['SJDZAD'] == 0.25
 
 def test_storage_is_ready():
     with tempfile.TemporaryDirectory() as tmpdir:
@@ -174,19 +180,19 @@ def test_storage_is_ready():
 
         eval_record = {
             'parcel_id': 'test-001', 'region_code': 'HN', 'secondary_region_code': 'MNY',
-            'PH': 6.5, 'YJ': 25, 'YXP': 30, 'SXK': 150, 'RZ': 1.2,
-            'GZ': 'RT', 'GG': 'FS', 'PS': 'CM', 'DX': 'PLT', 'ZD': 'TLBC',
-            'YXT': 100, 'GCH': 20,
-            'PH_LD': 1.0, 'YJ_LD': 1.0, 'YXP_LD': 0.8, 'SXK_LD': 0.8, 'RZ_LD': 1.0,
-            'GZ_LD': 1.0, 'GG_LD': 1.0, 'PS_LD': 1.0, 'DX_LD': 1.0, 'ZD_LD': 1.0,
-            'YXT_LD': 1.0, 'GCH_LD': 1.0,
-            'composite_weight': 0.85, 'grade': '3'
+            'SJD': 6.5, 'YJZ': 25, 'YXL': 30, 'SXJ': 150, 'TRRZ': 1.2,
+            'GCZD': 'RT', 'GGNL': 'FS', 'PSNL': 'CM', 'DXBW': 'PLT', 'ZDGX': 'TLBC',
+            'YXTCHD': 100, 'GCHD': 20,
+            'SJDLSD': 1.0, 'YJZLSD': 1.0, 'YXLLSD': 0.8, 'SXJLSD': 0.8, 'TRRZLSD': 1.0,
+            'GCZDLSD': 1.0, 'GGNLLSD': 1.0, 'PSNLLSD': 1.0, 'DXBWLSD': 1.0, 'ZDGXLSD': 1.0,
+            'YXTCHDLSD': 1.0, 'GCHDLSD': 1.0,
+            'ZHQZ': 0.85, 'GDZLDJ': '3',
         }
         storage.save_evaluation([eval_record])
 
         diag_record = {
-            'parcel_id': 'test-001', 'obstacle_type': '无明显障碍',
-            'main_factors': [], 'secondary_factors': []
+            'parcel_id': 'test-001', 'ZALX': '无明显障碍',
+            'ZYZAYS': '', 'CYZAYS': '无',
         }
         storage.save_diagnosis([diag_record])
 
