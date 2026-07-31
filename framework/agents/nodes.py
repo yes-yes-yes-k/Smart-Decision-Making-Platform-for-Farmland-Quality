@@ -240,8 +240,8 @@ def execute_models(state: MultiAgentState) -> MultiAgentState:
             "area_code": state["request"].get("area_code", "lechang"),
             "data": state.get("data", {}),
         }
-        # 透传可能的土壤参数
-        for key in ("longitude", "latitude", "target_ph", "context"):
+        # 透传可能的土壤参数与区域/土地类型
+        for key in ("longitude", "latitude", "target_ph", "context", "land_type"):
             if key in state["request"]:
                 context[key] = state["request"][key]
 

@@ -6,7 +6,7 @@ base-ref: 8e0dbc8a01730495c0a1d0e21165e0346ce775c5
 
 # 韶关区域肥力 Dose RF 模型集成 实施计划
 
-> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
+> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [x]`) syntax for tracking.
 
 **Goal:** 在不破坏现有全局 ETR 模型行为的前提下，为韶关区域（area_code="lechang"）接入按旱地/水田分别训练的 RandomForestRegressor Dose 预测模型，SOC 仍回退全局 ETR。
 
@@ -57,19 +57,19 @@ base-ref: 8e0dbc8a01730495c0a1d0e21165e0346ce775c5
 - Consumes: 源文件 `D:\destkop\SG-旱地和水田-Dose预测模型\SG-旱地和水田-Dose预测模型\SG旱地-Dose-RF_Manual_splits.xlsx` 与 `SG水田-Dose-RF_Manual_splits.xlsx`
 - Produces: `data/fertility/` 下两个 xlsx，供 Task 2/3 训练脚本读取
 
-- [ ] **Step 1: 复制韶关旱地数据**
+- [x] **Step 1: 复制韶关旱地数据**
 
 ```powershell
 Copy-Item "D:\destkop\SG-旱地和水田-Dose预测模型\SG-旱地和水田-Dose预测模型\SG旱地-Dose-RF_Manual_splits.xlsx" "d:\17417\Documents\agent_culti_demo\data\fertility\SG旱地-Dose-RF_Manual_splits.xlsx" -Force
 ```
 
-- [ ] **Step 2: 复制韶关水田数据**
+- [x] **Step 2: 复制韶关水田数据**
 
 ```powershell
 Copy-Item "D:\destkop\SG-旱地和水田-Dose预测模型\SG-旱地和水田-Dose预测模型\SG水田-Dose-RF_Manual_splits.xlsx" "d:\17417\Documents\agent_culti_demo\data\fertility\SG水田-Dose-RF_Manual_splits.xlsx" -Force
 ```
 
-- [ ] **Step 3: 验证文件存在与大小**
+- [x] **Step 3: 验证文件存在与大小**
 
 ```powershell
 Get-ChildItem "d:\17417\Documents\agent_culti_demo\data\fertility\SG*.xlsx" | Select-Object Name, Length
@@ -77,7 +77,7 @@ Get-ChildItem "d:\17417\Documents\agent_culti_demo\data\fertility\SG*.xlsx" | Se
 
 预期：两个文件均存在，旱地 ~20924 字节、水田 ~138812 字节。
 
-- [ ] **Step 4: 验证 xlsx sheet 结构与特征列**
+- [x] **Step 4: 验证 xlsx sheet 结构与特征列**
 
 ```powershell
 python -c "import pandas as pd; xl=pd.ExcelFile(r'data\fertility\SG旱地-Dose-RF_Manual_splits.xlsx'); print('旱地 sheets:', xl.sheet_names); df=pd.read_excel(xl, sheet_name=xl.sheet_names[0]); print('旱地 Xtrain 列:', list(df.columns)); print('旱地 Xtrain 样本数:', len(df))"
@@ -86,7 +86,7 @@ python -c "import pandas as pd; xl=pd.ExcelFile(r'data\fertility\SG水田-Dose-R
 
 预期：两个 xlsx 均含 Xtrain/Xtest/Ytrain/Ytest 四个 sheet（容错大小写/空格）；特征列含 `pH, SOMbe, TN, TP, TK, AP, AK, Gap, Fertilizer type`（9 个，无 Dose 自身）；旱地 Xtrain 样本数 ~185，水田样本数记录待确认（若水田 <30 则后续 Task 5 需触发低置信度提示）。
 
-- [ ] **Step 5: 提交**
+- [x] **Step 5: 提交**
 
 ```bash
 git add "data/fertility/SG旱地-Dose-RF_Manual_splits.xlsx" "data/fertility/SG水田-Dose-RF_Manual_splits.xlsx"
@@ -108,7 +108,7 @@ git commit -m "feat(fertility): 添加韶关旱地/水田 Dose RF 预切分训�
   - `train_all_sg_models(data_dir: Path, output_dir: Path) -> list[dict]`：训练旱地+水田
   - CLI 参数 `--sg`（仅 SG）、`--all`（全局+SG）；不传参时仅全局 ETR（行为不变）
 
-- [ ] **Step 1: 写失败测试 — train_sg_dose_model 函数存在且能处理 SOMbe→SOCbe**
+- [x] **Step 1: 写失败测试 — train_sg_dose_model 函数存在且能处理 SOMbe→SOCbe**
 
 新建 `tests/test_train_fertility_sg.py`：
 
@@ -187,7 +187,7 @@ def test_train_sg_dose_model_paddy_naming(tmp_path):
     assert meta["model_type"] == "RandomForestRegressor"
 ```
 
-- [ ] **Step 2: 运行测试验证失败**
+- [x] **Step 2: 运行测试验证失败**
 
 ```bash
 pytest tests/test_train_fertility_sg.py -v
@@ -195,7 +195,7 @@ pytest tests/test_train_fertility_sg.py -v
 
 预期：FAIL，`ImportError: cannot import name 'train_sg_dose_model' from 'scripts.train_fertility_models'`。
 
-- [ ] **Step 3: 实现 train_sg_dose_model 与 CLI 扩展**
+- [x] **Step 3: 实现 train_sg_dose_model 与 CLI 扩展**
 
 在 `scripts/train_fertility_models.py` 顶部 import 区新增：
 
@@ -346,7 +346,7 @@ def main():
             print(f"SG {m['land_type']} test_r2: {m['metrics']['test_r2']}, training_samples: {m['training_samples']}")
 ```
 
-- [ ] **Step 4: 运行测试验证通过**
+- [x] **Step 4: 运行测试验证通过**
 
 ```bash
 pytest tests/test_train_fertility_sg.py -v
@@ -354,7 +354,7 @@ pytest tests/test_train_fertility_sg.py -v
 
 预期：2 个测试 PASS。
 
-- [ ] **Step 5: 验证 CLI 帮助与默认行为不变**
+- [x] **Step 5: 验证 CLI 帮助与默认行为不变**
 
 ```bash
 python scripts/train_fertility_models.py --help
@@ -362,7 +362,7 @@ python scripts/train_fertility_models.py --help
 
 预期：帮助文本显示 `--sg` 和 `--all` 参数；无参数时 `train_global=True, train_sg=False`（仅全局 ETR）。
 
-- [ ] **Step 6: 提交**
+- [x] **Step 6: 提交**
 
 ```bash
 git add scripts/train_fertility_models.py tests/test_train_fertility_sg.py
@@ -383,7 +383,7 @@ git commit -m "feat(train): 训练脚本支持 --sg/--all 训练韶关 RF Dose �
 - Consumes: Task 1 产出的 xlsx + Task 2 的训练函数
 - Produces: 4 个模型/元数据文件，供 Task 4/5 的集成测试与 Task 8 验证使用
 
-- [ ] **Step 1: 检查 sklearn 可用性**
+- [x] **Step 1: 检查 sklearn 可用性**
 
 ```bash
 python -c "import sklearn; print('sklearn', sklearn.__version__)"
@@ -391,7 +391,7 @@ python -c "import sklearn; print('sklearn', sklearn.__version__)"
 
 预期：打印版本号（已装）。若失败则需先 `pip install scikit-learn`。
 
-- [ ] **Step 2: 运行 SG 训练**
+- [x] **Step 2: 运行 SG 训练**
 
 ```bash
 python scripts/train_fertility_models.py --sg
@@ -399,7 +399,7 @@ python scripts/train_fertility_models.py --sg
 
 预期：控制台打印旱地/水田训练集样本数、特征名（含 SOCbe 不含 SOMbe）、5CV R²、Test R²、模型/元数据保存路径。退出码 0。
 
-- [ ] **Step 3: 验证产物文件存在**
+- [x] **Step 3: 验证产物文件存在**
 
 ```bash
 python -c "from pathlib import Path; d=Path('data/fertility/models'); [print(p.name, p.exists(), p.stat().st_size) for p in [d/'sg_dose_upland_rf_model.joblib', d/'sg_dose_upland_metadata.json', d/'sg_dose_paddy_rf_model.joblib', d/'sg_dose_paddy_metadata.json']]"
@@ -407,7 +407,7 @@ python -c "from pathlib import Path; d=Path('data/fertility/models'); [print(p.n
 
 预期：4 个文件均存在，.joblib 文件非空。
 
-- [ ] **Step 4: 验证 metadata.json 内容完整**
+- [x] **Step 4: 验证 metadata.json 内容完整**
 
 ```bash
 python -c "import json; from pathlib import Path; d=Path('data/fertility/models');
@@ -418,11 +418,11 @@ for lt in ['upland','paddy']:
 
 预期：model_type=RandomForestRegressor，land_type 对应，region=shaoguan，feature_names 含 SOCbe 不含 SOMbe，metrics 含 test_r2/cv_r2，training_samples 与 Step 2 打印一致。
 
-- [ ] **Step 5: 记录水田样本量决策**
+- [x] **Step 5: 记录水田样本量决策**
 
 检查 Step 4 输出的水田 `training_samples`。若 <30，记录该事实——Task 5 需在 dose_warning 中追加"训练样本量较少，置信度偏低"提示。若 ≥30 则无需特殊处理。将结论写入提交信息。
 
-- [ ] **Step 6: 提交**
+- [x] **Step 6: 提交**
 
 ```bash
 git add "data/fertility/models/sg_dose_upland_rf_model.joblib" "data/fertility/models/sg_dose_upland_metadata.json" "data/fertility/models/sg_dose_paddy_rf_model.joblib" "data/fertility/models/sg_dose_paddy_metadata.json"
@@ -446,7 +446,7 @@ git commit -m "feat(fertility): 训练产出韶关旱地/水田 RF Dose 模型�
   - `_normalize_input(input_data: Dict) -> Dict`：SOMbe→SOCbe + strip + 过滤 None
   - `_ensure_sg_model_loaded(land_type: str) -> bool`：按 land_type 惰性加载 SG 模型
 
-- [ ] **Step 1: 写失败测试 — _normalize_input 与 SG 加载基础设施**
+- [x] **Step 1: 写失败测试 — _normalize_input 与 SG 加载基础设施**
 
 在 `tests/test_fertility_ml_prediction.py` 末尾追加：
 
@@ -554,7 +554,7 @@ class TestEnsureSgModelLoaded:
         assert ok is True  # 走 upland 已加载
 ```
 
-- [ ] **Step 2: 运行测试验证失败**
+- [x] **Step 2: 运行测试验证失败**
 
 ```bash
 pytest tests/test_fertility_ml_prediction.py::TestNormalizeInput tests/test_fertility_ml_prediction.py::TestShaoguanAreaCodes tests/test_fertility_ml_prediction.py::TestEnsureSgModelLoaded -v
@@ -562,7 +562,7 @@ pytest tests/test_fertility_ml_prediction.py::TestNormalizeInput tests/test_fert
 
 预期：FAIL，`ImportError: cannot import name '_normalize_input' / 'SHAOGUAN_AREA_CODES' / '_ensure_sg_model_loaded'`。
 
-- [ ] **Step 3: 实现 SHAOGUAN_AREA_CODES 常量与 SG 路径/状态**
+- [x] **Step 3: 实现 SHAOGUAN_AREA_CODES 常量与 SG 路径/状态**
 
 在 `framework/domain/other_models/model_6.py` 的 `_DOSE_META_PATH = ...` 行下方新增 SG 路径常量：
 
@@ -589,7 +589,7 @@ _SG_UPLAND_LOAD_FAILED = False
 _SG_PADDY_LOAD_FAILED = False
 ```
 
-- [ ] **Step 4: 实现 _normalize_input 函数**
+- [x] **Step 4: 实现 _normalize_input 函数**
 
 在 `_prepare_features` 函数**之前**新增：
 
@@ -608,7 +608,7 @@ def _normalize_input(input_data: Dict[str, Any]) -> Dict[str, Any]:
     return normalized
 ```
 
-- [ ] **Step 5: 实现 _ensure_sg_model_loaded 函数**
+- [x] **Step 5: 实现 _ensure_sg_model_loaded 函数**
 
 在 `_ensure_models_loaded` 函数**之后**新增：
 
@@ -664,7 +664,7 @@ def _ensure_sg_model_loaded(land_type: str) -> bool:
     return not _SG_UPLAND_LOAD_FAILED
 ```
 
-- [ ] **Step 6: 运行测试验证通过**
+- [x] **Step 6: 运行测试验证通过**
 
 ```bash
 pytest tests/test_fertility_ml_prediction.py::TestNormalizeInput tests/test_fertility_ml_prediction.py::TestShaoguanAreaCodes tests/test_fertility_ml_prediction.py::TestEnsureSgModelLoaded -v
@@ -672,7 +672,7 @@ pytest tests/test_fertility_ml_prediction.py::TestNormalizeInput tests/test_fert
 
 预期：9 个测试全部 PASS。
 
-- [ ] **Step 7: 提交**
+- [x] **Step 7: 提交**
 
 ```bash
 git add framework/domain/other_models/model_6.py tests/test_fertility_ml_prediction.py
@@ -691,7 +691,7 @@ git commit -m "feat(model_6): 新增韶关区域路由基础设施（SHAOGUAN_AR
 - Consumes: Task 4 的 `SHAOGUAN_AREA_CODES`/`_normalize_input`/`_ensure_sg_model_loaded`/`_SG_*_MODEL`/`_SG_*_META`
 - Produces: `model_6_execution(input_data: Dict[str, Any], land_type: str = "upland") -> Dict[str, Any]` 新签名；区域路由后 Dose 在韶关走 SG RF、非韶关走全局 ETR；SOC 始终走全局 ETR
 
-- [ ] **Step 1: 写失败测试 — 区域路由与 land_type 行为**
+- [x] **Step 1: 写失败测试 — 区域路由与 land_type 行为**
 
 在 `tests/test_fertility_ml_prediction.py` 末尾追加。先在文件顶部 mock 数据区新增 SG mock helper 与常量：
 
@@ -874,7 +874,7 @@ class TestModel6ShaoguanRouting:
         assert result["status"] == "success"
 ```
 
-- [ ] **Step 2: 运行测试验证失败**
+- [x] **Step 2: 运行测试验证失败**
 
 ```bash
 pytest tests/test_fertility_ml_prediction.py::TestModel6ShaoguanRouting -v
@@ -882,7 +882,7 @@ pytest tests/test_fertility_ml_prediction.py::TestModel6ShaoguanRouting -v
 
 预期：多数测试 FAIL（`model_6_execution() got an unexpected keyword argument 'land_type'` 或 dose_warning 不含"韶关"）。
 
-- [ ] **Step 3: 重构 model_6_execution 实现区域路由**
+- [x] **Step 3: 重构 model_6_execution 实现区域路由**
 
 将 `framework/domain/other_models/model_6.py` 中整个 `model_6_execution` 函数（从 `def model_6_execution(input_data: Dict[str, Any]) -> Dict[str, Any]:` 到文件末尾）替换为：
 
@@ -1010,7 +1010,7 @@ def model_6_execution(input_data: Dict[str, Any], land_type: str = "upland") -> 
         return _fallback_response(input_data, reason="unexpected_error")
 ```
 
-- [ ] **Step 4: 运行新测试验证通过**
+- [x] **Step 4: 运行新测试验证通过**
 
 ```bash
 pytest tests/test_fertility_ml_prediction.py::TestModel6ShaoguanRouting -v
@@ -1018,7 +1018,7 @@ pytest tests/test_fertility_ml_prediction.py::TestModel6ShaoguanRouting -v
 
 预期：12 个测试全部 PASS。
 
-- [ ] **Step 5: 运行原有 model_6 测试确认无回归**
+- [x] **Step 5: 运行原有 model_6 测试确认无回归**
 
 ```bash
 pytest tests/test_fertility_ml_prediction.py::TestModel6Execution -v
@@ -1026,7 +1026,7 @@ pytest tests/test_fertility_ml_prediction.py::TestModel6Execution -v
 
 预期：原有 13 个测试全部 PASS（向后兼容，旧调用不传 land_type 时默认 upland、不传 area_code 时走全局 ETR）。
 
-- [ ] **Step 6: 提交**
+- [x] **Step 6: 提交**
 
 ```bash
 git add framework/domain/other_models/model_6.py tests/test_fertility_ml_prediction.py
@@ -1045,7 +1045,7 @@ git commit -m "feat(model_6): model_6_execution 实现韶关区域路由（land_
 - Consumes: Task 5 的 `model_6_execution(input_data, land_type="upland")` 新签名
 - Produces: `FertilityMLAgent.execute(task)` 从 task 提取 `land_type` 透传；`answer_question` 从 context 顶层提取 `area_code`/`land_type` 注入 task
 
-- [ ] **Step 1: 写失败测试 — Agent 透传 area_code/land_type**
+- [x] **Step 1: 写失败测试 — Agent 透传 area_code/land_type**
 
 在 `tests/test_fertility_ml_prediction.py` 末尾追加：
 
@@ -1152,7 +1152,7 @@ class TestFertilityMLAgentPassthrough:
         assert captured["area_code"] == "lechang"
 ```
 
-- [ ] **Step 2: 运行测试验证失败**
+- [x] **Step 2: 运行测试验证失败**
 
 ```bash
 pytest tests/test_fertility_ml_prediction.py::TestFertilityMLAgentPassthrough -v
@@ -1160,7 +1160,7 @@ pytest tests/test_fertility_ml_prediction.py::TestFertilityMLAgentPassthrough -v
 
 预期：FAIL（`test_execute_passes_land_type_to_model_6` 等——当前 execute 不传 land_type，answer_question 不注入 context 顶层字段）。
 
-- [ ] **Step 3: 改造 FertilityMLAgent.execute 与 answer_question**
+- [x] **Step 3: 改造 FertilityMLAgent.execute 与 answer_question**
 
 将 `framework/agents/specialized/fertility_ml_agent.py` 的 `execute` 方法替换为：
 
@@ -1227,7 +1227,7 @@ pytest tests/test_fertility_ml_prediction.py::TestFertilityMLAgentPassthrough -v
         return self._format_both(pred, exec_result)
 ```
 
-- [ ] **Step 4: 运行 Agent 测试验证通过**
+- [x] **Step 4: 运行 Agent 测试验证通过**
 
 ```bash
 pytest tests/test_fertility_ml_prediction.py::TestFertilityMLAgentPassthrough -v
@@ -1235,7 +1235,7 @@ pytest tests/test_fertility_ml_prediction.py::TestFertilityMLAgentPassthrough -v
 
 预期：4 个测试全部 PASS。
 
-- [ ] **Step 5: 运行现有 agent 测试确认无回归**
+- [x] **Step 5: 运行现有 agent 测试确认无回归**
 
 ```bash
 pytest tests/test_agent_specialized.py -v -k "fertility or Fertility"
@@ -1243,7 +1243,7 @@ pytest tests/test_agent_specialized.py -v -k "fertility or Fertility"
 
 预期：现有 FertilityMLAgent 相关测试全部 PASS（若有）。
 
-- [ ] **Step 6: 提交**
+- [x] **Step 6: 提交**
 
 ```bash
 git add framework/agents/specialized/fertility_ml_agent.py tests/test_fertility_ml_prediction.py
@@ -1264,7 +1264,7 @@ git commit -m "feat(agent): FertilityMLAgent 透传 area_code/land_type 到 mode
 
 **说明:** `framework/api/routes/chat.py` 的 `orchestrator_request = {"question": message, **context}` 已自动把客户端 `context.land_type` 展开到 request 顶层，无需修改 chat.py。`framework/api/routes/models.py` 的 `/run` 路径不调用 FertilityMLAgent（走 thematic_models），无需修改。本任务仅改 `nodes.execute_models` 的 context 构造。
 
-- [ ] **Step 1: 写失败测试 — execute_models 透传 land_type**
+- [x] **Step 1: 写失败测试 — execute_models 透传 land_type**
 
 在 `tests/test_fertility_ml_prediction.py` 末尾追加：
 
@@ -1314,7 +1314,7 @@ class TestExecuteModelsLandTypePassthrough:
         assert "land_type" not in captured["context"]
 ```
 
-- [ ] **Step 2: 运行测试验证失败**
+- [x] **Step 2: 运行测试验证失败**
 
 ```bash
 pytest tests/test_fertility_ml_prediction.py::TestExecuteModelsLandTypePassthrough -v
@@ -1322,7 +1322,7 @@ pytest tests/test_fertility_ml_prediction.py::TestExecuteModelsLandTypePassthrou
 
 预期：FAIL（当前 execute_models 不透传 land_type，context 中无 land_type 键）。
 
-- [ ] **Step 3: 改造 execute_models 节点透传 land_type**
+- [x] **Step 3: 改造 execute_models 节点透传 land_type**
 
 在 `framework/agents/nodes.py` 的 `execute_models` 函数中，将 context 构造的 for 循环：
 
@@ -1342,7 +1342,7 @@ pytest tests/test_fertility_ml_prediction.py::TestExecuteModelsLandTypePassthrou
                 context[key] = state["request"][key]
 ```
 
-- [ ] **Step 4: 运行测试验证通过**
+- [x] **Step 4: 运行测试验证通过**
 
 ```bash
 pytest tests/test_fertility_ml_prediction.py::TestExecuteModelsLandTypePassthrough -v
@@ -1350,7 +1350,7 @@ pytest tests/test_fertility_ml_prediction.py::TestExecuteModelsLandTypePassthrou
 
 预期：2 个测试全部 PASS。
 
-- [ ] **Step 5: 运行 nodes 相关测试确认无回归**
+- [x] **Step 5: 运行 nodes 相关测试确认无回归**
 
 ```bash
 pytest tests/test_agent_integration.py tests/test_multi_agent.py -v
@@ -1358,7 +1358,7 @@ pytest tests/test_agent_integration.py tests/test_multi_agent.py -v
 
 预期：现有测试全部 PASS（context 仅新增可选 land_type 键，不影响其他 agent）。
 
-- [ ] **Step 6: 提交**
+- [x] **Step 6: 提交**
 
 ```bash
 git add framework/agents/nodes.py tests/test_fertility_ml_prediction.py
@@ -1377,7 +1377,7 @@ git commit -m "feat(api): execute_models 节点透传 land_type 到 agent contex
 - Consumes: Task 3 产出的真实 SG 模型文件 + Task 4-7 的实现
 - Produces: 集成测试覆盖真实 SG 模型加载与预测；全量回归无失败
 
-- [ ] **Step 1: 追加 SG 真实模型集成测试**
+- [x] **Step 1: 追加 SG 真实模型集成测试**
 
 在 `tests/test_fertility_ml_prediction.py` 末尾追加：
 
@@ -1451,7 +1451,7 @@ class TestModel6ShaoguanIntegration:
         assert "韶关" not in result["dose_warning"]
 ```
 
-- [ ] **Step 2: 运行 SG 集成测试**
+- [x] **Step 2: 运行 SG 集成测试**
 
 ```bash
 pytest tests/test_fertility_ml_prediction.py::TestModel6ShaoguanIntegration -v
@@ -1459,7 +1459,7 @@ pytest tests/test_fertility_ml_prediction.py::TestModel6ShaoguanIntegration -v
 
 预期：5 个测试全部 PASS（真实模型文件已在 Task 3 产出）。若 SG 模型文件未生成则被 skipif 跳过。
 
-- [ ] **Step 3: 运行 model-6 全量测试**
+- [x] **Step 3: 运行 model-6 全量测试**
 
 ```bash
 pytest tests/test_fertility_ml_prediction.py -v
@@ -1467,7 +1467,7 @@ pytest tests/test_fertility_ml_prediction.py -v
 
 预期：所有测试 PASS（含原有 TestModel6Execution/TestModel6Integration、Task 4-7 新增单元测试、Task 8 集成测试）。
 
-- [ ] **Step 4: 运行 Agent 相关测试**
+- [x] **Step 4: 运行 Agent 相关测试**
 
 ```bash
 pytest tests/test_agent_specialized.py tests/test_agent_integration.py tests/test_multi_agent.py tests/test_agent_manager.py -v
@@ -1475,7 +1475,7 @@ pytest tests/test_agent_specialized.py tests/test_agent_integration.py tests/tes
 
 预期：全部 PASS，无回归。
 
-- [ ] **Step 5: 运行全量测试套件**
+- [x] **Step 5: 运行全量测试套件**
 
 ```bash
 pytest tests/ -v --tb=short
@@ -1483,7 +1483,7 @@ pytest tests/ -v --tb=short
 
 预期：全部 PASS（排除预先存在的、与本变更无关的失败）。若发现失败，检查是否由本变更引入（特别关注 model_6/FertilityMLAgent/nodes 相关）。
 
-- [ ] **Step 6: 手动验证 SG 预测数值合理性**
+- [x] **Step 6: 手动验证 SG 预测数值合理性**
 
 ```bash
 python -c "
@@ -1500,7 +1500,7 @@ print(f'non-sg: status={r[\"status\"]}, Dose={r[\"dose_prediction\"]}, warn={r[\
 
 预期：韶关旱地/水田 status=success，Dose 在 0-1000 合理范围，dose_warning 含"韶关旱地/水田"与 R² 值；非韶关 dose_warning 为原"Dose 模型 R²=0.47..."。
 
-- [ ] **Step 7: 提交**
+- [x] **Step 7: 提交**
 
 ```bash
 git add tests/test_fertility_ml_prediction.py
@@ -1511,8 +1511,8 @@ git commit -m "test(fertility): 新增韶关 SG RF 模型集成测试与全量�
 
 ## 自检清单（实施完成后核对）
 
-- [ ] **spec 覆盖**：D1（area_code 路由 + land_type 显式参数）→ Task 4/5；D2（区域路由）→ Task 5；D3（SG 惰性加载）→ Task 4；D4（SOMbe→SOCbe）→ Task 2（训练）+ Task 4（推理）；D5（训练脚本扩展）→ Task 2。
-- [ ] **tasks.md 覆盖**：1.1-1.3 → Task 1；2.1-2.5 → Task 2/3；3.1-3.7 → Task 4/5；4.1-4.2 → Task 6；5.1-5.2 → Task 7；6.1-6.8 → Task 5/6/8；7.1-7.3 → Task 8。
-- [ ] **向后兼容**：旧调用方不传 `land_type`/`area_code` 时行为不变（Task 5 Step 5 验证）。
-- [ ] **类型一致**：`_ensure_sg_model_loaded(land_type)` 在 Task 4 定义、Task 5 调用，签名一致；`model_6_execution(input_data, land_type="upland")` 在 Task 5 定义、Task 6 调用，签名一致。
-- [ ] **无占位符**：所有步骤含完整代码或具体命令。
+- [x] **spec 覆盖**：D1（area_code 路由 + land_type 显式参数）→ Task 4/5；D2（区域路由）→ Task 5；D3（SG 惰性加载）→ Task 4；D4（SOMbe→SOCbe）→ Task 2（训练）+ Task 4（推理）；D5（训练脚本扩展）→ Task 2。
+- [x] **tasks.md 覆盖**：1.1-1.3 → Task 1；2.1-2.5 → Task 2/3；3.1-3.7 → Task 4/5；4.1-4.2 → Task 6；5.1-5.2 → Task 7；6.1-6.8 → Task 5/6/8；7.1-7.3 → Task 8。
+- [x] **向后兼容**：旧调用方不传 `land_type`/`area_code` 时行为不变（Task 5 Step 5 验证）。
+- [x] **类型一致**：`_ensure_sg_model_loaded(land_type)` 在 Task 4 定义、Task 5 调用，签名一致；`model_6_execution(input_data, land_type="upland")` 在 Task 5 定义、Task 6 调用，签名一致。
+- [x] **无占位符**：所有步骤含完整代码或具体命令。

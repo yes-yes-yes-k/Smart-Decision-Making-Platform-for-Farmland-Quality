@@ -253,7 +253,7 @@ def test_fertility_ml_agent_execute_structure(monkeypatch):
     # mock model_6_execution 返回 success
     monkeypatch.setattr(
         "framework.agents.specialized.fertility_ml_agent.model_6_execution",
-        lambda data: {
+        lambda data, land_type="upland": {
             "status": "success",
             "soc_prediction": 12.5,
             "soc_confidence": 0.91,
@@ -281,7 +281,7 @@ def test_fertility_ml_agent_answer_dose_keywords(monkeypatch):
     from framework.agents.specialized.fertility_ml_agent import FertilityMLAgent
     monkeypatch.setattr(
         "framework.agents.specialized.fertility_ml_agent.model_6_execution",
-        lambda data: {
+        lambda data, land_type="upland": {
             "status": "success",
             "soc_prediction": 12.5,
             "soc_confidence": 0.91,
@@ -308,7 +308,7 @@ def test_fertility_ml_agent_answer_soc_keywords(monkeypatch):
     from framework.agents.specialized.fertility_ml_agent import FertilityMLAgent
     monkeypatch.setattr(
         "framework.agents.specialized.fertility_ml_agent.model_6_execution",
-        lambda data: {
+        lambda data, land_type="upland": {
             "status": "success",
             "soc_prediction": 12.5,
             "soc_confidence": 0.91,
@@ -334,7 +334,7 @@ def test_fertility_ml_agent_answer_fertility_keywords(monkeypatch):
     from framework.agents.specialized.fertility_ml_agent import FertilityMLAgent
     monkeypatch.setattr(
         "framework.agents.specialized.fertility_ml_agent.model_6_execution",
-        lambda data: {
+        lambda data, land_type="upland": {
             "status": "success",
             "soc_prediction": 12.5,
             "soc_confidence": 0.91,
@@ -359,7 +359,7 @@ def test_fertility_ml_agent_answer_fallback_status(monkeypatch):
     from framework.agents.specialized.fertility_ml_agent import FertilityMLAgent
     monkeypatch.setattr(
         "framework.agents.specialized.fertility_ml_agent.model_6_execution",
-        lambda data: {
+        lambda data, land_type="upland": {
             "status": "fallback",
             "soc_prediction": 12.0,
             "soc_confidence": 0.3,
@@ -383,7 +383,7 @@ def test_fertility_ml_agent_answer_rejected_status(monkeypatch):
     from framework.agents.specialized.fertility_ml_agent import FertilityMLAgent
     monkeypatch.setattr(
         "framework.agents.specialized.fertility_ml_agent.model_6_execution",
-        lambda data: {
+        lambda data, land_type="upland": {
             "status": "rejected",
             "reason": "input_out_of_range",
             "out_of_range_features": [
