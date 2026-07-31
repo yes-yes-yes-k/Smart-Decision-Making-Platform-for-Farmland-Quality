@@ -1,0 +1,14 @@
+{
+  "change": "replace-acidification-with-process-model",
+  "phase": "design",
+  "mode": "compact",
+  "canonical_spec": "openspec",
+  "generated_by": "comet-handoff.sh",
+  "context_hash": "3c6f72193cb7f4a5590c0cbf4295b6b33fc8251b13149d4030a462b90e92084b",
+  "files": [
+    { "path": "openspec/changes/replace-acidification-with-process-model/proposal.md", "sha256": "7fbe8a109184f0fb8387cd11dfb152d94bfa7c534c708ae70d142a34ebf8d80d" },
+    { "path": "openspec/changes/replace-acidification-with-process-model/design.md", "sha256": "114b1f6c8762d2ee60292c5fc126a6af8b9460bf3e690e5b30eb7e95b48a7249" },
+    { "path": "openspec/changes/replace-acidification-with-process-model/tasks.md", "sha256": "9717213828df8968c53f89745ae3f41486d82d7b4057f3692cb055735f4a93ef" },
+    { "path": "openspec/changes/replace-acidification-with-process-model/specs/farmland-acidification-improvement-model/spec.md", "sha256": "e9ec5de84626784bdc09f2322846948cec6f774ec513841530ccdf4599a0509a" }
+  ]
+}
