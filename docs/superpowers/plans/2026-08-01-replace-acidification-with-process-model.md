@@ -1,3 +1,7 @@
+---
+archived-with: 2026-07-31-replace-acidification-with-process-model
+status: final
+---
 ﻿---
 change: replace-acidification-with-process-model
 design-doc: docs/superpowers/specs/2026-08-01-replace-acidification-with-process-model-design.md

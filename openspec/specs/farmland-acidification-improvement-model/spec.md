@@ -4,49 +4,69 @@
 TBD - created by archiving change add-stability-risk-and-grade-evaluation. Update Purpose after archive.
 ## Requirements
 ### Requirement: 模型3 酸化因子提取
-系统 SHALL 从地块指标数据中提取酸化相关因子（pH 值、酸化方向），为后续酸化程度判定和改良方案生成提供基础数据。
+系统 SHALL 从请求参数中提取过程酸化模型所需的三普输入数据（pHstart 对应 SJD、交换性氢对应 JHX、交换性铝对应 JLA），以及子模型选择参数（land_type、fertilizer_type），为后续过程计算提供基础数据。
 
-#### Scenario: 提取酸化因子
-- **WHEN** 系统处理地块数据（CSV 或在线查询），且包含 pH 字段
-- **THEN** 系统 SHALL 提取 pH 值，并根据阈值（<6.5 为酸化，>7.5 为碱化）判定酸化方向
+#### Scenario: 提取三普输入与子模型参数
+- **WHEN** 系统收到酸化改良请求，且包含 SJD（pH）、JHX（交换性氢）、JLA（交换性铝）字段
+- **THEN** 系统 SHALL 提取 pHstart=SJD、Hex=JHX、Alex=JLA，并读取 land_type（默认 upland）和 fertilizer_type（默认 compound）用于子模型选择
+
+#### Scenario: 缺少必填输入
+- **WHEN** 系统收到酸化改良请求，但缺少 JHX（交换性氢）或 JLA（交换性铝）
+- **THEN** 系统 SHALL 返回 status="rejected" 和缺少必填字段的错误提示
 
 ### Requirement: 模型3 酸化程度分区
-系统 SHALL 根据酸化因子和障碍诊断结果，对地块进行酸化程度分区（无明显酸化、轻度酸化、中度酸化、重度酸化）。
+系统 SHALL 根据 land_type（水田 paddy / 旱地 upland）和 fertilizer_type（尿素 urea / 复合肥 compound）的组合，从4个过程子模型中选择唯一一个执行酸化计算。子模型映射：paddy_urea、paddy_compound、upland_urea、upland_compound。
 
-#### Scenario: 酸化程度判定
-- **WHEN** 系统完成酸化因子提取和障碍诊断，且 pH 隶属度和障碍度数据已就绪
-- **THEN** 系统 SHALL 根据 pH 隶属度和障碍度阈值，将地块划分为无明显酸化、轻度酸化、中度酸化或重度酸化
+#### Scenario: 水田复合肥（默认）
+- **WHEN** land_type="paddy" 且 fertilizer_type="compound"（或 fertilizer_type 未传，默认 compound）
+- **THEN** 系统 SHALL 选择 paddy_compound 子模型执行计算
 
-#### Scenario: 酸化分区统计
-- **WHEN** 调用方请求某区域的酸化分区统计
-- **THEN** 系统 SHALL 返回该区域各酸化程度分区的地块数量或面积占比
+#### Scenario: 旱地尿素
+- **WHEN** land_type="upland"（或未传，默认 upland）且 fertilizer_type="urea"
+- **THEN** 系统 SHALL 选择 upland_urea 子模型执行计算
+
+#### Scenario: 非法参数回退
+- **WHEN** land_type 或 fertilizer_type 为非法值（非 upland/paddy 或非 urea/compound）
+- **THEN** 系统 SHALL 回退到默认值（upland + compound）并在 warning 中追加参数非法提示
 
 ### Requirement: 模型3 改良方案生成
-系统 SHALL 基于酸化程度分区结果，生成针对性的改良方案，包括调理剂施用量建议和改良措施匹配。
+系统 SHALL 使用选定的过程子模型，基于 pHstart、Hex、Alex 和~15个默认参数（RPH/R/Y/S/元素含量/FertN/Ndep/pHtarget 等），计算改良剂需求量：亿土康 YTK（kg/ha）和木本泥炭 MBNT（kg/ha）。部分默认参数（RPH/R/Y/S/FertN/Ndep/pHtarget）SHALL 支持通过 API 可选参数覆盖。
 
-#### Scenario: 生成改良方案
-- **WHEN** 用户请求某地块的酸化改良方案，且该地块被判定为中度或重度酸化
-- **THEN** 系统 SHALL 根据酸化程度和土壤特性，生成调理剂施用量建议（如石灰施用量 kg/亩）和改良措施（如施肥方式、轮作制度调整）
+#### Scenario: 默认参数计算
+- **WHEN** 系统使用默认参数执行过程模型计算，且 pHstart/Hex/Alex 均在合理范围内
+- **THEN** 系统 SHALL 返回 YTK（亿土康 kg/ha）和 MBNT（木本泥炭 kg/ha）的数值结果
 
-#### Scenario: 轻度或无酸化
-- **WHEN** 用户请求某地块的酸化改良方案，但该地块为轻度酸化或无明显酸化
-- **THEN** 系统 SHALL 返回"无需特殊改良"的提示，建议常规监测和维护
+#### Scenario: 自定义参数覆盖
+- **WHEN** API 请求中包含可选参数（如 FertN=200、pHtarget=6.0）
+- **THEN** 系统 SHALL 使用传入值覆盖默认参数执行计算，并在结果中标注哪些参数被自定义
+
+#### Scenario: 输入值越界
+- **WHEN** pHstart 超出 [3.0, 10.0] 范围，或 Hex/Alex 为负值
+- **THEN** 系统 SHALL 返回 status="rejected" 和越界字段列表
 
 ### Requirement: 模型3 酸化改良在线查询
-系统 SHALL 提供在线查询接口，按地块 ID 查询酸化程度分区和改良方案，对接 `run_thematic_model()` 的统一调用契约。
+系统 SHALL 提供按需计算接口，API 请求参数直接触发过程模型计算并返回结果，不依赖 DB 预计算。若请求包含 parcel_id，系统 MAY 从 evaluation_results 表查询 SJD 值作为 pHstart 补充输入，但 JHX/JLA 必须由请求显式提供。
 
-#### Scenario: 查询指定地块的酸化改良方案
-- **WHEN** 调用方以地块 ID 发起在线查询，且批量评价和障碍诊断结果已就绪
-- **THEN** 系统 SHALL 返回该地块的酸化程度、酸化方向、调理剂施用量建议和改良措施
+#### Scenario: 按需计算
+- **WHEN** 调用方以 SJD/JHX/JLA 参数发起请求
+- **THEN** 系统 SHALL 直接执行过程模型计算并返回 YTK/MBNT，无需 DB 查询
 
-#### Scenario: 数据未就绪
-- **WHEN** 调用方发起在线查询，但批量评价和障碍诊断尚未完成
-- **THEN** 系统 SHALL 返回 `status: "not_ready"` 和"数据未就绪，请先执行批量评价"的提示
+#### Scenario: parcel_id 补充 SJD
+- **WHEN** 调用方提供 parcel_id 但未提供 SJD，且 evaluation_results 表中存在该地块的 SJD 值
+- **THEN** 系统 SHALL 从 DB 查询 SJD 作为 pHstart，与请求中的 JHX/JLA 一起执行计算
+
+#### Scenario: parcel_id 查无数据
+- **WHEN** 调用方提供 parcel_id 但 evaluation_results 表中无该地块，且请求未提供 SJD
+- **THEN** 系统 SHALL 返回 status="rejected" 和"无法获取 pH 值，请提供 SJD 参数"的提示
 
 ### Requirement: 模型3 改良方案输出格式
-系统 SHALL 以标准化格式输出改良方案，包含酸化程度、调理剂施用量、改良措施和预期效果。
+系统 SHALL 以标准化格式输出改良方案，包含改良剂需求量（YTK/MBNT）、子模型标识和参数信息。不暴露中间产酸量分解（Adep/Acrop/ANcy/Aagri/Aback）。
 
-#### Scenario: 标准化改良方案输出
-- **WHEN** 系统生成改良方案
-- **THEN** 输出 SHALL 包含：酸化程度（轻/中/重度）、调理剂类型、施用量（kg/亩）、改良措施描述、预期效果（pH 提升幅度、有机质提升预期）
+#### Scenario: 标准化输出
+- **WHEN** 系统成功完成过程模型计算
+- **THEN** 输出 SHALL 包含：status（success/rejected）、ytk（亿土康 kg/ha）、mbnt（木本泥炭 kg/ha）、land_type、fertilizer_type、model_version、warning（可选）
+
+#### Scenario: 错误输出
+- **WHEN** 系统因输入缺失或越界无法完成计算
+- **THEN** 输出 SHALL 包含：status="rejected"、reason（missing_input / input_out_of_range / invalid_parameter）、缺失或越界字段列表
 

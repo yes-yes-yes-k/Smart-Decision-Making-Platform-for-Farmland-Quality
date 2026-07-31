@@ -1,6 +1,6 @@
 workflow: full
 language: zh-CN
-phase: verify
+phase: archive
 context_compression: off
 build_mode: subagent-driven-development
 build_pause: null
@@ -13,12 +13,12 @@ auto_transition: true
 base_ref: ca6f94be5aeff8a33812bedee05bc8407f042420
 design_doc: docs/superpowers/specs/2026-08-01-replace-acidification-with-process-model-design.md
 plan: docs/superpowers/plans/2026-08-01-replace-acidification-with-process-model.md
-verify_result: pending
+verify_result: pass
 verification_report: docs/superpowers/reports/2026-08-01-replace-acidification-with-process-model-verify.md
-branch_status: pending
+branch_status: handled
 created_at: 2026-07-31
-verified_at: null
-archived: false
+verified_at: 2026-07-31
+archived: true
 direct_override: null
 handoff_context: openspec/changes/replace-acidification-with-process-model/.comet/handoff/design-context.json
 handoff_hash: 3c6f72193cb7f4a5590c0cbf4295b6b33fc8251b13149d4030a462b90e92084b

@@ -2,6 +2,8 @@
 comet_change: replace-acidification-with-process-model
 role: technical-design
 canonical_spec: openspec
+archived-with: 2026-07-31-replace-acidification-with-process-model
+status: final
 ---
 
 # 技术设计：用过程模型替换酸化改良逻辑
@@ -260,3 +262,4 @@ def evaluate_acidification(db_path: str = None) -> Dict[str, Any]:
 | parcel_id 查 SJD 依赖 DB 有数据 | 查无数据时无法计算 | 返回 rejected + 提示提供 SJD |
 | JHX/JLA 未在数据管道流转 | CSV 导入不含此字段 | 按需计算不依赖 CSV 导入，API 直接接受参数 |
 | API 响应字段 BREAKING | 前端解析 lime_demand 失败 | 文档同步更新，openapi.json 版本升级 |
+
