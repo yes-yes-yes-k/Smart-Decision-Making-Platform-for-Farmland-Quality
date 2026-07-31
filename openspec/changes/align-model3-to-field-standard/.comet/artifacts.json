@@ -1,0 +1,8 @@
+{
+  "openspec_proposal": "openspec/changes/align-model3-to-field-standard/proposal.md",
+  "openspec_design": "openspec/changes/align-model3-to-field-standard/design.md",
+  "openspec_tasks": "openspec/changes/align-model3-to-field-standard/tasks.md",
+  "openspec_delta_spec": "openspec/changes/align-model3-to-field-standard/specs/farmland-obstacle-diagnosis-model/spec.md",
+  "handoff_context": "openspec/changes/align-model3-to-field-standard/.comet/handoff/design-context.json",
+  "handoff_markdown": "openspec/changes/align-model3-to-field-standard/.comet/handoff/design-context.md"
+}

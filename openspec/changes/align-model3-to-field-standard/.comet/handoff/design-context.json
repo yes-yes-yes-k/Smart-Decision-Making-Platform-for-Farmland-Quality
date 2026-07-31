@@ -1,0 +1,14 @@
+{
+  "change": "align-model3-to-field-standard",
+  "phase": "design",
+  "mode": "compact",
+  "canonical_spec": "openspec",
+  "generated_by": "comet-handoff.sh",
+  "context_hash": "0a1f33df5e7321ec4a7ed926fde231a427031ecd23c5f92f0d303d1fcb97eab5",
+  "files": [
+    { "path": "openspec/changes/align-model3-to-field-standard/proposal.md", "sha256": "455d4e5a3c8acc8fdf976aaf985d8f57a3856771eba2b28bb362654ac3ed57b9" },
+    { "path": "openspec/changes/align-model3-to-field-standard/design.md", "sha256": "a614309da40393c3c0d8d07cd217b1255f39eabba50e99ea8a291c23656c9925" },
+    { "path": "openspec/changes/align-model3-to-field-standard/tasks.md", "sha256": "719191da0b3019986c846014a9f54a395ccd84f1519f765c640a5c961e177ab9" },
+    { "path": "openspec/changes/align-model3-to-field-standard/specs/farmland-obstacle-diagnosis-model/spec.md", "sha256": "4706331dbf44c391de57c168a7ba05b9ded2e31a1ac1270a0f1fa6482c6b9364" }
+  ]
+}
