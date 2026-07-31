@@ -2,6 +2,8 @@
 comet_change: add-shaoguan-fertility-model
 role: technical-design
 canonical_spec: openspec
+archived-with: 2026-07-31-add-shaoguan-fertility-model
+status: final
 ---
 
 # Design Doc: 韶关区域肥力 Dose RF 模型集成
@@ -155,3 +157,4 @@ Mock 策略：使用 monkeypatch 替换 `_ensure_sg_model_loaded` 返回 mock �
 | land_type 非法值 | 默认 upland + dose_warning 提示 |
 | SG 模型文件缺失 | `_SG_*_LOAD_FAILED=True` → fallback 响应 |
 | SG 水田样本 <30 | metadata 标注低置信度，dose_warning 提示 |
+

@@ -2,6 +2,7 @@
 change: add-shaoguan-fertility-model
 design-doc: docs/superpowers/specs/2026-07-31-add-shaoguan-fertility-model-design.md
 base-ref: 8e0dbc8a01730495c0a1d0e21165e0346ce775c5
+archived-with: 2026-07-31-add-shaoguan-fertility-model
 ---
 
 # 韶关区域肥力 Dose RF 模型集成 实施计划
@@ -26,6 +27,7 @@ base-ref: 8e0dbc8a01730495c0a1d0e21165e0346ce775c5
 - 测试用 monkeypatch mock 模型对象，CI 零依赖真实 .joblib；集成测试通过 `skipif` 在模型不可用时跳过。
 - 项目根目录为 `d:\17417\Documents\agent_culti_demo`，所有命令在该目录运行。
 
+archived-with: 2026-07-31-add-shaoguan-fertility-model
 ---
 
 ## 文件结构
@@ -45,6 +47,7 @@ base-ref: 8e0dbc8a01730495c0a1d0e21165e0346ce775c5
 | `tests/test_fertility_ml_prediction.py` | model_6 单元/集成测试 | 修改 |
 | `tests/test_agent_specialized.py` | FertilityMLAgent 透传测试 | 修改 |
 
+archived-with: 2026-07-31-add-shaoguan-fertility-model
 ---
 
 ### Task 1: SG 训练数据准备
@@ -93,6 +96,7 @@ git add "data/fertility/SG旱地-Dose-RF_Manual_splits.xlsx" "data/fertility/SG�
 git commit -m "feat(fertility): 添加韶关旱地/水田 Dose RF 预切分训练数据"
 ```
 
+archived-with: 2026-07-31-add-shaoguan-fertility-model
 ---
 
 ### Task 2: 扩展训练脚本支持 SG RF 模型
@@ -369,6 +373,7 @@ git add scripts/train_fertility_models.py tests/test_train_fertility_sg.py
 git commit -m "feat(train): 训练脚本支持 --sg/--all 训练韶关 RF Dose 模型"
 ```
 
+archived-with: 2026-07-31-add-shaoguan-fertility-model
 ---
 
 ### Task 3: 运行 SG 训练并验证产物
@@ -429,6 +434,7 @@ git add "data/fertility/models/sg_dose_upland_rf_model.joblib" "data/fertility/m
 git commit -m "feat(fertility): 训练产出韶关旱地/水田 RF Dose 模型文件"
 ```
 
+archived-with: 2026-07-31-add-shaoguan-fertility-model
 ---
 
 ### Task 4: model_6.py 区域路由基础设施
@@ -679,6 +685,7 @@ git add framework/domain/other_models/model_6.py tests/test_fertility_ml_predict
 git commit -m "feat(model_6): 新增韶关区域路由基础设施（SHAOGUAN_AREA_CODES/_normalize_input/_ensure_sg_model_loaded）"
 ```
 
+archived-with: 2026-07-31-add-shaoguan-fertility-model
 ---
 
 ### Task 5: model_6_execution 区域路由实现
@@ -1033,6 +1040,7 @@ git add framework/domain/other_models/model_6.py tests/test_fertility_ml_predict
 git commit -m "feat(model_6): model_6_execution 实现韶关区域路由（land_type 参数 + Dose 走 SG RF）"
 ```
 
+archived-with: 2026-07-31-add-shaoguan-fertility-model
 ---
 
 ### Task 6: FertilityMLAgent 适配
@@ -1250,6 +1258,7 @@ git add framework/agents/specialized/fertility_ml_agent.py tests/test_fertility_
 git commit -m "feat(agent): FertilityMLAgent 透传 area_code/land_type 到 model_6_execution"
 ```
 
+archived-with: 2026-07-31-add-shaoguan-fertility-model
 ---
 
 ### Task 7: API 层适配（nodes.execute_models 透传 land_type）
@@ -1365,6 +1374,7 @@ git add framework/agents/nodes.py tests/test_fertility_ml_prediction.py
 git commit -m "feat(api): execute_models 节点透传 land_type 到 agent context"
 ```
 
+archived-with: 2026-07-31-add-shaoguan-fertility-model
 ---
 
 ### Task 8: 集成测试与全量回归验证
@@ -1507,6 +1517,7 @@ git add tests/test_fertility_ml_prediction.py
 git commit -m "test(fertility): 新增韶关 SG RF 模型集成测试与全量回归验证"
 ```
 
+archived-with: 2026-07-31-add-shaoguan-fertility-model
 ---
 
 ## 自检清单（实施完成后核对）
@@ -1516,3 +1527,4 @@ git commit -m "test(fertility): 新增韶关 SG RF 模型集成测试与全量�
 - [x] **向后兼容**：旧调用方不传 `land_type`/`area_code` 时行为不变（Task 5 Step 5 验证）。
 - [x] **类型一致**：`_ensure_sg_model_loaded(land_type)` 在 Task 4 定义、Task 5 调用，签名一致；`model_6_execution(input_data, land_type="upland")` 在 Task 5 定义、Task 6 调用，签名一致。
 - [x] **无占位符**：所有步骤含完整代码或具体命令。
+
