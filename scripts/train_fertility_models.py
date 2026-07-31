@@ -15,7 +15,7 @@ from pathlib import Path
 import joblib
 import numpy as np
 import pandas as pd
-from sklearn.ensemble import ExtraTreesRegressor
+from sklearn.ensemble import ExtraTreesRegressor, RandomForestRegressor
 from sklearn.metrics import mean_squared_error
 from sklearn.model_selection import cross_val_score
 
@@ -34,6 +34,10 @@ DOSE_BEST_PARAMS = {
 }
 
 MODEL_VERSION = "ETR_v1_20260713"
+
+SG_RF_PARAMS = {"n_estimators": 100, "random_state": 230}
+SG_MODEL_VERSION = "SG_RF_v1_20260731"
+SG_DOSE_FEATURE_COLS = ["pH", "SOMbe", "TN", "TP", "TK", "AP", "AK", "Gap", "Fertilizer type"]
 
 
 def load_manual_splits(xlsx_path: Path):
@@ -123,32 +127,133 @@ def train_one_model(name: str, xlsx_path: Path, params: dict, output_dir: Path) 
     return meta
 
 
+def train_sg_dose_model(land_type: str, xlsx_path: Path, output_dir: Path) -> dict:
+    """训练单个韶关 RF Dose 模型并保存 .joblib + metadata.json。
+
+    - land_type: "upland" 或 "paddy"
+    - 读取预切分 xlsx（Xtrain/Xtest/Ytrain/Ytest sheets）
+    - 将特征列 SOMbe 重命名为 SOCbe，列名统一 strip
+    - 训练 RandomForestRegressor(n_estimators=100, random_state=230)
+    - 保存 sg_dose_{land_type}_rf_model.joblib 与 sg_dose_{land_type}_metadata.json
+    """
+    if land_type not in ("upland", "paddy"):
+        raise ValueError(f"land_type 必须是 upland/paddy，收到: {land_type}")
+
+    print(f"\n=== 训练韶关 {land_type} Dose RF 模型 ===")
+    Xtrain, Xtest, Ytrain, Ytest = load_manual_splits(xlsx_path)
+
+    # 列名 strip + SOMbe → SOCbe 重命名
+    rename_map = {c: c.strip() for c in Xtrain.columns}
+    rename_map = {k: ("SOCbe" if v == "SOMbe" else v) for k, v in rename_map.items()}
+    Xtrain = Xtrain.rename(columns=rename_map)
+    Xtest = Xtest.rename(columns=rename_map)
+
+    print(f"训练集: {Xtrain.shape[0]} 样本, {Xtrain.shape[1]} 特征")
+    print(f"测试集: {Xtest.shape[0]} 样本")
+    print(f"特征名: {list(Xtrain.columns)}")
+
+    model = RandomForestRegressor(**SG_RF_PARAMS)
+    model.fit(Xtrain, Ytrain)
+
+    # 5-fold CV（n_jobs=1 避免 Windows 并行开销，与 train_one_model 一致）
+    cv_r2_scores = cross_val_score(
+        RandomForestRegressor(**SG_RF_PARAMS), Xtrain, Ytrain, cv=5, scoring="r2"
+    )
+    cv_r2 = float(np.mean(cv_r2_scores))
+    cv_mse_scores = cross_val_score(
+        RandomForestRegressor(**SG_RF_PARAMS), Xtrain, Ytrain, cv=5,
+        scoring="neg_mean_squared_error",
+    )
+    cv_rmse = float(np.sqrt(-np.mean(cv_mse_scores)))
+
+    Ypred = model.predict(Xtest)
+    test_r2 = float(model.score(Xtest, Ytest))
+    test_rmse = float(np.sqrt(mean_squared_error(Ytest, Ypred)))
+
+    print(f"5CV R²: {cv_r2:.4f}, 5CV RMSE: {cv_rmse:.4f}")
+    print(f"Test R²: {test_r2:.4f}, Test RMSE: {test_rmse:.4f}")
+    print(f"超参数: {SG_RF_PARAMS}")
+
+    model_path = output_dir / f"sg_dose_{land_type}_rf_model.joblib"
+    joblib.dump(model, model_path)
+    print(f"模型已保存: {model_path}")
+
+    meta = {
+        "model_type": "RandomForestRegressor",
+        "land_type": land_type,
+        "region": "shaoguan",
+        "trained_at": datetime.now().isoformat(timespec="seconds"),
+        "model_version": SG_MODEL_VERSION,
+        "hyperparameters": SG_RF_PARAMS,
+        "metrics": {
+            "cv_r2": round(cv_r2, 4),
+            "cv_rmse": round(cv_rmse, 4),
+            "test_r2": round(test_r2, 4),
+            "test_rmse": round(test_rmse, 4),
+        },
+        "feature_names": list(Xtrain.columns),
+        "feature_means": {k: float(v) for k, v in Xtrain.mean().items()},
+        "training_samples": int(Xtrain.shape[0]),
+        "test_samples": int(Xtest.shape[0]),
+    }
+    meta_path = output_dir / f"sg_dose_{land_type}_metadata.json"
+    with open(meta_path, "w", encoding="utf-8") as f:
+        json.dump(meta, f, ensure_ascii=False, indent=2)
+    print(f"元数据已保存: {meta_path}")
+
+    return meta
+
+
+def train_all_sg_models(data_dir: Path, output_dir: Path) -> list[dict]:
+    """训练韶关旱地 + 水田 Dose RF 模型。"""
+    upland_xlsx = data_dir / "SG旱地-Dose-RF_Manual_splits.xlsx"
+    paddy_xlsx = data_dir / "SG水田-Dose-RF_Manual_splits.xlsx"
+    for xlsx in [upland_xlsx, paddy_xlsx]:
+        if not xlsx.exists():
+            print(f"错误: 韶关训练数据文件不存在: {xlsx}", file=sys.stderr)
+            sys.exit(1)
+
+    metas = [
+        train_sg_dose_model("upland", upland_xlsx, output_dir),
+        train_sg_dose_model("paddy", paddy_xlsx, output_dir),
+    ]
+    return metas
+
+
 def main():
-    parser = argparse.ArgumentParser(description="训练 SOC 和 Dose ETR 模型")
+    parser = argparse.ArgumentParser(description="训练 SOC/Dose ETR 模型与韶关 SG RF Dose 模型")
     parser.add_argument("--data-dir", default="data/fertility", help="训练数据目录")
     parser.add_argument("--output-dir", default="data/fertility/models", help="模型输出目录")
+    parser.add_argument("--sg", action="store_true", help="仅训练韶关 RF Dose 模型（旱地+水田）")
+    parser.add_argument("--all", action="store_true", help="训练全部（全局 ETR + 韶关 RF）")
     args = parser.parse_args()
 
     data_dir = Path(args.data_dir)
     output_dir = Path(args.output_dir)
     output_dir.mkdir(parents=True, exist_ok=True)
 
-    # 注意：实际文件名是 ML-data-Dose-RF_Manual_splits.xlsx（RF 和 Manual 之间是下划线 _，不是连字符 -）
-    # plan 原文写的是 RF-Manual（连字符），这是 plan 拼写错误，请用下划线版本
-    soc_xlsx = data_dir / "ML-data-SOC-RF_Manual_splits.xlsx"
-    dose_xlsx = data_dir / "ML-data-Dose-RF_Manual_splits.xlsx"
+    train_global = not args.sg or args.all
+    train_sg = args.sg or args.all
 
-    for xlsx in [soc_xlsx, dose_xlsx]:
-        if not xlsx.exists():
-            print(f"错误: 训练数据文件不存在: {xlsx}", file=sys.stderr)
-            sys.exit(1)
+    if train_global:
+        # 注意：实际文件名是 ML-data-Dose-RF_Manual_splits.xlsx（RF 和 Manual 之间是下划线 _）
+        soc_xlsx = data_dir / "ML-data-SOC-RF_Manual_splits.xlsx"
+        dose_xlsx = data_dir / "ML-data-Dose-RF_Manual_splits.xlsx"
+        for xlsx in [soc_xlsx, dose_xlsx]:
+            if not xlsx.exists():
+                print(f"错误: 训练数据文件不存在: {xlsx}", file=sys.stderr)
+                sys.exit(1)
+        soc_meta = train_one_model("SOC", soc_xlsx, SOC_BEST_PARAMS, output_dir)
+        dose_meta = train_one_model("Dose", dose_xlsx, DOSE_BEST_PARAMS, output_dir)
+        print("\n=== 全局 ETR 训练完成 ===")
+        print(f"SOC test_r2: {soc_meta['metrics']['test_r2']}")
+        print(f"Dose test_r2: {dose_meta['metrics']['test_r2']}")
 
-    soc_meta = train_one_model("SOC", soc_xlsx, SOC_BEST_PARAMS, output_dir)
-    dose_meta = train_one_model("Dose", dose_xlsx, DOSE_BEST_PARAMS, output_dir)
-
-    print("\n=== 训练完成 ===")
-    print(f"SOC test_r2: {soc_meta['metrics']['test_r2']}")
-    print(f"Dose test_r2: {dose_meta['metrics']['test_r2']}")
+    if train_sg:
+        sg_metas = train_all_sg_models(data_dir, output_dir)
+        print("\n=== 韶关 RF 训练完成 ===")
+        for m in sg_metas:
+            print(f"SG {m['land_type']} test_r2: {m['metrics']['test_r2']}, training_samples: {m['training_samples']}")
 
 
 if __name__ == "__main__":
