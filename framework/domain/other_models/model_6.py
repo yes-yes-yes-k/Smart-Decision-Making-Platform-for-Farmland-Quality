@@ -3,7 +3,7 @@ import json
 import logging
 import threading
 from pathlib import Path
-from typing import Any, Dict, List, Tuple
+from typing import Any, Dict, List, Optional, Tuple
 
 import pandas as pd
 
@@ -248,7 +248,7 @@ def _fallback_response(input_data: Dict[str, Any], reason: str) -> Dict[str, Any
     }
 
 
-def model_6_execution(input_data: Dict[str, Any], land_type: str = "upland") -> Dict[str, Any]:
+def model_6_execution(input_data: Dict[str, Any], land_type: Optional[str] = None) -> Dict[str, Any]:
     """SOC + Dose ML 预测主入口。
 
     输入：特征字典（key 可含/不含尾随空格，可缺字段；可含 area_code/land_type）
@@ -256,8 +256,9 @@ def model_6_execution(input_data: Dict[str, Any], land_type: str = "upland") -> 
 
     区域路由：
     - area_code 命中 SHAOGUAN_AREA_CODES → Dose 走 SG RF（按 land_type 选子模型），SOC 始终走全局 ETR
-    - 未命中 → Dose 和 SOC 均走全局 ETR（行为不变）
-    - land_type 仅 "upland"/"paddy" 合法，非法值默认 upland 并附 dose_warning 提示
+    - 未命中 → Dose 和 SOC 均走全局 ETR（行为不变，land_type 被忽略）
+    - land_type 为 None 时默认 "upland"（韶关区域在 dose_warning 追加"未指定"提示）；
+      仅 "upland"/"paddy" 合法，非法值默认 upland 并在韶关区域 dose_warning 中提示
     """
     try:
         # 1. 输入规范化（SOMbe → SOCbe，strip，过滤 None）
@@ -271,12 +272,10 @@ def model_6_execution(input_data: Dict[str, Any], land_type: str = "upland") -> 
         area_code = input_data.get("area_code", "")
         is_shaoguan = isinstance(area_code, str) and area_code.lower() in SHAOGUAN_AREA_CODES
 
-        # 4. land_type 规范化（非法值默认 upland）
+        # 4. land_type 规范化（None/非法值默认 upland；提示仅韶关区域生成）
+        land_type_missing = land_type is None
         land_type_norm = land_type if land_type in ("upland", "paddy") else "upland"
-        land_type_invalid = land_type not in ("upland", "paddy")
-        land_type_warning = (
-            f"（未识别的 land_type={land_type}，默认按旱地处理）" if land_type_invalid else ""
-        )
+        land_type_invalid = land_type is not None and land_type not in ("upland", "paddy")
 
         # 5. SOC 始终走全局 ETR（先确保全局模型加载）
         if not _ensure_models_loaded():
@@ -332,9 +331,16 @@ def model_6_execution(input_data: Dict[str, Any], land_type: str = "upland") -> 
         if is_shaoguan:
             dose_pred = float(sg_model.predict(dose_df)[0])
             sg_test_r2 = sg_meta["metrics"]["test_r2"]
+            # land_type 提示仅韶关区域生成（spec: 非韶关 SHALL 忽略 land_type）
+            if land_type_missing:
+                lt_warning = "（未指定 land_type，默认使用旱地模型）"
+            elif land_type_invalid:
+                lt_warning = f"（未识别的 land_type={land_type}，默认按旱地处理）"
+            else:
+                lt_warning = ""
             dose_warning = (
                 f"韶关{land_label} RF 模型 R²={sg_test_r2:.2f}，预测结果仅供参考"
-                f"{land_type_warning}"
+                f"{lt_warning}"
             )
             dose_confidence = round(sg_test_r2, 2)
             # 低样本量提示
@@ -342,9 +348,9 @@ def model_6_execution(input_data: Dict[str, Any], land_type: str = "upland") -> 
                 dose_warning += "（训练样本量较少，置信度偏低）"
         else:
             dose_pred = float(_DOSE_MODEL.predict(dose_df)[0])
+            # 非韶关区域忽略 land_type（spec: 非韶关 SHALL 忽略 land_type）
             dose_warning = (
                 "Dose 模型 R²=0.47，预测结果仅供参考，建议结合田间试验校准"
-                f"{land_type_warning}"
             )
             dose_confidence = round(_DOSE_META["metrics"]["test_r2"], 2)
 

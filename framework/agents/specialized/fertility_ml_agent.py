@@ -36,10 +36,11 @@ class FertilityMLAgent(BaseAgent):
     def execute(self, task: Dict[str, Any]) -> Dict[str, Any]:
         """调用 model_6_execution 执行 ML 预测，包装为三层结构。
 
-        从 task 提取 land_type（默认 upland）透传给 model_6_execution。
+        从 task 提取 land_type 透传给 model_6_execution；task 未提供时传 None，
+        由 model_6_execution 默认 upland 并在韶关区域追加"未指定 land_type"提示。
         area_code 已在 task 字典中自然流转，无需额外传递。
         """
-        land_type = (task or {}).get("land_type", "upland")
+        land_type = (task or {}).get("land_type")
         result = model_6_execution(task or {}, land_type=land_type)
         return MockDataLoader.mark_simulated({
             "status": result["status"],

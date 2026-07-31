@@ -519,6 +519,29 @@ class TestModel6ShaoguanRouting:
         result = model_6_execution(FULL_VALID_INPUT)
         assert result["status"] == "success"
 
+    def test_shaoguan_land_type_not_specified_warning(self, monkeypatch):
+        """spec L82-83: 韶关区域 land_type 未传 → dose_warning 追加'未指定 land_type'提示"""
+        _setup_mock_models(monkeypatch)
+        _setup_mock_sg_models(monkeypatch)
+        from framework.domain.other_models.model_6 import model_6_execution
+        inp = dict(FULL_VALID_INPUT, area_code="lechang")
+        result = model_6_execution(inp)  # 不传 land_type → None
+        assert result["status"] == "success"
+        assert result["dose_confidence"] == 0.62  # 走 upland SG RF
+        assert "未指定 land_type" in result["dose_warning"]
+        assert "旱地" in result["dose_warning"]
+
+    def test_non_shaoguan_ignores_invalid_land_type(self, monkeypatch):
+        """spec L71: 非韶关区域 SHALL 忽略 land_type（非法值不产生提示）"""
+        _setup_mock_models(monkeypatch)
+        from framework.domain.other_models.model_6 import model_6_execution
+        inp = dict(FULL_VALID_INPUT, area_code="other")
+        result = model_6_execution(inp, land_type="foo")
+        assert result["status"] == "success"
+        assert "韶关" not in result["dose_warning"]
+        assert "land_type" not in result["dose_warning"]
+        assert "未识别" not in result["dose_warning"]
+
 
 # ---- Task 6: FertilityMLAgent 透传测试 ----
 
@@ -553,7 +576,7 @@ class TestFertilityMLAgentPassthrough:
         assert captured["area_code"] == "lechang"
 
     def test_execute_default_land_type_when_missing(self, monkeypatch):
-        """task 不含 land_type → 默认 upland 传给 model_6"""
+        """task 不含 land_type → 传 None 给 model_6（由 model 默认 upland 并追加提示）"""
         _setup_mock_models(monkeypatch)
         from framework.agents.specialized.fertility_ml_agent import FertilityMLAgent
 
@@ -570,7 +593,7 @@ class TestFertilityMLAgentPassthrough:
 
         agent = FertilityMLAgent()
         agent.execute({"pH": 6.5})
-        assert captured["land_type"] == "upland"
+        assert captured["land_type"] is None
 
     def test_answer_question_enriches_task_with_context_area_code(self, monkeypatch):
         """answer_question 应从 context 顶层提取 area_code/land_type 注入 task"""
