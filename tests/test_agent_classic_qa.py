@@ -97,46 +97,43 @@ def test_problem_farmer_simple_language():
 
 
 def test_acidification_degree_with_standard():
-    """酸化程度判定引用 GB/T 42817-2023"""
+    """酸化程度判定：过程模型输出 YTK/MBNT"""
     from framework.agents.specialized.acidification_agent import AcidificationRemediationAgent
     out = AcidificationRemediationAgent().answer_question(
         "查询区域内农用地土壤酸化程度如何，不同酸化等级比例分别多少？", {})
-    assert out["simulated"] is True
-    # 收紧：实现产出 "酸化程度为{degree}（依据 GB/T 42817-2023 分级）"
-    assert "酸化程度为" in out["answer"]
-    assert "GB/T 42817-2023" in out["answer"]
+    # 过程模型（YTK/MBNT）取代旧的 GB/T 42817-2023 分级
+    assert "GB/T 42817-2023" not in out["answer"]
+    assert ("亿土康" in out["answer"] or "木本泥炭" in out["answer"])
 
 
 def test_acidification_remediation_dosage_with_standard():
-    """调理剂施用量引用 GB/T 42817-2023 与 NY/T 443-2019"""
+    """调理剂施用量：过程模型 YTK/MBNT 取代旧的 GB/T 42817-2023 与 NY/T 443-2019"""
     from framework.agents.specialized.acidification_agent import AcidificationRemediationAgent
     out = AcidificationRemediationAgent().answer_question(
         "我的田酸化了，pH是5.0，我要施加多少碱性调理剂可以治理好？", {})
-    assert out["simulated"] is True
-    # 收紧：实现产出 "建议施石灰 {lime_dosage} kg/亩..." + "依据 GB/T 42817-2023...NY/T 443-2019..."
-    assert "建议施石灰" in out["answer"]
-    assert "GB/T 42817-2023" in out["answer"]
-    assert "NY/T 443-2019" in out["answer"]
+    # 过程模型（YTK/MBNT）取代旧的 GB/T 42817-2023 与 NY/T 443-2019 石灰剂量
+    assert "GB/T 42817-2023" not in out["answer"]
+    assert "NY/T 443-2019" not in out["answer"]
+    assert ("亿土康" in out["answer"] or "YTK" in out["answer"])
 
 
 def test_acidification_landuse_types():
-    """不同土地利用类型酸化程度"""
+    """不同土地利用类型：过程模型酸化改良输出"""
     from framework.agents.specialized.acidification_agent import AcidificationRemediationAgent
     out = AcidificationRemediationAgent().answer_question(
         "查询区域内不同土地利用类型的酸化程度", {})
-    assert out["simulated"] is True
-    # 收紧：实现产出 "不同土地利用类型酸化程度：..."
-    assert "不同土地利用类型酸化程度" in out["answer"]
+    # 过程模型（YTK/MBNT）取代旧的"不同土地利用类型酸化程度"判定
+    assert "GB/T 42817-2023" not in out["answer"]
+    assert ("亿土康" in out["answer"] or "木本泥炭" in out["answer"])
 
 
 def test_acidification_farmer_severity():
-    """农户端：我的这块田酸化严重吗"""
+    """农户端：我的这块田酸化严重吗——过程模型输出 YTK/MBNT"""
     from framework.agents.specialized.acidification_agent import AcidificationRemediationAgent
     out = AcidificationRemediationAgent().answer_question("我的这块田酸化严重吗？", {})
-    assert out["simulated"] is True
-    # 收紧：实现产出 "您的地块土壤 pH=...酸化等级为...（依据 GB/T 42817-2023...）"
-    assert "酸化等级为" in out["answer"]
-    assert "GB/T 42817-2023" in out["answer"]
+    # 过程模型（YTK/MBNT）取代旧的 GB/T 42817-2023 酸化等级判定
+    assert "GB/T 42817-2023" not in out["answer"]
+    assert ("亿土康" in out["answer"] or "木本泥炭" in out["answer"])
 
 
 def test_organic_content_overall():

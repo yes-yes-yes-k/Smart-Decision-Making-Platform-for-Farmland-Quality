@@ -64,7 +64,7 @@ class AcidificationRemediationAgent(BaseAgent):
             reason = exec_result["metadata"].get("reason", "")
             answer = f"无法计算酸化改良剂需求：{reason}。请提供 SJD（pH）、JHX（交换性氢）、JLA（交换性铝）。"
             return {"answer": answer, "evidence": [], "confidence": 0.5,
-                    "acidification_detail": exec_result, **{"simulated": True}}
+                    "acidification_detail": exec_result, "simulated": True}
 
         ytk = res.get("ytk")
         mbnt = res.get("mbnt")
