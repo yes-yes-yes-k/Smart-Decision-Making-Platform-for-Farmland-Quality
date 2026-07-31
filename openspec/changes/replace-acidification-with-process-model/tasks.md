@@ -16,24 +16,24 @@
 
 ## 3. model_4.py 入口实现
 
-- [ ] 3.1 在 `framework/domain/other_models/model_4.py` 实现 `model_4_execution(input_data, land_type=None, fertilizer_type=None)` 入口函数
-- [ ] 3.2 `model_4_execution` 内部调用 `calculate_acidification_amendment`，处理输入映射（SJD→pHstart、JHX→Hex、JLA→Alex）
-- [ ] 3.3 `model_4_execution` 返回标准化结构：`{status, ytk, mbnt, land_type, fertilizer_type, model_version, warning, customized_params}`
-- [ ] 3.4 支持 parcel_id 补充 SJD：若 input_data 包含 parcel_id 但无 SJD，从 evaluation_results 表查询 SJD
+- [x] 3.1 在 `framework/domain/other_models/model_4.py` 实现 `model_4_execution(input_data, land_type=None, fertilizer_type=None)` 入口函数
+- [x] 3.2 `model_4_execution` 内部调用 `calculate_acidification_amendment`，处理输入映射（SJD→pHstart、JHX→Hex、JLA→Alex）
+- [x] 3.3 `model_4_execution` 返回标准化结构：`{status, ytk, mbnt, land_type, fertilizer_type, model_version, warning, customized_params}`
+- [x] 3.4 支持 parcel_id 补充 SJD：若 input_data 包含 parcel_id 但无 SJD，从 evaluation_results 表查询 SJD
 
 ## 4. AcidificationRemediationAgent 适配
 
-- [ ] 4.1 更新 `framework/agents/specialized/acidification_agent.py` 的 `execute` 方法，调用 `model_4_execution` 而非旧 `query_acidification`
-- [ ] 4.2 更新 `answer_question` 方法，从 context 提取 `fertilizer_type` 并透传给 `model_4_execution`
-- [ ] 4.3 更新 answer 生成逻辑：使用 ytk/mbnt 替代 lime_demand/amendment_rate，移除 GB/T 42817-2023 引用
-- [ ] 4.4 更新 MOCK_INPUTS：新增 `jhx`（交换性氢）和 `jla`（交换性铝）默认值，保留 `exchangeable_al` 用于向后兼容
-- [ ] 4.5 移除 `_get_real_acidification` 中的 DB 查询逻辑，改为直接调用 `model_4_execution`
+- [x] 4.1 更新 `framework/agents/specialized/acidification_agent.py` 的 `execute` 方法，调用 `model_4_execution` 而非旧 `query_acidification`
+- [x] 4.2 更新 `answer_question` 方法，从 context 提取 `fertilizer_type` 并透传给 `model_4_execution`
+- [x] 4.3 更新 answer 生成逻辑：使用 ytk/mbnt 替代 lime_demand/amendment_rate，移除 GB/T 42817-2023 引用
+- [x] 4.4 更新 MOCK_INPUTS：新增 `jhx`（交换性氢）和 `jla`（交换性铝）默认值，保留 `exchangeable_al` 用于向后兼容
+- [x] 4.5 移除 `_get_real_acidification` 中的 DB 查询逻辑，改为直接调用 `model_4_execution`
 
 ## 5. API 层透传
 
-- [ ] 5.1 在 `framework/agents/nodes.py` 的 `execute_models` 函数中，将 `fertilizer_type` 加入透传参数列表（与 `land_type` 并列）
-- [ ] 5.2 在 `framework/api/routes/chat.py` 的 `chat` 函数中，从请求体提取 `fertilizer_type` 并注入 `orchestrator_request`
-- [ ] 5.3 确保 `fertilizer_type` 在 context 中流转到 AcidificationRemediationAgent（与 land_type 流转路径一致）
+- [x] 5.1 在 `framework/agents/nodes.py` 的 `execute_models` 函数中，将 `fertilizer_type` 加入透传参数列表（与 `land_type` 并列）
+- [x] 5.2 在 `framework/api/routes/chat.py` 的 `chat` 函数中，从请求体提取 `fertilizer_type` 并注入 `orchestrator_request`
+- [x] 5.3 确保 `fertilizer_type` 在 context 中流转到 AcidificationRemediationAgent（与 land_type 流转路径一致）
 
 ## 6. 测试
 

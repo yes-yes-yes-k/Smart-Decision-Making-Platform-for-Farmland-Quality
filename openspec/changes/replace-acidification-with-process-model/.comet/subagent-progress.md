@@ -13,10 +13,10 @@ Plan commit (BASE for Task 1): b9cefe6
 |------|--------|-------|---------|------|--------|-------|
 | 1 | complete | done | 26c79d4, 85ac287 | hit (DONE_WITH_CONCERNS) | Approved | 字段标准码 JHX/JLA + bulk_evaluate 回归修复；review 通过 |
 | 2 | complete | done | 8951b4f, 7a6eca7, aa294fe | hit (multi) | Approved | 4子模型偏差<1e-9；I1/I2测试缺口已补；W1/W2/W3 controller 已确认 |
-| 3 | pending | - | - | - | - | model_4 入口 |
-| 4 | pending | - | - | - | - | Agent 适配 |
-| 5 | pending | - | - | - | - | API 透传 |
-| 6 | pending | - | - | - | - | 回归验证 |
+| 3 | complete | done | 4d9415f | no (114/8) | skip (standard) | model_4_execution + parcel_id 补 SJD；11 passed；未超风险阈值 |
+| 4 | complete | done | afb07bb, c873b28, 7ae3912 | hit (API break) | Approved (after fix) | Agent 适配 ytk/mbnt；C1 classic_qa 4测试+simulated_flag 已修复；23 passed |
+| 5 | complete | done | ab1bc9f | no (45/2) | skip (standard) | API 透传 fertilizer_type；60 passed；2 pre-existing 失败（parcel_id/parcel_code 透传，非本变更引入） |
+| 6 | in-progress | dispatching | - | - | - | 回归验证 |
 | 7 | pending | - | - | - | - | 文档更新 |
 
 ## Task 1 Review 结果（已完成）
