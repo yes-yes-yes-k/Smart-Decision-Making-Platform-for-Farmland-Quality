@@ -5,6 +5,11 @@ from datetime import datetime
 from typing import Optional, List, Dict, Any
 
 
+# 标准指标码（与 config.ALL_INDICATORS 一致，此处本地声明避免循环导入）
+_ALL_INDICATORS = ['SJD', 'YJZ', 'YXL', 'SXJ', 'TRRZ', 'GCZD', 'GGNL', 'PSNL', 'DXBW', 'ZDGX', 'YXTCHD', 'GCHD']
+_DISCRETE_INDICATORS = {'GCZD', 'GGNL', 'PSNL', 'DXBW', 'ZDGX'}
+
+
 class DiagnosisStorage:
     def __init__(self, db_path: str = None):
         if db_path is None:
@@ -23,45 +28,39 @@ class DiagnosisStorage:
         conn = sqlite3.connect(self.db_path)
         cursor = conn.cursor()
 
-        cursor.execute('''
-            CREATE TABLE IF NOT EXISTS evaluation_results (
-                parcel_id TEXT PRIMARY KEY,
-                region_code TEXT,
-                secondary_region_code TEXT,
-                PH REAL, YJ REAL, YXP REAL, SXK REAL, RZ REAL,
-                GZ TEXT, GG TEXT, PS TEXT, DX TEXT, ZD TEXT,
-                YXT REAL, GCH REAL,
-                PH_LD REAL, YJ_LD REAL, YXP_LD REAL, SXK_LD REAL, RZ_LD REAL,
-                GZ_LD REAL, GG_LD REAL, PS_LD REAL, DX_LD REAL, ZD_LD REAL,
-                YXT_LD REAL, GCH_LD REAL,
-                composite_weight REAL,
-                grade TEXT,
-                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-            )
-        ''')
+        # evaluation_results：原始值列 + 隶属度列(xxxLSD) + 障碍等级列(xxxZADJ) + 障碍度列(xxxZAD) + ZHQZ + GDZLDJ
+        eval_cols = [
+            'parcel_id TEXT PRIMARY KEY',
+            'region_code TEXT',
+            'secondary_region_code TEXT',
+        ]
+        for ind in _ALL_INDICATORS:
+            col_type = 'TEXT' if ind in _DISCRETE_INDICATORS else 'REAL'
+            eval_cols.append(f'{ind} {col_type}')
+        for ind in _ALL_INDICATORS:
+            eval_cols.append(f'{ind}LSD REAL')
+            eval_cols.append(f'{ind}ZADJ TEXT')
+            eval_cols.append(f'{ind}ZAD REAL')
+        eval_cols.append('ZHQZ REAL')
+        eval_cols.append('GDZLDJ TEXT')
+        eval_cols.append('created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP')
+        eval_cols.append('updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP')
 
-        cursor.execute('''
-            CREATE TABLE IF NOT EXISTS diagnosis_results (
-                parcel_id TEXT PRIMARY KEY REFERENCES evaluation_results(parcel_id),
-                obstacle_type TEXT,
-                main_factors TEXT,
-                secondary_factors TEXT,
-                PH_obstacle_level TEXT, YJ_obstacle_level TEXT,
-                YXP_obstacle_level TEXT, SXK_obstacle_level TEXT,
-                RZ_obstacle_level TEXT, GZ_obstacle_level TEXT,
-                GG_obstacle_level TEXT, PS_obstacle_level TEXT,
-                DX_obstacle_level TEXT, ZD_obstacle_level TEXT,
-                YXT_obstacle_level TEXT, GCH_obstacle_level TEXT,
-                PH_obstacle_degree REAL, YJ_obstacle_degree REAL,
-                YXP_obstacle_degree REAL, SXK_obstacle_degree REAL,
-                RZ_obstacle_degree REAL, GZ_obstacle_degree REAL,
-                GG_obstacle_degree REAL, PS_obstacle_degree REAL,
-                DX_obstacle_degree REAL, ZD_obstacle_degree REAL,
-                YXT_obstacle_degree REAL, GCH_obstacle_degree REAL,
-                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-            )
-        ''')
+        cursor.execute(f'CREATE TABLE IF NOT EXISTS evaluation_results ({", ".join(eval_cols)})')
+
+        # diagnosis_results：ZALX/ZYZAYS/CYZAYS + 各 xxxZADJ / xxxZAD
+        diag_cols = [
+            'parcel_id TEXT PRIMARY KEY REFERENCES evaluation_results(parcel_id)',
+            'ZALX TEXT',
+            'ZYZAYS TEXT',
+            'CYZAYS TEXT',
+        ]
+        for ind in _ALL_INDICATORS:
+            diag_cols.append(f'{ind}ZADJ TEXT')
+            diag_cols.append(f'{ind}ZAD REAL')
+        diag_cols.append('created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP')
+
+        cursor.execute(f'CREATE TABLE IF NOT EXISTS diagnosis_results ({", ".join(diag_cols)})')
 
         cursor.execute('''
             CREATE TABLE IF NOT EXISTS acidification_results (
@@ -85,29 +84,29 @@ class DiagnosisStorage:
         conn = sqlite3.connect(self.db_path)
         cursor = conn.cursor()
 
+        original_cols = _ALL_INDICATORS
+        lsd_cols = [f'{ind}LSD' for ind in _ALL_INDICATORS]
+        zadj_cols = [f'{ind}ZADJ' for ind in _ALL_INDICATORS]
+        zad_cols = [f'{ind}ZAD' for ind in _ALL_INDICATORS]
+        all_data_cols = (['parcel_id', 'region_code', 'secondary_region_code']
+                         + original_cols + lsd_cols + zadj_cols + zad_cols
+                         + ['ZHQZ', 'GDZLDJ', 'updated_at'])
+        placeholders = ', '.join(['?'] * len(all_data_cols))
+        col_sql = ', '.join(all_data_cols)
+
         for record in records:
-            cursor.execute('''
-                INSERT OR REPLACE INTO evaluation_results
-                (parcel_id, region_code, secondary_region_code,
-                 PH, YJ, YXP, SXK, RZ, GZ, GG, PS, DX, ZD, YXT, GCH,
-                 PH_LD, YJ_LD, YXP_LD, SXK_LD, RZ_LD,
-                 GZ_LD, GG_LD, PS_LD, DX_LD, ZD_LD, YXT_LD, GCH_LD,
-                 composite_weight, grade, updated_at)
-                VALUES (?, ?, ?,
-                        ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?,
-                        ?, ?, ?, ?, ?,
-                        ?, ?, ?, ?, ?, ?, ?,
-                        ?, ?, ?)
-            ''', (
-                record['parcel_id'], record.get('region_code'), record.get('secondary_region_code'),
-                record.get('PH'), record.get('YJ'), record.get('YXP'), record.get('SXK'), record.get('RZ'),
-                record.get('GZ'), record.get('GG'), record.get('PS'), record.get('DX'), record.get('ZD'),
-                record.get('YXT'), record.get('GCH'),
-                record.get('PH_LD'), record.get('YJ_LD'), record.get('YXP_LD'), record.get('SXK_LD'), record.get('RZ_LD'),
-                record.get('GZ_LD'), record.get('GG_LD'), record.get('PS_LD'), record.get('DX_LD'), record.get('ZD_LD'),
-                record.get('YXT_LD'), record.get('GCH_LD'),
-                record.get('composite_weight'), record.get('grade'), datetime.now()
-            ))
+            values = (
+                [record.get('parcel_id'), record.get('region_code'), record.get('secondary_region_code')]
+                + [record.get(ind) for ind in original_cols]
+                + [record.get(c) for c in lsd_cols]
+                + [record.get(c) for c in zadj_cols]
+                + [record.get(c) for c in zad_cols]
+                + [record.get('ZHQZ'), record.get('GDZLDJ'), datetime.now()]
+            )
+            cursor.execute(
+                f'INSERT OR REPLACE INTO evaluation_results ({col_sql}) VALUES ({placeholders})',
+                values,
+            )
 
         conn.commit()
         count = cursor.rowcount
@@ -118,40 +117,23 @@ class DiagnosisStorage:
         conn = sqlite3.connect(self.db_path)
         cursor = conn.cursor()
 
+        zadj_cols = [f'{ind}ZADJ' for ind in _ALL_INDICATORS]
+        zad_cols = [f'{ind}ZAD' for ind in _ALL_INDICATORS]
+        all_data_cols = (['parcel_id', 'ZALX', 'ZYZAYS', 'CYZAYS']
+                         + zadj_cols + zad_cols)
+        placeholders = ', '.join(['?'] * len(all_data_cols))
+        col_sql = ', '.join(all_data_cols)
+
         for record in records:
-            cursor.execute('''
-                INSERT OR REPLACE INTO diagnosis_results
-                (parcel_id, obstacle_type, main_factors, secondary_factors,
-                 PH_obstacle_level, YJ_obstacle_level, YXP_obstacle_level, SXK_obstacle_level,
-                 RZ_obstacle_level, GZ_obstacle_level, GG_obstacle_level, PS_obstacle_level,
-                 DX_obstacle_level, ZD_obstacle_level, YXT_obstacle_level, GCH_obstacle_level,
-                 PH_obstacle_degree, YJ_obstacle_degree, YXP_obstacle_degree, SXK_obstacle_degree,
-                 RZ_obstacle_degree, GZ_obstacle_degree, GG_obstacle_degree, PS_obstacle_degree,
-                 DX_obstacle_degree, ZD_obstacle_degree, YXT_obstacle_degree, GCH_obstacle_degree)
-                VALUES (?, ?, ?, ?,
-                        ?, ?, ?, ?,
-                        ?, ?, ?, ?,
-                        ?, ?, ?, ?,
-                        ?, ?, ?, ?,
-                        ?, ?, ?, ?,
-                        ?, ?, ?, ?)
-            ''', (
-                record['parcel_id'], record.get('obstacle_type'),
-                json.dumps(record.get('main_factors', [])),
-                json.dumps(record.get('secondary_factors', [])),
-                record.get('PH_obstacle_level'), record.get('YJ_obstacle_level'),
-                record.get('YXP_obstacle_level'), record.get('SXK_obstacle_level'),
-                record.get('RZ_obstacle_level'), record.get('GZ_obstacle_level'),
-                record.get('GG_obstacle_level'), record.get('PS_obstacle_level'),
-                record.get('DX_obstacle_level'), record.get('ZD_obstacle_level'),
-                record.get('YXT_obstacle_level'), record.get('GCH_obstacle_level'),
-                record.get('PH_obstacle_degree'), record.get('YJ_obstacle_degree'),
-                record.get('YXP_obstacle_degree'), record.get('SXK_obstacle_degree'),
-                record.get('RZ_obstacle_degree'), record.get('GZ_obstacle_degree'),
-                record.get('GG_obstacle_degree'), record.get('PS_obstacle_degree'),
-                record.get('DX_obstacle_degree'), record.get('ZD_obstacle_degree'),
-                record.get('YXT_obstacle_degree'), record.get('GCH_obstacle_degree')
-            ))
+            values = (
+                [record.get('parcel_id'), record.get('ZALX'), record.get('ZYZAYS'), record.get('CYZAYS')]
+                + [record.get(c) for c in zadj_cols]
+                + [record.get(c) for c in zad_cols]
+            )
+            cursor.execute(
+                f'INSERT OR REPLACE INTO diagnosis_results ({col_sql}) VALUES ({placeholders})',
+                values,
+            )
 
         conn.commit()
         count = cursor.rowcount
@@ -171,7 +153,7 @@ class DiagnosisStorage:
             ''', (
                 record['parcel_id'], record.get('acidification_level'), record.get('acidification_direction'),
                 record.get('target_pH'), record.get('lime_demand'), record.get('amendment_type'),
-                record.get('amendment_rate'), json.dumps(record.get('measures', [])), record.get('expected_effect')
+                record.get('amendment_rate'), json.dumps(record.get('measures', [])), record.get('expected_effect'),
             ))
 
         conn.commit()
@@ -203,10 +185,8 @@ class DiagnosisStorage:
             return None
 
         columns = [desc[0] for desc in cursor.description]
-        result = dict(zip(columns, row))
-        result['main_factors'] = json.loads(result.get('main_factors', '[]'))
-        result['secondary_factors'] = json.loads(result.get('secondary_factors', '[]'))
-        return result
+        # ZALX/ZYZAYS/CYZAYS 及 xxxZADJ/xxxZAD 均为标量列，不再 JSON loads
+        return dict(zip(columns, row))
 
     def get_acidification(self, parcel_id: str) -> Optional[Dict[str, Any]]:
         conn = sqlite3.connect(self.db_path)

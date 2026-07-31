@@ -2,7 +2,7 @@ import pandas as pd
 import numpy as np
 import sqlite3
 from typing import Dict, Any, Optional
-from .config import AMENDMENT_CONFIG, INDICATOR_NAME_MAP
+from .config import AMENDMENT_CONFIG
 from .storage import DiagnosisStorage
 
 
@@ -110,9 +110,9 @@ def evaluate_acidification(db_path: str = None) -> Dict[str, Any]:
 
     records = []
     for idx, row in df.iterrows():
-        pH = row.get('PH', 6.5)
-        organic_matter = row.get('YJ', 20)
-        region_code = row.get('JY', 'HN')
+        pH = row.get('SJD', 6.5)
+        organic_matter = row.get('YJZ', 20)
+        region_code = row.get('region_code', 'HN')
 
         result = generate_amendment(pH, organic_matter, region_code)
         

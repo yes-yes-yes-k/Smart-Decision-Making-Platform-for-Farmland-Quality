@@ -1,7 +1,9 @@
 import pytest
 import numpy as np
 from src.ai_culti_demo.farmland_diagnosis.config import (
-    REGION_MAP, COEFFICIENTS, WEIGHTS, INDICATOR_NAME_MAP, calc_obstacle_level
+    REGION_MAP, COEFFICIENTS, WEIGHTS, INDICATOR_DISPLAY_MAP,
+    GRADE_CONFIG, ALL_INDICATORS, CONTINUOUS_INDICATORS, DISCRETE_INDICATORS,
+    calc_obstacle_level
 )
 
 def test_region_map():
@@ -11,49 +13,70 @@ def test_region_map():
 def test_coefficients_exists():
     assert 'HN' in COEFFICIENTS
     assert 'CJ' in COEFFICIENTS
-    assert 'PH' in COEFFICIENTS['HN']
-    assert 'YJ' in COEFFICIENTS['HN']
+    assert 'SJD' in COEFFICIENTS['HN']
+    assert 'YJZ' in COEFFICIENTS['HN']
 
 def test_weights_exists():
     assert 'MNY' in WEIGHTS
-    assert 'PH' in WEIGHTS['MNY']
-    assert 'GG' in WEIGHTS['MNY']
+    assert 'SJD' in WEIGHTS['MNY']
+    assert 'GGNL' in WEIGHTS['MNY']
 
-def test_indicator_name_map():
-    assert INDICATOR_NAME_MAP['PH'] == 'pH'
-    assert INDICATOR_NAME_MAP['YJ'] == '有机质'
+def test_indicator_display_map():
+    assert INDICATOR_DISPLAY_MAP['SJD'] == 'pH'
+    assert INDICATOR_DISPLAY_MAP['YJZ'] == '有机质'
 
-def test_calc_obstacle_level_ph_moderate():
-    row = {'PH': 5.0}
-    result = calc_obstacle_level(row, ['PH'])
-    assert result['PH'] == '中度障碍'
+def test_grade_config_exists():
+    assert 'HN' in GRADE_CONFIG
+    assert 'CJ' in GRADE_CONFIG
+    assert len(GRADE_CONFIG['HN'][0]) == 11  # 10 个边界 + inf
 
-def test_calc_obstacle_level_ph_no_obstacle():
-    row = {'PH': 7.0}
-    result = calc_obstacle_level(row, ['PH'])
-    assert result['PH'] == '无障碍'
+def test_indicator_constants():
+    assert len(ALL_INDICATORS) == 12
+    assert set(CONTINUOUS_INDICATORS) | set(DISCRETE_INDICATORS) == set(ALL_INDICATORS)
+    assert set(CONTINUOUS_INDICATORS) & set(DISCRETE_INDICATORS) == set()
 
-def test_calc_obstacle_level_ph_severe():
-    row = {'PH': 4.0}
-    result = calc_obstacle_level(row, ['PH'])
-    assert result['PH'] == '重度障碍'
+def test_calc_obstacle_level_sjd_moderate():
+    row = {'SJD': 5.0}
+    result = calc_obstacle_level(row, ['SJD'])
+    assert result['SJD'] == '中度障碍'
+
+def test_calc_obstacle_level_sjd_no_obstacle():
+    row = {'SJD': 7.0}
+    result = calc_obstacle_level(row, ['SJD'])
+    assert result['SJD'] == '无障碍'
+
+def test_calc_obstacle_level_sjd_severe():
+    row = {'SJD': 4.0}
+    result = calc_obstacle_level(row, ['SJD'])
+    assert result['SJD'] == '重度障碍'
 
 def test_calc_obstacle_level_organic_moderate():
-    row = {'YJ': 15}
-    result = calc_obstacle_level(row, ['YJ'])
-    assert result['YJ'] == '中度障碍'
+    row = {'YJZ': 15}
+    result = calc_obstacle_level(row, ['YJZ'])
+    assert result['YJZ'] == '中度障碍'
 
 def test_calc_obstacle_level_organic_no_obstacle():
-    row = {'YJ': 30}
-    result = calc_obstacle_level(row, ['YJ'])
-    assert result['YJ'] == '无障碍'
+    row = {'YJZ': 30}
+    result = calc_obstacle_level(row, ['YJZ'])
+    assert result['YJZ'] == '无障碍'
 
 def test_calc_obstacle_level_multiple_indicators():
-    row = {'PH': 6.5, 'YJ': 25, 'SXK': 80}
-    result = calc_obstacle_level(row, ['PH', 'YJ', 'SXK'])
-    assert result['PH'] == '无障碍'
-    assert result['YJ'] == '轻度障碍'
-    assert result['SXK'] == '中度障碍'
+    row = {'SJD': 6.5, 'YJZ': 25, 'SXJ': 80}
+    result = calc_obstacle_level(row, ['SJD', 'YJZ', 'SXJ'])
+    assert result['SJD'] == '无障碍'
+    assert result['YJZ'] == '轻度障碍'
+    assert result['SXJ'] == '中度障碍'
+
+def test_calc_obstacle_level_gczd_uses_lsd():
+    # GCZD 障碍等级依赖隶属度列 GCZDLSD
+    row = {'GCZDLSD': 0.5}
+    result = calc_obstacle_level(row, ['GCZD'])
+    assert result['GCZD'] == '重度障碍'
+
+def test_calc_obstacle_level_dxbw_uses_lsd():
+    row = {'DXBWLSD': 0.3}
+    result = calc_obstacle_level(row, ['DXBW'])
+    assert result['DXBW'] == '重度障碍'
 
 
 # Storage tests
@@ -88,14 +111,14 @@ def test_storage_save_and_get_evaluation():
             'parcel_id': 'test-001',
             'region_code': 'HN',
             'secondary_region_code': 'MNY',
-            'PH': 6.5, 'YJ': 25, 'YXP': 30, 'SXK': 150, 'RZ': 1.2,
-            'GZ': 'RT', 'GG': 'FS', 'PS': 'CM', 'DX': 'PLT', 'ZD': 'TLBC',
-            'YXT': 100, 'GCH': 20,
-            'PH_LD': 1.0, 'YJ_LD': 1.0, 'YXP_LD': 0.8, 'SXK_LD': 0.8, 'RZ_LD': 1.0,
-            'GZ_LD': 1.0, 'GG_LD': 1.0, 'PS_LD': 1.0, 'DX_LD': 1.0, 'ZD_LD': 1.0,
-            'YXT_LD': 1.0, 'GCH_LD': 1.0,
-            'composite_weight': 0.85,
-            'grade': '3'
+            'SJD': 6.5, 'YJZ': 25, 'YXL': 30, 'SXJ': 150, 'TRRZ': 1.2,
+            'GCZD': 'RT', 'GGNL': 'FS', 'PSNL': 'CM', 'DXBW': 'PLT', 'ZDGX': 'TLBC',
+            'YXTCHD': 100, 'GCHD': 20,
+            'SJDLSD': 1.0, 'YJZLSD': 1.0, 'YXLLSD': 0.8, 'SXJLSD': 0.8, 'TRRZLSD': 1.0,
+            'GCZDLSD': 1.0, 'GGNLLSD': 1.0, 'PSNLLSD': 1.0, 'DXBWLSD': 1.0, 'ZDGXLSD': 1.0,
+            'YXTCHDLSD': 1.0, 'GCHDLSD': 1.0,
+            'ZHQZ': 0.85,
+            'GDZLDJ': '3',
         }
 
         count = storage.save_evaluation([record])
@@ -104,7 +127,9 @@ def test_storage_save_and_get_evaluation():
         result = storage.get_evaluation('test-001')
         assert result is not None
         assert result['parcel_id'] == 'test-001'
-        assert result['PH'] == 6.5
+        assert result['SJD'] == 6.5
+        assert result['ZHQZ'] == 0.85
+        assert result['GDZLDJ'] == '3'
 
 def test_storage_save_and_get_diagnosis():
     with tempfile.TemporaryDirectory() as tmpdir:
@@ -115,30 +140,34 @@ def test_storage_save_and_get_diagnosis():
         eval_record = {
             'parcel_id': 'test-001',
             'region_code': 'HN', 'secondary_region_code': 'MNY',
-            'PH': 5.0, 'YJ': 25, 'YXP': 30, 'SXK': 150, 'RZ': 1.2,
-            'GZ': 'RT', 'GG': 'FS', 'PS': 'CM', 'DX': 'PLT', 'ZD': 'TLBC',
-            'YXT': 100, 'GCH': 20,
-            'PH_LD': 0.5, 'YJ_LD': 1.0, 'YXP_LD': 0.8, 'SXK_LD': 0.8, 'RZ_LD': 1.0,
-            'GZ_LD': 1.0, 'GG_LD': 1.0, 'PS_LD': 1.0, 'DX_LD': 1.0, 'ZD_LD': 1.0,
-            'YXT_LD': 1.0, 'GCH_LD': 1.0,
-            'composite_weight': 0.85, 'grade': '3'
+            'SJD': 5.0, 'YJZ': 25, 'YXL': 30, 'SXJ': 150, 'TRRZ': 1.2,
+            'GCZD': 'RT', 'GGNL': 'FS', 'PSNL': 'CM', 'DXBW': 'PLT', 'ZDGX': 'TLBC',
+            'YXTCHD': 100, 'GCHD': 20,
+            'SJDLSD': 0.5, 'YJZLSD': 1.0, 'YXLLSD': 0.8, 'SXJLSD': 0.8, 'TRRZLSD': 1.0,
+            'GCZDLSD': 1.0, 'GGNLLSD': 1.0, 'PSNLLSD': 1.0, 'DXBWLSD': 1.0, 'ZDGXLSD': 1.0,
+            'YXTCHDLSD': 1.0, 'GCHDLSD': 1.0,
+            'ZHQZ': 0.85, 'GDZLDJ': '3',
         }
         storage.save_evaluation([eval_record])
 
         diag_record = {
             'parcel_id': 'test-001',
-            'obstacle_type': '单一障碍',
-            'main_factors': ['pH(中度障碍, 25.0%)'],
-            'secondary_factors': [],
-            'PH_obstacle_level': '中度障碍',
-            'PH_obstacle_degree': 0.25
+            'ZALX': '单一障碍',
+            'ZYZAYS': 'pH(中度酸化, 25.0%)',
+            'CYZAYS': '无',
+            'SJDZADJ': '中度酸化',
+            'SJDZAD': 0.25,
         }
         storage.save_diagnosis([diag_record])
 
         result = storage.get_diagnosis('test-001')
         assert result is not None
-        assert result['obstacle_type'] == '单一障碍'
-        assert result['main_factors'] == ['pH(中度障碍, 25.0%)']
+        assert result['ZALX'] == '单一障碍'
+        # ZYZAYS/CYZAYS 是 TEXT 字符串，不再是 JSON list
+        assert result['ZYZAYS'] == 'pH(中度酸化, 25.0%)'
+        assert result['CYZAYS'] == '无'
+        assert result['SJDZADJ'] == '中度酸化'
+        assert result['SJDZAD'] == 0.25
 
 def test_storage_is_ready():
     with tempfile.TemporaryDirectory() as tmpdir:
@@ -151,19 +180,19 @@ def test_storage_is_ready():
 
         eval_record = {
             'parcel_id': 'test-001', 'region_code': 'HN', 'secondary_region_code': 'MNY',
-            'PH': 6.5, 'YJ': 25, 'YXP': 30, 'SXK': 150, 'RZ': 1.2,
-            'GZ': 'RT', 'GG': 'FS', 'PS': 'CM', 'DX': 'PLT', 'ZD': 'TLBC',
-            'YXT': 100, 'GCH': 20,
-            'PH_LD': 1.0, 'YJ_LD': 1.0, 'YXP_LD': 0.8, 'SXK_LD': 0.8, 'RZ_LD': 1.0,
-            'GZ_LD': 1.0, 'GG_LD': 1.0, 'PS_LD': 1.0, 'DX_LD': 1.0, 'ZD_LD': 1.0,
-            'YXT_LD': 1.0, 'GCH_LD': 1.0,
-            'composite_weight': 0.85, 'grade': '3'
+            'SJD': 6.5, 'YJZ': 25, 'YXL': 30, 'SXJ': 150, 'TRRZ': 1.2,
+            'GCZD': 'RT', 'GGNL': 'FS', 'PSNL': 'CM', 'DXBW': 'PLT', 'ZDGX': 'TLBC',
+            'YXTCHD': 100, 'GCHD': 20,
+            'SJDLSD': 1.0, 'YJZLSD': 1.0, 'YXLLSD': 0.8, 'SXJLSD': 0.8, 'TRRZLSD': 1.0,
+            'GCZDLSD': 1.0, 'GGNLLSD': 1.0, 'PSNLLSD': 1.0, 'DXBWLSD': 1.0, 'ZDGXLSD': 1.0,
+            'YXTCHDLSD': 1.0, 'GCHDLSD': 1.0,
+            'ZHQZ': 0.85, 'GDZLDJ': '3',
         }
         storage.save_evaluation([eval_record])
 
         diag_record = {
-            'parcel_id': 'test-001', 'obstacle_type': '无明显障碍',
-            'main_factors': [], 'secondary_factors': []
+            'parcel_id': 'test-001', 'ZALX': '无明显障碍',
+            'ZYZAYS': '', 'CYZAYS': '无',
         }
         storage.save_diagnosis([diag_record])
 
@@ -171,30 +200,50 @@ def test_storage_is_ready():
 
 
 # Evaluation tests
-from src.ai_culti_demo.farmland_diagnosis.evaluation import bulk_evaluate, evaluate_single, calc_continuous, calc_discrete
+from src.ai_culti_demo.farmland_diagnosis.evaluation import bulk_evaluate, evaluate_single, calc_continuous, calc_discrete, translate_obstacle_level
 import pandas as pd
+
+def test_translate_obstacle_level_sjd_acidification():
+    assert translate_obstacle_level('SJD', '中度障碍', 5.0) == '中度酸化'
+
+def test_translate_obstacle_level_sjd_alkalization():
+    assert translate_obstacle_level('SJD', '中度障碍', 8.8) == '中度碱化'
+
+def test_translate_obstacle_level_trrz_compaction():
+    assert translate_obstacle_level('TRRZ', '重度障碍', 1.5) == '重度板结'
+
+def test_translate_obstacle_level_yjz_barren():
+    assert translate_obstacle_level('YJZ', '重度障碍', 5.0) == '重度贫瘠'
+
+def test_translate_obstacle_level_yxl_deficiency():
+    assert translate_obstacle_level('YXL', '重度障碍', 5.0) == '重度缺乏'
+
+def test_translate_obstacle_level_no_obstacle():
+    assert translate_obstacle_level('SJD', '无障碍', 7.0) == '无障碍'
 
 def test_evaluate_single():
     row = pd.Series({
-        'JY': 'HN', 'EJ': 'MNY',
-        'PH': 6.5, 'YJ': 25, 'YXP': 30, 'SXK': 150, 'RZ': 1.2,
-        'GZ': 'RT', 'GG': 'FS', 'PS': 'CM', 'DX': 'PLT', 'ZD': 'TLBC',
-        'YXT': 100, 'GCH': 20
+        'YJNYQ': '华南区', 'EJNYQ': '闽南粤中农林水产区',
+        'SJD': 6.5, 'YJZ': 25, 'YXL': 30, 'SXJ': 150, 'TRRZ': 1.2,
+        'GCZD': 'RT', 'GGNL': 'FS', 'PSNL': 'CM', 'DXBW': 'PLT', 'ZDGX': 'TLBC',
+        'YXTCHD': 100, 'GCHD': 20,
     })
 
     result = evaluate_single(row, 'HN', 'MNY')
 
-    assert 'PH_LD' in result
-    assert 'composite_weight' in result
-    assert 'grade' in result
-    # 优质数据应评为最高等级1级
-    assert result['grade'] == '1'
+    assert 'SJDLSD' in result
+    assert 'ZHQZ' in result
+    assert 'GDZLDJ' in result
+    assert result['GDZLDJ'] == '1'
+    # 原始值保留
+    assert result['SJD'] == 6.5
 
 def test_bulk_evaluate():
     with tempfile.TemporaryDirectory() as tmpdir:
         csv_path = os.path.join(tmpdir, 'test.csv')
+        # CSV 直接使用标准码表头（无中文列名）
         with open(csv_path, 'w', encoding='utf-8') as f:
-            f.write('''一级农业区,二级农业区,pH,有机质,有效磷,速效钾,容重,耕层质地,灌溉能力,排水能力,地形部位,质地构型,有效土层,耕层厚度
+            f.write('''YJNYQ,EJNYQ,SJD,YJZ,YXL,SXJ,TRRZ,GCZD,GGNL,PSNL,DXBW,ZDGX,YXTCHD,GCHD
 华南区,闽南粤中农林水产区,6.5,25,30,150,1.2,壤土,充分满足,充分满足,平原低阶,上松下紧型,100,20
 ''')
 
@@ -207,15 +256,14 @@ def test_bulk_evaluate():
         storage = DiagnosisStorage(db_path)
         eval_result = storage.get_evaluation('0')
         assert eval_result is not None
-        assert eval_result['PH'] == 6.5
-        # 优质数据应评为最高等级1级
-        assert eval_result['grade'] == '1'
+        assert eval_result['SJD'] == 6.5
+        assert eval_result['GDZLDJ'] == '1'
 
 def test_bulk_evaluate_missing_columns():
     with tempfile.TemporaryDirectory() as tmpdir:
         csv_path = os.path.join(tmpdir, 'test.csv')
         with open(csv_path, 'w', encoding='utf-8') as f:
-            f.write('pH,有机质\n6.5,25\n')
+            f.write('SJD,YJZ\n6.5,25\n')
 
         result = bulk_evaluate(csv_path)
         assert result['status'] == 'error'
@@ -233,49 +281,65 @@ def test_calc_discrete():
 
 
 # Diagnosis tests
-from src.ai_culti_demo.farmland_diagnosis.diagnosis import diagnosis_row, diagnose, query_parcel
+from src.ai_culti_demo.farmland_diagnosis.diagnosis import diagnosis_row, diagnose, query_parcel, replace_abbr_in_text
+from src.ai_culti_demo.farmland_diagnosis.config import WEIGHTED_INDICATORS
+
+def test_replace_abbr_in_text():
+    text = 'SJD(中度酸化, 25.0%)；SXJ(重度缺乏, 26.5%)'
+    out = replace_abbr_in_text(text, {'SJD': 'pH', 'SXJ': '速效钾'})
+    assert out == 'pH(中度酸化, 25.0%)；速效钾(重度缺乏, 26.5%)'
+
+def test_replace_abbr_in_text_empty():
+    assert replace_abbr_in_text('', {'SJD': 'pH'}) == ''
 
 def test_diagnosis_row_single_obstacle():
     row = pd.Series({
-        'pH障碍等级': '中度障碍', 'pH_OD': 0.25,
-        '有机质障碍等级': '无障碍', '有机质_OD': 0.05
+        'SJDZADJ': '中度酸化', 'SJDZAD': 0.25,
+        'YJZZADJ': '无障碍', 'YJZZAD': 0.05,
     })
+    level_cols = [ind + 'ZADJ' for ind in WEIGHTED_INDICATORS]
+    degree_cols = [ind + 'ZAD' for ind in WEIGHTED_INDICATORS]
+    zalx, zyzays, cyzays = diagnosis_row(row, WEIGHTED_INDICATORS, level_cols, degree_cols)
 
-    result = diagnosis_row(row)
-
-    assert result['obstacle_type'] == '单一障碍'
-    assert len(result['main_factors']) == 1
-    assert 'pH' in result['main_factors'][0]
+    assert zalx == '单一障碍'
+    assert isinstance(zyzays, str)
+    assert isinstance(cyzays, str)
+    assert 'pH' in zyzays  # 缩写已替换为中文
+    assert cyzays == '无'
 
 def test_diagnosis_row_multi_obstacle():
     row = pd.Series({
-        'pH障碍等级': '中度障碍', 'pH_OD': 0.25,
-        '有机质障碍等级': '中度障碍', '有机质_OD': 0.20,
-        '有效磷障碍等级': '轻度障碍', '有效磷_OD': 0.15
+        'SJDZADJ': '中度酸化', 'SJDZAD': 0.25,
+        'YJZZADJ': '中度贫瘠', 'YJZZAD': 0.20,
+        'YXLZADJ': '轻度缺乏', 'YXLZAD': 0.15,
     })
+    level_cols = [ind + 'ZADJ' for ind in WEIGHTED_INDICATORS]
+    degree_cols = [ind + 'ZAD' for ind in WEIGHTED_INDICATORS]
+    zalx, zyzays, cyzays = diagnosis_row(row, WEIGHTED_INDICATORS, level_cols, degree_cols)
 
-    result = diagnosis_row(row)
-
-    assert result['obstacle_type'] == '多障碍'
-    assert len(result['main_factors']) >= 2
+    assert zalx == '多障碍'
+    assert isinstance(zyzays, str)
+    assert zyzays.count('；') >= 1  # 至少两个主要因素
 
 def test_diagnosis_row_no_obstacle():
     row = pd.Series({
-        'pH障碍等级': '无障碍', 'pH_OD': 0.05,
-        '有机质障碍等级': '无障碍', '有机质_OD': 0.03
+        'SJDZADJ': '无障碍', 'SJDZAD': 0.05,
+        'YJZZADJ': '无障碍', 'YJZZAD': 0.03,
     })
+    level_cols = [ind + 'ZADJ' for ind in WEIGHTED_INDICATORS]
+    degree_cols = [ind + 'ZAD' for ind in WEIGHTED_INDICATORS]
+    zalx, zyzays, cyzays = diagnosis_row(row, WEIGHTED_INDICATORS, level_cols, degree_cols)
 
-    result = diagnosis_row(row)
-
-    assert result['obstacle_type'] == '无明显障碍'
-    assert result['main_factors'] == []
+    assert zalx == '无明显障碍'
+    assert zyzays == ''
+    assert cyzays == '无'  # V2.0 行为：空 CYZAYS 归一为 '无'
 
 def test_diagnose_flow():
     with tempfile.TemporaryDirectory() as tmpdir:
         csv_path = os.path.join(tmpdir, 'test.csv')
         with open(csv_path, 'w', encoding='utf-8') as f:
-            f.write('''一级农业区,二级农业区,pH,有机质,有效磷,速效钾,容重,耕层质地,灌溉能力,排水能力,地形部位,质地构型,有效土层,耕层厚度
-华南区,闽南粤中农林水产区,4.5,10,5,50,1.8,粘土,基本满足,基本满足,丘陵岗地,夹砂型,60,15
+            f.write('''YJNYQ,EJNYQ,SJD,YJZ,YXL,SXJ,TRRZ,GCZD,GGNL,PSNL,DXBW,ZDGX,YXTCHD,GCHD
+华南区,闽南粤中农林水产区,4.5,10,5,50,1.8,黏土,基本满足,基本满足,丘陵上部,夹层型,60,15
 ''')
 
         db_path = os.path.join(tmpdir, 'test.db')
@@ -288,6 +352,10 @@ def test_diagnose_flow():
         query_result = query_parcel('0', db_path)
         assert query_result['status'] == 'ok'
         assert 'diagnosis' in query_result
+        diag = query_result['diagnosis']
+        assert 'ZALX' in diag
+        assert 'ZYZAYS' in diag
+        assert 'CYZAYS' in diag
 
 
 # Acidification tests
@@ -326,14 +394,15 @@ def test_generate_amendment_no_need():
 def test_evaluate_acidification_flow():
     with tempfile.TemporaryDirectory() as tmpdir:
         csv_path = os.path.join(tmpdir, 'test.csv')
+        # CSV 表头改标准码；用 CJ 一级区验证 region_code 正确分区（不再恒 HN）
         with open(csv_path, 'w', encoding='utf-8') as f:
-            f.write('''一级农业区,二级农业区,pH,有机质,有效磷,速效钾,容重,耕层质地,灌溉能力,排水能力,地形部位,质地构型,有效土层,耕层厚度
-华南区,闽南粤中农林水产区,4.5,10,5,50,1.8,粘土,基本满足,基本满足,丘陵岗地,夹砂型,60,15
+            f.write('''YJNYQ,EJNYQ,SJD,YJZ,YXL,SXJ,TRRZ,GCZD,GGNL,PSNL,DXBW,ZDGX,YXTCHD,GCHD
+长江中下游区,闽南粤中农林水产区,4.5,10,5,50,1.8,黏土,基本满足,基本满足,丘陵上部,夹层型,60,15
 ''')
 
         db_path = os.path.join(tmpdir, 'test.db')
         bulk_evaluate(csv_path, db_path)
-        diagnose(db_path)  # 需要先运行诊断确保 is_ready 返回 True
+        diagnose(db_path)  # 确保 is_ready 返回 True
         result = evaluate_acidification(db_path)
 
         assert result['status'] == 'ok'
@@ -342,3 +411,101 @@ def test_evaluate_acidification_flow():
         query_result = query_acidification('0', db_path)
         assert query_result['status'] == 'ok'
         assert 'acidification' in query_result
+
+def test_evaluate_acidification_uses_region_code():
+    # 验证酸化评估按地块实际 region_code 分区，不恒回退 HN
+    with tempfile.TemporaryDirectory() as tmpdir:
+        csv_path = os.path.join(tmpdir, 'test.csv')
+        with open(csv_path, 'w', encoding='utf-8') as f:
+            f.write('''YJNYQ,EJNYQ,SJD,YJZ,YXL,SXJ,TRRZ,GCZD,GGNL,PSNL,DXBW,ZDGX,YXTCHD,GCHD
+长江中下游区,闽南粤中农林水产区,4.4,10,5,50,1.8,黏土,基本满足,基本满足,丘陵上部,夹层型,60,15
+''')
+        db_path = os.path.join(tmpdir, 'test.db')
+        bulk_evaluate(csv_path, db_path)
+        diagnose(db_path)
+        evaluate_acidification(db_path)
+
+        # 直接查 evaluation_results 确认 region_code 为 CJ
+        storage = DiagnosisStorage(db_path)
+        eval_row = storage.get_evaluation('0')
+        assert eval_row['region_code'] == 'CJ'
+        # CJ 区强酸性 pH=4.4 应触发改良
+        acid = storage.get_acidification('0')
+        assert acid is not None
+        assert acid['acidification_level'] == '强酸性'
+
+
+# Task 8: 跨模块/边界测试
+def test_obstacle_degree_does_not_overwrite_original():
+    # 障碍度存独立 xxxZAD 列，原始指标值 SJD/YJZ 等保持不变
+    with tempfile.TemporaryDirectory() as tmpdir:
+        csv_path = os.path.join(tmpdir, 'test.csv')
+        with open(csv_path, 'w', encoding='utf-8') as f:
+            f.write('''YJNYQ,EJNYQ,SJD,YJZ,YXL,SXJ,TRRZ,GCZD,GGNL,PSNL,DXBW,ZDGX,YXTCHD,GCHD
+华南区,闽南粤中农林水产区,4.5,10,5,50,1.8,黏土,基本满足,基本满足,丘陵上部,夹层型,60,15
+''')
+        db_path = os.path.join(tmpdir, 'test.db')
+        bulk_evaluate(csv_path, db_path)
+
+        storage = DiagnosisStorage(db_path)
+        result = storage.get_evaluation('0')
+
+        # 原始值未被覆盖
+        assert result['SJD'] == 4.5
+        assert result['YJZ'] == 10
+        # 障碍度独立列存在
+        assert 'SJDZAD' in result and result['SJDZAD'] is not None
+        assert 'YJZZAD' in result and result['YJZZAD'] is not None
+        # 障碍度列与原始值不同（原始值是测量值，障碍度是 0~1 占比）
+        assert result['SJDZAD'] != result['SJD']
+
+
+def test_diagnosis_row_returns_string_triple():
+    row = pd.Series({
+        'SJDZADJ': '重度酸化', 'SJDZAD': 0.30,
+        'SXJZADJ': '重度缺乏', 'SXJZAD': 0.25,
+    })
+    level_cols = [ind + 'ZADJ' for ind in WEIGHTED_INDICATORS]
+    degree_cols = [ind + 'ZAD' for ind in WEIGHTED_INDICATORS]
+    result = diagnosis_row(row, WEIGHTED_INDICATORS, level_cols, degree_cols)
+
+    assert isinstance(result, tuple) and len(result) == 3
+    zalx, zyzays, cyzays = result
+    assert isinstance(zalx, str)
+    assert isinstance(zyzays, str)
+    assert isinstance(cyzays, str)
+    # 缩写已替换为中文显示名
+    assert 'pH' in zyzays
+    assert '速效钾' in zyzays
+    assert 'SJD' not in zyzays
+    assert 'SXJ' not in zyzays
+
+
+def test_end_to_end_zalx_zyzays_cyzays():
+    # 端到端：bulk_evaluate → diagnose → query_parcel 返回 ZALX/ZYZAYS/CYZAYS
+    with tempfile.TemporaryDirectory() as tmpdir:
+        csv_path = os.path.join(tmpdir, 'test.csv')
+        with open(csv_path, 'w', encoding='utf-8') as f:
+            f.write('''YJNYQ,EJNYQ,SJD,YJZ,YXL,SXJ,TRRZ,GCZD,GGNL,PSNL,DXBW,ZDGX,YXTCHD,GCHD
+华南区,闽南粤中农林水产区,4.5,10,5,50,1.8,黏土,基本满足,基本满足,丘陵上部,夹层型,60,15
+''')
+        db_path = os.path.join(tmpdir, 'test.db')
+        bulk_evaluate(csv_path, db_path)
+        diagnose(db_path)
+
+        result = query_parcel('0', db_path)
+        assert result['status'] == 'ok'
+        diag = result['diagnosis']
+        eval_data = result['evaluation']
+
+        # 诊断三字段均为字符串
+        assert isinstance(diag['ZALX'], str)
+        assert isinstance(diag['ZYZAYS'], str)
+        assert isinstance(diag['CYZAYS'], str)
+        # 评价返回标准字段
+        assert 'GDZLDJ' in eval_data
+        assert 'ZHQZ' in eval_data
+        # 障碍地块应有非空 ZALX
+        assert diag['ZALX'] in ('单一障碍', '多障碍', '无明显障碍')
+        # CYZAYS 空时归一为 '无'
+        assert diag['CYZAYS'] == '无' or diag['CYZAYS'] != ''

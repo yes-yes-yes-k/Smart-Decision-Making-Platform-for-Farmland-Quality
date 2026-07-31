@@ -1,4 +1,8 @@
 ---
+archived-with: 2026-07-31-align-model3-to-field-standard
+status: final
+---
+﻿---
 change: align-model3-to-field-standard
 design-doc: docs/superpowers/specs/2026-07-31-align-model3-field-standard-design.md
 base-ref: f7801671d5e0ceffb169910d6d17c9ef201f75d1
@@ -56,7 +60,7 @@ base-ref: f7801671d5e0ceffb169910d6d17c9ef201f75d1
 - Consumes: 无（基础层）
 - Produces: `REGION_MAP`、`SECONDARY_REGION_MAP`（不变）、`DISCRETE_CN_MAP`、`COEFFICIENTS`（标准码键）、`WEIGHTS`（标准码键）、`INDICATOR_DISPLAY_MAP`、`GRADE_CONFIG`、`ALL_INDICATORS`、`CONTINUOUS_INDICATORS`、`DISCRETE_INDICATORS`、`WEIGHTED_INDICATORS`、`AMENDMENT_CONFIG`（不变）、`calc_obstacle_level(row, indicators)`（标准码键，读 `GCZDLSD`/`DXBWLSD`）。移除 `COLUMN_RENAME`、`TEXT_VALUE_MAPS`、`INDICATOR_NAME_MAP`。
 
-- [ ] **Step 1: 更新 config 相关测试为标准码（红）**
+- [x] **Step 1: 更新 config 相关测试为标准码（红）**
 
 把 `tests/test_farmland_diagnosis.py` 顶部 config 测试段改为：
 
@@ -142,12 +146,12 @@ def test_calc_obstacle_level_dxbw_uses_lsd():
     assert result['DXBW'] == '重度障碍'
 ```
 
-- [ ] **Step 2: 运行 config 测试确认失败**
+- [x] **Step 2: 运行 config 测试确认失败**
 
 Run: `pytest tests/test_farmland_diagnosis.py -k "region_map or coefficients_exists or weights_exists or indicator_display_map or grade_config or indicator_constants or calc_obstacle_level" -v`
 Expected: FAIL（ImportError: cannot import name 'INDICATOR_DISPLAY_MAP'/'GRADE_CONFIG'/'ALL_INDICATORS' 等，且现有测试仍引用 PH/YJ）
 
-- [ ] **Step 3: 重写 config.py 为标准码（绿）**
+- [x] **Step 3: 重写 config.py 为标准码（绿）**
 
 用以下内容完整替换 `src/ai_culti_demo/farmland_diagnosis/config.py`：
 
@@ -444,12 +448,12 @@ def calc_obstacle_level(row, indicators):
     return levels
 ```
 
-- [ ] **Step 4: 运行 config 测试确认通过**
+- [x] **Step 4: 运行 config 测试确认通过**
 
 Run: `pytest tests/test_farmland_diagnosis.py -k "region_map or coefficients_exists or weights_exists or indicator_display_map or grade_config or indicator_constants or calc_obstacle_level" -v`
 Expected: PASS（全部 config 测试通过；其他模块测试此时仍失败，属预期，不在本任务范围）
 
-- [ ] **Step 5: 提交**
+- [x] **Step 5: 提交**
 
 ```bash
 git add src/ai_culti_demo/farmland_diagnosis/config.py tests/test_farmland_diagnosis.py
@@ -468,7 +472,7 @@ git commit -m "refactor(model-3): config.py 字段命名对齐标准码，新增
 - Consumes: 无（Task 1 的常量此处不直接使用）
 - Produces: `DiagnosisStorage`，其 `evaluation_results` 表列名为标准码（`SJD`/`YJZ`/.../`SJDLSD`/.../`ZHQZ`/`GDZLDJ`/`region_code`/`secondary_region_code`/`parcel_id`/时间戳）；`diagnosis_results` 表含 `ZALX`/`ZYZAYS`/`CYZAYS` 及各 `xxxZADJ`(TEXT)/`xxxZAD`(REAL)；`acidification_results` 表不变。`save_evaluation`/`save_diagnosis` 适配新列；`get_diagnosis` 不再对 `ZYZAYS`/`CYZAYS` 做 JSON loads（直接 TEXT）；`get_acidification` 的 `measures` 仍 JSON loads。
 
-- [ ] **Step 1: 更新 storage 测试为标准码字段（红）**
+- [x] **Step 1: 更新 storage 测试为标准码字段（红）**
 
 把 `tests/test_farmland_diagnosis.py` 中 storage 测试段改为：
 
@@ -593,12 +597,12 @@ def test_storage_is_ready():
         assert storage.is_ready()
 ```
 
-- [ ] **Step 2: 运行 storage 测试确认失败**
+- [x] **Step 2: 运行 storage 测试确认失败**
 
 Run: `pytest tests/test_farmland_diagnosis.py -k "storage" -v`
 Expected: FAIL（列名不存在 / save_evaluation 字段不匹配）
 
-- [ ] **Step 3: 重写 storage.py 表结构与 CRUD（绿）**
+- [x] **Step 3: 重写 storage.py 表结构与 CRUD（绿）**
 
 用以下内容完整替换 `src/ai_culti_demo/farmland_diagnosis/storage.py`：
 
@@ -834,7 +838,7 @@ class DiagnosisStorage:
         return eval_exists and diag_exists and eval_count > 0 and diag_count > 0
 ```
 
-- [ ] **Step 4: 删除旧 DB 文件以触发重建**
+- [x] **Step 4: 删除旧 DB 文件以触发重建**
 
 旧库列名与新 schema 不兼容，需删除现存 `farmland_diagnosis.db`（位于 `data/farmland_diagnosis/` 下；测试用 tempfile 不受影响）。执行：
 
@@ -844,12 +848,12 @@ python -c "import os; p='data/farmland_diagnosis/farmland_diagnosis.db'; os.remo
 
 Expected: 输出 `no db to remove` 或无输出（已删除）。注意：本步骤仅清理本地开发库；生产部署时由 `create_tables` 重建。
 
-- [ ] **Step 5: 运行 storage 测试确认通过**
+- [x] **Step 5: 运行 storage 测试确认通过**
 
 Run: `pytest tests/test_farmland_diagnosis.py -k "storage" -v`
 Expected: PASS
 
-- [ ] **Step 6: 提交**
+- [x] **Step 6: 提交**
 
 ```bash
 git add src/ai_culti_demo/farmland_diagnosis/storage.py tests/test_farmland_diagnosis.py
@@ -868,7 +872,7 @@ git commit -m "refactor(model-3): storage.py 表结构重建为标准码列名�
 - Consumes: Task 1 的 `REGION_MAP`/`SECONDARY_REGION_MAP`/`COEFFICIENTS`/`WEIGHTS`/`DISCRETE_CN_MAP`/`GRADE_CONFIG`/`ALL_INDICATORS`/`CONTINUOUS_INDICATORS`/`DISCRETE_INDICATORS`/`WEIGHTED_INDICATORS`/`calc_obstacle_level`；Task 2 的 `DiagnosisStorage`
 - Produces: `calc_continuous`/`calc_discrete`（不变）、`translate_obstacle_level(ind, level, orig_val)`（新）、`evaluate_single(row, region_code, secondary_region_code) -> dict`（键为标准码 + `xxxLSD`/`xxxZADJ`/`xxxZAD`/`ZHQZ`/`GDZLDJ`）、`bulk_evaluate(input_csv, output_db_path) -> dict`（CSV 用标准码表头，无 COLUMN_RENAME）
 
-- [ ] **Step 1: 更新 evaluation 测试为标准码（红）**
+- [x] **Step 1: 更新 evaluation 测试为标准码（红）**
 
 把 `tests/test_farmland_diagnosis.py` 中 evaluation 测试段改为：
 
@@ -954,12 +958,12 @@ def test_calc_discrete():
     assert result == 1.0
 ```
 
-- [ ] **Step 2: 运行 evaluation 测试确认失败**
+- [x] **Step 2: 运行 evaluation 测试确认失败**
 
 Run: `pytest tests/test_farmland_diagnosis.py -k "translate_obstacle_level or evaluate_single or bulk_evaluate or calc_continuous or calc_discrete" -v`
 Expected: FAIL（ImportError: cannot import name 'translate_obstacle_level'；evaluate_single 仍用 PH）
 
-- [ ] **Step 3: 重写 evaluation.py（绿）**
+- [x] **Step 3: 重写 evaluation.py（绿）**
 
 用以下内容完整替换 `src/ai_culti_demo/farmland_diagnosis/evaluation.py`：
 
@@ -1156,12 +1160,12 @@ def bulk_evaluate(input_csv: str, output_db_path: str = None) -> Dict[str, Any]:
     }
 ```
 
-- [ ] **Step 4: 运行 evaluation 测试确认通过**
+- [x] **Step 4: 运行 evaluation 测试确认通过**
 
 Run: `pytest tests/test_farmland_diagnosis.py -k "translate_obstacle_level or evaluate_single or bulk_evaluate or calc_continuous or calc_discrete" -v`
 Expected: PASS
 
-- [ ] **Step 5: 提交**
+- [x] **Step 5: 提交**
 
 ```bash
 git add src/ai_culti_demo/farmland_diagnosis/evaluation.py tests/test_farmland_diagnosis.py
@@ -1185,7 +1189,7 @@ git commit -m "refactor(model-3): evaluation.py 移植 translate_obstacle_level�
 - `diagnosis_row` 内部对 `ZYZAYS`/`CYZAYS` 应用 `replace_abbr_in_text`（缩写→中文显示名），并对空 `CYZAYS` 归一为 `'无'`（V2.0 行为，design 5.7）。
 - **spec 场景"无明显障碍"措辞说明**：spec 描述"ZYZAYS 和 CYZAYS 为空"，但 design 5.7 明确要求 `CYZAYS` 空时显示 `'无'`（V2.0 行为）。本实现遵循 design 5.7：`无明显障碍` 时返回 `('无明显障碍', '', '无')`。`ZYZAYS` 保持空串。change owner 后续可酌情修订 spec 措辞，但实现以 design 为准。
 
-- [ ] **Step 1: 更新 diagnosis 测试为标准码 + 三元组（红）**
+- [x] **Step 1: 更新 diagnosis 测试为标准码 + 三元组（红）**
 
 把 `tests/test_farmland_diagnosis.py` 中 diagnosis 测试段改为：
 
@@ -1268,12 +1272,12 @@ def test_diagnose_flow():
         assert 'CYZAYS' in diag
 ```
 
-- [ ] **Step 2: 运行 diagnosis 测试确认失败**
+- [x] **Step 2: 运行 diagnosis 测试确认失败**
 
 Run: `pytest tests/test_farmland_diagnosis.py -k "replace_abbr or diagnosis_row or diagnose_flow" -v`
 Expected: FAIL（ImportError: cannot import name 'replace_abbr_in_text'；diagnosis_row 签名/返回不匹配）
 
-- [ ] **Step 3: 重写 diagnosis.py（绿）**
+- [x] **Step 3: 重写 diagnosis.py（绿）**
 
 用以下内容完整替换 `src/ai_culti_demo/farmland_diagnosis/diagnosis.py`：
 
@@ -1452,12 +1456,12 @@ def query_parcel(parcel_id: str, db_path: str = None) -> Dict[str, Any]:
     }
 ```
 
-- [ ] **Step 4: 运行 diagnosis 测试确认通过**
+- [x] **Step 4: 运行 diagnosis 测试确认通过**
 
 Run: `pytest tests/test_farmland_diagnosis.py -k "replace_abbr or diagnosis_row or diagnose_flow" -v`
 Expected: PASS
 
-- [ ] **Step 5: 提交**
+- [x] **Step 5: 提交**
 
 ```bash
 git add src/ai_culti_demo/farmland_diagnosis/diagnosis.py tests/test_farmland_diagnosis.py
@@ -1476,7 +1480,7 @@ git commit -m "refactor(model-3): diagnosis_row 改三元组签名根治大小�
 - Consumes: Task 2 的 `DiagnosisStorage`（读 `evaluation_results`，列含 `SJD`/`YJZ`/`region_code`）
 - Produces: `evaluate_acidification` 改读 `row.get('SJD', 6.5)` / `row.get('YJZ', 20)` / `row.get('region_code', 'HN')`（顺带修旧 bug：原读 `'JY'` 但表中无 `JY` 列，导致恒回退到默认区 HN）。其余函数（classify_acidification / generate_amendment / calculate_lime_demand / calculate_amendment_rate / query_acidification）逻辑不变。
 
-- [ ] **Step 1: 更新 acidification 测试（红）**
+- [x] **Step 1: 更新 acidification 测试（红）**
 
 `test_classify_acidification_*` / `test_generate_amendment_*` 直接传 pH/有机质/region_code，无需改。仅 `test_evaluate_acidification_flow` 需把 CSV 表头改标准码，并新增一个 region_code 正确分区的断言。把 acidification 测试段改为：
 
@@ -1558,12 +1562,12 @@ def test_evaluate_acidification_uses_region_code():
         assert acid['acidification_level'] == '强酸性'
 ```
 
-- [ ] **Step 2: 运行 acidification 测试确认失败**
+- [x] **Step 2: 运行 acidification 测试确认失败**
 
 Run: `pytest tests/test_farmland_diagnosis.py -k "acidification" -v`
 Expected: FAIL（`test_evaluate_acidification_flow` CSV 表头非标准码导致 bulk_evaluate 报错；`test_evaluate_acidification_uses_region_code` 断言失败因旧实现读 'JY' 恒得 HN）
 
-- [ ] **Step 3: 修正 acidification.py 字段引用（绿）**
+- [x] **Step 3: 修正 acidification.py 字段引用（绿）**
 
 仅修改 `evaluate_acidification` 函数中读取 row 的三行，其余不变。定位 `src/ai_culti_demo/farmland_diagnosis/acidification.py` 中：
 
@@ -1593,12 +1597,12 @@ from .config import AMENDMENT_CONFIG, INDICATOR_NAME_MAP
 from .config import AMENDMENT_CONFIG
 ```
 
-- [ ] **Step 4: 运行 acidification 测试确认通过**
+- [x] **Step 4: 运行 acidification 测试确认通过**
 
 Run: `pytest tests/test_farmland_diagnosis.py -k "acidification" -v`
 Expected: PASS
 
-- [ ] **Step 5: 提交**
+- [x] **Step 5: 提交**
 
 ```bash
 git add src/ai_culti_demo/farmland_diagnosis/acidification.py tests/test_farmland_diagnosis.py
@@ -1616,7 +1620,7 @@ git commit -m "fix(model-3): acidification 改读 SJD/YJZ/region_code，修复�
 - Consumes: Task 1-5 的产物
 - Produces: 模块导出新增 `GRADE_CONFIG`/`INDICATOR_DISPLAY_MAP`/`DISCRETE_CN_MAP`/`ALL_INDICATORS`/`CONTINUOUS_INDICATORS`/`DISCRETE_INDICATORS`/`WEIGHTED_INDICATORS`/`translate_obstacle_level`/`replace_abbr_in_text`；移除 `COLUMN_RENAME`/`TEXT_VALUE_MAPS`/`INDICATOR_NAME_MAP` 导出。
 
-- [ ] **Step 1: 重写 __init__.py**
+- [x] **Step 1: 重写 __init__.py**
 
 用以下内容完整替换 `src/ai_culti_demo/farmland_diagnosis/__init__.py`：
 
@@ -1650,17 +1654,17 @@ __all__ = [
 ]
 ```
 
-- [ ] **Step 2: 验证导入无报错**
+- [x] **Step 2: 验证导入无报错**
 
 Run: `python -c "from src.ai_culti_demo.farmland_diagnosis import GRADE_CONFIG, INDICATOR_DISPLAY_MAP, DISCRETE_CN_MAP, ALL_INDICATORS, translate_obstacle_level, replace_abbr_in_text, diagnosis_row, query_parcel; print('import ok')"`
 Expected: 输出 `import ok`
 
-- [ ] **Step 3: 验证旧导出已移除**
+- [x] **Step 3: 验证旧导出已移除**
 
 Run: `python -c "from src.ai_culti_demo import farmland_diagnosis as m; assert not hasattr(m, 'COLUMN_RENAME'); assert not hasattr(m, 'TEXT_VALUE_MAPS'); assert not hasattr(m, 'INDICATOR_NAME_MAP'); print('old exports removed')"`
 Expected: 输出 `old exports removed`
 
-- [ ] **Step 4: 提交**
+- [x] **Step 4: 提交**
 
 ```bash
 git add src/ai_culti_demo/farmland_diagnosis/__init__.py
@@ -1678,7 +1682,7 @@ git commit -m "refactor(model-3): __init__.py 导出新增标准码常量与诊�
 - Consumes: Task 4 的 `query_parcel` 返回的 `evaluation`（含 `GDZLDJ`）与 `diagnosis`（含 `ZALX`/`ZYZAYS`/`CYZAYS`，均为字符串）
 - Produces: `answer_question` 改读 `evaluation.get("GDZLDJ")` / `diagnosis.get("ZALX")` / `diagnosis.get("ZYZAYS", "")`（字符串）/ `diagnosis.get("CYZAYS", "")`（字符串）；answer 文本拼接从 `'; '.join(list)` 改为直接用字符串；evidence 从 list 拆分改为直接引用字符串或按 `；` 切分取前几项。模拟数据回退路径（`MOCK_INDICATOR_GRADES`）不变。
 
-- [ ] **Step 1: 修改 answer_question 真实诊断分支**
+- [x] **Step 1: 修改 answer_question 真实诊断分支**
 
 定位 `framework/agents/specialized/problem_agent.py` 中 `answer_question` 内 `if real_result:` 分支。把：
 
@@ -1705,7 +1709,7 @@ git commit -m "refactor(model-3): __init__.py 导出新增标准码常量与诊�
             secondary_factors = [f for f in secondary_factors_str.split('；') if f and f != '无'] if secondary_factors_str else []
 ```
 
-- [ ] **Step 2: 修改 answer 文本拼接（三个分支）**
+- [x] **Step 2: 修改 answer 文本拼接（三个分支）**
 
 在 `if real_result:` 分支内，三处 answer 文本当前用 `'; '.join(main_factors) if main_factors else '无'` 拼接。把这三处分别替换为直接使用 `main_factors_str` / `secondary_factors_str`：
 
@@ -1743,17 +1747,17 @@ git commit -m "refactor(model-3): __init__.py 导出新增标准码常量与诊�
 
 evidence 构造保持不变（仍用 `main_factors[:3]` / `secondary_factors[:3]`，因为上面已把字符串切分为列表）。
 
-- [ ] **Step 3: 验证语法与导入**
+- [x] **Step 3: 验证语法与导入**
 
 Run: `python -c "import ast; ast.parse(open('framework/agents/specialized/problem_agent.py', encoding='utf-8').read()); print('syntax ok')"`
 Expected: 输出 `syntax ok`
 
-- [ ] **Step 4: 验证 problem_agent 可导入**
+- [x] **Step 4: 验证 problem_agent 可导入**
 
 Run: `python -c "from framework.agents.specialized.problem_agent import ProblemIdentificationAgent; print('import ok')"`
 Expected: 输出 `import ok`（若 framework 包结构需要特定导入方式，按项目实际方式导入）
 
-- [ ] **Step 5: 提交**
+- [x] **Step 5: 提交**
 
 ```bash
 git add framework/agents/specialized/problem_agent.py
@@ -1773,7 +1777,7 @@ git commit -m "refactor(model-3): problem_agent 消费端改读 GDZLDJ/ZALX/ZYZA
 
 **说明：** Task 1-5 已分别更新对应模块的测试段。本任务新增 4 个跨模块/边界测试，并确保整文件全绿。其中"diagnosis_row 返回字符串三元组"与"acidification 用 region_code 正确分区"在 Task 4 / Task 5 已分别以 `test_diagnosis_row_single_obstacle`（断言 `isinstance(zyzays, str)`）和 `test_evaluate_acidification_uses_region_code` 形式覆盖。为避免重复，本任务新增的 4 个测试聚焦以下场景；若已存在等价测试则合并断言而非重复创建。
 
-- [ ] **Step 1: 新增"障碍度不覆盖原始值"测试**
+- [x] **Step 1: 新增"障碍度不覆盖原始值"测试**
 
 在 `tests/test_farmland_diagnosis.py` 末尾追加：
 
@@ -1802,7 +1806,7 @@ def test_obstacle_degree_does_not_overwrite_original():
         assert result['SJDZAD'] != result['SJD']
 ```
 
-- [ ] **Step 2: 新增"diagnosis_row 返回字符串三元组"测试**
+- [x] **Step 2: 新增"diagnosis_row 返回字符串三元组"测试**
 
 在 `tests/test_farmland_diagnosis.py` 末尾追加（与 Task 4 的 `test_diagnosis_row_single_obstacle` 互补，此处显式断言三元组类型与中文显示名）：
 
@@ -1828,7 +1832,7 @@ def test_diagnosis_row_returns_string_triple():
     assert 'SXJ' not in zyzays
 ```
 
-- [ ] **Step 3: 新增"ZALX/ZYZAYS/CYZAYS 端到端"测试**
+- [x] **Step 3: 新增"ZALX/ZYZAYS/CYZAYS 端到端"测试**
 
 在 `tests/test_farmland_diagnosis.py` 末尾追加：
 
@@ -1863,7 +1867,7 @@ def test_end_to_end_zalx_zyzays_cyzays():
         assert diag['CYZAYS'] == '无' or diag['CYZAYS'] != ''
 ```
 
-- [ ] **Step 4: 新增"acidification 用 region_code 正确分区"测试（如 Task 5 未覆盖）**
+- [x] **Step 4: 新增"acidification 用 region_code 正确分区"测试（如 Task 5 未覆盖）**
 
 Task 5 的 `test_evaluate_acidification_uses_region_code` 已覆盖此场景。若该测试已存在则跳过本步；否则在末尾追加：
 
@@ -1885,12 +1889,12 @@ def test_acidification_uses_region_code_not_jy():
         assert eval_row['region_code'] == 'CJ'  # 不再恒 HN
 ```
 
-- [ ] **Step 5: 运行全量 model-3 测试**
+- [x] **Step 5: 运行全量 model-3 测试**
 
 Run: `pytest tests/test_farmland_diagnosis.py -v`
 Expected: PASS（全部测试通过）
 
-- [ ] **Step 6: 提交**
+- [x] **Step 6: 提交**
 
 ```bash
 git add tests/test_farmland_diagnosis.py
@@ -1908,12 +1912,12 @@ git commit -m "test(model-3): 新增障碍度不覆盖原始值/三元组/端到
 - Consumes: Task 1-8 全部产物
 - Produces: 验证报告（单测全绿 + 整体回归无 model-1/model-7 破坏）
 
-- [ ] **Step 1: 运行 model-3 单测确认全绿**
+- [x] **Step 1: 运行 model-3 单测确认全绿**
 
 Run: `pytest tests/test_farmland_diagnosis.py -v`
 Expected: PASS（所有测试通过，0 failed）
 
-- [ ] **Step 2: 运行整体测试套件确认无回归**
+- [x] **Step 2: 运行整体测试套件确认无回归**
 
 Run: `pytest tests/ -v`
 Expected: PASS（model-1 / model-7 等其他模型测试无回归；若存在跨模型集成测试，确认其通过或仅因本变更预期行为调整而需同步更新）
@@ -1922,14 +1926,14 @@ Expected: PASS（model-1 / model-7 等其他模型测试无回归；若存在跨
 - 若失败测试引用了 `farmland_diagnosis` 的旧字段名（PH/YJ/_LD/_OD/obstacle_type/main_factors 等），需在该测试处同步改为标准码（属本变更范围）。
 - 若失败测试与 model-3 无关，则不是本变更引入，记录但不在本任务修复。
 
-- [ ] **Step 3: 验证标准测试数据输出字段名（可选 golden test）**
+- [x] **Step 3: 验证标准测试数据输出字段名（可选 golden test）**
 
 若 V2.0 测试数据 `test.csv` / `test_result.csv` 可访问，运行一次 `bulk_evaluate` 对照输出字段名：
 
 Run: `python -c "import pandas as pd; df=pd.read_csv('D:/destkop/模型3_V2.0 (2)/模型3_V2.0/模型3_V2.0/test_result.csv'); print(list(df.columns))"`
 Expected: 输出含 `SJDLSD`/`ZHQZ`/`GDZLDJ`/`SJDZAD`/`SJDZADJ`/`ZALX`/`ZYZAYS`/`CYZAYS` 等标准列名。本变更输出字段名应与此一致。
 
-- [ ] **Step 4: 提交（如有回归修复）**
+- [x] **Step 4: 提交（如有回归修复）**
 
 若 Step 2 触发了非 model-3 测试的同步字段更新：
 
@@ -1952,17 +1956,17 @@ git commit -m "test(model-3): 同步跨模型测试中 model-3 字段引用为�
 - Consumes: 无
 - Produces: 确认两份文档已纳入版本控制（design 8.10 / tasks 8.1 要求）。
 
-- [ ] **Step 1: 确认两份文档已在版本控制中**
+- [x] **Step 1: 确认两份文档已在版本控制中**
 
 Run: `git ls-files docs/model-integration-analysis.md docs/model-provider-spec.md`
 Expected: 输出两行文件路径（均已被 git 跟踪）。若无输出，说明未纳入版本控制，执行 `git add docs/model-integration-analysis.md docs/model-provider-spec.md`。
 
-- [ ] **Step 2: 确认文档无未提交改动（或属本变更预期）**
+- [x] **Step 2: 确认文档无未提交改动（或属本变更预期）**
 
 Run: `git status docs/model-integration-analysis.md docs/model-provider-spec.md`
 Expected: 无未跟踪 / 或仅有本变更相关的预期改动。
 
-- [ ] **Step 3: 若 Step 1 触发了 git add，提交**
+- [x] **Step 3: 若 Step 1 触发了 git add，提交**
 
 ```bash
 git add docs/model-integration-analysis.md docs/model-provider-spec.md
