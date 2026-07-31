@@ -232,19 +232,21 @@ def test_fertility_ml_dose_query(monkeypatch):
 
 
 def test_all_six_agents_simulated_flag():
-    """6 个 agent 对代表性经典问题均返回 simulated=True 且 answer 非空"""
+    """纯模拟 agent 对代表性经典问题均返回 simulated=True 且 answer 非空
+
+    注：AcidificationRemediationAgent 已改为过程模型（success→simulated=False），
+    FertilityMLAgent 调用真实 ML 模型，两者均不再始终 simulated=True，
+    故不在此列表中（各有独立测试覆盖）。
+    """
     from framework.agents.specialized.stability_risk_agent import StabilityRiskAgent
     from framework.agents.specialized.potential_agent import PotentialAssessmentAgent
     from framework.agents.specialized.problem_agent import ProblemIdentificationAgent
-    from framework.agents.specialized.acidification_agent import AcidificationRemediationAgent
     from framework.agents.specialized.organic_matter_agent import OrganicMatterAgent
-    from framework.agents.specialized.fertility_ml_agent import FertilityMLAgent
 
     cases = [
         (StabilityRiskAgent(), "查询区域内耕地质量等级整体稳定吗？"),
         (PotentialAssessmentAgent(), "辖区耕地质量提升的总体潜力有多大？"),
         (ProblemIdentificationAgent(), "全省耕地质量存在哪些问题？"),
-        (AcidificationRemediationAgent(), "查询区域内农用地土壤酸化程度如何？"),
         (OrganicMatterAgent(), "全省耕地土壤有机质含量如何？"),
     ]
     for agent, q in cases:
