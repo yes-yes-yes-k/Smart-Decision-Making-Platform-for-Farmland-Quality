@@ -56,7 +56,7 @@ base-ref: f7801671d5e0ceffb169910d6d17c9ef201f75d1
 - Consumes: 无（基础层）
 - Produces: `REGION_MAP`、`SECONDARY_REGION_MAP`（不变）、`DISCRETE_CN_MAP`、`COEFFICIENTS`（标准码键）、`WEIGHTS`（标准码键）、`INDICATOR_DISPLAY_MAP`、`GRADE_CONFIG`、`ALL_INDICATORS`、`CONTINUOUS_INDICATORS`、`DISCRETE_INDICATORS`、`WEIGHTED_INDICATORS`、`AMENDMENT_CONFIG`（不变）、`calc_obstacle_level(row, indicators)`（标准码键，读 `GCZDLSD`/`DXBWLSD`）。移除 `COLUMN_RENAME`、`TEXT_VALUE_MAPS`、`INDICATOR_NAME_MAP`。
 
-- [ ] **Step 1: 更新 config 相关测试为标准码（红）**
+- [x] **Step 1: 更新 config 相关测试为标准码（红）**
 
 把 `tests/test_farmland_diagnosis.py` 顶部 config 测试段改为：
 
@@ -142,12 +142,12 @@ def test_calc_obstacle_level_dxbw_uses_lsd():
     assert result['DXBW'] == '重度障碍'
 ```
 
-- [ ] **Step 2: 运行 config 测试确认失败**
+- [x] **Step 2: 运行 config 测试确认失败**
 
 Run: `pytest tests/test_farmland_diagnosis.py -k "region_map or coefficients_exists or weights_exists or indicator_display_map or grade_config or indicator_constants or calc_obstacle_level" -v`
 Expected: FAIL（ImportError: cannot import name 'INDICATOR_DISPLAY_MAP'/'GRADE_CONFIG'/'ALL_INDICATORS' 等，且现有测试仍引用 PH/YJ）
 
-- [ ] **Step 3: 重写 config.py 为标准码（绿）**
+- [x] **Step 3: 重写 config.py 为标准码（绿）**
 
 用以下内容完整替换 `src/ai_culti_demo/farmland_diagnosis/config.py`：
 
@@ -444,12 +444,12 @@ def calc_obstacle_level(row, indicators):
     return levels
 ```
 
-- [ ] **Step 4: 运行 config 测试确认通过**
+- [x] **Step 4: 运行 config 测试确认通过**
 
 Run: `pytest tests/test_farmland_diagnosis.py -k "region_map or coefficients_exists or weights_exists or indicator_display_map or grade_config or indicator_constants or calc_obstacle_level" -v`
 Expected: PASS（全部 config 测试通过；其他模块测试此时仍失败，属预期，不在本任务范围）
 
-- [ ] **Step 5: 提交**
+- [x] **Step 5: 提交**
 
 ```bash
 git add src/ai_culti_demo/farmland_diagnosis/config.py tests/test_farmland_diagnosis.py
