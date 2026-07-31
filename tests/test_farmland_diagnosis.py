@@ -433,3 +433,79 @@ def test_evaluate_acidification_uses_region_code():
         acid = storage.get_acidification('0')
         assert acid is not None
         assert acid['acidification_level'] == '强酸性'
+
+
+# Task 8: 跨模块/边界测试
+def test_obstacle_degree_does_not_overwrite_original():
+    # 障碍度存独立 xxxZAD 列，原始指标值 SJD/YJZ 等保持不变
+    with tempfile.TemporaryDirectory() as tmpdir:
+        csv_path = os.path.join(tmpdir, 'test.csv')
+        with open(csv_path, 'w', encoding='utf-8') as f:
+            f.write('''YJNYQ,EJNYQ,SJD,YJZ,YXL,SXJ,TRRZ,GCZD,GGNL,PSNL,DXBW,ZDGX,YXTCHD,GCHD
+华南区,闽南粤中农林水产区,4.5,10,5,50,1.8,黏土,基本满足,基本满足,丘陵上部,夹层型,60,15
+''')
+        db_path = os.path.join(tmpdir, 'test.db')
+        bulk_evaluate(csv_path, db_path)
+
+        storage = DiagnosisStorage(db_path)
+        result = storage.get_evaluation('0')
+
+        # 原始值未被覆盖
+        assert result['SJD'] == 4.5
+        assert result['YJZ'] == 10
+        # 障碍度独立列存在
+        assert 'SJDZAD' in result and result['SJDZAD'] is not None
+        assert 'YJZZAD' in result and result['YJZZAD'] is not None
+        # 障碍度列与原始值不同（原始值是测量值，障碍度是 0~1 占比）
+        assert result['SJDZAD'] != result['SJD']
+
+
+def test_diagnosis_row_returns_string_triple():
+    row = pd.Series({
+        'SJDZADJ': '重度酸化', 'SJDZAD': 0.30,
+        'SXJZADJ': '重度缺乏', 'SXJZAD': 0.25,
+    })
+    level_cols = [ind + 'ZADJ' for ind in WEIGHTED_INDICATORS]
+    degree_cols = [ind + 'ZAD' for ind in WEIGHTED_INDICATORS]
+    result = diagnosis_row(row, WEIGHTED_INDICATORS, level_cols, degree_cols)
+
+    assert isinstance(result, tuple) and len(result) == 3
+    zalx, zyzays, cyzays = result
+    assert isinstance(zalx, str)
+    assert isinstance(zyzays, str)
+    assert isinstance(cyzays, str)
+    # 缩写已替换为中文显示名
+    assert 'pH' in zyzays
+    assert '速效钾' in zyzays
+    assert 'SJD' not in zyzays
+    assert 'SXJ' not in zyzays
+
+
+def test_end_to_end_zalx_zyzays_cyzays():
+    # 端到端：bulk_evaluate → diagnose → query_parcel 返回 ZALX/ZYZAYS/CYZAYS
+    with tempfile.TemporaryDirectory() as tmpdir:
+        csv_path = os.path.join(tmpdir, 'test.csv')
+        with open(csv_path, 'w', encoding='utf-8') as f:
+            f.write('''YJNYQ,EJNYQ,SJD,YJZ,YXL,SXJ,TRRZ,GCZD,GGNL,PSNL,DXBW,ZDGX,YXTCHD,GCHD
+华南区,闽南粤中农林水产区,4.5,10,5,50,1.8,黏土,基本满足,基本满足,丘陵上部,夹层型,60,15
+''')
+        db_path = os.path.join(tmpdir, 'test.db')
+        bulk_evaluate(csv_path, db_path)
+        diagnose(db_path)
+
+        result = query_parcel('0', db_path)
+        assert result['status'] == 'ok'
+        diag = result['diagnosis']
+        eval_data = result['evaluation']
+
+        # 诊断三字段均为字符串
+        assert isinstance(diag['ZALX'], str)
+        assert isinstance(diag['ZYZAYS'], str)
+        assert isinstance(diag['CYZAYS'], str)
+        # 评价返回标准字段
+        assert 'GDZLDJ' in eval_data
+        assert 'ZHQZ' in eval_data
+        # 障碍地块应有非空 ZALX
+        assert diag['ZALX'] in ('单一障碍', '多障碍', '无明显障碍')
+        # CYZAYS 空时归一为 '无'
+        assert diag['CYZAYS'] == '无' or diag['CYZAYS'] != ''
