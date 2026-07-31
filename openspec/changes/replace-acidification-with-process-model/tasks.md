@@ -37,14 +37,14 @@
 
 ## 6. 测试
 
-- [ ] 6.1 新增 `tests/test_model4_acidification.py`：测试4个子模型的计算正确性（使用模型5源码示例值 pHstart=4.31, Hex=1.56, Alex=4.08 验证 YTK/MBNT 输出）
-- [ ] 6.2 测试子模型选择：land_type × fertilizer_type 的4种组合各选对子模型
-- [ ] 6.3 测试非法参数回退：land_type="foo" / fertilizer_type="bar" → 回退默认 + warning
-- [ ] 6.4 测试输入校验：缺少 JHX/JLA → rejected；SJD 越界 → rejected
-- [ ] 6.5 测试可选参数覆盖：传入 FertN=200 → 计算结果与默认不同 + customized_params 标注
-- [ ] 6.6 测试 parcel_id 补充 SJD：提供 parcel_id + JHX + JLA（无 SJD）→ 从 DB 查 SJD 并计算
-- [ ] 6.7 更新 `tests/test_agent_specialized.py` 中 AcidificationRemediationAgent 的 mock，适配新参数和返回结构
-- [ ] 6.8 验证 question_type=2 路由仍指向 model-4（回归测试）
+- [x] 6.1 新增 `tests/test_model4_acidification.py`：测试4个子模型的计算正确性（使用模型5源码示例值 pHstart=4.31, Hex=1.56, Alex=4.08 验证 YTK/MBNT 输出）
+- [x] 6.2 测试子模型选择：land_type × fertilizer_type 的4种组合各选对子模型
+- [x] 6.3 测试非法参数回退：land_type="foo" / fertilizer_type="bar" → 回退默认 + warning
+- [x] 6.4 测试输入校验：缺少 JHX/JLA → rejected；SJD 越界 → rejected
+- [x] 6.5 测试可选参数覆盖：传入 FertN=200 → 计算结果与默认不同 + customized_params 标注
+- [x] 6.6 测试 parcel_id 补充 SJD：提供 parcel_id + JHX + JLA（无 SJD）→ 从 DB 查 SJD 并计算
+- [x] 6.7 更新 `tests/test_agent_specialized.py` 中 AcidificationRemediationAgent 的 mock，适配新参数和返回结构
+- [x] 6.8 验证 question_type=2 路由仍指向 model-4（回归测试）
 
 ## 7. 文档更新
 
