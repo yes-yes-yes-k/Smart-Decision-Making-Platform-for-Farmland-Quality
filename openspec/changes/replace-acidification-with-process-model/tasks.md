@@ -48,6 +48,6 @@
 
 ## 7. 文档更新
 
-- [ ] 7.1 更新 `docs/openapi.json`：新增 `fertilizer_type` 请求参数；更新响应字段（lime_demand → ytk/mbnt）
-- [ ] 7.2 更新 `docs/api.md`：酸化改良 API 参数说明和响应字段说明
-- [ ] 7.3 更新 `README.md`：酸化模型描述（从规则导向改为过程模型，4子模型）
+- [x] 7.1 更新 `docs/openapi.json`：新增 `fertilizer_type` 请求参数；更新响应字段（lime_demand → ytk/mbnt）
+- [x] 7.2 更新 `docs/api.md`：酸化改良 API 参数说明和响应字段说明
+- [x] 7.3 更新 `README.md`：酸化模型描述（从规则导向改为过程模型，4子模型）

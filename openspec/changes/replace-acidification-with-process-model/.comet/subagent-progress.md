@@ -17,7 +17,7 @@ Plan commit (BASE for Task 1): b9cefe6
 | 4 | complete | done | afb07bb, c873b28, 7ae3912 | hit (API break) | Approved (after fix) | Agent 适配 ytk/mbnt；C1 classic_qa 4测试+simulated_flag 已修复；23 passed |
 | 5 | complete | done | ab1bc9f | no (45/2) | skip (standard) | API 透传 fertilizer_type；60 passed；2 pre-existing 失败（parcel_id/parcel_code 透传，非本变更引入） |
 | 6 | complete | done | e32063d | - | skip (standard) | 回归验证：acidification相关161 passed/1 pre-existing(fake.shp)；全量331 passed/82 pre-existing；2本变更引入失败已修复 |
-| 7 | in-progress | dispatching | - | - | - | 文档更新 |
+| 7 | complete | done | a5c64f8 | - | skip (standard) | 文档更新 openapi.json+api.md+README.md；openapi valid；+211/-11 |
 
 ## Task 1 Review 结果（已完成）
 
