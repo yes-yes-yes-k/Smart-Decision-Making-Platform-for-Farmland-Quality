@@ -88,3 +88,34 @@ def test_optional_param_override():
 def test_model_version_present():
     r = calculate_acidification_amendment(PHSTART, HEX, ALEX)
     assert r.get("model_version") == "process_v1_20260801"
+
+
+# --- Task 3: model_4_execution 入口测试（覆盖 6.6） ---
+from framework.domain.other_models.model_4 import model_4_execution
+
+
+def test_model4_execution_direct_inputs():
+    r = model_4_execution({"SJD": 4.31, "JHX": 1.56, "JLA": 4.08}, land_type="upland", fertilizer_type="urea")
+    assert r["status"] == "success"
+    assert r["sub_model"] == "upland_urea"
+    assert r["model_version"] == "process_v1_20260801"
+    assert r["ytk"] is not None
+
+
+def test_model4_execution_parcel_id_supplement(monkeypatch):
+    from framework.domain.other_models import model_4
+    monkeypatch.setattr(model_4, "_query_sjd_by_parcel_id", lambda parcel_id, db_path=None: 5.5)
+    r = model_4_execution({"parcel_id": "1", "JHX": 1.56, "JLA": 4.08})
+    assert r["status"] == "success"
+
+
+def test_model4_execution_parcel_id_not_found(monkeypatch):
+    from framework.domain.other_models import model_4
+    monkeypatch.setattr(model_4, "_query_sjd_by_parcel_id", lambda parcel_id, db_path=None: None)
+    r = model_4_execution({"parcel_id": "999", "JHX": 1.56, "JLA": 4.08})
+    assert r["status"] == "rejected" and r["reason"] == "cannot_get_ph"
+
+
+def test_model4_execution_missing_input():
+    r = model_4_execution({"SJD": 4.31})
+    assert r["status"] == "rejected" and r["reason"] == "missing_input"
