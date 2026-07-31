@@ -1,6 +1,6 @@
 workflow: full
 language: zh-CN
-phase: verify
+phase: archive
 context_compression: off
 build_mode: subagent-driven-development
 build_pause: null
@@ -13,11 +13,11 @@ auto_transition: true
 base_ref: cee7265d3029b8c85619fd5ddc0b5982019fee90
 design_doc: docs/superpowers/specs/2026-07-31-add-shaoguan-fertility-model-design.md
 plan: docs/superpowers/plans/2026-07-31-add-shaoguan-fertility-model.md
-verify_result: pending
+verify_result: pass
 verification_report: docs/superpowers/reports/2026-08-01-add-shaoguan-fertility-model-verify.md
 branch_status: handled
 created_at: 2026-07-31
-verified_at: null
+verified_at: 2026-07-31
 archived: false
 direct_override: null
 handoff_context: openspec/changes/add-shaoguan-fertility-model/.comet/handoff/design-context.json
