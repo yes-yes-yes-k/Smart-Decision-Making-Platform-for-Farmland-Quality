@@ -620,3 +620,51 @@ class TestFertilityMLAgentPassthrough:
         }
         agent.answer_question("施肥量", context)
         assert captured["area_code"] == "lechang"
+
+
+# ---- Task 7: nodes.execute_models 透传 land_type 测试 ----
+
+class TestExecuteModelsLandTypePassthrough:
+    def test_execute_models_passes_land_type_to_agent_context(self, monkeypatch):
+        """execute_models 应将 request['land_type'] 透传到 agent_manager.process 的 context 顶层"""
+        from framework.agents import nodes
+        from framework.agents import manager as manager_mod
+
+        captured = {}
+        def fake_process(question, context):
+            captured["context"] = context
+            return {"status": "ok", "data": {"summary": "", "details": {}, "agents_invoked": [], "recommendations": []}}
+        # agent_manager 在 execute_models 内部通过 from framework.agents.manager import agent_manager 引入
+        monkeypatch.setattr(manager_mod, "agent_manager", type("M", (), {"process": staticmethod(fake_process)})())
+
+        state = {
+            "request": {
+                "question": "施肥量多少",
+                "area_code": "lechang",
+                "land_type": "paddy",
+            },
+            "data": {},
+            "question_type": 1,
+        }
+        nodes.execute_models(state)
+        assert captured["context"]["land_type"] == "paddy"
+        assert captured["context"]["area_code"] == "lechang"
+
+    def test_execute_models_without_land_type_omits_key(self, monkeypatch):
+        """request 不含 land_type → context 不含 land_type（agent 侧默认 upland）"""
+        from framework.agents import nodes
+        from framework.agents import manager as manager_mod
+
+        captured = {}
+        def fake_process(question, context):
+            captured["context"] = context
+            return {"status": "ok", "data": {"summary": "", "details": {}, "agents_invoked": [], "recommendations": []}}
+        monkeypatch.setattr(manager_mod, "agent_manager", type("M", (), {"process": staticmethod(fake_process)})())
+
+        state = {
+            "request": {"question": "施肥量", "area_code": "lechang"},
+            "data": {},
+            "question_type": 1,
+        }
+        nodes.execute_models(state)
+        assert "land_type" not in captured["context"]
