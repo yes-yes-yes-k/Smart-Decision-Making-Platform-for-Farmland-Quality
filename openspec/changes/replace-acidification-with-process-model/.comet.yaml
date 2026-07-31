@@ -8,13 +8,13 @@ subagent_dispatch: confirmed
 tdd_mode: tdd
 review_mode: standard
 isolation: branch
-verify_mode: null
+verify_mode: full
 auto_transition: true
 base_ref: ca6f94be5aeff8a33812bedee05bc8407f042420
 design_doc: docs/superpowers/specs/2026-08-01-replace-acidification-with-process-model-design.md
 plan: docs/superpowers/plans/2026-08-01-replace-acidification-with-process-model.md
 verify_result: pending
-verification_report: null
+verification_report: docs/superpowers/reports/2026-08-01-replace-acidification-with-process-model-verify.md
 branch_status: pending
 created_at: 2026-07-31
 verified_at: null
