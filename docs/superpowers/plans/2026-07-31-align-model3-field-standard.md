@@ -868,7 +868,7 @@ git commit -m "refactor(model-3): storage.py 表结构重建为标准码列名�
 - Consumes: Task 1 的 `REGION_MAP`/`SECONDARY_REGION_MAP`/`COEFFICIENTS`/`WEIGHTS`/`DISCRETE_CN_MAP`/`GRADE_CONFIG`/`ALL_INDICATORS`/`CONTINUOUS_INDICATORS`/`DISCRETE_INDICATORS`/`WEIGHTED_INDICATORS`/`calc_obstacle_level`；Task 2 的 `DiagnosisStorage`
 - Produces: `calc_continuous`/`calc_discrete`（不变）、`translate_obstacle_level(ind, level, orig_val)`（新）、`evaluate_single(row, region_code, secondary_region_code) -> dict`（键为标准码 + `xxxLSD`/`xxxZADJ`/`xxxZAD`/`ZHQZ`/`GDZLDJ`）、`bulk_evaluate(input_csv, output_db_path) -> dict`（CSV 用标准码表头，无 COLUMN_RENAME）
 
-- [ ] **Step 1: 更新 evaluation 测试为标准码（红）**
+- [x] **Step 1: 更新 evaluation 测试为标准码（红）**
 
 把 `tests/test_farmland_diagnosis.py` 中 evaluation 测试段改为：
 
@@ -954,12 +954,12 @@ def test_calc_discrete():
     assert result == 1.0
 ```
 
-- [ ] **Step 2: 运行 evaluation 测试确认失败**
+- [x] **Step 2: 运行 evaluation 测试确认失败**
 
 Run: `pytest tests/test_farmland_diagnosis.py -k "translate_obstacle_level or evaluate_single or bulk_evaluate or calc_continuous or calc_discrete" -v`
 Expected: FAIL（ImportError: cannot import name 'translate_obstacle_level'；evaluate_single 仍用 PH）
 
-- [ ] **Step 3: 重写 evaluation.py（绿）**
+- [x] **Step 3: 重写 evaluation.py（绿）**
 
 用以下内容完整替换 `src/ai_culti_demo/farmland_diagnosis/evaluation.py`：
 
@@ -1156,12 +1156,12 @@ def bulk_evaluate(input_csv: str, output_db_path: str = None) -> Dict[str, Any]:
     }
 ```
 
-- [ ] **Step 4: 运行 evaluation 测试确认通过**
+- [x] **Step 4: 运行 evaluation 测试确认通过**
 
 Run: `pytest tests/test_farmland_diagnosis.py -k "translate_obstacle_level or evaluate_single or bulk_evaluate or calc_continuous or calc_discrete" -v`
 Expected: PASS
 
-- [ ] **Step 5: 提交**
+- [x] **Step 5: 提交**
 
 ```bash
 git add src/ai_culti_demo/farmland_diagnosis/evaluation.py tests/test_farmland_diagnosis.py
