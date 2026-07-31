@@ -1185,7 +1185,7 @@ git commit -m "refactor(model-3): evaluation.py 移植 translate_obstacle_level�
 - `diagnosis_row` 内部对 `ZYZAYS`/`CYZAYS` 应用 `replace_abbr_in_text`（缩写→中文显示名），并对空 `CYZAYS` 归一为 `'无'`（V2.0 行为，design 5.7）。
 - **spec 场景"无明显障碍"措辞说明**：spec 描述"ZYZAYS 和 CYZAYS 为空"，但 design 5.7 明确要求 `CYZAYS` 空时显示 `'无'`（V2.0 行为）。本实现遵循 design 5.7：`无明显障碍` 时返回 `('无明显障碍', '', '无')`。`ZYZAYS` 保持空串。change owner 后续可酌情修订 spec 措辞，但实现以 design 为准。
 
-- [ ] **Step 1: 更新 diagnosis 测试为标准码 + 三元组（红）**
+- [x] **Step 1: 更新 diagnosis 测试为标准码 + 三元组（红）**
 
 把 `tests/test_farmland_diagnosis.py` 中 diagnosis 测试段改为：
 
@@ -1268,12 +1268,12 @@ def test_diagnose_flow():
         assert 'CYZAYS' in diag
 ```
 
-- [ ] **Step 2: 运行 diagnosis 测试确认失败**
+- [x] **Step 2: 运行 diagnosis 测试确认失败**
 
 Run: `pytest tests/test_farmland_diagnosis.py -k "replace_abbr or diagnosis_row or diagnose_flow" -v`
 Expected: FAIL（ImportError: cannot import name 'replace_abbr_in_text'；diagnosis_row 签名/返回不匹配）
 
-- [ ] **Step 3: 重写 diagnosis.py（绿）**
+- [x] **Step 3: 重写 diagnosis.py（绿）**
 
 用以下内容完整替换 `src/ai_culti_demo/farmland_diagnosis/diagnosis.py`：
 
@@ -1452,12 +1452,12 @@ def query_parcel(parcel_id: str, db_path: str = None) -> Dict[str, Any]:
     }
 ```
 
-- [ ] **Step 4: 运行 diagnosis 测试确认通过**
+- [x] **Step 4: 运行 diagnosis 测试确认通过**
 
 Run: `pytest tests/test_farmland_diagnosis.py -k "replace_abbr or diagnosis_row or diagnose_flow" -v`
 Expected: PASS
 
-- [ ] **Step 5: 提交**
+- [x] **Step 5: 提交**
 
 ```bash
 git add src/ai_culti_demo/farmland_diagnosis/diagnosis.py tests/test_farmland_diagnosis.py
