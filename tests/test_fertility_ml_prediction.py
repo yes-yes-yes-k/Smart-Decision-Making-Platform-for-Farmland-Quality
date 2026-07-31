@@ -240,3 +240,106 @@ class TestModel6Integration:
         assert _SOC_META_PATH.exists()
         assert _DOSE_MODEL_PATH.exists()
         assert _DOSE_META_PATH.exists()
+
+
+# ---- Task 4: 区域路由基础设施测试 ----
+
+class TestNormalizeInput:
+    def test_sombe_mapped_to_socbe(self):
+        from framework.domain.other_models.model_6 import _normalize_input
+        result = _normalize_input({"SOMbe": 15.0, "pH": 6.5})
+        assert "SOCbe" in result
+        assert "SOMbe" not in result
+        assert result["SOCbe"] == 15.0
+        assert result["pH"] == 6.5
+
+    def test_sombe_with_trailing_space_stripped_then_mapped(self):
+        from framework.domain.other_models.model_6 import _normalize_input
+        result = _normalize_input({"SOMbe ": 15.0, "TN ": 1.2})
+        assert "SOCbe" in result
+        assert "SOMbe" not in result
+        assert "TN" in result  # strip 尾随空格
+        assert result["TN"] == 1.2
+
+    def test_none_values_filtered(self):
+        from framework.domain.other_models.model_6 import _normalize_input
+        result = _normalize_input({"pH": None, "SOCbe": 12.0})
+        assert "pH" not in result
+        assert result["SOCbe"] == 12.0
+
+    def test_none_input_returns_empty(self):
+        from framework.domain.other_models.model_6 import _normalize_input
+        assert _normalize_input(None) == {}
+
+    def test_socbe_unchanged(self):
+        from framework.domain.other_models.model_6 import _normalize_input
+        result = _normalize_input({"SOCbe": 12.0})
+        assert result == {"SOCbe": 12.0}
+
+
+class TestShaoguanAreaCodes:
+    def test_lechang_is_shaoguan(self):
+        from framework.domain.other_models.model_6 import SHAOGUAN_AREA_CODES
+        assert "lechang" in SHAOGUAN_AREA_CODES
+
+    def test_other_codes_not_in_set(self):
+        from framework.domain.other_models.model_6 import SHAOGUAN_AREA_CODES
+        assert "other" not in SHAOGUAN_AREA_CODES
+        assert "guangzhou" not in SHAOGUAN_AREA_CODES
+
+
+class TestEnsureSgModelLoaded:
+    def test_upland_load_success(self, monkeypatch):
+        from framework.domain.other_models import model_6
+        monkeypatch.setattr(model_6, "_SG_UPLAND_MODEL", None)
+        monkeypatch.setattr(model_6, "_SG_UPLAND_META", None)
+        monkeypatch.setattr(model_6, "_SG_UPLAND_LOAD_FAILED", False)
+
+        fake_meta = {"feature_names": ["pH"], "metrics": {"test_r2": 0.6}, "feature_means": {"pH": 7.0}}
+        def fake_load(mp, mt):
+            return FakeModel(), fake_meta
+        monkeypatch.setattr(model_6, "_load_model_and_meta", fake_load)
+
+        ok = model_6._ensure_sg_model_loaded("upland")
+        assert ok is True
+        assert model_6._SG_UPLAND_MODEL is not None
+        assert model_6._SG_UPLAND_META == fake_meta
+
+    def test_paddy_load_success(self, monkeypatch):
+        from framework.domain.other_models import model_6
+        monkeypatch.setattr(model_6, "_SG_PADDY_MODEL", None)
+        monkeypatch.setattr(model_6, "_SG_PADDY_META", None)
+        monkeypatch.setattr(model_6, "_SG_PADDY_LOAD_FAILED", False)
+
+        fake_meta = {"feature_names": ["pH"], "metrics": {"test_r2": 0.55}, "feature_means": {"pH": 7.0}}
+        def fake_load(mp, mt):
+            return FakeModel(), fake_meta
+        monkeypatch.setattr(model_6, "_load_model_and_meta", fake_load)
+
+        ok = model_6._ensure_sg_model_loaded("paddy")
+        assert ok is True
+        assert model_6._SG_PADDY_MODEL is not None
+
+    def test_load_failure_sets_flag(self, monkeypatch):
+        from framework.domain.other_models import model_6
+        monkeypatch.setattr(model_6, "_SG_UPLAND_MODEL", None)
+        monkeypatch.setattr(model_6, "_SG_UPLAND_META", None)
+        monkeypatch.setattr(model_6, "_SG_UPLAND_LOAD_FAILED", False)
+
+        def boom(mp, mt):
+            raise FileNotFoundError("missing")
+        monkeypatch.setattr(model_6, "_load_model_and_meta", boom)
+
+        ok = model_6._ensure_sg_model_loaded("upland")
+        assert ok is False
+        assert model_6._SG_UPLAND_LOAD_FAILED is True
+
+    def test_invalid_land_type_routes_to_upland(self, monkeypatch):
+        """land_type 非法值（如 'foo'）应走 upland 分支"""
+        from framework.domain.other_models import model_6
+        monkeypatch.setattr(model_6, "_SG_UPLAND_MODEL", FakeModel())
+        monkeypatch.setattr(model_6, "_SG_UPLAND_META", {"feature_names": [], "metrics": {"test_r2": 0.5}, "feature_means": {}})
+        monkeypatch.setattr(model_6, "_SG_UPLAND_LOAD_FAILED", False)
+
+        ok = model_6._ensure_sg_model_loaded("foo")
+        assert ok is True  # 走 upland 已加载

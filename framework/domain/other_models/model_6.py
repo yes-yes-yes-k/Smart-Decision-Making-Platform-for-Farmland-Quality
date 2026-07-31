@@ -18,6 +18,15 @@ _SOC_META_PATH = _MODELS_DIR / "soc_metadata.json"
 _DOSE_MODEL_PATH = _MODELS_DIR / "dose_etr_model.joblib"
 _DOSE_META_PATH = _MODELS_DIR / "dose_metadata.json"
 
+# ---- 韶关（SG）区域 RF Dose 模型路径 ----
+_SG_UPLAND_MODEL_PATH = _MODELS_DIR / "sg_dose_upland_rf_model.joblib"
+_SG_UPLAND_META_PATH = _MODELS_DIR / "sg_dose_upland_metadata.json"
+_SG_PADDY_MODEL_PATH = _MODELS_DIR / "sg_dose_paddy_rf_model.joblib"
+_SG_PADDY_META_PATH = _MODELS_DIR / "sg_dose_paddy_metadata.json"
+
+# 韶关区域 area_code 集合（可扩展）
+SHAOGUAN_AREA_CODES = {"lechang"}
+
 # ---- 尝试导入 sklearn / joblib ----
 try:
     import joblib
@@ -34,6 +43,15 @@ _SOC_META = None
 _DOSE_META = None
 _SOC_LOAD_FAILED = False
 _DOSE_LOAD_FAILED = False
+
+# ---- 韶关 SG RF 模型惰性单例状态 ----
+_SG_UPLAND_MODEL = None
+_SG_PADDY_MODEL = None
+_SG_UPLAND_META = None
+_SG_PADDY_META = None
+_SG_UPLAND_LOAD_FAILED = False
+_SG_PADDY_LOAD_FAILED = False
+
 _LOAD_LOCK = threading.Lock()
 
 _MODEL_VERSION = "ETR_v1_20260713"
@@ -51,6 +69,20 @@ FEATURE_RANGES = {
     "Dose":            (0.0,    1000.0),
     "Fertilizer type": (1,      2),
 }
+
+
+def _normalize_input(input_data: Dict[str, Any]) -> Dict[str, Any]:
+    """规范化输入字段名：SOMbe → SOCbe，strip 尾随空格，过滤 None 值。
+
+    在 model_6_execution 开头调用，使全局 ETR 与 SG RF 模型均消费 SOCbe 特征名。
+    """
+    normalized: Dict[str, Any] = {}
+    for k, v in (input_data or {}).items():
+        if v is None:
+            continue
+        key = "SOCbe" if k.strip() == "SOMbe" else k.strip()
+        normalized[key] = v
+    return normalized
 
 
 def _prepare_features(
@@ -147,6 +179,57 @@ def _ensure_models_loaded() -> bool:
     if _SOC_LOAD_FAILED or _DOSE_LOAD_FAILED:
         return False
     return True
+
+
+def _ensure_sg_model_loaded(land_type: str) -> bool:
+    """按 land_type 惰性加载对应 SG RF 模型，返回是否加载成功。
+
+    - land_type="paddy" → 加载水田模型
+    - 其他值（含 "upland" 及非法值）→ 加载旱地模型
+    - 复用 _LOAD_LOCK 的 double-checked locking
+    """
+    global _SG_UPLAND_MODEL, _SG_PADDY_MODEL, _SG_UPLAND_META, _SG_PADDY_META
+    global _SG_UPLAND_LOAD_FAILED, _SG_PADDY_LOAD_FAILED
+
+    if land_type == "paddy":
+        if _SG_PADDY_LOAD_FAILED:
+            return False
+        if _SG_PADDY_MODEL is None and not _SG_PADDY_LOAD_FAILED:
+            with _LOAD_LOCK:
+                if _SG_PADDY_MODEL is None and not _SG_PADDY_LOAD_FAILED:
+                    try:
+                        _SG_PADDY_MODEL, _SG_PADDY_META = _load_model_and_meta(
+                            _SG_PADDY_MODEL_PATH, _SG_PADDY_META_PATH
+                        )
+                        logger.info(
+                            "SG paddy model loaded, feature_names=%s, test_r2=%.4f",
+                            _SG_PADDY_META["feature_names"],
+                            _SG_PADDY_META["metrics"]["test_r2"],
+                        )
+                    except Exception:
+                        _SG_PADDY_LOAD_FAILED = True
+                        logger.exception("Failed to load SG paddy model")
+        return not _SG_PADDY_LOAD_FAILED
+
+    # upland 或非法值都走旱地分支
+    if _SG_UPLAND_LOAD_FAILED:
+        return False
+    if _SG_UPLAND_MODEL is None and not _SG_UPLAND_LOAD_FAILED:
+        with _LOAD_LOCK:
+            if _SG_UPLAND_MODEL is None and not _SG_UPLAND_LOAD_FAILED:
+                try:
+                    _SG_UPLAND_MODEL, _SG_UPLAND_META = _load_model_and_meta(
+                        _SG_UPLAND_MODEL_PATH, _SG_UPLAND_META_PATH
+                    )
+                    logger.info(
+                        "SG upland model loaded, feature_names=%s, test_r2=%.4f",
+                        _SG_UPLAND_META["feature_names"],
+                        _SG_UPLAND_META["metrics"]["test_r2"],
+                    )
+                except Exception:
+                    _SG_UPLAND_LOAD_FAILED = True
+                    logger.exception("Failed to load SG upland model")
+    return not _SG_UPLAND_LOAD_FAILED
 
 
 def _fallback_response(input_data: Dict[str, Any], reason: str) -> Dict[str, Any]:
