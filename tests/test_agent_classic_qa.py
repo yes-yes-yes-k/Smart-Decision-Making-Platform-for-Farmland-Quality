@@ -182,7 +182,7 @@ def test_fertility_ml_overall_diagnosis(monkeypatch):
     from framework.agents.specialized.fertility_ml_agent import FertilityMLAgent
     monkeypatch.setattr(
         "framework.agents.specialized.fertility_ml_agent.model_6_execution",
-        lambda data: {
+        lambda data, land_type="upland": {
             "status": "success",
             "soc_prediction": 12.5, "soc_confidence": 0.91,
             "dose_prediction": 150.0, "dose_confidence": 0.47,
@@ -201,7 +201,7 @@ def test_fertility_ml_soc_query(monkeypatch):
     from framework.agents.specialized.fertility_ml_agent import FertilityMLAgent
     monkeypatch.setattr(
         "framework.agents.specialized.fertility_ml_agent.model_6_execution",
-        lambda data: {
+        lambda data, land_type="upland": {
             "status": "success",
             "soc_prediction": 12.5, "soc_confidence": 0.91,
             "dose_prediction": 150.0, "dose_confidence": 0.47,
@@ -220,7 +220,7 @@ def test_fertility_ml_dose_query(monkeypatch):
     from framework.agents.specialized.fertility_ml_agent import FertilityMLAgent
     monkeypatch.setattr(
         "framework.agents.specialized.fertility_ml_agent.model_6_execution",
-        lambda data: {
+        lambda data, land_type="upland": {
             "status": "success",
             "soc_prediction": 12.5, "soc_confidence": 0.91,
             "dose_prediction": 150.0, "dose_confidence": 0.47,
@@ -261,7 +261,7 @@ def test_fertility_ml_simulated_with_mock(monkeypatch):
     from framework.agents.specialized.fertility_ml_agent import FertilityMLAgent
     monkeypatch.setattr(
         "framework.agents.specialized.fertility_ml_agent.model_6_execution",
-        lambda data: {
+        lambda data, land_type="upland": {
             "status": "success",
             "soc_prediction": 12.5, "soc_confidence": 0.91,
             "dose_prediction": 150.0, "dose_confidence": 0.47,

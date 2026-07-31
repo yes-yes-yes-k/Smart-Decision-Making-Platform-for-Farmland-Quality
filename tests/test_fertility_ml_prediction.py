@@ -668,3 +668,72 @@ class TestExecuteModelsLandTypePassthrough:
         }
         nodes.execute_models(state)
         assert "land_type" not in captured["context"]
+
+
+# ---- Task 8: SG 真实模型集成测试（模型不可用时跳过）----
+
+def _check_sg_integration_available():
+    try:
+        from framework.domain.other_models import model_6
+        return (
+            model_6._SKLEARN_AVAILABLE
+            and model_6._ensure_models_loaded()
+            and model_6._ensure_sg_model_loaded("upland")
+            and model_6._ensure_sg_model_loaded("paddy")
+        )
+    except Exception:
+        return False
+
+
+@pytest.mark.skipif(
+    not _check_sg_integration_available(),
+    reason="sklearn 或 SG 模型文件不可用"
+)
+class TestModel6ShaoguanIntegration:
+    def test_real_sg_upland_dose_in_range(self):
+        """真实 SG 旱地预测：Dose 在 0-1000 合理范围"""
+        from framework.domain.other_models.model_6 import model_6_execution
+        inp = dict(FULL_VALID_INPUT, area_code="lechang")
+        result = model_6_execution(inp, land_type="upland")
+        assert result["status"] == "success"
+        assert 0.0 <= result["dose_prediction"] <= 1000.0
+        assert "韶关" in result["dose_warning"]
+        assert "旱地" in result["dose_warning"]
+
+    def test_real_sg_paddy_dose_in_range(self):
+        """真实 SG 水田预测：Dose 在 0-1000 合理范围"""
+        from framework.domain.other_models.model_6 import model_6_execution
+        inp = dict(FULL_VALID_INPUT, area_code="lechang")
+        result = model_6_execution(inp, land_type="paddy")
+        assert result["status"] == "success"
+        assert 0.0 <= result["dose_prediction"] <= 1000.0
+        assert "韶关" in result["dose_warning"]
+        assert "水田" in result["dose_warning"]
+
+    def test_real_sg_soc_uses_global_etr(self):
+        """真实 SG 区域 SOC 仍走全局 ETR（soc_confidence 用 ETR test_r2）"""
+        from framework.domain.other_models.model_6 import model_6_execution
+        from framework.domain.other_models.model_6 import _SOC_META
+        inp = dict(FULL_VALID_INPUT, area_code="lechang")
+        result = model_6_execution(inp, land_type="upland")
+        assert result["status"] == "success"
+        assert result["soc_confidence"] == round(_SOC_META["metrics"]["test_r2"], 2)
+
+    def test_real_sg_model_files_exist(self):
+        """验证 SG .joblib 与 metadata.json 文件存在"""
+        from framework.domain.other_models.model_6 import (
+            _SG_UPLAND_MODEL_PATH, _SG_UPLAND_META_PATH,
+            _SG_PADDY_MODEL_PATH, _SG_PADDY_META_PATH,
+        )
+        assert _SG_UPLAND_MODEL_PATH.exists()
+        assert _SG_UPLAND_META_PATH.exists()
+        assert _SG_PADDY_MODEL_PATH.exists()
+        assert _SG_PADDY_META_PATH.exists()
+
+    def test_real_non_shaoguan_unchanged(self):
+        """真实非韶关预测：Dose 走全局 ETR，dose_warning 不含韶关"""
+        from framework.domain.other_models.model_6 import model_6_execution
+        inp = dict(FULL_VALID_INPUT, area_code="other")
+        result = model_6_execution(inp)
+        assert result["status"] == "success"
+        assert "韶关" not in result["dose_warning"]
