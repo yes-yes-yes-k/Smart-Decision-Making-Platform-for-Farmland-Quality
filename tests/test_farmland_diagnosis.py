@@ -31,7 +31,7 @@ def test_grade_config_exists():
     assert len(GRADE_CONFIG['HN'][0]) == 11  # 10 个边界 + inf
 
 def test_indicator_constants():
-    assert len(ALL_INDICATORS) == 12
+    assert len(ALL_INDICATORS) == 14
     assert set(CONTINUOUS_INDICATORS) | set(DISCRETE_INDICATORS) == set(ALL_INDICATORS)
     assert set(CONTINUOUS_INDICATORS) & set(DISCRETE_INDICATORS) == set()
 

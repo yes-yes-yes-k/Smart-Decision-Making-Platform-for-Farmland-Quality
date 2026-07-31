@@ -19,6 +19,9 @@ CONTINUOUS_INDICATORS = ['SJD', 'YJZ', 'YXL', 'SXJ', 'TRRZ', 'YXTCHD', 'GCHD', '
 DISCRETE_INDICATORS = ['GCZD', 'GGNL', 'PSNL', 'DXBW', 'ZDGX']
 WEIGHTED_INDICATORS = ALL_INDICATORS  # 参与加权和障碍诊断
 
+# 酸化模型专用指标（非耕地质量评价必填，bulk_evaluate 中作为可选列）
+ACIDIFICATION_INDICATORS = ['JHX', 'JLA']
+
 # 离散指标中文值 → 代码（用于将 CSV 中的中文转为系数查找所需的代码）
 DISCRETE_CN_MAP = {
     'DXBW': {
