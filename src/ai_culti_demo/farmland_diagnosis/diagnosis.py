@@ -1,8 +1,9 @@
+import re
 import pandas as pd
 import numpy as np
 import sqlite3
-from typing import Dict, Any, Optional
-from .config import INDICATOR_DISPLAY_MAP
+from typing import Dict, Any, Optional, Tuple, List
+from .config import INDICATOR_DISPLAY_MAP, WEIGHTED_INDICATORS
 from .storage import DiagnosisStorage
 
 
@@ -22,19 +23,37 @@ def parse_obstacle_level(text: str) -> str:
         return np.nan
 
 
-def diagnosis_row(row: pd.Series) -> Dict[str, Any]:
-    degree_cols = [col for col in row.index if col.endswith('_OD')]
-    level_cols = [col for col in row.index if '障碍等级' in col]
+def replace_abbr_in_text(text, abbr_map):
+    """将障碍因素描述中的缩写替换为中文名，例如 SJD(中度酸化, 25.0%) -> pH(中度酸化, 25.0%)。
 
-    deg_names = [col.replace('_OD', '') for col in degree_cols]
-    lev_names = [col.replace('障碍等级', '') for col in level_cols]
+    多个因素以 '；' 连接。逻辑同 V2.0。
+    """
+    if pd.isna(text) or text == '':
+        return text
+    parts = str(text).split('；')
+    new_parts = []
+    for part in parts:
+        match = re.match(r'^([A-Za-z0-9]+)\(', part)
+        if match:
+            abbr = match.group(1)
+            display = abbr_map.get(abbr, abbr)
+            new_part = display + part[len(abbr):]
+        else:
+            new_part = part
+        new_parts.append(new_part)
+    return '；'.join(new_parts)
 
-    common_names = sorted(list(set(deg_names) & set(lev_names)))
-    aligned_deg_cols = [name + '_OD' for name in common_names]
-    aligned_lev_cols = [name + '障碍等级' for name in common_names]
 
+def diagnosis_row(row, indicator_names, level_cols, degree_cols) -> Tuple[str, str, str]:
+    """对单行执行障碍诊断，返回 (ZALX, ZYZAYS, CYZAYS) 字符串三元组。
+
+    - level_cols / degree_cols 与 indicator_names 一一对应，统一用指标码前缀（ind+'ZADJ' / ind+'ZAD'），
+     根治旧实现中文列名与 _OD 后缀大小写不匹配导致 set 交集恒空的生产 bug。
+    - ZYZAYS/CYZAYS 内部已应用 replace_abbr_in_text（缩写→中文显示名）。
+    - 空 CYZAYS 归一为 '无'（V2.0 行为）。
+    """
     candidates = []
-    for name, lcol, dcol in zip(common_names, aligned_lev_cols, aligned_deg_cols):
+    for name, lcol, dcol in zip(indicator_names, level_cols, degree_cols):
         raw_level = row.get(lcol, np.nan)
         std_level = parse_obstacle_level(raw_level)
         degree = row.get(dcol, np.nan)
@@ -44,7 +63,8 @@ def diagnosis_row(row: pd.Series) -> Dict[str, Any]:
             candidates.append((name, raw_level, std_level, degree))
 
     if not candidates:
-        return {'obstacle_type': '无明显障碍', 'main_factors': [], 'secondary_factors': []}
+        # ZYZAYS 空，CYZAYS 归一为 '无'
+        return '无明显障碍', '', '无'
 
     candidates.sort(key=lambda x: x[3], reverse=True)
 
@@ -87,14 +107,17 @@ def diagnosis_row(row: pd.Series) -> Dict[str, Any]:
         name, raw_level, _, deg = c
         return f"{name}({raw_level}, {deg:.1%})"
 
-    main_desc = [format_factor(c) for c in main_factors]
-    minor_desc = [format_factor(c) for c in minor_factors]
+    main_desc = '；'.join([format_factor(c) for c in main_factors])
+    minor_desc = '；'.join([format_factor(c) for c in minor_factors])
 
-    return {
-        'obstacle_type': obstacle_type,
-        'main_factors': main_desc,
-        'secondary_factors': minor_desc
-    }
+    # 缩写 → 中文显示名
+    zyzays = replace_abbr_in_text(main_desc, INDICATOR_DISPLAY_MAP)
+    cyzays = replace_abbr_in_text(minor_desc, INDICATOR_DISPLAY_MAP)
+    # 空 CYZAYS 归一为 '无'
+    if pd.isna(cyzays) or str(cyzays).strip() == '':
+        cyzays = '无'
+
+    return obstacle_type, zyzays, cyzays
 
 
 def diagnose(db_path: str = None) -> Dict[str, Any]:
@@ -107,16 +130,21 @@ def diagnose(db_path: str = None) -> Dict[str, Any]:
     if df.empty:
         return {"status": "error", "message": "No evaluation data found"}
 
-    records = []
+    level_cols = [ind + 'ZADJ' for ind in WEIGHTED_INDICATORS]
+    degree_cols = [ind + 'ZAD' for ind in WEIGHTED_INDICATORS]
+
+    records: List[Dict[str, Any]] = []
     for idx, row in df.iterrows():
-        diagnosis = diagnosis_row(row)
-        record = {'parcel_id': row['parcel_id'], **diagnosis}
-
-        weighted_indicators = ['PH', 'YJ', 'YXP', 'SXK', 'RZ', 'YXT', 'GZ', 'GG', 'PS', 'DX', 'ZD', 'GCH']
-        for ind in weighted_indicators:
-            record[ind + '_obstacle_level'] = row.get(INDICATOR_NAME_MAP[ind] + '障碍等级')
-            record[ind + '_obstacle_degree'] = row.get(ind + '_OD', 0.0)
-
+        zalx, zyzays, cyzays = diagnosis_row(row, WEIGHTED_INDICATORS, level_cols, degree_cols)
+        record: Dict[str, Any] = {
+            'parcel_id': row['parcel_id'],
+            'ZALX': zalx,
+            'ZYZAYS': zyzays,
+            'CYZAYS': cyzays,
+        }
+        for ind in WEIGHTED_INDICATORS:
+            record[ind + 'ZADJ'] = row.get(ind + 'ZADJ')
+            record[ind + 'ZAD'] = row.get(ind + 'ZAD', 0.0)
         records.append(record)
 
     storage.save_diagnosis(records)
@@ -140,5 +168,5 @@ def query_parcel(parcel_id: str, db_path: str = None) -> Dict[str, Any]:
         "status": "ok",
         "parcel_id": parcel_id,
         "evaluation": evaluation,
-        "diagnosis": diagnosis if diagnosis else {}
+        "diagnosis": diagnosis if diagnosis else {},
     }

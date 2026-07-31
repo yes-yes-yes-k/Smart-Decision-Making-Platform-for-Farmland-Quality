@@ -281,49 +281,65 @@ def test_calc_discrete():
 
 
 # Diagnosis tests
-from src.ai_culti_demo.farmland_diagnosis.diagnosis import diagnosis_row, diagnose, query_parcel
+from src.ai_culti_demo.farmland_diagnosis.diagnosis import diagnosis_row, diagnose, query_parcel, replace_abbr_in_text
+from src.ai_culti_demo.farmland_diagnosis.config import WEIGHTED_INDICATORS
+
+def test_replace_abbr_in_text():
+    text = 'SJD(中度酸化, 25.0%)；SXJ(重度缺乏, 26.5%)'
+    out = replace_abbr_in_text(text, {'SJD': 'pH', 'SXJ': '速效钾'})
+    assert out == 'pH(中度酸化, 25.0%)；速效钾(重度缺乏, 26.5%)'
+
+def test_replace_abbr_in_text_empty():
+    assert replace_abbr_in_text('', {'SJD': 'pH'}) == ''
 
 def test_diagnosis_row_single_obstacle():
     row = pd.Series({
-        'pH障碍等级': '中度障碍', 'pH_OD': 0.25,
-        '有机质障碍等级': '无障碍', '有机质_OD': 0.05
+        'SJDZADJ': '中度酸化', 'SJDZAD': 0.25,
+        'YJZZADJ': '无障碍', 'YJZZAD': 0.05,
     })
+    level_cols = [ind + 'ZADJ' for ind in WEIGHTED_INDICATORS]
+    degree_cols = [ind + 'ZAD' for ind in WEIGHTED_INDICATORS]
+    zalx, zyzays, cyzays = diagnosis_row(row, WEIGHTED_INDICATORS, level_cols, degree_cols)
 
-    result = diagnosis_row(row)
-
-    assert result['obstacle_type'] == '单一障碍'
-    assert len(result['main_factors']) == 1
-    assert 'pH' in result['main_factors'][0]
+    assert zalx == '单一障碍'
+    assert isinstance(zyzays, str)
+    assert isinstance(cyzays, str)
+    assert 'pH' in zyzays  # 缩写已替换为中文
+    assert cyzays == '无'
 
 def test_diagnosis_row_multi_obstacle():
     row = pd.Series({
-        'pH障碍等级': '中度障碍', 'pH_OD': 0.25,
-        '有机质障碍等级': '中度障碍', '有机质_OD': 0.20,
-        '有效磷障碍等级': '轻度障碍', '有效磷_OD': 0.15
+        'SJDZADJ': '中度酸化', 'SJDZAD': 0.25,
+        'YJZZADJ': '中度贫瘠', 'YJZZAD': 0.20,
+        'YXLZADJ': '轻度缺乏', 'YXLZAD': 0.15,
     })
+    level_cols = [ind + 'ZADJ' for ind in WEIGHTED_INDICATORS]
+    degree_cols = [ind + 'ZAD' for ind in WEIGHTED_INDICATORS]
+    zalx, zyzays, cyzays = diagnosis_row(row, WEIGHTED_INDICATORS, level_cols, degree_cols)
 
-    result = diagnosis_row(row)
-
-    assert result['obstacle_type'] == '多障碍'
-    assert len(result['main_factors']) >= 2
+    assert zalx == '多障碍'
+    assert isinstance(zyzays, str)
+    assert zyzays.count('；') >= 1  # 至少两个主要因素
 
 def test_diagnosis_row_no_obstacle():
     row = pd.Series({
-        'pH障碍等级': '无障碍', 'pH_OD': 0.05,
-        '有机质障碍等级': '无障碍', '有机质_OD': 0.03
+        'SJDZADJ': '无障碍', 'SJDZAD': 0.05,
+        'YJZZADJ': '无障碍', 'YJZZAD': 0.03,
     })
+    level_cols = [ind + 'ZADJ' for ind in WEIGHTED_INDICATORS]
+    degree_cols = [ind + 'ZAD' for ind in WEIGHTED_INDICATORS]
+    zalx, zyzays, cyzays = diagnosis_row(row, WEIGHTED_INDICATORS, level_cols, degree_cols)
 
-    result = diagnosis_row(row)
-
-    assert result['obstacle_type'] == '无明显障碍'
-    assert result['main_factors'] == []
+    assert zalx == '无明显障碍'
+    assert zyzays == ''
+    assert cyzays == '无'  # V2.0 行为：空 CYZAYS 归一为 '无'
 
 def test_diagnose_flow():
     with tempfile.TemporaryDirectory() as tmpdir:
         csv_path = os.path.join(tmpdir, 'test.csv')
         with open(csv_path, 'w', encoding='utf-8') as f:
-            f.write('''一级农业区,二级农业区,pH,有机质,有效磷,速效钾,容重,耕层质地,灌溉能力,排水能力,地形部位,质地构型,有效土层,耕层厚度
-华南区,闽南粤中农林水产区,4.5,10,5,50,1.8,粘土,基本满足,基本满足,丘陵岗地,夹砂型,60,15
+            f.write('''YJNYQ,EJNYQ,SJD,YJZ,YXL,SXJ,TRRZ,GCZD,GGNL,PSNL,DXBW,ZDGX,YXTCHD,GCHD
+华南区,闽南粤中农林水产区,4.5,10,5,50,1.8,黏土,基本满足,基本满足,丘陵上部,夹层型,60,15
 ''')
 
         db_path = os.path.join(tmpdir, 'test.db')
@@ -336,6 +352,10 @@ def test_diagnose_flow():
         query_result = query_parcel('0', db_path)
         assert query_result['status'] == 'ok'
         assert 'diagnosis' in query_result
+        diag = query_result['diagnosis']
+        assert 'ZALX' in diag
+        assert 'ZYZAYS' in diag
+        assert 'CYZAYS' in diag
 
 
 # Acidification tests
