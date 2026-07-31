@@ -200,30 +200,50 @@ def test_storage_is_ready():
 
 
 # Evaluation tests
-from src.ai_culti_demo.farmland_diagnosis.evaluation import bulk_evaluate, evaluate_single, calc_continuous, calc_discrete
+from src.ai_culti_demo.farmland_diagnosis.evaluation import bulk_evaluate, evaluate_single, calc_continuous, calc_discrete, translate_obstacle_level
 import pandas as pd
+
+def test_translate_obstacle_level_sjd_acidification():
+    assert translate_obstacle_level('SJD', '中度障碍', 5.0) == '中度酸化'
+
+def test_translate_obstacle_level_sjd_alkalization():
+    assert translate_obstacle_level('SJD', '中度障碍', 8.8) == '中度碱化'
+
+def test_translate_obstacle_level_trrz_compaction():
+    assert translate_obstacle_level('TRRZ', '重度障碍', 1.5) == '重度板结'
+
+def test_translate_obstacle_level_yjz_barren():
+    assert translate_obstacle_level('YJZ', '重度障碍', 5.0) == '重度贫瘠'
+
+def test_translate_obstacle_level_yxl_deficiency():
+    assert translate_obstacle_level('YXL', '重度障碍', 5.0) == '重度缺乏'
+
+def test_translate_obstacle_level_no_obstacle():
+    assert translate_obstacle_level('SJD', '无障碍', 7.0) == '无障碍'
 
 def test_evaluate_single():
     row = pd.Series({
-        'JY': 'HN', 'EJ': 'MNY',
-        'PH': 6.5, 'YJ': 25, 'YXP': 30, 'SXK': 150, 'RZ': 1.2,
-        'GZ': 'RT', 'GG': 'FS', 'PS': 'CM', 'DX': 'PLT', 'ZD': 'TLBC',
-        'YXT': 100, 'GCH': 20
+        'YJNYQ': '华南区', 'EJNYQ': '闽南粤中农林水产区',
+        'SJD': 6.5, 'YJZ': 25, 'YXL': 30, 'SXJ': 150, 'TRRZ': 1.2,
+        'GCZD': 'RT', 'GGNL': 'FS', 'PSNL': 'CM', 'DXBW': 'PLT', 'ZDGX': 'TLBC',
+        'YXTCHD': 100, 'GCHD': 20,
     })
 
     result = evaluate_single(row, 'HN', 'MNY')
 
-    assert 'PH_LD' in result
-    assert 'composite_weight' in result
-    assert 'grade' in result
-    # 优质数据应评为最高等级1级
-    assert result['grade'] == '1'
+    assert 'SJDLSD' in result
+    assert 'ZHQZ' in result
+    assert 'GDZLDJ' in result
+    assert result['GDZLDJ'] == '1'
+    # 原始值保留
+    assert result['SJD'] == 6.5
 
 def test_bulk_evaluate():
     with tempfile.TemporaryDirectory() as tmpdir:
         csv_path = os.path.join(tmpdir, 'test.csv')
+        # CSV 直接使用标准码表头（无中文列名）
         with open(csv_path, 'w', encoding='utf-8') as f:
-            f.write('''一级农业区,二级农业区,pH,有机质,有效磷,速效钾,容重,耕层质地,灌溉能力,排水能力,地形部位,质地构型,有效土层,耕层厚度
+            f.write('''YJNYQ,EJNYQ,SJD,YJZ,YXL,SXJ,TRRZ,GCZD,GGNL,PSNL,DXBW,ZDGX,YXTCHD,GCHD
 华南区,闽南粤中农林水产区,6.5,25,30,150,1.2,壤土,充分满足,充分满足,平原低阶,上松下紧型,100,20
 ''')
 
@@ -236,15 +256,14 @@ def test_bulk_evaluate():
         storage = DiagnosisStorage(db_path)
         eval_result = storage.get_evaluation('0')
         assert eval_result is not None
-        assert eval_result['PH'] == 6.5
-        # 优质数据应评为最高等级1级
-        assert eval_result['grade'] == '1'
+        assert eval_result['SJD'] == 6.5
+        assert eval_result['GDZLDJ'] == '1'
 
 def test_bulk_evaluate_missing_columns():
     with tempfile.TemporaryDirectory() as tmpdir:
         csv_path = os.path.join(tmpdir, 'test.csv')
         with open(csv_path, 'w', encoding='utf-8') as f:
-            f.write('pH,有机质\n6.5,25\n')
+            f.write('SJD,YJZ\n6.5,25\n')
 
         result = bulk_evaluate(csv_path)
         assert result['status'] == 'error'
