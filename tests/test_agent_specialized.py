@@ -107,6 +107,79 @@ def test_problem_agent_uses_model2_target_ph():
     print("✓ ProblemIdentificationAgent 消费 model-2 的 target_ph")
 
 
+def test_problem_agent_consumes_standard_field_names_has_question(monkeypatch):
+    """真实诊断分支应读取标准码字段 GDZLDJ/ZALX/ZYZAYS（"有没有问题"分支）"""
+    from framework.agents.specialized.problem_agent import ProblemIdentificationAgent
+    agent = ProblemIdentificationAgent()
+    fake_real_result = {
+        "status": "ok",
+        "diagnosis": {
+            "ZALX": "酸化障碍",
+            "ZYZAYS": "pH偏低；有机质贫瘠；耕层浅薄",
+            "CYZAYS": "有效磷不足；速效钾偏低",
+        },
+        "evaluation": {"GDZLDJ": 7},
+    }
+    monkeypatch.setattr(agent, "_get_real_diagnosis", lambda context: fake_real_result)
+
+    out = agent.answer_question("我这块地有没有问题？", {})
+    assert out["simulated"] is False
+    assert "酸化障碍" in out["answer"]
+    assert "pH偏低" in out["answer"]
+    assert "7级" in out["answer"]
+    assert "无明显障碍" not in out["answer"]
+    assert "未知" not in out["answer"]
+    print("✓ ProblemIdentificationAgent 真实诊断分支消费 GDZLDJ/ZALX/ZYZAYS（有没有问题分支）")
+
+
+def test_problem_agent_consumes_standard_field_names_county_question(monkeypatch):
+    """真实诊断分支应读取标准码字段含 CYZAYS（"县/乡镇/方面"分支）"""
+    from framework.agents.specialized.problem_agent import ProblemIdentificationAgent
+    agent = ProblemIdentificationAgent()
+    fake_real_result = {
+        "status": "ok",
+        "diagnosis": {
+            "ZALX": "酸化障碍",
+            "ZYZAYS": "pH偏低；有机质贫瘠",
+            "CYZAYS": "有效磷不足；速效钾偏低",
+        },
+        "evaluation": {"GDZLDJ": 7},
+    }
+    monkeypatch.setattr(agent, "_get_real_diagnosis", lambda context: fake_real_result)
+
+    out = agent.answer_question("县域耕地在哪些方面有问题？", {})
+    assert out["simulated"] is False
+    assert "酸化障碍" in out["answer"]
+    assert "pH偏低" in out["answer"]
+    assert "有效磷不足" in out["answer"]
+    assert "7级" in out["answer"]
+    print("✓ ProblemIdentificationAgent 真实诊断分支消费 CYZAYS（县域方面分支）")
+
+
+def test_problem_agent_consumes_standard_field_names_else_branch(monkeypatch):
+    """真实诊断分支应读取标准码字段（else 兜底分支）"""
+    from framework.agents.specialized.problem_agent import ProblemIdentificationAgent
+    agent = ProblemIdentificationAgent()
+    fake_real_result = {
+        "status": "ok",
+        "diagnosis": {
+            "ZALX": "板结障碍",
+            "ZYZAYS": "容重偏高；孔隙度偏低",
+            "CYZAYS": "耕层浅薄",
+        },
+        "evaluation": {"GDZLDJ": 8},
+    }
+    monkeypatch.setattr(agent, "_get_real_diagnosis", lambda context: fake_real_result)
+
+    out = agent.answer_question("主要障碍因素是什么？", {})
+    assert out["simulated"] is False
+    assert "板结障碍" in out["answer"]
+    assert "容重偏高" in out["answer"]
+    assert "耕层浅薄" in out["answer"]
+    assert "8级" in out["answer"]
+    print("✓ ProblemIdentificationAgent 真实诊断分支消费标准字段（else 分支）")
+
+
 def test_acidification_agent_execute():
     from framework.agents.specialized.acidification_agent import AcidificationRemediationAgent
     agent = AcidificationRemediationAgent()
@@ -344,6 +417,9 @@ if __name__ == "__main__":
     test_problem_agent_execute()
     test_problem_agent_answer_question()
     test_problem_agent_uses_model2_target_ph()
+    test_problem_agent_consumes_standard_field_names_has_question()
+    test_problem_agent_consumes_standard_field_names_county_question()
+    test_problem_agent_consumes_standard_field_names_else_branch()
     test_acidification_agent_execute()
     test_acidification_agent_answer_question_degree()
     test_acidification_agent_answer_question_dosage()
