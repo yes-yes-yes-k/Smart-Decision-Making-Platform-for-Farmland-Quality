@@ -108,7 +108,7 @@ git commit -m "feat(fertility): 添加韶关旱地/水田 Dose RF 预切分训�
   - `train_all_sg_models(data_dir: Path, output_dir: Path) -> list[dict]`：训练旱地+水田
   - CLI 参数 `--sg`（仅 SG）、`--all`（全局+SG）；不传参时仅全局 ETR（行为不变）
 
-- [ ] **Step 1: 写失败测试 — train_sg_dose_model 函数存在且能处理 SOMbe→SOCbe**
+- [x] **Step 1: 写失败测试 — train_sg_dose_model 函数存在且能处理 SOMbe→SOCbe**
 
 新建 `tests/test_train_fertility_sg.py`：
 
@@ -187,7 +187,7 @@ def test_train_sg_dose_model_paddy_naming(tmp_path):
     assert meta["model_type"] == "RandomForestRegressor"
 ```
 
-- [ ] **Step 2: 运行测试验证失败**
+- [x] **Step 2: 运行测试验证失败**
 
 ```bash
 pytest tests/test_train_fertility_sg.py -v
@@ -195,7 +195,7 @@ pytest tests/test_train_fertility_sg.py -v
 
 预期：FAIL，`ImportError: cannot import name 'train_sg_dose_model' from 'scripts.train_fertility_models'`。
 
-- [ ] **Step 3: 实现 train_sg_dose_model 与 CLI 扩展**
+- [x] **Step 3: 实现 train_sg_dose_model 与 CLI 扩展**
 
 在 `scripts/train_fertility_models.py` 顶部 import 区新增：
 
@@ -346,7 +346,7 @@ def main():
             print(f"SG {m['land_type']} test_r2: {m['metrics']['test_r2']}, training_samples: {m['training_samples']}")
 ```
 
-- [ ] **Step 4: 运行测试验证通过**
+- [x] **Step 4: 运行测试验证通过**
 
 ```bash
 pytest tests/test_train_fertility_sg.py -v
@@ -354,7 +354,7 @@ pytest tests/test_train_fertility_sg.py -v
 
 预期：2 个测试 PASS。
 
-- [ ] **Step 5: 验证 CLI 帮助与默认行为不变**
+- [x] **Step 5: 验证 CLI 帮助与默认行为不变**
 
 ```bash
 python scripts/train_fertility_models.py --help
@@ -362,7 +362,7 @@ python scripts/train_fertility_models.py --help
 
 预期：帮助文本显示 `--sg` 和 `--all` 参数；无参数时 `train_global=True, train_sg=False`（仅全局 ETR）。
 
-- [ ] **Step 6: 提交**
+- [x] **Step 6: 提交**
 
 ```bash
 git add scripts/train_fertility_models.py tests/test_train_fertility_sg.py

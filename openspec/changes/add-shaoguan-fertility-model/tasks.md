@@ -6,10 +6,10 @@
 
 ## 2. 扩展训练脚本支持 SG RF 模型
 
-- [ ] 2.1 在 `scripts/train_fertility_models.py` 中新增 SG Dose RF 训练函数：读取预切分 xlsx（Xtrain/Xtest/Ytrain/Ytest sheets），训练 `RandomForestRegressor(n_estimators=100, random_state=230)`
-- [ ] 2.2 新增 `--sg` CLI 参数触发 SG 模型训练（旱地和水田分别训练）
-- [ ] 2.3 训练时将特征列 `SOMbe` 重命名为 `SOCbe`，确保与全局模型特征名统一
-- [ ] 2.4 保存 SG 模型为 `data/fertility/models/sg_dose_upland_rf_model.joblib` 和 `sg_dose_paddy_rf_model.joblib`，附带 metadata.json（含 model_type/feature_names/metrics/training_samples）
+- [x] 2.1 在 `scripts/train_fertility_models.py` 中新增 SG Dose RF 训练函数：读取预切分 xlsx（Xtrain/Xtest/Ytrain/Ytest sheets），训练 `RandomForestRegressor(n_estimators=100, random_state=230)`
+- [x] 2.2 新增 `--sg` CLI 参数触发 SG 模型训练（旱地和水田分别训练）
+- [x] 2.3 训练时将特征列 `SOMbe` 重命名为 `SOCbe`，确保与全局模型特征名统一
+- [x] 2.4 保存 SG 模型为 `data/fertility/models/sg_dose_upland_rf_model.joblib` 和 `sg_dose_paddy_rf_model.joblib`，附带 metadata.json（含 model_type/feature_names/metrics/training_samples）
 - [ ] 2.5 运行训练脚本生成 SG 模型文件，验证 metadata.json 内容完整
 
 ## 3. model_6.py 区域路由实现
