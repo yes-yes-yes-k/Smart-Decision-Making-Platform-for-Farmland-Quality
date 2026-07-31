@@ -1,7 +1,9 @@
 import pytest
 import numpy as np
 from src.ai_culti_demo.farmland_diagnosis.config import (
-    REGION_MAP, COEFFICIENTS, WEIGHTS, INDICATOR_NAME_MAP, calc_obstacle_level
+    REGION_MAP, COEFFICIENTS, WEIGHTS, INDICATOR_DISPLAY_MAP,
+    GRADE_CONFIG, ALL_INDICATORS, CONTINUOUS_INDICATORS, DISCRETE_INDICATORS,
+    calc_obstacle_level
 )
 
 def test_region_map():
@@ -11,49 +13,70 @@ def test_region_map():
 def test_coefficients_exists():
     assert 'HN' in COEFFICIENTS
     assert 'CJ' in COEFFICIENTS
-    assert 'PH' in COEFFICIENTS['HN']
-    assert 'YJ' in COEFFICIENTS['HN']
+    assert 'SJD' in COEFFICIENTS['HN']
+    assert 'YJZ' in COEFFICIENTS['HN']
 
 def test_weights_exists():
     assert 'MNY' in WEIGHTS
-    assert 'PH' in WEIGHTS['MNY']
-    assert 'GG' in WEIGHTS['MNY']
+    assert 'SJD' in WEIGHTS['MNY']
+    assert 'GGNL' in WEIGHTS['MNY']
 
-def test_indicator_name_map():
-    assert INDICATOR_NAME_MAP['PH'] == 'pH'
-    assert INDICATOR_NAME_MAP['YJ'] == '有机质'
+def test_indicator_display_map():
+    assert INDICATOR_DISPLAY_MAP['SJD'] == 'pH'
+    assert INDICATOR_DISPLAY_MAP['YJZ'] == '有机质'
 
-def test_calc_obstacle_level_ph_moderate():
-    row = {'PH': 5.0}
-    result = calc_obstacle_level(row, ['PH'])
-    assert result['PH'] == '中度障碍'
+def test_grade_config_exists():
+    assert 'HN' in GRADE_CONFIG
+    assert 'CJ' in GRADE_CONFIG
+    assert len(GRADE_CONFIG['HN'][0]) == 11  # 10 个边界 + inf
 
-def test_calc_obstacle_level_ph_no_obstacle():
-    row = {'PH': 7.0}
-    result = calc_obstacle_level(row, ['PH'])
-    assert result['PH'] == '无障碍'
+def test_indicator_constants():
+    assert len(ALL_INDICATORS) == 12
+    assert set(CONTINUOUS_INDICATORS) | set(DISCRETE_INDICATORS) == set(ALL_INDICATORS)
+    assert set(CONTINUOUS_INDICATORS) & set(DISCRETE_INDICATORS) == set()
 
-def test_calc_obstacle_level_ph_severe():
-    row = {'PH': 4.0}
-    result = calc_obstacle_level(row, ['PH'])
-    assert result['PH'] == '重度障碍'
+def test_calc_obstacle_level_sjd_moderate():
+    row = {'SJD': 5.0}
+    result = calc_obstacle_level(row, ['SJD'])
+    assert result['SJD'] == '中度障碍'
+
+def test_calc_obstacle_level_sjd_no_obstacle():
+    row = {'SJD': 7.0}
+    result = calc_obstacle_level(row, ['SJD'])
+    assert result['SJD'] == '无障碍'
+
+def test_calc_obstacle_level_sjd_severe():
+    row = {'SJD': 4.0}
+    result = calc_obstacle_level(row, ['SJD'])
+    assert result['SJD'] == '重度障碍'
 
 def test_calc_obstacle_level_organic_moderate():
-    row = {'YJ': 15}
-    result = calc_obstacle_level(row, ['YJ'])
-    assert result['YJ'] == '中度障碍'
+    row = {'YJZ': 15}
+    result = calc_obstacle_level(row, ['YJZ'])
+    assert result['YJZ'] == '中度障碍'
 
 def test_calc_obstacle_level_organic_no_obstacle():
-    row = {'YJ': 30}
-    result = calc_obstacle_level(row, ['YJ'])
-    assert result['YJ'] == '无障碍'
+    row = {'YJZ': 30}
+    result = calc_obstacle_level(row, ['YJZ'])
+    assert result['YJZ'] == '无障碍'
 
 def test_calc_obstacle_level_multiple_indicators():
-    row = {'PH': 6.5, 'YJ': 25, 'SXK': 80}
-    result = calc_obstacle_level(row, ['PH', 'YJ', 'SXK'])
-    assert result['PH'] == '无障碍'
-    assert result['YJ'] == '轻度障碍'
-    assert result['SXK'] == '中度障碍'
+    row = {'SJD': 6.5, 'YJZ': 25, 'SXJ': 80}
+    result = calc_obstacle_level(row, ['SJD', 'YJZ', 'SXJ'])
+    assert result['SJD'] == '无障碍'
+    assert result['YJZ'] == '轻度障碍'
+    assert result['SXJ'] == '中度障碍'
+
+def test_calc_obstacle_level_gczd_uses_lsd():
+    # GCZD 障碍等级依赖隶属度列 GCZDLSD
+    row = {'GCZDLSD': 0.5}
+    result = calc_obstacle_level(row, ['GCZD'])
+    assert result['GCZD'] == '重度障碍'
+
+def test_calc_obstacle_level_dxbw_uses_lsd():
+    row = {'DXBWLSD': 0.3}
+    result = calc_obstacle_level(row, ['DXBW'])
+    assert result['DXBW'] == '重度障碍'
 
 
 # Storage tests

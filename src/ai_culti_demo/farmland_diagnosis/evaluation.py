@@ -3,8 +3,8 @@ import numpy as np
 import os
 from typing import Dict, Any, Optional
 from .config import (
-    REGION_MAP, SECONDARY_REGION_MAP, COLUMN_RENAME, TEXT_VALUE_MAPS,
-    COEFFICIENTS, WEIGHTS, INDICATOR_NAME_MAP, calc_obstacle_level
+    REGION_MAP, SECONDARY_REGION_MAP,
+    COEFFICIENTS, WEIGHTS, calc_obstacle_level
 )
 from .storage import DiagnosisStorage
 

@@ -2,7 +2,7 @@ import pandas as pd
 import numpy as np
 import sqlite3
 from typing import Dict, Any, Optional
-from .config import AMENDMENT_CONFIG, INDICATOR_NAME_MAP
+from .config import AMENDMENT_CONFIG
 from .storage import DiagnosisStorage
 
 

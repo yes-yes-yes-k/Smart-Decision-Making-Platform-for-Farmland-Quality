@@ -2,7 +2,7 @@ import pandas as pd
 import numpy as np
 import sqlite3
 from typing import Dict, Any, Optional
-from .config import INDICATOR_NAME_MAP
+from .config import INDICATOR_DISPLAY_MAP
 from .storage import DiagnosisStorage
 
 
