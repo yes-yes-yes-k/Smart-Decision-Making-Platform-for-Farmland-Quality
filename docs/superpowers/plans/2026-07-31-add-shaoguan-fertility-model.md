@@ -383,7 +383,7 @@ git commit -m "feat(train): 训练脚本支持 --sg/--all 训练韶关 RF Dose �
 - Consumes: Task 1 产出的 xlsx + Task 2 的训练函数
 - Produces: 4 个模型/元数据文件，供 Task 4/5 的集成测试与 Task 8 验证使用
 
-- [ ] **Step 1: 检查 sklearn 可用性**
+- [x] **Step 1: 检查 sklearn 可用性**
 
 ```bash
 python -c "import sklearn; print('sklearn', sklearn.__version__)"
@@ -391,7 +391,7 @@ python -c "import sklearn; print('sklearn', sklearn.__version__)"
 
 预期：打印版本号（已装）。若失败则需先 `pip install scikit-learn`。
 
-- [ ] **Step 2: 运行 SG 训练**
+- [x] **Step 2: 运行 SG 训练**
 
 ```bash
 python scripts/train_fertility_models.py --sg
@@ -399,7 +399,7 @@ python scripts/train_fertility_models.py --sg
 
 预期：控制台打印旱地/水田训练集样本数、特征名（含 SOCbe 不含 SOMbe）、5CV R²、Test R²、模型/元数据保存路径。退出码 0。
 
-- [ ] **Step 3: 验证产物文件存在**
+- [x] **Step 3: 验证产物文件存在**
 
 ```bash
 python -c "from pathlib import Path; d=Path('data/fertility/models'); [print(p.name, p.exists(), p.stat().st_size) for p in [d/'sg_dose_upland_rf_model.joblib', d/'sg_dose_upland_metadata.json', d/'sg_dose_paddy_rf_model.joblib', d/'sg_dose_paddy_metadata.json']]"
@@ -407,7 +407,7 @@ python -c "from pathlib import Path; d=Path('data/fertility/models'); [print(p.n
 
 预期：4 个文件均存在，.joblib 文件非空。
 
-- [ ] **Step 4: 验证 metadata.json 内容完整**
+- [x] **Step 4: 验证 metadata.json 内容完整**
 
 ```bash
 python -c "import json; from pathlib import Path; d=Path('data/fertility/models');
@@ -418,11 +418,11 @@ for lt in ['upland','paddy']:
 
 预期：model_type=RandomForestRegressor，land_type 对应，region=shaoguan，feature_names 含 SOCbe 不含 SOMbe，metrics 含 test_r2/cv_r2，training_samples 与 Step 2 打印一致。
 
-- [ ] **Step 5: 记录水田样本量决策**
+- [x] **Step 5: 记录水田样本量决策**
 
 检查 Step 4 输出的水田 `training_samples`。若 <30，记录该事实——Task 5 需在 dose_warning 中追加"训练样本量较少，置信度偏低"提示。若 ≥30 则无需特殊处理。将结论写入提交信息。
 
-- [ ] **Step 6: 提交**
+- [x] **Step 6: 提交**
 
 ```bash
 git add "data/fertility/models/sg_dose_upland_rf_model.joblib" "data/fertility/models/sg_dose_upland_metadata.json" "data/fertility/models/sg_dose_paddy_rf_model.joblib" "data/fertility/models/sg_dose_paddy_metadata.json"
