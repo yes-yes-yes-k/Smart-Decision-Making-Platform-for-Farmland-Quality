@@ -29,93 +29,30 @@ try:
 except ImportError:
     CORE_ENGINE_AVAILABLE = False
 
-QUESTION_TYPE_1_KEYWORDS = [
-    "等级稳定", "稳定性", "稳不稳", "稳定吗", "稳定性较弱", "退化风险",
-    "关注清单", "重点关注", "临界状态", "风险类型", "等级整体", "掉级",
-    # 模型1 稳定性风险关键词
-    "稳定性评价", "等级边界安全度", "指标支撑均衡度", "关键指标临界度",
-    "空间邻域一致性", "历史变化趋势", "掉级风险", "关键因子退化",
-    "退化空间集聚", "持续低质风险",
-]
-QUESTION_TYPE_2_KEYWORDS = [
-    "酸化程度", "酸化等级", "酸化现状", "酸化严重", "酸化了", "酸化治理",
-    "调理剂", "碱性材料", "碱性调理剂", "木本泥炭", "石灰", "pH提升",
-    "土地利用类型", "酸化",
-    # 模型3 酸化改良关键词
-    "酸化改良", "酸化分区", "改良方案", "土壤酸化", "酸性改良",
-]
-QUESTION_TYPE_3_KEYWORDS = [
-    "潜力", "障碍因素", "主要问题", "障碍诊断", "潜力分布", "障碍组合",
-    "提升潜力", "地块诊断", "毛病", "障碍等级", "哪些问题", "有问题",
-    # 模型3 障碍诊断关键词
-    "障碍识别", "障碍程度", "障碍因子", "精准识别", "单一障碍", "多障碍",
-]
-QUESTION_TYPE_4_KEYWORDS = [
-    "有机质", "有机肥", "秸秆", "肥力", "综合地力", "有机碳", "SOC", "soc",
-    "施用量", "施肥量", "Dose", "dose", "培肥", "综合肥力",
-]
-QUESTION_TYPE_5_KEYWORDS = [
-    # exe 质量等级评价关键词
-    "质量等级", "等级评价", "综合指数", "指标隶属度", "障碍度排序",
-    "耕地质量等级", "质量评价", "等级评定", "指标权重",
-]
-
-# 知识性问题模式：匹配到的问题走 RAG 知识库，不路由到专业模型
-# 开头匹配：问题以这些前缀起始
-KNOWLEDGE_QUESTION_PATTERNS_START = [
-    "什么是", "何为", "解释",
-]
-# 包含匹配：问题中包含这些子串
-KNOWLEDGE_QUESTION_PATTERNS_CONTAIN = [
-    "是什么意思", "什么意思", "定义", "概念", "含义",
-]
+QUESTION_TYPE_1_KEYWORDS = ["酸化程度", "酸化等级", "pH分级", "酸度", "酸化现状", "土壤酸性", "酸性分级", "土壤pH", "pH值"]
+QUESTION_TYPE_2_KEYWORDS = ["治理", "调理剂", "石灰", "碱性材料", "改良", "修复", "调理", "施加", "用量", "怎么治", "怎么办", "如何改"]
+QUESTION_TYPE_3_KEYWORDS = ["氮肥", "pH下降", "施氮", "酸化原因", "氮素", "化肥", "施肥", "氮"]
 
 RELEVANCE_KEYWORDS = [
     "酸化", "pH", "土壤", "耕地", "治理", "改良", "氮肥", "施肥",
     "调理剂", "石灰", "碱性", "酸性", "交换性酸", "CEC", "阳离子交换量",
     "土壤质量", "农业", "农田", "养分", "种植", "作物", "水稻", "小麦",
     "玉米", "肥料", "有机质", "酸碱度", "酸性土", "碱性土", "改良剂",
-    # 扩展：覆盖 xlsx 经典问题通用词，确保 relevance >= 0.3
-    "田", "地", "质量", "等级", "稳定", "潜力", "障碍", "问题",
-    "乡镇", "县", "片区", "地块", "农户", "风险", "关注", "清单",
-    "诊断", "毛病", "增产", "粮食", "碳氮比", "全氮", "容重",
-    "有机肥", "施用量",  # 补充：TYPE_4 关键词也需通过 relevance 阈值（Task 5 修复）
+    "耕地质量", "地力", "土壤肥力", "培肥", "有机肥", "绿肥", "秸秆还田",
+    "稳定性", "退化", "风险", "潜力", "障碍", "问题", "诊断", "综合",
+    "提升", "质量等级", "评价", "评估", "监测"
 ]
 
 REFERENCE_QUESTIONS: Dict[int, List[str]] = {
-    1: [
-        "查询区域内耕地质量等级整体稳定吗",
-        "查询区域内哪些高等级耕地存在退化风险",
-        "本县哪些乡镇或地块等级稳定性较弱需要现场复核",
-        "我的这块田质量等级稳不稳",
-        "查询区域内哪些对象需要纳入重点关注清单",
-    ],
-    2: [
-        "查询区域内农用地土壤酸化程度如何不同酸化等级比例分别多少",
-        "我的田酸化了pH是多少我要施加多少碱性调理剂可以治理好",
-        "查询区域内不同土地利用类型的酸化程度",
-        "我的这块田酸化严重吗",
-    ],
-    3: [
-        "辖区耕地质量提升的总体潜力有多大可增产多少粮食",
-        "我们县划定的优先改良片区具体在哪几个村每块潜力多大",
-        "我这块地到底有啥毛病",
-        "全省耕地质量存在哪些问题",
-        "县乡镇里的耕地在哪些方面有问题",
-    ],
-    4: [
-        "全省耕地土壤有机质含量如何空间分布情况",
-        "为了提升耕地土壤有机质有机肥或者秸秆每亩施用量多少",
-        "本县耕地土壤有机质平均含量是多少",
-        "我的田肥力怎么样",
-        "我的田土壤有机碳含量大概多少",
-        "我这块地大概需要施多少有机肥",
-    ],
-    5: [
-        "我的田耕地质量等级是多少",
-        "查询地块的综合指数和障碍度排序",
-        "这块地的耕地质量等级评价结果",
-    ],
+    1: ["全省耕地酸化程度如何", "土壤pH分布情况", "酸化等级面积统计", "耕地酸性现状评估",
+        "土壤酸化情况怎么样", "耕地pH值是多少", "酸性土壤占比"],
+    2: ["如何治理强酸性耕地", "石灰施用量计算", "土壤改良方案", "酸性土壤调理方法",
+        "酸化土壤怎么改良", "耕地质量如何提升", "土壤改良措施有哪些"],
+    3: ["施氮肥会导致土壤pH下降多少", "氮肥对土壤酸化的影响", "不同施氮量对pH的影响",
+        "施肥过量会导致酸化吗", "氮肥用量与土壤酸度的关系"],
+    4: ["耕地有机质含量如何", "有机质怎么提升", "有机肥施用量", "土壤培肥措施"],
+    5: ["耕地质量稳定性怎么样", "退化风险有哪些", "哪些地方耕地质量在下降"],
+    6: ["耕地质量提升潜力多大", "主要障碍因素是什么", "耕地质量问题诊断"],
 }
 
 REFERENCE_VECTORS: Dict[int, List[List[float]]] = {}
@@ -168,42 +105,15 @@ def _check_relevance_keyword(question: str) -> float:
     match_count = sum(1 for keyword in RELEVANCE_KEYWORDS if keyword in question)
     return min(match_count / 3, 1.0)
 
-def _is_knowledge_question(question: str) -> bool:
-    """检测问题是否为知识性问题（如「什么是X」「X是什么意思」）。
-
-    知识性问题应走 RAG 知识库，而非路由到专业模型。
-    匹配策略：
-    1. 开头匹配：问题以「什么是」「何为」「解释」起始
-    2. 包含匹配：问题含「是什么意思」「什么意思」「定义」「概念」「含义」
-    """
-    if not question or not isinstance(question, str):
-        return False
-    # 开头匹配
-    for pattern in KNOWLEDGE_QUESTION_PATTERNS_START:
-        if question.startswith(pattern):
-            return True
-    # 包含匹配
-    for pattern in KNOWLEDGE_QUESTION_PATTERNS_CONTAIN:
-        if pattern in question:
-            return True
-    return False
-
-
 def identify_question_type(question: str) -> tuple[int, float]:
-    # 知识性问题预检：命中则直接走 RAG（type 0），不进入专业模型路由
-    if _is_knowledge_question(question):
-        return 0, 1.0
-    # D5: 关键词匹配优先于向量匹配——先查关键词，命中（返回非 0）即采用，
-    # 即使向量匹配的相关性分数较高也不覆盖关键词结果
-    result = _identify_question_type_keyword(question)
-    if result[0] != 0:
-        return result
-    # 关键词未命中，降级到向量匹配（embedding 可用时）
     if EMBEDDING_AVAILABLE and embedding_service.is_available():
         return _identify_question_type_vector(question)
-    return result
+    else:
+        return _identify_question_type_keyword(question)
 
 def _identify_question_type_vector(question: str) -> tuple[int, float]:
+    keyword_relevance = _check_relevance_keyword(question)
+
     query_vector = embedding_service.embed_query(question)
     if not query_vector:
         return _identify_question_type_keyword(question)
@@ -215,24 +125,24 @@ def _identify_question_type_vector(question: str) -> tuple[int, float]:
             if similarity > max_similarity:
                 max_similarity = similarity
                 best_type = q_type
-    if max_similarity < 0.70:
+    if max_similarity < 0.75:
         return 0, max_similarity
+
+    if max_similarity < 0.55:
+        if keyword_relevance >= 0.3:
+            return 2, keyword_relevance
+        return 0, max_similarity
+
     return best_type, max_similarity
 
 def _identify_question_type_keyword(question: str) -> tuple[int, float]:
     relevance = _check_relevance_keyword(question)
-    if relevance < 0.3:
+    if relevance < 0.2:
         return 0, relevance
     if any(keyword in question for keyword in QUESTION_TYPE_1_KEYWORDS):
         return 1, relevance
-    elif any(keyword in question for keyword in QUESTION_TYPE_2_KEYWORDS):
-        return 2, relevance
     elif any(keyword in question for keyword in QUESTION_TYPE_3_KEYWORDS):
         return 3, relevance
-    elif any(keyword in question for keyword in QUESTION_TYPE_4_KEYWORDS):
-        return 4, relevance
-    elif any(keyword in question for keyword in QUESTION_TYPE_5_KEYWORDS):
-        return 5, relevance
     else:
         return 0, relevance
 
@@ -315,11 +225,9 @@ async def _execute_model_dependent(model_name: str, func: Callable, dep_result: 
         return model_name, {"success": False, "error": str(e)}
 
 QUESTION_TYPE_TO_MODEL_ID = {
-    1: "model-1",
-    2: "model-4",
-    3: "model-2,model-3",  # 保留原值（此字典用于 fallback，不影响 AgentManager 路由）
-    4: "model-5,model-6",  # 保留原值
-    5: "model-7",          # 新增：type 5 fallback 路径
+    1: "acidification-governance",
+    2: "multi-factor-collaborative-improvement",
+    3: "organic-matter-improvement",
 }
 
 def execute_models(state: MultiAgentState) -> MultiAgentState:
@@ -331,12 +239,9 @@ def execute_models(state: MultiAgentState) -> MultiAgentState:
         context = {
             "area_code": state["request"].get("area_code", "lechang"),
             "data": state.get("data", {}),
-            "question_type": state.get("question_type"),
         }
-        # 透传可能的土壤参数与地块标识符
-        # parcel_id（数字字符串）给 model-1/3/4 查 DB，parcel_code（字母数字）给 model-7 调 fortran exe
-        for key in ("longitude", "latitude", "target_ph", "context",
-                    "parcel_id", "parcel_code"):
+        # 透传可能的土壤参数
+        for key in ("longitude", "latitude", "target_ph", "context"):
             if key in state["request"]:
                 context[key] = state["request"][key]
 
@@ -429,7 +334,7 @@ def llm_generate(state: MultiAgentState) -> MultiAgentState:
     question = state["request"].get("question", "")
     question_type = state.get("question_type", 1)
 
-    if not question or question_type not in [1, 2, 3, 4, 5]:
+    if not question or question_type not in [1, 2, 3]:
         return {**state, "llm_response": {}, "error": None}
 
     try:
@@ -463,8 +368,34 @@ def aggregate_results(state: MultiAgentState) -> MultiAgentState:
         else:
             final_result["model_results"] = model_results
             final_result["llm_response"] = llm_response.get("content", "")
-            final_result["answer"] = llm_response.get("content", "")
-            final_result["sources"] = []
+
+            agent_data = model_results.get("data", {}) if isinstance(model_results, dict) else {}
+            agent_summary = agent_data.get("summary", "")
+            agent_details = agent_data.get("details", {}) if isinstance(agent_data, dict) else {}
+
+            all_sources = []
+            if isinstance(agent_details, dict):
+                for agent_id, detail in agent_details.items():
+                    if isinstance(detail, dict):
+                        sources = detail.get("sources", [])
+                        if sources:
+                            all_sources.extend(sources)
+                        evidence = detail.get("evidence", [])
+                        if evidence and not sources:
+                            for ev in evidence:
+                                if isinstance(ev, dict) and ev.get("doc_name"):
+                                    all_sources.append(ev)
+
+            if llm_response.get("content"):
+                final_result["answer"] = llm_response.get("content", "")
+            elif agent_summary:
+                final_result["answer"] = agent_summary
+            else:
+                final_result["answer"] = llm_response.get("content", "")
+
+            final_result["sources"] = all_sources if all_sources else []
+            if not final_result["sources"] and rag_response.get("sources"):
+                final_result["sources"] = rag_response.get("sources", [])
 
         return {**state, "model_results": final_result, "status": "completed", "error": None}
     except Exception as e:
