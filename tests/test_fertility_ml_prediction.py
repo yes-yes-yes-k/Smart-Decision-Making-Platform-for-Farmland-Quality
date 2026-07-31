@@ -343,3 +343,178 @@ class TestEnsureSgModelLoaded:
 
         ok = model_6._ensure_sg_model_loaded("foo")
         assert ok is True  # 走 upland 已加载
+
+
+# ---- Task 5: SG 区域路由测试用 mock 数据 ----
+
+FAKE_SG_UPLAND_META = {
+    "model_type": "RandomForestRegressor",
+    "land_type": "upland",
+    "region": "shaoguan",
+    "model_version": "SG_RF_v1_20260731",
+    "feature_names": ["pH", "SOCbe", "TN", "TP", "TK", "AP", "AK", "Gap", "Fertilizer type"],
+    "feature_means": {
+        "pH": 7.0, "SOCbe": 12.0, "TN": 0.8, "TP": 0.5, "TK": 30.0,
+        "AP": 50.0, "AK": 100.0, "Gap": 10.0, "Fertilizer type": 1.5,
+    },
+    "metrics": {"cv_r2": 0.55, "cv_rmse": 40.0, "test_r2": 0.62, "test_rmse": 38.0},
+    "training_samples": 185,
+}
+
+FAKE_SG_PADDY_META = {
+    "model_type": "RandomForestRegressor",
+    "land_type": "paddy",
+    "region": "shaoguan",
+    "model_version": "SG_RF_v1_20260731",
+    "feature_names": ["pH", "SOCbe", "TN", "TP", "TK", "AP", "AK", "Gap", "Fertilizer type"],
+    "feature_means": {
+        "pH": 6.5, "SOCbe": 14.0, "TN": 1.0, "TP": 0.6, "TK": 28.0,
+        "AP": 45.0, "AK": 90.0, "Gap": 8.0, "Fertilizer type": 1.5,
+    },
+    "metrics": {"cv_r2": 0.40, "cv_rmse": 45.0, "test_r2": 0.48, "test_rmse": 42.0},
+    "training_samples": 25,  # <30 触发低置信度提示
+}
+
+
+def _setup_mock_sg_models(monkeypatch):
+    """将 SG 模型状态设为 mock 值，模拟 SG 模型已加载。需配合 _setup_mock_models 使用。"""
+    from framework.domain.other_models import model_6
+    monkeypatch.setattr(model_6, "_SG_UPLAND_MODEL", FakeModel())
+    monkeypatch.setattr(model_6, "_SG_PADDY_MODEL", FakeModel())
+    monkeypatch.setattr(model_6, "_SG_UPLAND_META", FAKE_SG_UPLAND_META)
+    monkeypatch.setattr(model_6, "_SG_PADDY_META", FAKE_SG_PADDY_META)
+    monkeypatch.setattr(model_6, "_SG_UPLAND_LOAD_FAILED", False)
+    monkeypatch.setattr(model_6, "_SG_PADDY_LOAD_FAILED", False)
+
+
+# ---- Task 5: model_6_execution 区域路由测试 ----
+
+class TestModel6ShaoguanRouting:
+    def test_non_shaoguan_uses_global_etr(self, monkeypatch):
+        """area_code='other' → Dose+SOC 走全局 ETR（回归测试，行为不变）"""
+        _setup_mock_models(monkeypatch)
+        from framework.domain.other_models.model_6 import model_6_execution
+        inp = dict(FULL_VALID_INPUT, area_code="other")
+        result = model_6_execution(inp)
+        assert result["status"] == "success"
+        assert result["dose_prediction"] == 42.0  # FakeModel 返回 42
+        assert result["soc_prediction"] == 42.0
+        assert result["dose_confidence"] == 0.47  # FAKE_DOSE_META test_r2
+        assert "韶关" not in result["dose_warning"]
+
+    def test_non_shaoguan_default_area_code(self, monkeypatch):
+        """不传 area_code → 空字符串 → 不命中 → 全局 ETR"""
+        _setup_mock_models(monkeypatch)
+        from framework.domain.other_models.model_6 import model_6_execution
+        result = model_6_execution(FULL_VALID_INPUT)
+        assert result["status"] == "success"
+        assert "韶关" not in result["dose_warning"]
+
+    def test_shaoguan_upland_uses_sg_rf(self, monkeypatch):
+        """area_code='lechang', land_type='upland' → Dose 走 SG upland RF, SOC 走 ETR"""
+        _setup_mock_models(monkeypatch)
+        _setup_mock_sg_models(monkeypatch)
+        from framework.domain.other_models.model_6 import model_6_execution
+        inp = dict(FULL_VALID_INPUT, area_code="lechang")
+        result = model_6_execution(inp, land_type="upland")
+        assert result["status"] == "success"
+        assert result["dose_prediction"] == 42.0  # SG FakeModel 也返回 42
+        assert result["soc_prediction"] == 42.0
+        assert result["dose_confidence"] == 0.62  # FAKE_SG_UPLAND_META test_r2
+        assert "韶关" in result["dose_warning"]
+        assert "旱地" in result["dose_warning"]
+        assert "0.62" in result["dose_warning"]
+
+    def test_shaoguan_paddy_uses_sg_rf(self, monkeypatch):
+        """area_code='lechang', land_type='paddy' → Dose 走 SG paddy RF"""
+        _setup_mock_models(monkeypatch)
+        _setup_mock_sg_models(monkeypatch)
+        from framework.domain.other_models.model_6 import model_6_execution
+        inp = dict(FULL_VALID_INPUT, area_code="lechang")
+        result = model_6_execution(inp, land_type="paddy")
+        assert result["status"] == "success"
+        assert result["dose_confidence"] == 0.48  # FAKE_SG_PADDY_META test_r2
+        assert "韶关" in result["dose_warning"]
+        assert "水田" in result["dose_warning"]
+        assert "0.48" in result["dose_warning"]
+
+    def test_shaoguan_soc_always_global_etr(self, monkeypatch):
+        """韶关区域 SOC 仍走全局 ETR（soc_confidence 用 ETR test_r2=0.91）"""
+        _setup_mock_models(monkeypatch)
+        _setup_mock_sg_models(monkeypatch)
+        from framework.domain.other_models.model_6 import model_6_execution
+        inp = dict(FULL_VALID_INPUT, area_code="lechang")
+        result = model_6_execution(inp, land_type="upland")
+        assert result["soc_confidence"] == 0.91  # FAKE_SOC_META test_r2，非 SG
+
+    def test_shaoguan_area_code_case_insensitive(self, monkeypatch):
+        """area_code='LeChang' → .lower() → 命中韶关"""
+        _setup_mock_models(monkeypatch)
+        _setup_mock_sg_models(monkeypatch)
+        from framework.domain.other_models.model_6 import model_6_execution
+        inp = dict(FULL_VALID_INPUT, area_code="LeChang")
+        result = model_6_execution(inp, land_type="upland")
+        assert result["status"] == "success"
+        assert "韶关" in result["dose_warning"]
+
+    def test_land_type_default_upland(self, monkeypatch):
+        """未传 land_type → 默认 upland"""
+        _setup_mock_models(monkeypatch)
+        _setup_mock_sg_models(monkeypatch)
+        from framework.domain.other_models.model_6 import model_6_execution
+        inp = dict(FULL_VALID_INPUT, area_code="lechang")
+        result = model_6_execution(inp)  # 不传 land_type
+        assert result["status"] == "success"
+        assert "旱地" in result["dose_warning"]  # 默认 upland
+
+    def test_land_type_invalid_defaults_upland_with_warning(self, monkeypatch):
+        """land_type='foo' → 默认 upland + dose_warning 含未识别提示"""
+        _setup_mock_models(monkeypatch)
+        _setup_mock_sg_models(monkeypatch)
+        from framework.domain.other_models.model_6 import model_6_execution
+        inp = dict(FULL_VALID_INPUT, area_code="lechang")
+        result = model_6_execution(inp, land_type="foo")
+        assert result["status"] == "success"
+        assert "旱地" in result["dose_warning"]
+        assert "foo" in result["dose_warning"] or "未识别" in result["dose_warning"]
+
+    def test_sombe_input_mapped_to_socbe(self, monkeypatch):
+        """输入含 SOMbe → _normalize_input 映射为 SOCbe → 不被当缺失填充"""
+        _setup_mock_models(monkeypatch)
+        from framework.domain.other_models.model_6 import model_6_execution
+        # 用 SOMbe 替换 SOCbe，area_code 非韶关走全局 ETR
+        inp = {k: v for k, v in FULL_VALID_INPUT.items() if k != "SOCbe"}
+        inp["SOMbe"] = 15.0
+        inp["area_code"] = "other"
+        result = model_6_execution(inp)
+        assert result["status"] == "success"
+        # SOCbe 应被正确识别，不进 imputed_features
+        assert "SOCbe" not in result["imputed_features"]
+
+    def test_shaoguan_paddy_low_sample_warning(self, monkeypatch):
+        """水田 training_samples<30 → dose_warning 含低置信度提示"""
+        _setup_mock_models(monkeypatch)
+        _setup_mock_sg_models(monkeypatch)
+        from framework.domain.other_models.model_6 import model_6_execution
+        inp = dict(FULL_VALID_INPUT, area_code="lechang")
+        result = model_6_execution(inp, land_type="paddy")
+        assert "样本" in result["dose_warning"] or "置信度" in result["dose_warning"]
+
+    def test_shaoguan_model_missing_fallback(self, monkeypatch):
+        """SG 模型文件缺失 → fallback, fallback_reason=model_file_missing"""
+        _setup_mock_models(monkeypatch)
+        from framework.domain.other_models import model_6
+        monkeypatch.setattr(model_6, "_SG_UPLAND_MODEL", None)
+        monkeypatch.setattr(model_6, "_SG_UPLAND_META", None)
+        monkeypatch.setattr(model_6, "_SG_UPLAND_LOAD_FAILED", True)
+        inp = dict(FULL_VALID_INPUT, area_code="lechang")
+        result = model_6.model_6_execution(inp, land_type="upland")
+        assert result["status"] == "fallback"
+        assert result["fallback_reason"] == "model_file_missing"
+
+    def test_backward_compat_no_land_type_param(self, monkeypatch):
+        """旧调用方不传 land_type → 默认 upland，签名向后兼容"""
+        _setup_mock_models(monkeypatch)
+        from framework.domain.other_models.model_6 import model_6_execution
+        result = model_6_execution(FULL_VALID_INPUT)
+        assert result["status"] == "success"

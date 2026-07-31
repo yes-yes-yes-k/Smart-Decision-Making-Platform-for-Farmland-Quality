@@ -248,35 +248,68 @@ def _fallback_response(input_data: Dict[str, Any], reason: str) -> Dict[str, Any
     }
 
 
-def model_6_execution(input_data: Dict[str, Any]) -> Dict[str, Any]:
+def model_6_execution(input_data: Dict[str, Any], land_type: str = "upland") -> Dict[str, Any]:
     """SOC + Dose ML 预测主入口。
 
-    输入：特征字典（key 可含/不含尾随空格，可缺字段）
+    输入：特征字典（key 可含/不含尾随空格，可缺字段；可含 area_code/land_type）
     输出：预测结果字典，含 status/soc_prediction/dose_prediction 等字段
+
+    区域路由：
+    - area_code 命中 SHAOGUAN_AREA_CODES → Dose 走 SG RF（按 land_type 选子模型），SOC 始终走全局 ETR
+    - 未命中 → Dose 和 SOC 均走全局 ETR（行为不变）
+    - land_type 仅 "upland"/"paddy" 合法，非法值默认 upland 并附 dose_warning 提示
     """
     try:
-        # 1. 检查 sklearn 可用性
+        # 1. 输入规范化（SOMbe → SOCbe，strip，过滤 None）
+        input_data = _normalize_input(input_data)
+
+        # 2. 检查 sklearn 可用性
         if not _SKLEARN_AVAILABLE:
-            return _fallback_response(input_data or {}, reason="sklearn_missing")
+            return _fallback_response(input_data, reason="sklearn_missing")
 
-        # 2. 检查模型加载状态（首次触发加载）
+        # 3. 区域判定
+        area_code = input_data.get("area_code", "")
+        is_shaoguan = isinstance(area_code, str) and area_code.lower() in SHAOGUAN_AREA_CODES
+
+        # 4. land_type 规范化（非法值默认 upland）
+        land_type_norm = land_type if land_type in ("upland", "paddy") else "upland"
+        land_type_invalid = land_type not in ("upland", "paddy")
+        land_type_warning = (
+            f"（未识别的 land_type={land_type}，默认按旱地处理）" if land_type_invalid else ""
+        )
+
+        # 5. SOC 始终走全局 ETR（先确保全局模型加载）
         if not _ensure_models_loaded():
-            return _fallback_response(input_data or {}, reason="model_file_missing")
+            return _fallback_response(input_data, reason="model_file_missing")
 
-        # 3. 准备 SOC 特征（10 因子）
         soc_df, soc_imputed, soc_oor = _prepare_features(
-            input_data or {}, _SOC_META["feature_names"], _SOC_META["feature_means"]
+            input_data, _SOC_META["feature_names"], _SOC_META["feature_means"]
         )
 
-        # 4. 准备 Dose 特征（9 因子，去掉 Dose 自身）
-        dose_input = {
-            k: v for k, v in (input_data or {}).items() if k.strip() != "Dose"
-        }
-        dose_df, dose_imputed, dose_oor = _prepare_features(
-            dose_input, _DOSE_META["feature_names"], _DOSE_META["feature_means"]
-        )
+        # 6. Dose 特征（去掉 Dose 自身）
+        dose_input = {k: v for k, v in input_data.items() if k.strip() != "Dose"}
 
-        # 5. 范围校验：任一越界即拒绝
+        # 7. Dose 区域路由
+        if is_shaoguan:
+            if not _ensure_sg_model_loaded(land_type_norm):
+                return _fallback_response(input_data, reason="model_file_missing")
+            if land_type_norm == "paddy":
+                sg_model = _SG_PADDY_MODEL
+                sg_meta = _SG_PADDY_META
+                land_label = "水田"
+            else:
+                sg_model = _SG_UPLAND_MODEL
+                sg_meta = _SG_UPLAND_META
+                land_label = "旱地"
+            dose_df, dose_imputed, dose_oor = _prepare_features(
+                dose_input, sg_meta["feature_names"], sg_meta["feature_means"]
+            )
+        else:
+            dose_df, dose_imputed, dose_oor = _prepare_features(
+                dose_input, _DOSE_META["feature_names"], _DOSE_META["feature_means"]
+            )
+
+        # 8. 范围校验：任一越界即拒绝
         all_oor = soc_oor + dose_oor
         if all_oor:
             return {
@@ -293,22 +326,41 @@ def model_6_execution(input_data: Dict[str, Any]) -> Dict[str, Any]:
                 "model_version": _MODEL_VERSION,
             }
 
-        # 6. 执行预测
+        # 9. 执行预测
         soc_pred = float(_SOC_MODEL.predict(soc_df)[0])
-        dose_pred = float(_DOSE_MODEL.predict(dose_df)[0])
+
+        if is_shaoguan:
+            dose_pred = float(sg_model.predict(dose_df)[0])
+            sg_test_r2 = sg_meta["metrics"]["test_r2"]
+            dose_warning = (
+                f"韶关{land_label} RF 模型 R²={sg_test_r2:.2f}，预测结果仅供参考"
+                f"{land_type_warning}"
+            )
+            dose_confidence = round(sg_test_r2, 2)
+            # 低样本量提示
+            if sg_meta.get("training_samples", 0) < 30:
+                dose_warning += "（训练样本量较少，置信度偏低）"
+        else:
+            dose_pred = float(_DOSE_MODEL.predict(dose_df)[0])
+            dose_warning = (
+                "Dose 模型 R²=0.47，预测结果仅供参考，建议结合田间试验校准"
+                f"{land_type_warning}"
+            )
+            dose_confidence = round(_DOSE_META["metrics"]["test_r2"], 2)
 
         logger.info(
-            "model_6_execution success: SOC=%.4f, Dose=%.4f", soc_pred, dose_pred
+            "model_6_execution success: SOC=%.4f, Dose=%.4f, is_shaoguan=%s, land_type=%s",
+            soc_pred, dose_pred, is_shaoguan, land_type_norm,
         )
 
-        # 7. 构造响应
+        # 10. 构造响应
         return {
             "status": "success",
             "soc_prediction": round(soc_pred, 4),
             "soc_confidence": round(_SOC_META["metrics"]["test_r2"], 2),
             "dose_prediction": round(dose_pred, 4),
-            "dose_confidence": round(_DOSE_META["metrics"]["test_r2"], 2),
-            "dose_warning": "Dose 模型 R²=0.47，预测结果仅供参考，建议结合田间试验校准",
+            "dose_confidence": dose_confidence,
+            "dose_warning": dose_warning.strip(),
             "imputed_features": sorted(set(soc_imputed + dose_imputed)),
             "imputation_applied": bool(soc_imputed or dose_imputed),
             "model_version": _MODEL_VERSION,
@@ -316,4 +368,4 @@ def model_6_execution(input_data: Dict[str, Any]) -> Dict[str, Any]:
 
     except Exception as e:
         logger.exception(f"model_6_execution unexpected error: {e}")
-        return _fallback_response(input_data or {}, reason="unexpected_error")
+        return _fallback_response(input_data, reason="unexpected_error")
