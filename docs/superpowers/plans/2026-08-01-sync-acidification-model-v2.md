@@ -755,7 +755,7 @@ Remove-Item "d:\17417\Documents\agent_culti_demo\tests\data\acidification_v2\_in
 Run: `pytest tests/test_model4_acidification.py -v`
 Expected: 所有测试 PASS（含原有测试 + `test_run_csv_*` + `test_acidification_v2_regression`）
 
-- [ ] **Step 5: 运行酸化相关 agent 测试确认 model_version 透传无回归**
+- [x] **Step 5: 运行酸化相关 agent 测试确认 model_version 透传无回归**
 
 Run: `pytest tests/test_agent_specialized.py -v -k "acidification or model_4 or model4"`
 Expected: 所有相关测试 PASS（`acidification_agent.py` 通过 `result.get("model_version")` 透传，无硬编码版本号，升级后自动返回 v2）
@@ -775,7 +775,7 @@ Expected: 无输出（agent 通过 `result.get("model_version")` 透传，无硬
 Run: `pytest tests/test_farmland_diagnosis.py tests/test_thematic_models.py tests/test_execute_models_pipeline.py -v`
 Expected: 所有测试 PASS（酸化模型升级不影响其他模型与诊断流程）
 
-- [ ] **Step 9: 若上述任一步骤发现问题，回退对应 Task 修复后重新验证**
+- [x] **Step 9: 若上述任一步骤发现问题，回退对应 Task 修复后重新验证**
 
 若 Step 4-8 任一失败，定位失败原因，回退到 Task 1-6 对应步骤修复，重新运行失败步骤。全部通过后方可进入归档。
 
