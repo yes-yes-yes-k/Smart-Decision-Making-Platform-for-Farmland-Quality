@@ -626,7 +626,7 @@ git commit -m "test(acidification): 新增 v2 源码 393 地块回归测试
 - Consumes: Task 4 的 `run_csv(input_file, output_file, land_type, fertilizer_type) -> pd.DataFrame`
 - Produces: 可独立执行的 CLI 脚本，4 个必填参数 `--input/--output/--land/--fertilizer`，成功退出码 0，ValueError 退出码 1
 
-- [ ] **Step 1: 创建 CLI 脚本**
+- [x] **Step 1: 创建 CLI 脚本**
 
 创建 `scripts/run_acidification_batch.py`：
 
@@ -705,7 +705,7 @@ Run:
 Remove-Item "d:\17417\Documents\agent_culti_demo\tests\data\acidification_v2\_cli_test_output.csv" -ErrorAction SilentlyContinue; Remove-Item "d:\17417\Documents\agent_culti_demo\tests\data\acidification_v2\_cli_bad.csv" -ErrorAction SilentlyContinue
 ```
 
-- [ ] **Step 6: Commit**
+- [x] **Step 6: Commit**
 
 ```bash
 git add scripts/run_acidification_batch.py
