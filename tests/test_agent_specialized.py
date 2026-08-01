@@ -187,7 +187,7 @@ def test_acidification_agent_execute(monkeypatch):
         lambda data, land_type=None, fertilizer_type=None: {
             "status": "success", "ytk": 1234.5, "mbnt": 567.8,
             "sub_model": "upland_compound", "land_type": "upland",
-            "fertilizer_type": "compound", "model_version": "process_v1_20260801",
+            "fertilizer_type": "compound", "model_version": "process_v2_20260801",
             "customized_params": {"FertN": 200.0},
         }
     )
@@ -197,7 +197,7 @@ def test_acidification_agent_execute(monkeypatch):
     assert result["status"] == "success"
     assert result["result"]["ytk"] == 1234.5
     assert result["result"]["mbnt"] == 567.8
-    assert result["metadata"]["model_version"] == "process_v1_20260801"
+    assert result["metadata"]["model_version"] == "process_v2_20260801"
     print("✓ AcidificationRemediationAgent.execute 返回三层结构含 ytk/mbnt")
 
 
@@ -209,7 +209,7 @@ def test_acidification_agent_passes_through_params(monkeypatch):
         captured["fertilizer_type"] = fertilizer_type
         return {"status":"success","ytk":1.0,"mbnt":2.0,"sub_model":"paddy_urea",
                 "land_type":land_type,"fertilizer_type":fertilizer_type,
-                "model_version":"process_v1_20260801","customized_params":{}}
+                "model_version":"process_v2_20260801","customized_params":{}}
     monkeypatch.setattr("framework.agents.specialized.acidification_agent.model_4_execution", fake)
     agent = AcidificationRemediationAgent()
     agent.answer_question("如何治理酸化？", {"data":{"SJD":4.31,"JHX":1.56,"JLA":4.08},
@@ -226,7 +226,7 @@ def test_acidification_agent_answer_no_gb_standard(monkeypatch):
         lambda data, land_type=None, fertilizer_type=None: {
             "status":"success","ytk":1234.5,"mbnt":567.8,"sub_model":"upland_compound",
             "land_type":"upland","fertilizer_type":"compound",
-            "model_version":"process_v1_20260801","customized_params":{}})
+            "model_version":"process_v2_20260801","customized_params":{}})
     agent = AcidificationRemediationAgent()
     out = agent.answer_question("如何治理强酸性耕地？施加多少调理剂？", {"data":{"SJD":4.31,"JHX":1.56,"JLA":4.08}})
     assert "GB/T 42817-2023" not in out["answer"]
