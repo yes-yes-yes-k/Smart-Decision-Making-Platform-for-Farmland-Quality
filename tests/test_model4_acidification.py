@@ -156,3 +156,28 @@ def test_submodel_returns_seven_fields():
             assert v is not None and not (isinstance(v, float) and math.isnan(v)), (
                 f"{name}.{k} 为 None/NaN: {v!r}"
             )
+
+
+# --- Task 2 (sync-acidification-model-v2): _build_params 参数装配 ---
+from ai_culti_demo.farmland_diagnosis.acidification import _build_params
+
+
+def test_build_params():
+    """`_build_params` 必须返回与内联逻辑等价的默认参数 dict 副本（不含可配覆盖）。"""
+    # upland / urea：仅基础默认参数
+    assert _build_params("upland", "urea") == dict(_UPLAND_DEFAULTS)
+    # upland / compound：基础 + 复合肥额外参数
+    expected_upland_c = dict(_UPLAND_DEFAULTS); expected_upland_c.update(_UPLAND_COMPOUND_EXTRA)
+    assert _build_params("upland", "compound") == expected_upland_c
+    # paddy / urea：仅基础默认参数
+    assert _build_params("paddy", "urea") == dict(_PADDY_DEFAULTS)
+    # paddy / compound：基础 + 复合肥额外参数
+    expected_paddy_c = dict(_PADDY_DEFAULTS); expected_paddy_c.update(_PADDY_COMPOUND_EXTRA)
+    assert _build_params("paddy", "compound") == expected_paddy_c
+
+    # 返回必须是副本：修改返回值不得污染模块级常量
+    p = _build_params("upland", "compound")
+    p["FertN"] = 9999.0
+    p["YN"] = -1.0
+    assert _UPLAND_DEFAULTS["FertN"] == 180.0
+    assert _UPLAND_COMPOUND_EXTRA["YN"] == 1.91

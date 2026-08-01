@@ -188,6 +188,20 @@ def _upland_compound(pHstart, Hex, Alex, p):
                      ytk_coef=0.7, mbnt_a=0.1, mbnt_b=0.3)
 
 
+def _build_params(land_type: str, fertilizer_type: str) -> Dict[str, float]:
+    """组装默认参数（不含可配覆盖）。
+
+    land_type: "paddy" 或 "upland"
+    fertilizer_type: "urea" 或 "compound"
+    返回：含基础默认参数 + 复合肥额外参数（若 compound）的 dict 副本。
+    被 calculate_acidification_amendment 与 run_csv 共用，消除重复装配逻辑。
+    """
+    base: Dict[str, float] = dict(_UPLAND_DEFAULTS) if land_type == "upland" else dict(_PADDY_DEFAULTS)
+    if fertilizer_type == "compound":
+        base.update(_UPLAND_COMPOUND_EXTRA if land_type == "upland" else _PADDY_COMPOUND_EXTRA)
+    return base
+
+
 _SUB_MODEL_MAP = {
     ("paddy", "urea"): _paddy_urea,
     ("paddy", "compound"): _paddy_compound,
@@ -238,10 +252,8 @@ def calculate_acidification_amendment(
         warnings_list.append(f"land_type='{land_type}' 非法，回退 'upland'")
     if ft != fertilizer_type:
         warnings_list.append(f"fertilizer_type='{fertilizer_type}' 非法，回退 'compound'")
-    # 4. 组装默认参数
-    base: Dict[str, float] = dict(_UPLAND_DEFAULTS) if lt == "upland" else dict(_PADDY_DEFAULTS)
-    if ft == "compound":
-        base.update(_UPLAND_COMPOUND_EXTRA if lt == "upland" else _PADDY_COMPOUND_EXTRA)
+    # 4. 组装默认参数（复用 _build_params，与 run_csv 共享装配逻辑）
+    base = _build_params(lt, ft)
     # 5. 可配参数覆盖（仅白名单）
     customized: Dict[str, float] = {}
     for k, v in optional_params.items():
