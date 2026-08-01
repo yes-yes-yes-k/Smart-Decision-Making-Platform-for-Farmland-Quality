@@ -52,8 +52,8 @@ class TestStabilityPrecompute:
         mock_gdf = MagicMock()
         mock_gdf.copy.return_value = mock_gdf
 
-        with patch.object(stability_model, "gpd") as mock_gpd, \
-             patch.object(stability_model, "require_columns"), \
+        with patch.object(stability_model.gpd, "read_file", side_effect=[mock_gdf, mock_gdf, mock_gdf]) as m_read, \
+             patch.object(stability_model, "require_columns") as m_require, \
              patch.object(stability_model, "calculate_boundary_safety", return_value=mock_gdf) as m1, \
              patch.object(stability_model, "calculate_support_balance", return_value=mock_gdf) as m2, \
              patch.object(stability_model, "calculate_key_criticality", return_value=mock_gdf) as m3, \
@@ -64,8 +64,6 @@ class TestStabilityPrecompute:
              patch.object(stability_model, "calculate_degradation_cluster", return_value=mock_gdf) as m8, \
              patch.object(stability_model, "calculate_persistent_low_quality", return_value=mock_gdf) as m9:
 
-            mock_gpd.read_file.return_value = mock_gdf
-
             result = stability_model.run_all_models(
                 current_file="fake.shp",
                 history_files=["h1.shp", "h2.shp"],
@@ -74,6 +72,8 @@ class TestStabilityPrecompute:
 
             for m in [m1, m2, m3, m4, m5, m6, m7, m8, m9]:
                 m.assert_called_once()
+            assert m_read.call_count == 3
+            assert m_require.called
             assert result is mock_gdf
 
 

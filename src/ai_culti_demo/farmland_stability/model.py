@@ -1,13 +1,25 @@
+import os
+import sys
 import warnings
+from pathlib import Path
+
 warnings.filterwarnings('ignore')
+
+# 避免系统级 PROJ 配置覆盖当前 Conda 环境的坐标系数据库。
+_PROJ_DATA_DIR = Path(sys.prefix) / 'Library' / 'share' / 'proj'
+if _PROJ_DATA_DIR.is_dir():
+    os.environ['PROJ_DATA'] = str(_PROJ_DATA_DIR)
+    os.environ['PROJ_LIB'] = str(_PROJ_DATA_DIR)
 
 import numpy as np
 import pandas as pd
 import geopandas as gpd
 from scipy.spatial import cKDTree
-from pathlib import Path
 
-INDICATORS = ['PH', 'YJZ', 'YXL', 'SXJ', 'RZ', 'GCZD', 'GGNL', 'PSNL', 'DXBW', 'ZDGX', 'YXTC', 'GCHD']
+MODEL_VERSION = 'model1_v2_20260801'
+
+# 与模型1 v2（2026-08-01）Shapefile 的字段口径保持一致。
+INDICATORS = ['SJD', 'YJZ', 'YXL', 'SXJ', 'TRRZ', 'GCZD', 'GGNL', 'PSNL', 'DXBW', 'ZDGX', 'YXTCHD', 'GCHD']
 LSD_COLS = [x + 'LSD' for x in INDICATORS]
 QZ_COLS = [x + 'QZ' for x in INDICATORS]
 

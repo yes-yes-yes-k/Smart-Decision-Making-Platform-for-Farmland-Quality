@@ -44,7 +44,8 @@ def main(shapefile_dir: str, manifest: Dict[str, Any]) -> Dict[str, Any]:
 
     Args:
         shapefile_dir: shapefile 所在目录
-        manifest: 含 current_filename / history_filenames / years 的字典
+        manifest: 含 current_filename / history_filenames / years 的字典；
+            可选 id_column 指定地块统一编码字段，模型1 v2 使用 TYBH。
 
     Returns:
         {status, processed, saved_to_db, output_files}
@@ -52,13 +53,14 @@ def main(shapefile_dir: str, manifest: Dict[str, Any]) -> Dict[str, Any]:
     current_file = os.path.join(shapefile_dir, manifest['current_filename'])
     history_files = [os.path.join(shapefile_dir, f) for f in manifest['history_filenames']]
     years = manifest['years']
+    id_col = manifest.get('id_column', 'ID')
 
-    G = run_all_models(current_file, history_files, years)
+    G = run_all_models(current_file, history_files, years, id_col=id_col)
 
     # DB 持久化
     storage = StabilityStorage()
     storage.create_tables()
-    records = g_to_records(G)
+    records = g_to_records(G, id_col=id_col)
     saved_count = storage.save_results(records)
 
     # 文件持久化（shapefile + xlsx，供在线查询重载）
