@@ -12,8 +12,8 @@
 
 ## 3. DataFile 模型补全（framework/models/data_file.py）
 
-- [ ] 3.1 创建 `framework/models/data_file.py`，实现 `DataFile` SQLAlchemy 模型（表名 kb_data_file），字段：id/doc_name/file_path/file_type/file_size/category/treatment_type/status/create_by/create_time，提供 `to_dict()` 方法，参考 framework/models/document.py 结构
-- [ ] 3.2 验证 `framework/api/routes/docs.py` 的 `from framework.models.data_file import DataFile` import 成功，docs_bp 正常加载
+- [x] 3.1 创建 `framework/models/data_file.py`，实现 `DataFile` SQLAlchemy 模型（表名 kb_data_file），字段：id/doc_name/file_path/file_type/file_size/category/treatment_type/status/create_by/create_time，提供 `to_dict()` 方法，参考 framework/models/document.py 结构
+- [x] 3.2 验证 `framework/api/routes/docs.py` 的 `from framework.models.data_file import DataFile` import 成功，docs_bp 正常加载
 
 ## 4. 测试引用过时修复
 
