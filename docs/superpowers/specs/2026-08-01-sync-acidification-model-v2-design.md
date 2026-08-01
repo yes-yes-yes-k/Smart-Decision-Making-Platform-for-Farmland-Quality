@@ -2,6 +2,8 @@
 comet_change: sync-acidification-model-v2
 role: technical-design
 canonical_spec: openspec
+archived-with: 2026-08-01-sync-acidification-model-v2
+status: final
 ---
 
 # Design Doc: sync-acidification-model-v2
@@ -254,3 +256,4 @@ def test_acidification_v2_regression():
 6. **测试数据准备**（tasks.md §4）—— 复制 v2 数据到 tests/data/
 7. **回归测试**（3.1）—— 新增 v2 回归测试
 8. **集成验证**（tasks.md §8）—— CLI + 测试套件
+

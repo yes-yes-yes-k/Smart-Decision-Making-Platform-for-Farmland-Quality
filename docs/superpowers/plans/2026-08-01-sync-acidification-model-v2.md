@@ -2,6 +2,7 @@
 change: sync-acidification-model-v2
 design-doc: docs/superpowers/specs/2026-08-01-sync-acidification-model-v2-design.md
 base-ref: 98f41e19a68a9a089cd89eb7012a4622fb691b02
+archived-with: 2026-08-01-sync-acidification-model-v2
 ---
 
 # sync-acidification-model-v2 实施计划
@@ -39,6 +40,7 @@ base-ref: 98f41e19a68a9a089cd89eb7012a4622fb691b02
 - `tests/data/acidification_v2/04_upland_compound_expected.csv` — v2 源码旱地+复合肥期望输出（复制自 `04_旱地复合肥计算结果.csv`）
 - `scripts/run_acidification_batch.py` — CLI 批量计算脚本
 
+archived-with: 2026-08-01-sync-acidification-model-v2
 ---
 
 ## Task 1: 重构 `_finalize` 返回 7 字段（方案 A）
@@ -174,6 +176,7 @@ git commit -m "refactor(acidification): _finalize 返回 7 字段 dict，4 子�
 公式与系数不变，现有测试全部通过。"
 ```
 
+archived-with: 2026-08-01-sync-acidification-model-v2
 ---
 
 ## Task 2: 提取 `_build_params` 参数装配函数
@@ -239,6 +242,7 @@ calculate_acidification_amendment 与 run_csv 共享默认参数组装，
 消除重复代码。行为不变，现有测试全部通过。"
 ```
 
+archived-with: 2026-08-01-sync-acidification-model-v2
 ---
 
 ## Task 3: 版本标识升级与文档同步
@@ -379,6 +383,7 @@ git commit -m "feat(acidification): MODEL_VERSION 升级为 process_v2_20260801
 版本标识与 docstring 源码路径引用。v2 与 v1 公式一致，仅版本号变更。"
 ```
 
+archived-with: 2026-08-01-sync-acidification-model-v2
 ---
 
 ## Task 4: `run_csv` 函数实现（含测试数据准备）
@@ -551,6 +556,7 @@ NaN 行输出 None、utf-8-sig 编码、结果保留 2 位小数，与 v2 源码
 含 393 地块测试数据与基础契约测试。"
 ```
 
+archived-with: 2026-08-01-sync-acidification-model-v2
 ---
 
 ## Task 5: 393 地块回归测试
@@ -615,6 +621,7 @@ git commit -m "test(acidification): 新增 v2 源码 393 地块回归测试
 验证 run_csv 输出 YTK/MBNT 偏差 < 0.01，覆盖极端值（Alex=8.95、SJD=4.19）。"
 ```
 
+archived-with: 2026-08-01-sync-acidification-model-v2
 ---
 
 ## Task 6: CLI 脚本实现
@@ -716,6 +723,7 @@ argparse 定义 4 个必填参数（--input/--output/--land/--fertilizer），
 路径设置复用项目现有 scripts 模式（PROJECT_ROOT + src）。"
 ```
 
+archived-with: 2026-08-01-sync-acidification-model-v2
 ---
 
 ## Task 7: 集成验证与 spec/agent 检查
@@ -779,6 +787,7 @@ Expected: 所有测试 PASS（酸化模型升级不影响其他模型与诊断�
 
 若 Step 4-8 任一失败，定位失败原因，回退到 Task 1-6 对应步骤修复，重新运行失败步骤。全部通过后方可进入归档。
 
+archived-with: 2026-08-01-sync-acidification-model-v2
 ---
 
 ## 实现顺序说明
@@ -786,3 +795,4 @@ Expected: 所有测试 PASS（酸化模型升级不影响其他模型与诊断�
 按设计文档 §5 建议顺序排列：Task 1（子模型重构）→ Task 2（参数提取）→ Task 3（版本升级）→ Task 4（run_csv + 数据）→ Task 5（回归测试）→ Task 6（CLI）→ Task 7（集成验证）。
 
 每个 Task 产出可独立测试的交付物，Task 间存在线性依赖：Task 4 依赖 Task 1（7 字段 dict）和 Task 2（`_build_params`）；Task 5 依赖 Task 4（`run_csv` + 数据）；Task 6 依赖 Task 4（`run_csv`）；Task 7 依赖全部。
+

@@ -4,5 +4,6 @@
   "openspec_tasks": "openspec/changes/sync-acidification-model-v2/tasks.md",
   "openspec_delta_spec": "openspec/changes/sync-acidification-model-v2/specs/farmland-acidification-improvement-model/spec.md",
   "handoff_context": "openspec/changes/sync-acidification-model-v2/.comet/handoff/design-context.json",
-  "handoff_markdown": "openspec/changes/sync-acidification-model-v2/.comet/handoff/design-context.md"
+  "handoff_markdown": "openspec/changes/sync-acidification-model-v2/.comet/handoff/design-context.md",
+  "archive_directory": "openspec/changes/archive/2026-08-01-sync-acidification-model-v2"
 }
