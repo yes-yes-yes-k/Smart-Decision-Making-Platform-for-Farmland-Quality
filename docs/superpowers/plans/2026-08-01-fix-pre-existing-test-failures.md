@@ -2,6 +2,7 @@
 change: fix-pre-existing-test-failures
 design-doc: docs/superpowers/specs/2026-08-01-fix-pre-existing-test-failures-design.md
 base-ref: 41526ef687d070d6819ca1b3b69e998e8e573b2e
+archived-with: 2026-08-01-fix-pre-existing-test-failures
 ---
 
 # 实施计划：修复 Pre-existing 测试失败
@@ -92,3 +93,4 @@ base-ref: 41526ef687d070d6819ca1b3b69e998e8e573b2e
 - DataFile 模型可用，import 链恢复
 - 测试引用路径正确
 - 测试基础设施正常
+

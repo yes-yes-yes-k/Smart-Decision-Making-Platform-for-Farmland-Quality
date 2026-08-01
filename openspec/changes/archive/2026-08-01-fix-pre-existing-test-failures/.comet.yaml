@@ -18,7 +18,7 @@ verification_report: docs/superpowers/reports/2026-08-01-fix-pre-existing-test-f
 branch_status: handled
 created_at: 2026-07-31
 verified_at: 2026-08-01
-archived: false
+archived: true
 direct_override: null
 handoff_context: openspec/changes/fix-pre-existing-test-failures/.comet/handoff/design-context.json
 handoff_hash: 47077aa2bbf98c97091010c2562947cdb8c4b5ba95fea12196ad8d1a9fb823e4

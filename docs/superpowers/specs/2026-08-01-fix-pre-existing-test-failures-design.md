@@ -2,6 +2,8 @@
 comet_change: fix-pre-existing-test-failures
 role: technical-design
 canonical_spec: openspec
+archived-with: 2026-08-01-fix-pre-existing-test-failures
+status: final
 ---
 
 # Design Doc: 修复 Pre-existing 测试失败
@@ -208,3 +210,4 @@ execute_models
 | chroma_db 重置丢失索引 | reindex_documents.py 可重建 |
 | kb_data_file 表不存在 | db.create_all() 自动创建 |
 | langchain 其他 import 也变更 | 仅修改测试文件，不影响生产代码 |
+
