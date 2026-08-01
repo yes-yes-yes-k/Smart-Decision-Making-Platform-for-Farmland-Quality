@@ -254,7 +254,7 @@ calculate_acidification_amendment 与 run_csv 共享默认参数组装，
 - Consumes: 无
 - Produces: `MODEL_VERSION = "process_v2_20260801"`（全局常量，所有下游通过 `calculate_acidification_amendment` 返回的 `model_version` 字段获得新版本）
 
-- [ ] **Step 1: 更新测试断言为 v2（使测试先失败）**
+- [x] **Step 1: 更新测试断言为 v2（使测试先失败）**
 
 在 `tests/test_model4_acidification.py` 中：
 
@@ -276,12 +276,12 @@ calculate_acidification_amendment 与 run_csv 共享默认参数组装，
     assert r["model_version"] == "process_v2_20260801"
 ```
 
-- [ ] **Step 2: 运行测试确认失败**
+- [x] **Step 2: 运行测试确认失败**
 
 Run: `pytest tests/test_model4_acidification.py::test_model_version_present tests/test_model4_acidification.py::test_model4_execution_direct_inputs -v`
 Expected: 两个测试 FAIL（代码仍返回 `process_v1_20260801`）
 
-- [ ] **Step 3: 升级 `acidification.py` 的 `MODEL_VERSION`**
+- [x] **Step 3: 升级 `acidification.py` 的 `MODEL_VERSION`**
 
 在 `src/ai_culti_demo/farmland_diagnosis/acidification.py` 第 29 行，将：
 ```python
@@ -292,7 +292,7 @@ MODEL_VERSION = "process_v1_20260801"
 MODEL_VERSION = "process_v2_20260801"
 ```
 
-- [ ] **Step 4: 更新 `acidification.py` 模块 docstring 源码路径引用**
+- [x] **Step 4: 更新 `acidification.py` 模块 docstring 源码路径引用**
 
 在 `src/ai_culti_demo/farmland_diagnosis/acidification.py` 第 2-6 行，将：
 ```python
@@ -310,7 +310,7 @@ D:\\destkop\\模型5_酸化模型_v2_20260801\\模型5_酸化模型_v2_20260801\
 替换旧的酸化改良经验逻辑。原理文档 01_产酸过程计算公式.docx 有笔误，以源码为准。
 ```
 
-- [ ] **Step 5: 同步 `model_4.py` 的 3 处 fallback `model_version`**
+- [x] **Step 5: 同步 `model_4.py` 的 3 处 fallback `model_version`**
 
 在 `framework/domain/other_models/model_4.py` 中，将 3 处 `"process_v1_20260801"` 改为 `"process_v2_20260801"`：
 
@@ -329,12 +329,12 @@ D:\\destkop\\模型5_酸化模型_v2_20260801\\模型5_酸化模型_v2_20260801\
         "model_version": res.get("model_version", "process_v2_20260801"),
 ```
 
-- [ ] **Step 6: 运行测试确认版本断言通过**
+- [x] **Step 6: 运行测试确认版本断言通过**
 
 Run: `pytest tests/test_model4_acidification.py -v`
 Expected: 所有测试 PASS（含 `test_model_version_present`、`test_model4_execution_direct_inputs`）
 
-- [ ] **Step 7: 同步 `README.md` 版本引用**
+- [x] **Step 7: 同步 `README.md` 版本引用**
 
 在 `README.md` 第 259 行，将：
 ```
@@ -345,7 +345,7 @@ Expected: 所有测试 PASS（含 `test_model_version_present`、`test_model4_ex
 模型版本 `process_v2_20260801`。
 ```
 
-- [ ] **Step 8: 同步 `docs/api.md` 的 3 处版本引用**
+- [x] **Step 8: 同步 `docs/api.md` 的 3 处版本引用**
 
 在 `docs/api.md` 中，将 3 处 `process_v1_20260801` 改为 `process_v2_20260801`：
 
@@ -364,12 +364,12 @@ Expected: 所有测试 PASS（含 `test_model_version_present`、`test_model4_ex
             "model_version": "process_v2_20260801",
 ```
 
-- [ ] **Step 9: 全局搜索确认无遗漏的 v1 引用**
+- [x] **Step 9: 全局搜索确认无遗漏的 v1 引用**
 
 Run: `Select-String -Path "d:\17417\Documents\agent_culti_demo\src\ai_culti_demo\farmland_diagnosis\acidification.py","d:\17417\Documents\agent_culti_demo\framework\domain\other_models\model_4.py","d:\17417\Documents\agent_culti_demo\tests\test_model4_acidification.py","d:\17417\Documents\agent_culti_demo\README.md","d:\17417\Documents\agent_culti_demo\docs\api.md" -Pattern "process_v1_20260801" -SimpleMatch`
 Expected: 无输出（所有 v1 引用已清除）
 
-- [ ] **Step 10: Commit**
+- [x] **Step 10: Commit**
 
 ```bash
 git add src/ai_culti_demo/farmland_diagnosis/acidification.py framework/domain/other_models/model_4.py tests/test_model4_acidification.py README.md docs/api.md

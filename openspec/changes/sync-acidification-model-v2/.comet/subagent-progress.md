@@ -7,21 +7,22 @@
 
 ## Task 1: 重构 `_finalize` 返回 7 字段（方案 A） — COMPLETE
 
-- 阶段: done
-- implementer commit: 2f88c0e
-- 测试: 12 passed, RED→GREEN 证据已记录
-- 风险信号: 无
-- task-checkoff: PASS
+- commit: 2f88c0e, 12 tests pass, no risk signals, task-checkoff PASS
 
 ## Task 2: 提取 `_build_params` 参数装配函数 — COMPLETE
 
-- 阶段: done
-- implementer commit: 38b7d8c
-- 测试: 13/13 passed (12 baseline + 1 test_build_params), RED→GREEN
-- 风险信号: 无（单模块改动，diff 41 行，无 API 变更）
+- commit: 38b7d8c, 13/13 tests pass, no risk signals, task-checkoff PASS
+
+## Task 3: 版本标识升级与文档同步 — COMPLETE
+
+- implementer commit: 761981e (MODEL_VERSION v1→v2, 5 files, 25 line diff)
+- fix commit: ca6ac40 (openapi.json + test_agent_specialized.py v1 残留修复)
+- 测试: TDD RED→GREEN, 13/13 model4 tests + 444 full regression passed
+- 风险信号: implementer 自报"跨模块改动"但协调者复核确认为机械字符串替换（非协调改动），不派发 reviewer
+- 范围外修复: openapi.json 1处 + test_agent_specialized.py 4处 v1→v2
 - task-checkoff: PASS
 
-## Task 3: 版本标识升级与文档同步 — IN PROGRESS
+## Task 4: run_csv 函数实现 + 测试数据准备 — IN PROGRESS
 
 - 阶段: implementing
 - base commit (dispatch): (recording next)
