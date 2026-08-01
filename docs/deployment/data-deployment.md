@@ -20,9 +20,8 @@
 │   ├── fertility/               # 已有：Fertility ML 训练数据（入库）
 │   └── lechang/                 # 已有：乐昌土壤数据
 ├── bin/
-│   └── farmland_quality_eval/   # Fortran exe 及数据库
-│       ├── Farmland_quality_evaluation.exe
-│       ├── Farmlands_Quality_Level_Database.dat
+│   └── farmland_quality_eval/   # 耕地质量评价 Python 模型数据
+│       ├── Farmland_quality_Level_Database.csv
 │       └── README.md
 └── instance/
     └── farmland_stability.db    # 预计算结果 SQLite（运行时生成）
@@ -36,7 +35,7 @@
 |------|---------|------|
 | 模型1（稳定性风险） | `F:\BaiduNetdiskDownload\模型1\` | 3 期 shapefile 测试数据 |
 | 模型3（诊断/酸化） | `F:\BaiduNetdiskDownload\模型3\模型3\` | CSV 测试数据 |
-| 耕地质量等级 exe | `F:\BaiduNetdiskDownload\耕地质量等级和障碍度\` | Fortran exe + .dat 数据库 |
+| 耕地质量等级 | `D:\destkop\模型\模型2\` | 耕地质量评价指标 CSV 数据库 |
 
 ## 一键部署脚本
 
@@ -59,11 +58,10 @@ foreach ($f in @("test.csv","test_with_LD.csv","test_with_LD_diagnosis.csv")) {
     Copy-Item "$src3\$f" $dst3 -Force
 }
 
-# Fortran exe
-$srcE = "F:\BaiduNetdiskDownload\耕地质量等级和障碍度"
+# 耕地质量等级 CSV
+$srcE = "D:\destkop\模型\模型2"
 $dstE = "bin\farmland_quality_eval"
-Copy-Item "$srcE\Farmland_quality_evaluation.exe" $dstE -Force
-Copy-Item "$srcE\Farmlands_Quality_Level_Database.dat" $dstE -Force
+Copy-Item "$srcE\Farmland_quality_Level_Database.csv" $dstE -Force
 ```
 
 ## 版本控制策略
@@ -72,7 +70,8 @@ Copy-Item "$srcE\Farmlands_Quality_Level_Database.dat" $dstE -Force
 
 - `data/farmland_stability/*`（shapefile，每期约 36MB）
 - `data/farmland_diagnosis/*`（CSV，最大约 7MB）
-- `bin/farmland_quality_eval/*`（exe/.dat 二进制）
+
+> 注：`bin/farmland_quality_eval/Farmland_quality_Level_Database.csv` 已入库（不再被 .gitignore 排除），作为 Python 模型的默认数据。
 
 各目录保留 `README.md` 入库，记录文件结构和部署方式。
 
@@ -89,10 +88,9 @@ Get-ChildItem data\farmland_stability\*.shp | Measure-Object | Select-Object Cou
 Get-ChildItem data\farmland_diagnosis\*.csv | Measure-Object | Select-Object Count
 # 期望：3
 
-# 验证 exe 部署
-Test-Path bin\farmland_quality_eval\Farmland_quality_evaluation.exe
-Test-Path bin\farmland_quality_eval\Farmlands_Quality_Level_Database.dat
-# 期望：True / True
+# 验证耕地质量等级 CSV 部署
+Test-Path bin\farmland_quality_eval\Farmland_quality_Level_Database.csv
+# 期望：True
 ```
 
 ## 预计算与初始化

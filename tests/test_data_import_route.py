@@ -76,7 +76,7 @@ def success_mocks(monkeypatch):
     monkeypatch.setattr(di, 'backup_existing', fake_backup)
     monkeypatch.setattr(di, 'deploy_csv', lambda s, d: os.path.join(d, 'test.csv'))
     monkeypatch.setattr(di, 'deploy_shapefile', lambda z, d, m: ['a.shp'])
-    monkeypatch.setattr(di, 'deploy_dat', lambda s, d: os.path.join(d, 'Farmlands_Quality_Level_Database.dat'))
+    monkeypatch.setattr(di, 'deploy_dat', lambda s, d: os.path.join(d, 'Farmland_quality_Level_Database.csv'))
 
     def fake_cleanup(d, keep=None):
         calls['cleanup'].append(d)
