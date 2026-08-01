@@ -160,6 +160,12 @@ def test_type4_dose_query():
     assert qt == 4
 
 
+def test_type4_nitrogen_fertilizer_dose_query():
+    """氮肥施用量查询 → TYPE_4（model-6）"""
+    qt, _ = _identify("我的田施氮肥施多少？")
+    assert qt == 4
+
+
 def test_type4_straw_query():
     """秸秆还田 → TYPE_7"""
     qt, _ = _identify("秸秆还田每亩施用量多少？")

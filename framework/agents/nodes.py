@@ -51,7 +51,7 @@ QUESTION_TYPE_3_KEYWORDS = [
 QUESTION_TYPE_4_KEYWORDS = [
     "肥力预测", "SOC预测", "有机碳预测", "有机碳", "SOC", "soc",
     "Dose", "dose", "施肥量预测", "预测施肥量", "预测置信度", "综合肥力",
-    "肥力", "施多少肥",
+    "肥力", "施多少肥", "氮肥",
 ]
 QUESTION_TYPE_5_KEYWORDS = [
     # exe 质量等级评价关键词
