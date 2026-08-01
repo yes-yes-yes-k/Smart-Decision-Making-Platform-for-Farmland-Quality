@@ -8,7 +8,7 @@ from framework.function_calling.executor import tool_executor
 
 def test_tool_registry():
     """测试工具注册表"""
-    from langchain.tools import Tool
+    from langchain_core.tools import Tool
 
     def dummy_func(**kwargs):
         return "dummy result"
@@ -27,7 +27,7 @@ def test_tool_registry():
 
 def test_tool_executor():
     """测试工具执行器"""
-    from langchain.tools import Tool
+    from langchain_core.tools import Tool
 
     def add_func(**kwargs):
         a = kwargs.get("a", 0)

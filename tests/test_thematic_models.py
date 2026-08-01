@@ -4,15 +4,22 @@ from ai_culti_demo import list_thematic_models, run_thematic_model
 
 
 class ThematicModelTests(unittest.TestCase):
-    def test_list_thematic_models_returns_eight_models(self):
+    def test_list_thematic_models_returns_seven_professional_models(self):
         result = list_thematic_models()
 
         self.assertEqual(result["status"], "ok")
-        self.assertEqual(len(result["models"]), 8)
+        self.assertEqual(len(result["models"]), 7)
         self.assertEqual(
             result["models"][0]["model_id"],
-            "spatial-structure-analysis",
+            "stability-risk-evaluation",
         )
+
+    def test_list_thematic_models_can_include_non_professional_capabilities(self):
+        result = list_thematic_models(include_non_professional=True)
+        self.assertEqual(len(result["models"]), 10)
+        categories = {model["model_id"]: model.get("category") for model in result["models"]}
+        self.assertEqual(categories["spatial-structure-analysis"], "auxiliary")
+        self.assertEqual(categories["multi-factor-collaborative-improvement"], "experimental")
 
     def test_run_single_thematic_model_returns_uniform_payload(self):
         result = run_thematic_model(
@@ -25,10 +32,11 @@ class ThematicModelTests(unittest.TestCase):
         )
 
         self.assertEqual(result["status"], "ok")
-        self.assertEqual(result["model"]["model_id"], "acidification-governance")
+        self.assertEqual(result["model"]["model_id"], "acidification-remediation")
+        self.assertEqual(result["deprecation"]["deprecated_model_id"], "acidification-governance")
         self.assertIn("findings", result)
         self.assertIn("recommended_layers", result)
-        self.assertFalse(result["fallback"]["used"])
+        self.assertTrue(result["fallback"]["used"])
         self.assertEqual(result["reliability"]["level"], "demo_stub")
 
     def test_run_indicator_model_marks_missing_indicator_fallback(self):
@@ -66,7 +74,7 @@ class ThematicModelTests(unittest.TestCase):
         result = run_thematic_model({"model_id": "organic-matter-improvement"})
 
         self.assertEqual(result["status"], "ok")
-        self.assertEqual(result["lineage"]["runtime_dependency"], "none")
+        self.assertEqual(result["lineage"]["runtime_dependency"], "agent")
 
 
 if __name__ == "__main__":

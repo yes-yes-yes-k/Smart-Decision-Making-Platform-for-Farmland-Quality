@@ -159,6 +159,20 @@ def test_process_type5_routes_to_model7_only():
     print("✓ type=5 路由到 model-7（不调 model-4/5/6）")
 
 
+def test_process_type6_routes_to_model2_only():
+    """type=6 → 仅调 model-2 提升潜力评估。"""
+    mgr = AgentManager()
+    result = mgr.process("提升潜力有多大", {"question_type": 6})
+    assert result["data"]["agents_invoked"] == ["model-2"]
+
+
+def test_process_type7_routes_to_model5_only():
+    """type=7 → 仅调 model-5 有机质培肥。"""
+    mgr = AgentManager()
+    result = mgr.process("有机肥每亩施用量多少", {"question_type": 7})
+    assert result["data"]["agents_invoked"] == ["model-5"]
+
+
 def test_process_no_routing_when_question_type_none():
     """question_type=None（context 缺失）→ no_routing 空结果"""
     mgr = AgentManager()
@@ -179,11 +193,11 @@ def test_process_no_routing_when_question_type_zero():
 
 
 def test_process_no_routing_when_question_type_unknown():
-    """question_type=6（超出范围）→ no_routing"""
+    """question_type=8（超出范围）→ no_routing"""
     mgr = AgentManager()
-    result = mgr.process("未知问题", {"question_type": 6})
+    result = mgr.process("未知问题", {"question_type": 8})
     assert result["status"] == "no_routing"
-    assert result["data"]["question_type"] == 6
+    assert result["data"]["question_type"] == 8
     print("✓ 未知 question_type 返回 no_routing")
 
 

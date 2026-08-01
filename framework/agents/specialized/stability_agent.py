@@ -42,7 +42,7 @@ class StabilityRiskAgent(BaseAgent):
         risk_levels = ["低风险", "中风险", "高风险", "极高风险"]
         risk_types = ["掉级风险", "关键因子退化", "退化集聚", "持续低质"]
 
-        return {
+        return MockDataLoader.mark_simulated({
             "status": "ok",
             "result": {
                 "risk_level": risk_levels[0],
@@ -61,8 +61,9 @@ class StabilityRiskAgent(BaseAgent):
                     8: {"name": "退化空间集聚", "score": 0.1},
                     9: {"name": "持续低质风险", "score": 0.05},
                 }
-            }
-        }
+            },
+            "metadata": {"simulated": True},
+        })
 
     def _get_real_stability(self, context: Dict[str, Any]) -> Dict[str, Any]:
         """尝试获取实际稳定性评价结果"""

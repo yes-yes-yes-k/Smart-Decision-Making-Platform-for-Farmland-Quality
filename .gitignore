@@ -61,3 +61,4 @@ verify_output.log
 
 # 根目录散落 xlsx 文件
 /*.xlsx
+AGENTS.md
