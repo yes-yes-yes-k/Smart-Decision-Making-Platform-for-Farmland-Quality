@@ -224,3 +224,31 @@ def test_run_csv_missing_columns(tmp_path):
     output_csv = str(tmp_path / "_bad_output.csv")
     with pytest.raises(ValueError, match="CSV必须包含"):
         run_csv(input_csv, output_csv, "upland", "compound")
+
+
+# --- Task 5: v2 源码 393 地块回归测试 ---
+def test_acidification_v2_regression(tmp_path):
+    """v2 源码 393 地块回归测试（旱地+复合肥场景）。
+
+    对比 run_csv 输出与 v2 源码 04_旱地复合肥计算结果.csv 的 YTK/MBNT，
+    允许浮点偏差 < 0.01。极端值（Alex=8.95、SJD=4.19、Hex=1.62）通过
+    全量对比自动覆盖。
+    """
+    from ai_culti_demo.farmland_diagnosis.acidification import run_csv
+
+    input_csv = os.path.join(V2_DATA_DIR, "03_Data.csv")
+    expected_csv = os.path.join(V2_DATA_DIR, "04_upland_compound_expected.csv")
+    output_csv = str(tmp_path / "_test_regression_output.csv")
+
+    df = run_csv(input_csv, output_csv, "upland", "compound")
+    expected = pd.read_csv(expected_csv, encoding="utf-8-sig")
+
+    # 对比 YTK/MBNT（允许浮点误差 < 0.01）
+    for col in ["YTK", "MBNT"]:
+        actual = df[col].astype(float)
+        exp = expected[col].astype(float)
+        max_diff = (actual - exp).abs().max()
+        assert max_diff < 0.01, (
+            f"{col} 不一致：最大偏差 {max_diff}，"
+            f"首行 actual={actual.iloc[0]} expected={exp.iloc[0]}"
+        )
