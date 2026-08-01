@@ -15,7 +15,7 @@ design_doc: docs/superpowers/specs/2026-08-01-sync-acidification-model-v2-design
 plan: docs/superpowers/plans/2026-08-01-sync-acidification-model-v2.md
 verify_result: pending
 verification_report: docs/superpowers/reports/2026-08-01-sync-acidification-model-v2-verify.md
-branch_status: pending
+branch_status: handled
 created_at: 2026-08-01
 verified_at: null
 archived: false
