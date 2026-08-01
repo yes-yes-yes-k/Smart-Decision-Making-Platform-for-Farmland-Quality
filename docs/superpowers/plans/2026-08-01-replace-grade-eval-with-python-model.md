@@ -1,4 +1,4 @@
----
+﻿---
 change: replace-grade-eval-with-python-model
 design-doc: docs/superpowers/specs/2026-08-01-replace-grade-eval-with-python-model-design.md
 base-ref: 140230f6a23fd10d0877e6f24bb645f89b4254d5
@@ -88,7 +88,7 @@ base-ref: 140230f6a23fd10d0877e6f24bb645f89b4254d5
 
 **model2 源码位置:** `D:\destkop\模型\模型2\models.py`、`config.py`、`data_loader.py`
 
-- [ ] **Step 1: 编写数据层失败测试**
+- [x] **Step 1: 编写数据层失败测试**
 
 在 `tests/test_farmland_grade_eval.py` 写入以下内容（替换原有 parse_output 测试文件）：
 
@@ -214,12 +214,12 @@ class TestDataLoader:
             load_parcels_from_csv(str(tmp_path / "nonexistent.csv"))
 ```
 
-- [ ] **Step 2: 运行测试验证失败**
+- [x] **Step 2: 运行测试验证失败**
 
 Run: `python -m pytest tests/test_farmland_grade_eval.py::TestModels::test_parcel_dataclass_has_20_fields tests/test_farmland_grade_eval.py::TestEvaluationConfig::test_config_has_all_parameters tests/test_farmland_grade_eval.py::TestDataLoader -v`
 Expected: FAIL — `ModuleNotFoundError: No module named 'ai_culti_demo.farmland_grade_eval.models'`
 
-- [ ] **Step 3: 移植 models.py**
+- [x] **Step 3: 移植 models.py**
 
 创建 `src/ai_culti_demo/farmland_grade_eval/models.py`，从 `D:\destkop\模型\模型2\models.py` 复制全部内容（6 个 dataclass），无导入修正需要（原文件仅用 `dataclasses` 和 `typing` 标准库）：
 
@@ -314,7 +314,7 @@ class CountyPotentialResult:
     mj_grade_orig: List[float]
 ```
 
-- [ ] **Step 4: 移植 config.py**
+- [x] **Step 4: 移植 config.py**
 
 创建 `src/ai_culti_demo/farmland_grade_eval/config.py`，从 `D:\destkop\模型\模型2\config.py` 复制全部内容（EvaluationConfig 类），无导入修正需要：
 
@@ -433,7 +433,7 @@ class EvaluationConfig:
         ]
 ```
 
-- [ ] **Step 5: 移植 data_loader.py（修正导入 + 错误处理）**
+- [x] **Step 5: 移植 data_loader.py（修正导入 + 错误处理）**
 
 创建 `src/ai_culti_demo/farmland_grade_eval/data_loader.py`。相比 model2 原文件的改动：`from models import Parcel` → `from .models import Parcel`；`raise SystemExit(1)` → `raise FileNotFoundError` / `raise ValueError`（库函数不应调用 SystemExit）：
 
@@ -480,12 +480,12 @@ def load_parcels_from_csv(filename: str) -> List[Parcel]:
     return parcels
 ```
 
-- [ ] **Step 6: 运行测试验证通过**
+- [x] **Step 6: 运行测试验证通过**
 
 Run: `python -m pytest tests/test_farmland_grade_eval.py::TestModels tests/test_farmland_grade_eval.py::TestEvaluationConfig tests/test_farmland_grade_eval.py::TestDataLoader -v`
 Expected: PASS（全部 6 个测试通过）
 
-- [ ] **Step 7: 提交**
+- [x] **Step 7: 提交**
 
 ```bash
 git add src/ai_culti_demo/farmland_grade_eval/models.py src/ai_culti_demo/farmland_grade_eval/config.py src/ai_culti_demo/farmland_grade_eval/data_loader.py tests/test_farmland_grade_eval.py

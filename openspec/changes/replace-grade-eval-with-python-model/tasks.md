@@ -1,8 +1,8 @@
-## 1. model2 核心模块移植
+﻿## 1. model2 核心模块移植
 
-- [ ] 1.1 移植 `models.py`（Parcel, QualityResult, ObstacleItem, PotentialItem, CountyStats, CountyPotentialResult 数据类）到 `src/ai_culti_demo/farmland_grade_eval/models.py`
-- [ ] 1.2 移植 `config.py`（EvaluationConfig：隶属函数参数 a/c/ut1/ut2、概念型隶属度、权重、等级阈值、名称字典）到 `src/ai_culti_demo/farmland_grade_eval/config.py`
-- [ ] 1.3 移植 `data_loader.py`（load_parcels_from_csv：UTF-8-sig CSV → List[Parcel]，20 字段解析）到 `src/ai_culti_demo/farmland_grade_eval/data_loader.py`
+- [x] 1.1 移植 `models.py`（Parcel, QualityResult, ObstacleItem, PotentialItem, CountyStats, CountyPotentialResult 数据类）到 `src/ai_culti_demo/farmland_grade_eval/models.py`
+- [x] 1.2 移植 `config.py`（EvaluationConfig：隶属函数参数 a/c/ut1/ut2、概念型隶属度、权重、等级阈值、名称字典）到 `src/ai_culti_demo/farmland_grade_eval/config.py`
+- [x] 1.3 移植 `data_loader.py`（load_parcels_from_csv：UTF-8-sig CSV → List[Parcel]，20 字段解析）到 `src/ai_culti_demo/farmland_grade_eval/data_loader.py`
 - [ ] 1.4 移植 `evaluation.py`（membership_numeric 峰型/戒上型隶属函数 + evaluate_land_quality 综合指数与等级评定）到 `src/ai_culti_demo/farmland_grade_eval/evaluation.py`
 - [ ] 1.5 移植 `obstacle.py`（calc_limiting_factors + compute_obstacle_factors 障碍度因子计算与分级）到 `src/ai_culti_demo/farmland_grade_eval/obstacle.py`
 - [ ] 1.6 修正所有模块导入为包内相对导入（`from .config import`、`from .models import` 等）
