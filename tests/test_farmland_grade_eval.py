@@ -117,3 +117,105 @@ class TestDataLoader:
         from ai_culti_demo.farmland_grade_eval.data_loader import load_parcels_from_csv
         with pytest.raises(FileNotFoundError):
             load_parcels_from_csv(str(tmp_path / "nonexistent.csv"))
+
+
+# ========== 评价层测试 ==========
+
+class TestEvaluation:
+    """核心评价函数测试。"""
+
+    @pytest.fixture
+    def config(self):
+        from ai_culti_demo.farmland_grade_eval.config import EvaluationConfig
+        return EvaluationConfig()
+
+    @pytest.fixture
+    def parcel_a0001(self):
+        """A0001 地块数据（与 exe 历史输出对应的已知值）。"""
+        from ai_culti_demo.farmland_grade_eval.models import Parcel
+        return Parcel(
+            tybh="A0001", jd=112.973801, wd=25.324301, mj=100.0,
+            sjd=4.600, yjz=16.200, yxl=66.900, sxj=51.700, trrz=1.240,
+            yxtchd=120.000, gchd=17.000, jhxllz=0.0, jhxqlz=0.0,
+            ejnyq=1, xqmc=8, zdgc=6, psnl=3, ggnl=2, dxbw=6, zdgx=5,
+        )
+
+    def test_a0001_composite_index_matches_exe(self, config, parcel_a0001):
+        """A0001 综合指数与 exe 历史输出 0.6728 一致（容差 < 0.01）。"""
+        from ai_culti_demo.farmland_grade_eval.evaluation import evaluate_land_quality
+        result = evaluate_land_quality(config, parcel_a0001)
+        assert abs(result.quality_index - 0.6728) < 0.01
+
+    def test_a0001_grade_is_10(self, config, parcel_a0001):
+        """A0001 质量等级为 10 等。"""
+        from ai_culti_demo.farmland_grade_eval.evaluation import evaluate_land_quality
+        result = evaluate_land_quality(config, parcel_a0001)
+        assert result.grade == 10
+
+    def test_a0001_has_12_membership_values(self, config, parcel_a0001):
+        from ai_culti_demo.farmland_grade_eval.evaluation import evaluate_land_quality
+        result = evaluate_land_quality(config, parcel_a0001)
+        assert len(result.y) == 12
+
+    def test_invalid_ejnyq_raises_value_error(self, config):
+        from ai_culti_demo.farmland_grade_eval.models import Parcel
+        from ai_culti_demo.farmland_grade_eval.evaluation import evaluate_land_quality
+        parcel = Parcel(
+            tybh="X", jd=0, wd=0, mj=0, sjd=5.0, yjz=20, yxl=30, sxj=100,
+            trrz=1.35, yxtchd=60, gchd=20, jhxllz=0, jhxqlz=0,
+            ejnyq=99, xqmc=1, zdgc=3, psnl=1, ggnl=1, dxbw=1, zdgx=1,
+        )
+        with pytest.raises(ValueError, match="无效的二级农业区代码"):
+            evaluate_land_quality(config, parcel)
+
+    def test_invalid_zdgc_raises_value_error(self, config):
+        from ai_culti_demo.farmland_grade_eval.models import Parcel
+        from ai_culti_demo.farmland_grade_eval.evaluation import evaluate_land_quality
+        parcel = Parcel(
+            tybh="X", jd=0, wd=0, mj=0, sjd=5.0, yjz=20, yxl=30, sxj=100,
+            trrz=1.35, yxtchd=60, gchd=20, jhxllz=0, jhxqlz=0,
+            ejnyq=1, xqmc=1, zdgc=99, psnl=1, ggnl=1, dxbw=1, zdgx=1,
+        )
+        with pytest.raises(ValueError, match="ZDGC 编码超出范围"):
+            evaluate_land_quality(config, parcel)
+
+
+class TestObstacle:
+    """障碍度计算测试。"""
+
+    @pytest.fixture
+    def config(self):
+        from ai_culti_demo.farmland_grade_eval.config import EvaluationConfig
+        return EvaluationConfig()
+
+    def test_a0001_obstacle_factors_sorted_descending(self, config):
+        from ai_culti_demo.farmland_grade_eval.models import Parcel
+        from ai_culti_demo.farmland_grade_eval.evaluation import evaluate_land_quality
+        from ai_culti_demo.farmland_grade_eval.obstacle import compute_obstacle_factors
+        parcel = Parcel(
+            tybh="A0001", jd=112.973801, wd=25.324301, mj=100.0,
+            sjd=4.600, yjz=16.200, yxl=66.900, sxj=51.700, trrz=1.240,
+            yxtchd=120.000, gchd=17.000, jhxllz=0.0, jhxqlz=0.0,
+            ejnyq=1, xqmc=8, zdgc=6, psnl=3, ggnl=2, dxbw=6, zdgx=5,
+        )
+        result = evaluate_land_quality(config, parcel)
+        obstacles = compute_obstacle_factors(config, parcel.ejnyq, result.y)
+        assert len(obstacles) == 12
+        factors = [o.factor for o in obstacles]
+        assert factors == sorted(factors, reverse=True)
+
+    def test_a0001_top_obstacle_is_zdgx(self, config):
+        """A0001 首要障碍因子为质地构型（与 exe 历史输出一致）。"""
+        from ai_culti_demo.farmland_grade_eval.models import Parcel
+        from ai_culti_demo.farmland_grade_eval.evaluation import evaluate_land_quality
+        from ai_culti_demo.farmland_grade_eval.obstacle import compute_obstacle_factors
+        parcel = Parcel(
+            tybh="A0001", jd=112.973801, wd=25.324301, mj=100.0,
+            sjd=4.600, yjz=16.200, yxl=66.900, sxj=51.700, trrz=1.240,
+            yxtchd=120.000, gchd=17.000, jhxllz=0.0, jhxqlz=0.0,
+            ejnyq=1, xqmc=8, zdgc=6, psnl=3, ggnl=2, dxbw=6, zdgx=5,
+        )
+        result = evaluate_land_quality(config, parcel)
+        obstacles = compute_obstacle_factors(config, parcel.ejnyq, result.y)
+        assert obstacles[0].name.strip() == "质地构型"
+        assert abs(obstacles[0].factor - 0.169) < 0.01
