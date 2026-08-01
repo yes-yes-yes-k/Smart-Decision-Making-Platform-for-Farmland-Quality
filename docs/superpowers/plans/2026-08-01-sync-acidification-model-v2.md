@@ -562,7 +562,7 @@ NaN 行输出 None、utf-8-sig 编码、结果保留 2 位小数，与 v2 源码
 - Consumes: Task 4 的 `run_csv` 函数、`V2_DATA_DIR` 常量、`tests/data/acidification_v2/` 数据文件
 - Produces: `test_acidification_v2_regression` 测试，验证 393 地块 YTK/MBNT 与 v2 源码期望输出偏差 < 0.01
 
-- [ ] **Step 1: 编写回归测试**
+- [x] **Step 1: 编写回归测试**
 
 在 `tests/test_model4_acidification.py` 末尾（`test_run_csv_missing_columns` 之后）追加：
 
@@ -595,17 +595,17 @@ def test_acidification_v2_regression(tmp_path):
         )
 ```
 
-- [ ] **Step 2: 运行回归测试**
+- [x] **Step 2: 运行回归测试**
 
 Run: `pytest tests/test_model4_acidification.py::test_acidification_v2_regression -v`
 Expected: PASS（393 地块 YTK/MBNT 偏差 < 0.01）。若 FAIL，检查 `_finalize` 重构是否改变了 ytk/mbnt 计算（公式应不变），或 `_build_params` 是否漏掉复合肥额外参数。
 
-- [ ] **Step 3: 运行完整测试套件确认无回归**
+- [x] **Step 3: 运行完整测试套件确认无回归**
 
 Run: `pytest tests/test_model4_acidification.py -v`
 Expected: 所有测试 PASS
 
-- [ ] **Step 4: Commit**
+- [x] **Step 4: Commit**
 
 ```bash
 git add tests/test_model4_acidification.py
