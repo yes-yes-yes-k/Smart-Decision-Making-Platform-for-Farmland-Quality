@@ -1,8 +1,9 @@
 # -*- coding: utf-8 -*-
 """酸化改良过程模型。
 
-本模块用过程模型（移植自模型5源码
-D:\\destkop\\模型5\\模型5\\02_酸化模型计算-地块.py）替换旧的酸化改良经验逻辑。
+本模块用过程模型（移植自模型5 v2 源码
+D:\\destkop\\模型5_酸化模型_v2_20260801\\模型5_酸化模型_v2_20260801\\02_酸化模型计算.py）
+替换旧的酸化改良经验逻辑。原理文档 01_产酸过程计算公式.docx 有笔误，以源码为准。
 
 主要入口：
     calculate_acidification_amendment(pHstart, Hex, Alex, land_type, fertilizer_type, **optional_params)
@@ -26,7 +27,7 @@ from .config import AMENDMENT_CONFIG
 from .storage import DiagnosisStorage
 
 
-MODEL_VERSION = "process_v1_20260801"
+MODEL_VERSION = "process_v2_20260801"
 
 # 可配参数白名单（API 可覆盖；元素含量等内置参数不允许覆盖）
 CONFIGURABLE_PARAMS = {"RPH", "R", "Y", "S", "FertN", "Ndep", "pHtarget"}

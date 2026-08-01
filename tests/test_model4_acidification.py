@@ -87,7 +87,7 @@ def test_optional_param_override():
 
 def test_model_version_present():
     r = calculate_acidification_amendment(PHSTART, HEX, ALEX)
-    assert r.get("model_version") == "process_v1_20260801"
+    assert r.get("model_version") == "process_v2_20260801"
 
 
 # --- Task 3: model_4_execution 入口测试（覆盖 6.6） ---
@@ -98,7 +98,7 @@ def test_model4_execution_direct_inputs():
     r = model_4_execution({"SJD": 4.31, "JHX": 1.56, "JLA": 4.08}, land_type="upland", fertilizer_type="urea")
     assert r["status"] == "success"
     assert r["sub_model"] == "upland_urea"
-    assert r["model_version"] == "process_v1_20260801"
+    assert r["model_version"] == "process_v2_20260801"
     assert r["ytk"] is not None
 
 
