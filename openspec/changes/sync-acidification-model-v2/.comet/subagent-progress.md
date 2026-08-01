@@ -9,13 +9,19 @@
 
 - 阶段: done
 - implementer commit: 2f88c0e
-- base commit (dispatch): 04c6e64
-- 测试: 12 passed (11 baseline + 1 characterization test), RED→GREEN 证据已记录
-- 风险信号: 无（单模块内部重构，diff +54/-7，无跨模块/API/安全变更）
-- 审查: standard 模式无风险信号 → 直接勾选，未派发每任务 reviewer
+- 测试: 12 passed, RED→GREEN 证据已记录
+- 风险信号: 无
 - task-checkoff: PASS
 
-## Task 2: 提取 `_build_params` 参数装配函数 — IN PROGRESS
+## Task 2: 提取 `_build_params` 参数装配函数 — COMPLETE
+
+- 阶段: done
+- implementer commit: 38b7d8c
+- 测试: 13/13 passed (12 baseline + 1 test_build_params), RED→GREEN
+- 风险信号: 无（单模块改动，diff 41 行，无 API 变更）
+- task-checkoff: PASS
+
+## Task 3: 版本标识升级与文档同步 — IN PROGRESS
 
 - 阶段: implementing
 - base commit (dispatch): (recording next)

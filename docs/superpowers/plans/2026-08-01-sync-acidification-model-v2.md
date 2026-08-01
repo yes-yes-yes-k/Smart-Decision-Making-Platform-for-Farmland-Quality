@@ -185,12 +185,12 @@ git commit -m "refactor(acidification): _finalize 返回 7 字段 dict，4 子�
 - Consumes: Task 1 的 4 个子模型函数（无变化）
 - Produces: `_build_params(land_type: str, fertilizer_type: str) -> Dict[str, float]`，返回默认参数 dict 副本（不含可配覆盖）。`calculate_acidification_amendment` 与后续 Task 4 的 `run_csv` 均复用此函数。
 
-- [ ] **Step 1: 基线测试 — 确认现有测试通过**
+- [x] **Step 1: 基线测试 — 确认现有测试通过**
 
 Run: `pytest tests/test_model4_acidification.py -v`
 Expected: 所有测试 PASS
 
-- [ ] **Step 2: 新增 `_build_params` 函数**
+- [x] **Step 2: 新增 `_build_params` 函数**
 
 在 `src/ai_culti_demo/farmland_diagnosis/acidification.py` 的 `_SUB_MODEL_MAP` 定义之前（第 180 行附近，`_upland_compound` 函数之后）插入：
 
@@ -208,7 +208,7 @@ def _build_params(land_type: str, fertilizer_type: str) -> Dict[str, float]:
     return base
 ```
 
-- [ ] **Step 3: 重构 `calculate_acidification_amendment` 复用 `_build_params`**
+- [x] **Step 3: 重构 `calculate_acidification_amendment` 复用 `_build_params`**
 
 将 `calculate_acidification_amendment` 中第 231-234 行（`# 4. 组装默认参数` 注释下方的 3 行）：
 
@@ -224,12 +224,12 @@ def _build_params(land_type: str, fertilizer_type: str) -> Dict[str, float]:
     base = _build_params(lt, ft)
 ```
 
-- [ ] **Step 4: 运行测试确认无回归**
+- [x] **Step 4: 运行测试确认无回归**
 
 Run: `pytest tests/test_model4_acidification.py -v`
 Expected: 所有测试 PASS（参数装配逻辑等价，`test_optional_param_override` 验证可配覆盖仍生效）
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add src/ai_culti_demo/farmland_diagnosis/acidification.py
