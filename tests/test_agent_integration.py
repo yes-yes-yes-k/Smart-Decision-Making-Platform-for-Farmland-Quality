@@ -24,7 +24,7 @@ class _UnavailableLLM:
 
 @pytest.fixture(autouse=True)
 def disable_external_llm(monkeypatch):
-    """集成测试只验证本地路由和降级结构，不依赖网络或模型密钥。"""
+    """集成测试只验证本地路由和降级结构，不依赖外部运行时。"""
     from framework.agents import nodes
     from framework.rag import chain
 
@@ -32,6 +32,15 @@ def disable_external_llm(monkeypatch):
     monkeypatch.setattr(nodes, "llm_service", llm)
     monkeypatch.setattr(chain, "llm_service", llm)
     monkeypatch.setattr(chain.rag_chain, "llm_service", llm)
+    monkeypatch.setattr(
+        chain.rag_chain,
+        "chat",
+        lambda question, conversation_history=None: {
+            "success": False,
+            "answer": "RAG服务暂时不可用",
+            "sources": [],
+        },
+    )
 
 
 def _make_state(question: str, question_type: int = 1) -> MultiAgentState:
@@ -180,7 +189,10 @@ def test_e2e_recommendations_aggregated():
     class _FakeAgent:
         dependencies: list = []
 
-        def answer_question(self, question, context):
+        def analyze(self, payload):
+            return {"status": "ok", "result": {}}
+
+        def answer_from_analysis(self, analysis):
             return {
                 "answer": "测试回复",
                 "evidence": [
