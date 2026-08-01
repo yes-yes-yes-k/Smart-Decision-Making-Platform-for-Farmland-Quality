@@ -68,19 +68,8 @@ TBD - created by archiving change add-data-import-interface. Update Purpose afte
 - **WHEN** shapefile zip 通过上传阶段校验（manifest 完整、5 组件齐全），但 shapefile 字段缺少 `LSD1`~`LSD12`、`QZ1`~`QZ12`、`ZHQZ`、`GDZLDJ`、`ID`、`PJFQ` 中的任一项
 - **THEN** 系统 SHALL 在触发阶段由 `run_all_models` 内置的 `require_columns` 抛出 `ValueError`，触发器捕获后从备份回滚，返回 HTTP 400，`status: "error"`、`message` 包含缺失的字段名列表
 
-### Requirement: DAT Data Validation
-系统 SHALL 校验 `.dat` 文件为非空可读二进制文件，文件大小 > 0 且 ≤ 200MB。
-
-#### Scenario: .dat 文件为空
-- **WHEN** 上传的 .dat 文件大小为 0 字节
-- **THEN** 系统 SHALL 返回 HTTP 400，响应体 `status: "error"`、`message: ".dat 文件为空"`
-
-#### Scenario: .dat 文件可读
-- **WHEN** 上传的 .dat 文件大小 > 0 且 ≤ 200MB
-- **THEN** 系统 SHALL 接受该文件并继续部署和触发流程
-
 ### Requirement: Data Deployment with Backup
-系统 SHALL 在部署新数据前，将目标目录下的现有文件移动到 `<target_dir>/backup/<YYYYMMDD-HHMMSS>/` 子目录；部署完成后 SHALL 扫描 `backup/` 下所有时间戳目录，按目录名倒序保留前 3 份，删除其余。CSV 部署到 `data/farmland_diagnosis/`、shapefile 部署到 `data/farmland_stability/`、.dat 部署到 `bin/farmland_quality_eval/`。
+系统 SHALL 在部署新数据前，将目标目录下的现有文件移动到 `<target_dir>/backup/<YYYYMMDD-HHMMSS>/` 子目录；部署完成后 SHALL 扫描 `backup/` 下所有时间戳目录，按目录名倒序保留前 3 份，删除其余。诊断 CSV 部署到 `data/farmland_diagnosis/`、shapefile 部署到 `data/farmland_stability/`、耕地质量评价 CSV 部署到 `bin/farmland_quality_eval/`。
 
 #### Scenario: 首次部署（目标目录无现有文件）
 - **WHEN** 目标目录下不存在任何现有数据文件（仅有 README.md 或为空）
@@ -90,23 +79,27 @@ TBD - created by archiving change add-data-import-interface. Update Purpose afte
 - **WHEN** 目标目录下存在现有数据文件
 - **THEN** 系统 SHALL 将现有数据文件（排除 README.md 和 `backup/` 子目录）移动到 `<target_dir>/backup/<YYYYMMDD-HHMMSS>/`，再写入新文件，响应中 `backup_path` 为该备份目录路径
 
-#### Scenario: CSV 部署时重命名为 test.csv
-- **WHEN** 上传的 CSV 文件原名为任意名称（如 `mydata.csv`），校验通过后部署到 `data/farmland_diagnosis/`
+#### Scenario: 诊断 CSV 部署时重命名为 test.csv
+- **WHEN** 上传的诊断 CSV 文件原名为任意名称（如 `mydata.csv`），校验通过后部署到 `data/farmland_diagnosis/`
 - **THEN** 系统 SHALL 将文件重命名为 `test.csv` 写入目标目录（与 README 约定和下游 `bulk_evaluate` 默认读取路径一致），原文件名记录在审计日志中
+
+#### Scenario: 耕地质量评价 CSV 部署时重命名为固定文件名
+- **WHEN** 上传的耕地质量评价 CSV 文件原名为任意名称，校验通过后部署到 `bin/farmland_quality_eval/`
+- **THEN** 系统 SHALL 将文件重命名为 `Farmland_quality_Level_Database.csv` 写入目标目录（与 runner 默认读取路径一致），原文件名记录在审计日志中
 
 #### Scenario: 备份目录超过 3 份
 - **WHEN** 部署完成后 `backup/` 下存在超过 3 个时间戳子目录
 - **THEN** 系统 SHALL 按目录名倒序保留最新 3 份，删除其余旧备份目录及其内容
 
 ### Requirement: Offline Computation Trigger
-系统 SHALL 在部署成功后同步触发对应数据类型的离线计算：CSV 触发 `bulk_evaluate(input_csv, output_db_path)`、shapefile 触发 `precompute.main(shapefile_dir, manifest)`（封装 `run_all_models` → `StabilityStorage.save_results` → `save_final_results` 完整流程）、.dat 触发 `FarmlandGradeRunner.check_deployment()`。触发超时为 600 秒（配置项 `DATA_IMPORT_TIMEOUT`）。
+系统 SHALL 在部署成功后同步触发对应数据类型的离线计算：诊断 CSV 触发 `bulk_evaluate(input_csv, output_db_path)`、shapefile 触发 `precompute.main(shapefile_dir, manifest)`（封装 `run_all_models` → `StabilityStorage.save_results` → `save_final_results` 完整流程）、耕地质量评价 CSV 触发 `FarmlandGradeRunner.check_deployment()`。触发超时为 600 秒（配置项 `DATA_IMPORT_TIMEOUT`）。
 
-#### Scenario: CSV 触发 bulk_evaluate 成功
-- **WHEN** CSV 部署成功后调用 `bulk_evaluate` 返回 `status: "ok"`
+#### Scenario: 诊断 CSV 触发 bulk_evaluate 成功
+- **WHEN** 诊断 CSV 部署成功后调用 `bulk_evaluate` 返回 `status: "ok"`
 - **THEN** 系统 SHALL 返回 HTTP 200，`trigger_result` 包含 `processed` 行数和 `errors` 列表（可能为空）
 
-#### Scenario: CSV 触发 bulk_evaluate 返回错误
-- **WHEN** CSV 部署成功后调用 `bulk_evaluate` 返回 `status: "error"`（例如未知区域名称）
+#### Scenario: 诊断 CSV 触发 bulk_evaluate 返回错误
+- **WHEN** 诊断 CSV 部署成功后调用 `bulk_evaluate` 返回 `status: "error"`（例如未知区域名称）
 - **THEN** 系统 SHALL 从最近一次 `backup/` 恢复文件，返回 HTTP 500，`status: "error"`、`message: "触发失败已回滚"`、`trigger_error` 包含 bulk_evaluate 返回的错误信息
 
 #### Scenario: shapefile 触发 precompute 成功
@@ -121,9 +114,9 @@ TBD - created by archiving change add-data-import-interface. Update Purpose afte
 - **WHEN** 触发函数执行时间超过 600 秒
 - **THEN** 系统 SHALL 终止触发操作，从最近一次 `backup/` 恢复文件，返回 HTTP 504，`status: "error"`、`message: "触发超时已回滚"`
 
-#### Scenario: .dat 部署后自动生效
-- **WHEN** .dat 部署成功后调用 `check_deployment` 返回通过
-- **THEN** 系统 SHALL 返回 HTTP 200，`trigger_result` 包含 `deployment_ok: true`，不调用 exe（exe 在后续查询时按需启动）
+#### Scenario: 耕地质量评价 CSV 部署后自动生效
+- **WHEN** 耕地质量评价 CSV 部署成功后调用 `check_deployment` 返回通过
+- **THEN** 系统 SHALL 返回 HTTP 200，`trigger_result` 包含 `deployment_ok: true`，后续查询时按需从 CSV 加载数据
 
 ### Requirement: Admin Permission Control
 系统 SHALL 仅允许 `role == 'admin'` 的用户调用数据导入端点；非 admin 用户 SHALL 返回 HTTP 403。
@@ -165,4 +158,19 @@ TBD - created by archiving change add-data-import-interface. Update Purpose afte
 #### Scenario: 文件大小超限
 - **WHEN** 上传的文件大小 > 200MB
 - **THEN** 系统 SHALL 返回 HTTP 413，响应体 `status: "error"`、`message: "文件大小超过 200MB 限制"`
+
+### Requirement: 耕地质量评价 CSV 数据校验
+系统 SHALL 校验上传的耕地质量评价 CSV 文件为非空可读文本文件，文件大小 > 0 且 ≤ 200MB，编码为 UTF-8（带或不带 BOM），且 SHALL 包含 20 个必需字段（SiteID、JD、WD、MJ、SJD、YJZ、YXL、SXJ、TRRZ、YXTCHD、GCHD、JHXLLZ、JHXQLZ、EJNYQcode、XQMCcode、GCZDcode、PSNLcode、GGNLcode、DXBWcode、ZDGXcode），字段名以 CSV 首行表头为准。
+
+#### Scenario: CSV 文件为空
+- **WHEN** 上传的耕地质量评价 CSV 文件大小为 0 字节
+- **THEN** 系统 SHALL 返回 HTTP 400，响应体 `status: "error"`、`message: "CSV 文件为空"`
+
+#### Scenario: CSV 文件可读且字段完整
+- **WHEN** 上传的 CSV 文件大小 > 0 且 ≤ 200MB，含 20 个必需字段
+- **THEN** 系统 SHALL 接受该文件并继续部署和触发流程
+
+#### Scenario: CSV 字段缺失
+- **WHEN** 上传的 CSV 文件缺少必需字段（如缺少 ejnyq 或 zdgx 列）
+- **THEN** 系统 SHALL 返回 HTTP 400，`status: "error"`、`message` 包含缺失的字段名列表
 

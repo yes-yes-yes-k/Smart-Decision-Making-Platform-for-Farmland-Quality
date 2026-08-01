@@ -2,6 +2,8 @@
 comet_change: replace-grade-eval-with-python-model
 role: technical-design
 canonical_spec: openspec
+archived-with: 2026-08-01-replace-grade-eval-with-python-model
+status: final
 ---
 
 # Design Doc: replace-grade-eval-with-python-model
@@ -333,3 +335,4 @@ def test_a0001_indicators_format():
 8. 测试（第 4 节）
 9. 文档更新
 10. exe/.dat 废弃清理
+

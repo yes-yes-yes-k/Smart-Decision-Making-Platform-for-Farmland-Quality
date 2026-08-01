@@ -18,7 +18,7 @@ verification_report: docs/superpowers/reports/2026-08-01-replace-grade-eval-with
 branch_status: handled
 created_at: 2026-08-01
 verified_at: 2026-08-01
-archived: false
+archived: true
 direct_override: null
 handoff_context: openspec/changes/replace-grade-eval-with-python-model/.comet/handoff/design-context.json
 handoff_hash: 5aabfcd2b9d522b49c62b4f9bbbf97ba539f7f646374a54c765eec73c8a23732
