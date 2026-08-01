@@ -674,7 +674,7 @@ if __name__ == "__main__":
     main()
 ```
 
-- [ ] **Step 2: 运行 CLI 脚本验证成功路径**
+- [x] **Step 2: 运行 CLI 脚本验证成功路径**
 
 Run:
 ```bash
@@ -682,7 +682,7 @@ python "d:\17417\Documents\agent_culti_demo\scripts\run_acidification_batch.py" 
 ```
 Expected: 退出码 0，控制台输出 `批量计算完成：共处理 393 行，输出写入 ...`
 
-- [ ] **Step 3: 验证 CLI 输出与期望一致**
+- [x] **Step 3: 验证 CLI 输出与期望一致**
 
 Run:
 ```bash
@@ -690,7 +690,7 @@ python -c "import pandas as pd; a=pd.read_csv(r'd:\17417\Documents\agent_culti_d
 ```
 Expected: YTK max diff < 0.01, MBNT max diff < 0.01
 
-- [ ] **Step 4: 验证 CLI 错误路径（非法 land_type）**
+- [x] **Step 4: 验证 CLI 错误路径（非法 land_type）**
 
 Run:
 ```bash
@@ -698,7 +698,7 @@ python "d:\17417\Documents\agent_culti_demo\scripts\run_acidification_batch.py" 
 ```
 Expected: 控制台输出 `错误：土地类型只能为水田或旱地，肥料类型只能为尿素或复合肥`（到 stderr），退出码 1
 
-- [ ] **Step 5: 清理 CLI 测试产物**
+- [x] **Step 5: 清理 CLI 测试产物**
 
 Run:
 ```bash
@@ -727,7 +727,7 @@ argparse 定义 4 个必填参数（--input/--output/--land/--fertilizer），
 - Consumes: Task 1-6 的全部产出
 - Produces: 集成验证通过的确认；delta spec 与 agent 透传验证记录
 
-- [ ] **Step 1: CLI 端到端验证**
+- [x] **Step 1: CLI 端到端验证**
 
 Run:
 ```bash
@@ -735,7 +735,7 @@ python "d:\17417\Documents\agent_culti_demo\scripts\run_acidification_batch.py" 
 ```
 Expected: 退出码 0，输出 `批量计算完成：共处理 393 行...`
 
-- [ ] **Step 2: 对比 CLI 输出与期望 CSV 完全一致**
+- [x] **Step 2: 对比 CLI 输出与期望 CSV 完全一致**
 
 Run:
 ```bash
@@ -743,14 +743,14 @@ python -c "import pandas as pd; a=pd.read_csv(r'd:\17417\Documents\agent_culti_d
 ```
 Expected: 输出 `CLI 输出与期望一致：393 行 YTK/MBNT 偏差 < 0.01`
 
-- [ ] **Step 3: 清理集成测试产物**
+- [x] **Step 3: 清理集成测试产物**
 
 Run:
 ```bash
 Remove-Item "d:\17417\Documents\agent_culti_demo\tests\data\acidification_v2\_integration_output.csv" -ErrorAction SilentlyContinue
 ```
 
-- [ ] **Step 4: 运行酸化模型完整测试套件**
+- [x] **Step 4: 运行酸化模型完整测试套件**
 
 Run: `pytest tests/test_model4_acidification.py -v`
 Expected: 所有测试 PASS（含原有测试 + `test_run_csv_*` + `test_acidification_v2_regression`）
@@ -760,17 +760,17 @@ Expected: 所有测试 PASS（含原有测试 + `test_run_csv_*` + `test_acidifi
 Run: `pytest tests/test_agent_specialized.py -v -k "acidification or model_4 or model4"`
 Expected: 所有相关测试 PASS（`acidification_agent.py` 通过 `result.get("model_version")` 透传，无硬编码版本号，升级后自动返回 v2）
 
-- [ ] **Step 6: 验证 delta spec 完整性**
+- [x] **Step 6: 验证 delta spec 完整性**
 
 Run: `Read d:\17417\Documents\agent_culti_demo\openspec\changes\sync-acidification-model-v2\specs\farmland-acidification-improvement-model\spec.md`
 Expected: 文件存在，包含 3 个 Requirement（v2 版本标识、批量 CSV 计算工具、v2 回归测试验证），与 design doc 一致。无需改动。
 
-- [ ] **Step 7: 验证 `acidification_agent.py` 无硬编码版本号**
+- [x] **Step 7: 验证 `acidification_agent.py` 无硬编码版本号**
 
 Run: `Select-String -Path "d:\17417\Documents\agent_culti_demo\framework\agents\specialized\acidification_agent.py" -Pattern "process_v" -SimpleMatch`
 Expected: 无输出（agent 通过 `result.get("model_version")` 透传，无硬编码 v1/v2，升级后自动返回 v2，无需改动）
 
-- [ ] **Step 8: 运行更广泛的测试套件确认无跨模块回归**
+- [x] **Step 8: 运行更广泛的测试套件确认无跨模块回归**
 
 Run: `pytest tests/test_farmland_diagnosis.py tests/test_thematic_models.py tests/test_execute_models_pipeline.py -v`
 Expected: 所有测试 PASS（酸化模型升级不影响其他模型与诊断流程）
