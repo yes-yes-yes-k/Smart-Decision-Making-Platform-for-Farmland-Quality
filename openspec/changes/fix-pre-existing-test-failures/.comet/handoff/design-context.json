@@ -1,0 +1,14 @@
+{
+  "change": "fix-pre-existing-test-failures",
+  "phase": "design",
+  "mode": "compact",
+  "canonical_spec": "openspec",
+  "generated_by": "comet-handoff.sh",
+  "context_hash": "47077aa2bbf98c97091010c2562947cdb8c4b5ba95fea12196ad8d1a9fb823e4",
+  "files": [
+    { "path": "openspec/changes/fix-pre-existing-test-failures/proposal.md", "sha256": "6723c5f3f379c68c076cfa7d82bccbddb23168127734bff98bf5d478953412fc" },
+    { "path": "openspec/changes/fix-pre-existing-test-failures/design.md", "sha256": "1f132ef8c12a62a7f9a0b7f62078980d2b0a713c13f2822eb83620eaf4b94868" },
+    { "path": "openspec/changes/fix-pre-existing-test-failures/tasks.md", "sha256": "ce2d8e4c93fe947a79b27804602476de48e09748a9eb015867d0b784b6bccaf7" },
+    { "path": "openspec/changes/fix-pre-existing-test-failures/specs/database-models/spec.md", "sha256": "5201a41d6c95205b6b6642a7220216677f5951a55c81b834a977cb7bbfaed23f" }
+  ]
+}
