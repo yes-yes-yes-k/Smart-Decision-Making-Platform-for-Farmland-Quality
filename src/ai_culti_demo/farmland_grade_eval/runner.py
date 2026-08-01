@@ -12,6 +12,8 @@ from .models import Parcel
 from .data_loader import load_parcels_from_csv
 from .evaluation import evaluate_land_quality
 from .obstacle import compute_obstacle_factors
+from .potential import compute_single_parcel_potential, county_potential_statistics_data
+from .statistics import county_statistics_data
 
 MODEL_VERSION = "python_v1_20260801"
 DEFAULT_CSV_PATH = "bin/farmland_quality_eval/Farmland_quality_Level_Database.csv"
@@ -170,3 +172,84 @@ def run_grade_evaluation(parcel_code: str, exe_path: str = None, dat_path: str =
     """
     runner = FarmlandGradeRunner(exe_path, dat_path)
     return runner.run(parcel_code)
+
+
+def run_potential_analysis(parcel_code: str, csv_path: str = None) -> Dict[str, Any]:
+    """单地块潜力分析：模拟各指标改良后的潜在质量指数与等级提升。"""
+    runner = FarmlandGradeRunner(dat_path=csv_path)
+    deployment = runner.check_deployment()
+    if not deployment["ready"]:
+        return {"status": "error", "error": {"code": "DEPLOYMENT_ERROR",
+                "message": f"CSV 数据文件缺失: {runner.csv_path}"}}
+
+    try:
+        parcels = runner._load_parcels()
+    except (FileNotFoundError, ValueError) as e:
+        return {"status": "error", "error": {"code": "DEPLOYMENT_ERROR",
+                "message": f"CSV 数据加载失败: {e}"}}
+
+    parcel = next((p for p in parcels if p.tybh.strip() == parcel_code), None)
+    if parcel is None:
+        return {"status": "error", "error": {"code": "PARCEL_NOT_FOUND",
+                "message": f"未找到地块代码: {parcel_code}"}}
+
+    config = EvaluationConfig()
+    try:
+        result = evaluate_land_quality(config, parcel)
+        items, full_result = compute_single_parcel_potential(
+            config, parcel, result.y, result.quality_index, result.grade)
+    except ValueError as e:
+        return {"status": "error", "error": {"code": "INVALID_ENCODING", "message": str(e)}}
+
+    return {
+        "status": "ok",
+        "parcel_code": parcel_code,
+        "original": {"quality_index": result.quality_index, "grade": result.grade},
+        "full_potential": {"quality_index": full_result.quality_index, "grade": full_result.grade},
+        "items": [dataclasses.asdict(item) for item in items],
+    }
+
+
+def run_county_statistics(xqmc_code: int, csv_path: str = None) -> Dict[str, Any]:
+    """县域常规统计：等级分布、障碍度统计、首要障碍指标。"""
+    runner = FarmlandGradeRunner(dat_path=csv_path)
+    deployment = runner.check_deployment()
+    if not deployment["ready"]:
+        return {"status": "error", "error": {"code": "DEPLOYMENT_ERROR",
+                "message": f"CSV 数据文件缺失: {runner.csv_path}"}}
+
+    try:
+        parcels = runner._load_parcels()
+    except (FileNotFoundError, ValueError) as e:
+        return {"status": "error", "error": {"code": "DEPLOYMENT_ERROR",
+                "message": f"CSV 数据加载失败: {e}"}}
+
+    config = EvaluationConfig()
+    stats = county_statistics_data(config, parcels, xqmc_code)
+    if stats is None:
+        return {"status": "error", "error": {"code": "NO_DATA",
+                "message": f"县区 {xqmc_code} 无地块数据"}}
+    return {"status": "ok", "county_code": xqmc_code, "stats": dataclasses.asdict(stats)}
+
+
+def run_county_potential(xqmc_code: int, scenario: int, csv_path: str = None) -> Dict[str, Any]:
+    """县域潜力情景分析：scenario=1 理想潜力，scenario=2 最佳潜力。"""
+    runner = FarmlandGradeRunner(dat_path=csv_path)
+    deployment = runner.check_deployment()
+    if not deployment["ready"]:
+        return {"status": "error", "error": {"code": "DEPLOYMENT_ERROR",
+                "message": f"CSV 数据文件缺失: {runner.csv_path}"}}
+
+    try:
+        parcels = runner._load_parcels()
+    except (FileNotFoundError, ValueError) as e:
+        return {"status": "error", "error": {"code": "DEPLOYMENT_ERROR",
+                "message": f"CSV 数据加载失败: {e}"}}
+
+    config = EvaluationConfig()
+    result = county_potential_statistics_data(config, parcels, xqmc_code, scenario)
+    if result is None:
+        return {"status": "error", "error": {"code": "NO_DATA",
+                "message": f"县区 {xqmc_code} 无地块数据"}}
+    return {"status": "ok", "county_code": xqmc_code, "scenario": scenario,
+            "result": dataclasses.asdict(result)}

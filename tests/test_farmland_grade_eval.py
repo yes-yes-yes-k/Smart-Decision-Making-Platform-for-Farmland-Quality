@@ -330,3 +330,58 @@ class TestBackwardCompatibility:
         from ai_culti_demo.farmland_grade_eval.runner import FarmlandGradeRunner
         runner = FarmlandGradeRunner(exe_path="ignored.exe", dat_path=None)
         assert runner.csv_path is not None  # 使用默认 CSV 路径
+
+
+# ========== 潜力分析与县域统计测试 ==========
+
+class TestPotentialAnalysis:
+    """单地块潜力分析测试。"""
+
+    def test_run_potential_analysis_a0001(self):
+        from ai_culti_demo.farmland_grade_eval.runner import run_potential_analysis
+        result = run_potential_analysis("A0001")
+        assert result["status"] == "ok"
+        assert result["parcel_code"] == "A0001"
+        assert "original" in result
+        assert "full_potential" in result
+        assert "items" in result
+        assert isinstance(result["items"], list)
+
+    def test_run_potential_analysis_invalid_parcel(self):
+        from ai_culti_demo.farmland_grade_eval.runner import run_potential_analysis
+        result = run_potential_analysis("INVALID_99999")
+        assert result["status"] == "error"
+        assert result["error"]["code"] == "PARCEL_NOT_FOUND"
+
+
+class TestCountyStatistics:
+    """县域统计测试。"""
+
+    def test_run_county_statistics_wujiang(self):
+        """武江区（xqmc=8）县域常规统计。"""
+        from ai_culti_demo.farmland_grade_eval.runner import run_county_statistics
+        result = run_county_statistics(8)
+        assert result["status"] == "ok"
+        assert result["county_code"] == 8
+        assert "stats" in result
+        assert result["stats"]["parcel_count"] > 0
+
+    def test_run_county_statistics_no_data(self):
+        from ai_culti_demo.farmland_grade_eval.runner import run_county_statistics
+        result = run_county_statistics(999)
+        assert result["status"] == "error"
+        assert result["error"]["code"] == "NO_DATA"
+
+    def test_run_county_potential_ideal(self):
+        """武江区理想潜力（scenario=1）。"""
+        from ai_culti_demo.farmland_grade_eval.runner import run_county_potential
+        result = run_county_potential(8, 1)
+        assert result["status"] == "ok"
+        assert result["scenario"] == 1
+
+    def test_run_county_potential_best(self):
+        """武江区最佳潜力（scenario=2）。"""
+        from ai_culti_demo.farmland_grade_eval.runner import run_county_potential
+        result = run_county_potential(8, 2)
+        assert result["status"] == "ok"
+        assert result["scenario"] == 2
