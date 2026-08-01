@@ -256,7 +256,7 @@ route_models（路由分发）
 
 7 个专业智能体基于 [src/ai_culti_demo/thematic_models.py](src/ai_culti_demo/thematic_models.py) 的 8 个专题模型实现，通过 [framework/core_engine/adapter.py](framework/core_engine/adapter.py) 桥接调用。model-2（潜力评估）和 model-5（有机质培肥）保留注册但不被 question_type 路由调用，仅用于向后兼容。
 
-**酸化改良（model-4）过程模型**：已从规则导向（GB/T 42817-2023 石灰剂量）替换为过程模型（移植自模型5源码），按 `land_type`（水田 paddy / 旱地 upland）× `fertilizer_type`（尿素 urea / 复合肥 compound）组合选择 4 个子模型之一，计算亿土康（YTK）与木本泥炭（MBNT）需求量（kg/ha）。必填输入为 SJD（pH）、JHX（交换性氢）、JLA（交换性铝）；`parcel_id` 可自动补 SJD。模型版本 `process_v1_20260801`。详见 [docs/api.md](docs/api.md) 酸化改良章节。
+**酸化改良（model-4）过程模型**：已从规则导向（GB/T 42817-2023 石灰剂量）替换为过程模型（移植自模型5源码），按 `land_type`（水田 paddy / 旱地 upland）× `fertilizer_type`（尿素 urea / 复合肥 compound）组合选择 4 个子模型之一，计算亿土康（YTK）与木本泥炭（MBNT）需求量（kg/ha）。必填输入为 SJD（pH）、JHX（交换性氢）、JLA（交换性铝）；`parcel_id` 可自动补 SJD。模型版本 `process_v2_20260801`。详见 [docs/api.md](docs/api.md) 酸化改良章节。
 
 ## 配置说明
 

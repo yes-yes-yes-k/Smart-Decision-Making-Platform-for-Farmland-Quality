@@ -396,7 +396,7 @@ context 参数说明：
 | `acidification_detail.result.mbnt` | float | 木本泥炭施用量（kg/ha），rejected 时为 `null` |
 | `acidification_detail.result.sub_model` | string | 命中的子模型名称（如 `upland_compound`） |
 | `acidification_detail.result.customized_params` | object | API 覆盖的可配参数，空对象表示全用默认值 |
-| `acidification_detail.metadata.model_version` | string | 过程模型版本号（`process_v1_20260801`） |
+| `acidification_detail.metadata.model_version` | string | 过程模型版本号（`process_v2_20260801`） |
 | `acidification_detail.metadata.warning` | string | 警告信息（如 land_type/fertilizer_type 非法回退），无警告时缺省 |
 | `acidification_detail.metadata.reason` | string | rejected 原因：`missing_input` / `input_out_of_range` / `cannot_get_ph` / `model_unavailable` |
 
@@ -435,7 +435,7 @@ context 参数说明：
                                 "customized_params": {}
                             },
                             "metadata": {
-                                "model_version": "process_v1_20260801",
+                                "model_version": "process_v2_20260801",
                                 "warning": null,
                                 "reason": null
                             }
@@ -461,7 +461,7 @@ context 参数说明：
         "status": "rejected",
         "result": {"ytk": null, "mbnt": null, "sub_model": null, "customized_params": {}},
         "metadata": {
-            "model_version": "process_v1_20260801",
+            "model_version": "process_v2_20260801",
             "reason": "cannot_get_ph"
         }
     }

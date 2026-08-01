@@ -35,7 +35,7 @@ def model_4_execution(
     if not _ACID_AVAILABLE:
         return {"status": "rejected", "reason": "model_unavailable",
                 "ytk": None, "mbnt": None, "land_type": lt, "fertilizer_type": ft,
-                "model_version": "process_v1_20260801", "customized_params": {}}
+                "model_version": "process_v2_20260801", "customized_params": {}}
 
     # 提取 pHstart：优先 SJD，缺则用 parcel_id 查 DB
     sjd = data.get("SJD")
@@ -46,7 +46,7 @@ def model_4_execution(
             if sjd is None:
                 return {"status": "rejected", "reason": "cannot_get_ph",
                         "ytk": None, "mbnt": None, "land_type": lt, "fertilizer_type": ft,
-                        "model_version": "process_v1_20260801", "customized_params": {},
+                        "model_version": "process_v2_20260801", "customized_params": {},
                         "warning": "无法从 DB 获取 SJD，请提供 SJD"}
         else:
             sjd = None
@@ -71,7 +71,7 @@ def model_4_execution(
         "mbnt": res.get("mbnt"),
         "land_type": res.get("land_type", lt),
         "fertilizer_type": res.get("fertilizer_type", ft),
-        "model_version": res.get("model_version", "process_v1_20260801"),
+        "model_version": res.get("model_version", "process_v2_20260801"),
         "customized_params": res.get("customized_params", {}),
     }
     if "sub_model" in res:

@@ -1609,7 +1609,7 @@
                             "model_version": {
                               "type": "string",
                               "description": "过程模型版本号",
-                              "example": "process_v1_20260801"
+                              "example": "process_v2_20260801"
                             },
                             "warning": {
                               "type": "string",

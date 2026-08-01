@@ -1,8 +1,9 @@
 # -*- coding: utf-8 -*-
 """酸化改良过程模型。
 
-本模块用过程模型（移植自模型5源码
-D:\\destkop\\模型5\\模型5\\02_酸化模型计算-地块.py）替换旧的酸化改良经验逻辑。
+本模块用过程模型（移植自模型5 v2 源码
+D:\\destkop\\模型5_酸化模型_v2_20260801\\模型5_酸化模型_v2_20260801\\02_酸化模型计算.py）
+替换旧的酸化改良经验逻辑。原理文档 01_产酸过程计算公式.docx 有笔误，以源码为准。
 
 主要入口：
     calculate_acidification_amendment(pHstart, Hex, Alex, land_type, fertilizer_type, **optional_params)
@@ -26,7 +27,7 @@ from .config import AMENDMENT_CONFIG
 from .storage import DiagnosisStorage
 
 
-MODEL_VERSION = "process_v1_20260801"
+MODEL_VERSION = "process_v2_20260801"
 
 # 可配参数白名单（API 可覆盖；元素含量等内置参数不允许覆盖）
 CONFIGURABLE_PARAMS = {"RPH", "R", "Y", "S", "FertN", "Ndep", "pHtarget"}
@@ -108,15 +109,21 @@ def _hcrop(Y: float, S: float, ec: Dict[str, float]) -> float:
 
 
 def _finalize(pHstart: float, Hex: float, Alex: float, pHtarget: float,
-              Aagri: float, ytk_coef: float, mbnt_a: float, mbnt_b: float) -> Dict[str, float]:
-    """计算土壤本底酸量 Aback 与改良剂需求量 YTK/MBNT。"""
+              Adep: float, Acrop: float, ANcy: float, Aagri: float,
+              ytk_coef: float, mbnt_a: float, mbnt_b: float) -> Dict[str, float]:
+    """计算 Aback 与 YTK/MBNT，返回完整 7 字段 dict。
+
+    返回字段：Adep, Acrop, ANcy, Aagri, Aback, ytk, mbnt。
+    中间变量由调用方（4 个子模型）计算后传入，本函数只负责 Aback/YTK/MBNT 收尾。
+    """
     Aback = (6.25 * (10 ** (9 - pHstart))
              - 6.25 * (10 ** (9 - pHtarget))
              + 2.5 * Hex * 1e7
              + 2.5 * Alex * 1e7) / 1000.0
     ytk = (Aback + 0.8 * Aagri) / 17.042 * ytk_coef
     mbnt = mbnt_a * Aagri / 1.89 + Alex * 590 * 15 * mbnt_b
-    return {"ytk": ytk, "mbnt": mbnt, "Aagri": Aagri, "Aback": Aback}
+    return {"Adep": Adep, "Acrop": Acrop, "ANcy": ANcy, "Aagri": Aagri,
+            "Aback": Aback, "ytk": ytk, "mbnt": mbnt}
 
 
 # ---------------------------------------------------------------------------
@@ -131,7 +138,8 @@ def _paddy_urea(pHstart, Hex, Alex, p):
     Avol = (p["Ndep"] - (0.16 * p["Ndep"] + 2.97)) * 1000 / 14 * 2
     ANcy = Anit + Ano3_runoff + Ano3_crop + Avol
     Aagri = Adep + Acrop + ANcy
-    return _finalize(pHstart, Hex, Alex, p["pHtarget"], Aagri,
+    return _finalize(pHstart, Hex, Alex, p["pHtarget"],
+                     Adep, Acrop, ANcy, Aagri,
                      ytk_coef=0.6, mbnt_a=0.1, mbnt_b=1.0)
 
 
@@ -146,7 +154,8 @@ def _paddy_compound(pHstart, Hex, Alex, p):
             + (0.16 * p["Ndep"] + 2.97) * 1000 / 14)
     ANcy = Anit + Ano3_runoff + Ano3_crop + Avol
     Aagri = Adep + Acrop + ANcy
-    return _finalize(pHstart, Hex, Alex, p["pHtarget"], Aagri,
+    return _finalize(pHstart, Hex, Alex, p["pHtarget"],
+                     Adep, Acrop, ANcy, Aagri,
                      ytk_coef=0.6, mbnt_a=0.15, mbnt_b=1.0)
 
 
@@ -159,7 +168,8 @@ def _upland_urea(pHstart, Hex, Alex, p):
     Avol = (0.17 * p["Ndep"] - 4.95) * 1000 / 14
     ANcy = Anit + Ano3_runoff + Ano3_crop + Avol
     Aagri = Adep + Acrop + ANcy
-    return _finalize(pHstart, Hex, Alex, p["pHtarget"], Aagri,
+    return _finalize(pHstart, Hex, Alex, p["pHtarget"],
+                     Adep, Acrop, ANcy, Aagri,
                      ytk_coef=0.77, mbnt_a=0.1, mbnt_b=0.2)
 
 
@@ -174,8 +184,23 @@ def _upland_compound(pHstart, Hex, Alex, p):
             + (0.17 * p["Ndep"] - 4.95) * 1000 / 14)
     ANcy = Anit + Ano3_runoff + Ano3_crop + Avol
     Aagri = Adep + Acrop + ANcy
-    return _finalize(pHstart, Hex, Alex, p["pHtarget"], Aagri,
+    return _finalize(pHstart, Hex, Alex, p["pHtarget"],
+                     Adep, Acrop, ANcy, Aagri,
                      ytk_coef=0.7, mbnt_a=0.1, mbnt_b=0.3)
+
+
+def _build_params(land_type: str, fertilizer_type: str) -> Dict[str, float]:
+    """组装默认参数（不含可配覆盖）。
+
+    land_type: "paddy" 或 "upland"
+    fertilizer_type: "urea" 或 "compound"
+    返回：含基础默认参数 + 复合肥额外参数（若 compound）的 dict 副本。
+    被 calculate_acidification_amendment 与 run_csv 共用，消除重复装配逻辑。
+    """
+    base: Dict[str, float] = dict(_UPLAND_DEFAULTS) if land_type == "upland" else dict(_PADDY_DEFAULTS)
+    if fertilizer_type == "compound":
+        base.update(_UPLAND_COMPOUND_EXTRA if land_type == "upland" else _PADDY_COMPOUND_EXTRA)
+    return base
 
 
 _SUB_MODEL_MAP = {
@@ -228,10 +253,8 @@ def calculate_acidification_amendment(
         warnings_list.append(f"land_type='{land_type}' 非法，回退 'upland'")
     if ft != fertilizer_type:
         warnings_list.append(f"fertilizer_type='{fertilizer_type}' 非法，回退 'compound'")
-    # 4. 组装默认参数
-    base: Dict[str, float] = dict(_UPLAND_DEFAULTS) if lt == "upland" else dict(_PADDY_DEFAULTS)
-    if ft == "compound":
-        base.update(_UPLAND_COMPOUND_EXTRA if lt == "upland" else _PADDY_COMPOUND_EXTRA)
+    # 4. 组装默认参数（复用 _build_params，与 run_csv 共享装配逻辑）
+    base = _build_params(lt, ft)
     # 5. 可配参数覆盖（仅白名单）
     customized: Dict[str, float] = {}
     for k, v in optional_params.items():
@@ -254,6 +277,51 @@ def calculate_acidification_amendment(
     if warnings_list:
         result["warning"] = "; ".join(warnings_list)
     return result
+
+
+def run_csv(input_file: str, output_file: str,
+            land_type: str, fertilizer_type: str) -> "pd.DataFrame":
+    """批量 CSV 计算：读 CSV → 4 子模型批量计算 → 输出 CSV。
+
+    与 v2 源码 02_酸化模型计算.py 语义一致：
+    - 输入 CSV 需包含 SJD（或 pH）、Hex、Alex 列
+    - 输出 CSV 含输入列 + 中间变量列（Adep/Acrop/ANcy/Aagri/Aback）+ 结果列（YTK/MBNT）
+    - NaN 行输出 7 个 None，不抛异常
+    - 不做越界校验（仅单次入口 calculate_acidification_amendment 做）
+    - 非数值输入（如字符串）会抛 ValueError（float() 转换失败），调用方需自行处理
+
+    Args:
+        input_file: 输入 CSV 路径（utf-8-sig 编码）
+        output_file: 输出 CSV 路径
+        land_type: "paddy" 或 "upland"
+        fertilizer_type: "urea" 或 "compound"
+
+    Returns:
+        填充计算列后的 DataFrame
+    """
+    if land_type not in ("paddy", "upland") or fertilizer_type not in ("urea", "compound"):
+        raise ValueError("土地类型只能为水田或旱地，肥料类型只能为尿素或复合肥")
+
+    df = pd.read_csv(input_file, encoding="utf-8-sig")
+    p_col = "SJD" if "SJD" in df else "pH"
+    if not {p_col, "Hex", "Alex"} <= set(df):
+        raise ValueError("CSV必须包含pH或SJD、Hex、Alex列")
+
+    sub_fn = _SUB_MODEL_MAP[(land_type, fertilizer_type)]
+    params = _build_params(land_type, fertilizer_type)
+    cols = ["Adep", "Acrop", "ANcy", "Aagri", "Aback", "YTK", "MBNT"]
+
+    def _compute_row(v):
+        if pd.isna(v).any():
+            return [None] * 7
+        out = sub_fn(*map(float, v), params)
+        return [round(out["Adep"], 2), round(out["Acrop"], 2), round(out["ANcy"], 2),
+                round(out["Aagri"], 2), round(out["Aback"], 2),
+                round(out["ytk"], 2), round(out["mbnt"], 2)]
+
+    df[cols] = [_compute_row(v) for v in df[[p_col, "Hex", "Alex"]].to_numpy()]
+    df.to_csv(output_file, index=False, encoding="utf-8-sig")
+    return df
 
 
 # ===========================================================================

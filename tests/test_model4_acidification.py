@@ -8,7 +8,11 @@ EXPECTED 数值由模型5源码 (D:\destkop\模型5\模型5\02_酸化模型计�
 import sys, os
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 import math
+import pandas as pd
+import pytest
 from ai_culti_demo.farmland_diagnosis.acidification import calculate_acidification_amendment
+
+V2_DATA_DIR = os.path.join(os.path.dirname(__file__), "data", "acidification_v2")
 
 PHSTART, HEX, ALEX = 4.31, 1.56, 4.08
 
@@ -87,7 +91,7 @@ def test_optional_param_override():
 
 def test_model_version_present():
     r = calculate_acidification_amendment(PHSTART, HEX, ALEX)
-    assert r.get("model_version") == "process_v1_20260801"
+    assert r.get("model_version") == "process_v2_20260801"
 
 
 # --- Task 3: model_4_execution 入口测试（覆盖 6.6） ---
@@ -98,7 +102,7 @@ def test_model4_execution_direct_inputs():
     r = model_4_execution({"SJD": 4.31, "JHX": 1.56, "JLA": 4.08}, land_type="upland", fertilizer_type="urea")
     assert r["status"] == "success"
     assert r["sub_model"] == "upland_urea"
-    assert r["model_version"] == "process_v1_20260801"
+    assert r["model_version"] == "process_v2_20260801"
     assert r["ytk"] is not None
 
 
@@ -119,3 +123,132 @@ def test_model4_execution_parcel_id_not_found(monkeypatch):
 def test_model4_execution_missing_input():
     r = model_4_execution({"SJD": 4.31})
     assert r["status"] == "rejected" and r["reason"] == "missing_input"
+
+
+# --- Task 1 (sync-acidification-model-v2): _finalize 返回 7 字段（方案 A） ---
+from ai_culti_demo.farmland_diagnosis.acidification import (
+    _paddy_urea, _paddy_compound, _upland_urea, _upland_compound,
+    _PADDY_DEFAULTS, _UPLAND_DEFAULTS, _PADDY_COMPOUND_EXTRA, _UPLAND_COMPOUND_EXTRA,
+)
+
+_SEVEN_KEYS = {"Adep", "Acrop", "ANcy", "Aagri", "Aback", "ytk", "mbnt"}
+
+
+def test_submodel_returns_seven_fields():
+    """方案 A 重构闸门：4 个子模型函数必须返回恰好 7 字段 dict。
+
+    keys = {Adep, Acrop, ANcy, Aagri, Aback, ytk, mbnt}，
+    其中 Adep/Acrop/ANcy/Aagri 为中间变量，Aback/ytk/mbnt 为收尾计算结果。
+    """
+    paddy_p = dict(_PADDY_DEFAULTS); paddy_p.update(_PADDY_COMPOUND_EXTRA)
+    upland_p = dict(_UPLAND_DEFAULTS); upland_p.update(_UPLAND_COMPOUND_EXTRA)
+    submodels = [
+        ("paddy_urea",      _paddy_urea,      dict(_PADDY_DEFAULTS)),
+        ("paddy_compound",  _paddy_compound,  paddy_p),
+        ("upland_urea",     _upland_urea,     dict(_UPLAND_DEFAULTS)),
+        ("upland_compound", _upland_compound, upland_p),
+    ]
+    for name, fn, p in submodels:
+        out = fn(PHSTART, HEX, ALEX, p)
+        assert isinstance(out, dict), f"{name} 未返回 dict"
+        assert set(out.keys()) == _SEVEN_KEYS, (
+            f"{name} 返回字段不符：expected={sorted(_SEVEN_KEYS)}, got={sorted(out.keys())}"
+        )
+        # 中间变量必须为有限数值（非 None/NaN）
+        for k in _SEVEN_KEYS:
+            v = out[k]
+            assert v is not None and not (isinstance(v, float) and math.isnan(v)), (
+                f"{name}.{k} 为 None/NaN: {v!r}"
+            )
+
+
+# --- Task 2 (sync-acidification-model-v2): _build_params 参数装配 ---
+from ai_culti_demo.farmland_diagnosis.acidification import _build_params
+
+
+def test_build_params():
+    """`_build_params` 必须返回与内联逻辑等价的默认参数 dict 副本（不含可配覆盖）。"""
+    # upland / urea：仅基础默认参数
+    assert _build_params("upland", "urea") == dict(_UPLAND_DEFAULTS)
+    # upland / compound：基础 + 复合肥额外参数
+    expected_upland_c = dict(_UPLAND_DEFAULTS); expected_upland_c.update(_UPLAND_COMPOUND_EXTRA)
+    assert _build_params("upland", "compound") == expected_upland_c
+    # paddy / urea：仅基础默认参数
+    assert _build_params("paddy", "urea") == dict(_PADDY_DEFAULTS)
+    # paddy / compound：基础 + 复合肥额外参数
+    expected_paddy_c = dict(_PADDY_DEFAULTS); expected_paddy_c.update(_PADDY_COMPOUND_EXTRA)
+    assert _build_params("paddy", "compound") == expected_paddy_c
+
+    # 返回必须是副本：修改返回值不得污染模块级常量
+    p = _build_params("upland", "compound")
+    p["FertN"] = 9999.0
+    p["YN"] = -1.0
+    assert _UPLAND_DEFAULTS["FertN"] == 180.0
+    assert _UPLAND_COMPOUND_EXTRA["YN"] == 1.91
+
+
+# --- Task 4 (sync-acidification-model-v2): run_csv 批量 CSV 计算 ---
+def test_run_csv_basic(tmp_path):
+    """run_csv 基本功能：列结构、行数、结果非空、输出文件写入。"""
+    from ai_culti_demo.farmland_diagnosis.acidification import run_csv
+    input_csv = os.path.join(V2_DATA_DIR, "03_Data.csv")
+    output_csv = str(tmp_path / "_test_basic_output.csv")
+    df = run_csv(input_csv, output_csv, "upland", "compound")
+    # 列结构：输入列 + 中间变量列 + 结果列
+    expected_cols = {"TYBH", "SJD", "Hex", "Alex",
+                     "Adep", "Acrop", "ANcy", "Aagri", "Aback", "YTK", "MBNT"}
+    assert expected_cols <= set(df.columns), f"缺失列：{expected_cols - set(df.columns)}"
+    # 行数
+    assert len(df) == 393
+    # 结果列非空（输入无 NaN）
+    assert df["YTK"].notna().all(), "YTK 含意外 NaN"
+    assert df["MBNT"].notna().all(), "MBNT 含意外 NaN"
+    # 输出文件已写入
+    assert os.path.exists(output_csv)
+
+
+def test_run_csv_invalid_land_type(tmp_path):
+    """非法 land_type 抛 ValueError。"""
+    from ai_culti_demo.farmland_diagnosis.acidification import run_csv
+    input_csv = os.path.join(V2_DATA_DIR, "03_Data.csv")
+    output_csv = str(tmp_path / "_test_invalid.csv")
+    with pytest.raises(ValueError, match="土地类型"):
+        run_csv(input_csv, output_csv, "invalid", "compound")
+
+
+def test_run_csv_missing_columns(tmp_path):
+    """缺少必填列抛 ValueError。"""
+    from ai_culti_demo.farmland_diagnosis.acidification import run_csv
+    input_csv = str(tmp_path / "_bad_input.csv")
+    pd.DataFrame({"TYBH": [1], "SJD": [5.5]}).to_csv(input_csv, index=False, encoding="utf-8-sig")
+    output_csv = str(tmp_path / "_bad_output.csv")
+    with pytest.raises(ValueError, match="CSV必须包含"):
+        run_csv(input_csv, output_csv, "upland", "compound")
+
+
+# --- Task 5: v2 源码 393 地块回归测试 ---
+def test_acidification_v2_regression(tmp_path):
+    """v2 源码 393 地块回归测试（旱地+复合肥场景）。
+
+    对比 run_csv 输出与 v2 源码 04_旱地复合肥计算结果.csv 的 YTK/MBNT，
+    允许浮点偏差 < 0.01。极端值（Alex=8.95、SJD=4.19、Hex=1.62）通过
+    全量对比自动覆盖。
+    """
+    from ai_culti_demo.farmland_diagnosis.acidification import run_csv
+
+    input_csv = os.path.join(V2_DATA_DIR, "03_Data.csv")
+    expected_csv = os.path.join(V2_DATA_DIR, "04_upland_compound_expected.csv")
+    output_csv = str(tmp_path / "_test_regression_output.csv")
+
+    df = run_csv(input_csv, output_csv, "upland", "compound")
+    expected = pd.read_csv(expected_csv, encoding="utf-8-sig")
+
+    # 对比 YTK/MBNT（允许浮点误差 < 0.01）
+    for col in ["YTK", "MBNT"]:
+        actual = df[col].astype(float)
+        exp = expected[col].astype(float)
+        max_diff = (actual - exp).abs().max()
+        assert max_diff < 0.01, (
+            f"{col} 不一致：最大偏差 {max_diff}，"
+            f"首行 actual={actual.iloc[0]} expected={exp.iloc[0]}"
+        )
