@@ -511,7 +511,7 @@ git commit -m "feat(grade-eval): 移植 model2 数据层模块（models/config/d
 
 **model2 源码位置:** `D:\destkop\模型\模型2\evaluation.py`、`obstacle.py`
 
-- [ ] **Step 1: 编写评价层失败测试**
+- [x] **Step 1: 编写评价层失败测试**
 
 在 `tests/test_farmland_grade_eval.py` 末尾追加：
 
@@ -618,12 +618,12 @@ class TestObstacle:
         assert abs(obstacles[0].factor - 0.169) < 0.01
 ```
 
-- [ ] **Step 2: 运行测试验证失败**
+- [x] **Step 2: 运行测试验证失败**
 
 Run: `python -m pytest tests/test_farmland_grade_eval.py::TestEvaluation tests/test_farmland_grade_eval.py::TestObstacle -v`
 Expected: FAIL — `ModuleNotFoundError: No module named 'ai_culti_demo.farmland_grade_eval.evaluation'`
 
-- [ ] **Step 3: 移植 evaluation.py（修正导入）**
+- [x] **Step 3: 移植 evaluation.py（修正导入）**
 
 创建 `src/ai_culti_demo/farmland_grade_eval/evaluation.py`。相比 model2 原文件：`from config import` → `from .config import`，`from models import` → `from .models import`：
 
@@ -692,7 +692,7 @@ def evaluate_land_quality(config: EvaluationConfig, parcel: Parcel) -> QualityRe
     return QualityResult(y=y, quality_index=qi, grade=grade)
 ```
 
-- [ ] **Step 4: 移植 obstacle.py（修正导入）**
+- [x] **Step 4: 移植 obstacle.py（修正导入）**
 
 创建 `src/ai_culti_demo/farmland_grade_eval/obstacle.py`。相比 model2 原文件：`from config import` → `from .config import`，`from models import` → `from .models import`：
 
@@ -727,12 +727,12 @@ def compute_obstacle_factors(config: EvaluationConfig, ejnyq: int, y: List[float
     return items
 ```
 
-- [ ] **Step 5: 运行测试验证通过**
+- [x] **Step 5: 运行测试验证通过**
 
 Run: `python -m pytest tests/test_farmland_grade_eval.py::TestEvaluation tests/test_farmland_grade_eval.py::TestObstacle -v`
 Expected: PASS（全部 7 个测试通过，A0001 composite_index ≈ 0.6728，grade=10，首要障碍为质地构型）
 
-- [ ] **Step 6: 提交**
+- [x] **Step 6: 提交**
 
 ```bash
 git add src/ai_culti_demo/farmland_grade_eval/evaluation.py src/ai_culti_demo/farmland_grade_eval/obstacle.py tests/test_farmland_grade_eval.py
@@ -750,18 +750,18 @@ git commit -m "feat(grade-eval): 移植 model2 核心评价模块（evaluation/o
 
 **数据源:** `D:\destkop\模型\模型2\Farmland_quality_Level_Database.csv`（1193 地块，20 字段）
 
-- [ ] **Step 1: 复制 CSV 数据文件**
+- [x] **Step 1: 复制 CSV 数据文件**
 
 ```powershell
 Copy-Item "D:\destkop\模型\模型2\Farmland_quality_Level_Database.csv" "d:\17417\Documents\agent_culti_demo\bin\farmland_quality_eval\Farmland_quality_Level_Database.csv" -Force
 ```
 
-- [ ] **Step 2: 验证 CSV 文件内容**
+- [x] **Step 2: 验证 CSV 文件内容**
 
 Run: `python -c "import csv; r=list(csv.reader(open('bin/farmland_quality_eval/Farmland_quality_Level_Database.csv', encoding='utf-8-sig'))); print(f'行数: {len(r)}, 表头字段数: {len(r[0])}, 首行: {r[0][:5]}...'); print(f'数据行数: {len(r)-1}')"`
 Expected: 行数 1194, 表头字段数 20, 数据行数 1193
 
-- [ ] **Step 3: 更新 .gitignore 允许 CSV 入库**
+- [x] **Step 3: 更新 .gitignore 允许 CSV 入库**
 
 编辑 `.gitignore`，在现有的 `bin/farmland_quality_eval` 规则块中添加 CSV 例外。找到：
 
@@ -782,12 +782,12 @@ bin/farmland_quality_eval/*
 !bin/farmland_quality_eval/Farmland_quality_Level_Database.csv
 ```
 
-- [ ] **Step 4: 验证 CSV 不被 gitignore 排除**
+- [x] **Step 4: 验证 CSV 不被 gitignore 排除**
 
 Run: `git -C "d:\17417\Documents\agent_culti_demo" status bin/farmland_quality_eval/Farmland_quality_Level_Database.csv`
 Expected: 显示为新文件（未被 ignore）
 
-- [ ] **Step 5: 提交**
+- [x] **Step 5: 提交**
 
 ```bash
 git add bin/farmland_quality_eval/Farmland_quality_Level_Database.csv .gitignore
@@ -813,7 +813,7 @@ git commit -m "chore(grade-eval): 部署 CSV 数据文件并更新 .gitignore"
 
 **当前 runner.py 问题:** 现有文件使用 subprocess.Popen 调用 exe，有 parse_output 方法解析 GBK 文本输出。重写后去除全部 subprocess/parse 逻辑，改为直接调用 Python 评价模块。
 
-- [ ] **Step 1: 编写 runner 集成失败测试**
+- [x] **Step 1: 编写 runner 集成失败测试**
 
 在 `tests/test_farmland_grade_eval.py` 末尾追加：
 
@@ -929,12 +929,12 @@ class TestBackwardCompatibility:
         assert runner.csv_path is not None  # 使用默认 CSV 路径
 ```
 
-- [ ] **Step 2: 运行测试验证失败**
+- [x] **Step 2: 运行测试验证失败**
 
 Run: `python -m pytest tests/test_farmland_grade_eval.py::TestRunnerDeployment tests/test_farmland_grade_eval.py::TestRunnerRun tests/test_farmland_grade_eval.py::TestBackwardCompatibility -v`
 Expected: FAIL — 现有 runner 仍用 subprocess，`check_deployment` 返回 `exe_exists`/`dat_exists` 而非 `csv_exists`
 
-- [ ] **Step 3: 重写 runner.py**
+- [x] **Step 3: 重写 runner.py**
 
 完全替换 `src/ai_culti_demo/farmland_grade_eval/runner.py` 的内容：
 
@@ -1113,7 +1113,7 @@ def run_grade_evaluation(parcel_code: str, exe_path: str = None, dat_path: str =
     return runner.run(parcel_code)
 ```
 
-- [ ] **Step 4: 更新 __init__.py**
+- [x] **Step 4: 更新 __init__.py**
 
 替换 `src/ai_culti_demo/farmland_grade_eval/__init__.py` 内容（暂只导出 runner，潜力/县域函数在 Task 5 追加）：
 
@@ -1123,12 +1123,12 @@ from .runner import FarmlandGradeRunner, run_grade_evaluation
 __all__ = ['FarmlandGradeRunner', 'run_grade_evaluation']
 ```
 
-- [ ] **Step 5: 运行全部 runner 测试验证通过**
+- [x] **Step 5: 运行全部 runner 测试验证通过**
 
 Run: `python -m pytest tests/test_farmland_grade_eval.py -v`
 Expected: PASS（全部测试通过，包括 A0001 回归测试）
 
-- [ ] **Step 6: 提交**
+- [x] **Step 6: 提交**
 
 ```bash
 git add src/ai_culti_demo/farmland_grade_eval/runner.py src/ai_culti_demo/farmland_grade_eval/__init__.py tests/test_farmland_grade_eval.py
@@ -1158,7 +1158,7 @@ git commit -m "feat(grade-eval): 重写 runner.py 为 Python 调用层，去除 
 
 **model2 源码位置:** `D:\destkop\模型\模型2\potential.py`、`statistics.py`
 
-- [ ] **Step 1: 编写潜力分析与县域统计失败测试**
+- [x] **Step 1: 编写潜力分析与县域统计失败测试**
 
 在 `tests/test_farmland_grade_eval.py` 末尾追加：
 
@@ -1218,12 +1218,12 @@ class TestCountyStatistics:
         assert result["scenario"] == 2
 ```
 
-- [ ] **Step 2: 运行测试验证失败**
+- [x] **Step 2: 运行测试验证失败**
 
 Run: `python -m pytest tests/test_farmland_grade_eval.py::TestPotentialAnalysis tests/test_farmland_grade_eval.py::TestCountyStatistics -v`
 Expected: FAIL — `ModuleNotFoundError: No module named 'ai_culti_demo.farmland_grade_eval.potential'`
 
-- [ ] **Step 3: 移植 potential.py（修正导入）**
+- [x] **Step 3: 移植 potential.py（修正导入）**
 
 创建 `src/ai_culti_demo/farmland_grade_eval/potential.py`。相比 model2 原文件：`from config import` → `from .config import`，`from models import` → `from .models import`，`from evaluation import` → `from .evaluation import`。完整内容从 `D:\destkop\模型\模型2\potential.py` 复制并修正导入行：
 
@@ -1579,7 +1579,7 @@ def county_potential_statistics_data(config: EvaluationConfig, parcels: List[Par
     )
 ```
 
-- [ ] **Step 4: 移植 statistics.py（修正导入）**
+- [x] **Step 4: 移植 statistics.py（修正导入）**
 
 创建 `src/ai_culti_demo/farmland_grade_eval/statistics.py`。相比 model2 原文件：修正导入为相对导入，内部 `from evaluation import` → `from .evaluation import`，`from obstacle import` → `from .obstacle import`：
 
@@ -1658,7 +1658,7 @@ def county_statistics_data(config: EvaluationConfig, parcels: List[Parcel], xqmc
     )
 ```
 
-- [ ] **Step 5: 在 runner.py 追加 3 个对外函数**
+- [x] **Step 5: 在 runner.py 追加 3 个对外函数**
 
 在 `src/ai_culti_demo/farmland_grade_eval/runner.py` 文件末尾（`run_grade_evaluation` 函数之后）追加以下内容。同时在文件顶部导入区追加 `import dataclasses`（如已有则跳过）和潜力/统计模块导入：
 
@@ -1751,7 +1751,7 @@ def run_county_potential(xqmc_code: int, scenario: int, csv_path: str = None) ->
             "result": dataclasses.asdict(result)}
 ```
 
-- [ ] **Step 6: 更新 __init__.py 追加导出**
+- [x] **Step 6: 更新 __init__.py 追加导出**
 
 替换 `src/ai_culti_demo/farmland_grade_eval/__init__.py`：
 
@@ -1763,12 +1763,12 @@ __all__ = ['FarmlandGradeRunner', 'run_grade_evaluation',
            'run_potential_analysis', 'run_county_statistics', 'run_county_potential']
 ```
 
-- [ ] **Step 7: 运行测试验证通过**
+- [x] **Step 7: 运行测试验证通过**
 
 Run: `python -m pytest tests/test_farmland_grade_eval.py::TestPotentialAnalysis tests/test_farmland_grade_eval.py::TestCountyStatistics -v`
 Expected: PASS（全部 6 个测试通过）
 
-- [ ] **Step 8: 提交**
+- [x] **Step 8: 提交**
 
 ```bash
 git add src/ai_culti_demo/farmland_grade_eval/potential.py src/ai_culti_demo/farmland_grade_eval/statistics.py src/ai_culti_demo/farmland_grade_eval/runner.py src/ai_culti_demo/farmland_grade_eval/__init__.py tests/test_farmland_grade_eval.py
@@ -1791,7 +1791,7 @@ git commit -m "feat(grade-eval): 移植潜力分析与县域统计模块，新�
 
 **改动说明:** 去除 `input()` 交互调用和所有 `print()` 输出；7 个原交互输入参数改为函数签名参数（带默认值）；返回值从 None（打印）改为 `Dict[str, float]`；添加文档注释标注"库函数，不接 API"。
 
-- [ ] **Step 1: 编写 conditioner 失败测试**
+- [x] **Step 1: 编写 conditioner 失败测试**
 
 在 `tests/test_farmland_grade_eval.py` 末尾追加：
 
@@ -1831,12 +1831,12 @@ class TestConditioner:
         assert result["ytk_per_ha"] > 0
 ```
 
-- [ ] **Step 2: 运行测试验证失败**
+- [x] **Step 2: 运行测试验证失败**
 
 Run: `python -m pytest tests/test_farmland_grade_eval.py::TestConditioner -v`
 Expected: FAIL — `ModuleNotFoundError: No module named 'ai_culti_demo.farmland_grade_eval.conditioner'`
 
-- [ ] **Step 3: 移植 conditioner.py（去 input/print，改返回 dict）**
+- [x] **Step 3: 移植 conditioner.py（去 input/print，改返回 dict）**
 
 创建 `src/ai_culti_demo/farmland_grade_eval/conditioner.py`：
 
@@ -1924,12 +1924,12 @@ def calculate_soil_conditioner(
     }
 ```
 
-- [ ] **Step 4: 运行测试验证通过**
+- [x] **Step 4: 运行测试验证通过**
 
 Run: `python -m pytest tests/test_farmland_grade_eval.py::TestConditioner -v`
 Expected: PASS（2 个测试通过）
 
-- [ ] **Step 5: 提交**
+- [x] **Step 5: 提交**
 
 ```bash
 git add src/ai_culti_demo/farmland_grade_eval/conditioner.py tests/test_farmland_grade_eval.py
@@ -1951,7 +1951,7 @@ git commit -m "feat(grade-eval): 移植 conditioner 库函数（去 input/print�
 - `thematic_models.py` 第 141 行 purpose 为"通过Fortran exe进行耕地质量等级评价..."，第 515 行 reliability.message 为"当前结果来自实际耕地质量等级评价模型（Fortran exe）计算。"
 - `adapter.py` 第 148 行 `check_grade_eval_deployment` 返回 `deployment_ok` 基于 `result`（runner.check_deployment 返回的 dict）
 
-- [ ] **Step 1: 更新 grade_agent.py docstring**
+- [x] **Step 1: 更新 grade_agent.py docstring**
 
 在 `framework/agents/specialized/grade_agent.py` 中：
 
@@ -1982,7 +1982,7 @@ git commit -m "feat(grade-eval): 移植 conditioner 库函数（去 input/print�
 # 尝试导入实际 Python 模型实现
 ```
 
-- [ ] **Step 2: 更新 thematic_models.py purpose 和 reliability.message**
+- [x] **Step 2: 更新 thematic_models.py purpose 和 reliability.message**
 
 在 `src/ai_culti_demo/thematic_models.py` 中：
 
@@ -2013,7 +2013,7 @@ git commit -m "feat(grade-eval): 移植 conditioner 库函数（去 input/print�
     """调用实际的耕地质量等级评价 Python 模型"""
 ```
 
-- [ ] **Step 3: 更新 adapter.py check_grade_eval_deployment**
+- [x] **Step 3: 更新 adapter.py check_grade_eval_deployment**
 
 在 `framework/core_engine/adapter.py` 中，`check_grade_eval_deployment` 方法（第 142-150 行）当前返回 `deployment_ok` 基于 `result` 是否为真值。新 runner 的 `check_deployment()` 返回的 dict 中 `ready` 字段为部署就绪标志。
 
@@ -2044,12 +2044,12 @@ git commit -m "feat(grade-eval): 移植 conditioner 库函数（去 input/print�
             return {"deployment_ok": False, "error": {"code": "DEPLOYMENT_CHECK_ERROR", "message": str(e)}}
 ```
 
-- [ ] **Step 4: 运行现有测试验证无回归**
+- [x] **Step 4: 运行现有测试验证无回归**
 
 Run: `python -m pytest tests/test_farmland_grade_eval.py tests/test_data_trigger.py -v`
 Expected: PASS（所有测试通过，调用方适配不影响现有契约）
 
-- [ ] **Step 5: 提交**
+- [x] **Step 5: 提交**
 
 ```bash
 git add framework/agents/specialized/grade_agent.py src/ai_culti_demo/thematic_models.py framework/core_engine/adapter.py
@@ -2076,7 +2076,7 @@ git commit -m "refactor(grade-eval): 调用方字段适配（docstring/message/�
 
 **data_type 枚举值决策:** 保持 `data_type="dat"` 不变（最小化 BREAKING 变更，文件格式从 .dat 改为 CSV 已是 BREAKING）。函数内部实现改为 CSV 逻辑。
 
-- [ ] **Step 1: 更新 data_validator.py — 将 validate_dat 改为 validate_grade_csv**
+- [x] **Step 1: 更新 data_validator.py — 将 validate_dat 改为 validate_grade_csv**
 
 在 `framework/upload/data_validator.py` 中，将 `validate_dat` 函数（第 55-66 行）替换为 `validate_grade_csv`。保留 `validate_dat` 作为别名以避免破坏现有导入（data_import.py 直接导入 `validate_dat`，将在 Step 4 同步更新）：
 
@@ -2139,7 +2139,7 @@ def validate_grade_csv(file_path: str) -> Tuple[bool, str]:
 validate_dat = validate_grade_csv
 ```
 
-- [ ] **Step 2: 更新 data_deployer.py — 将 deploy_dat 改为 deploy_grade_csv**
+- [x] **Step 2: 更新 data_deployer.py — 将 deploy_dat 改为 deploy_grade_csv**
 
 在 `framework/upload/data_deployer.py` 中，找到 `deploy_dat` 函数（第 60-69 行）：
 
@@ -2174,7 +2174,7 @@ def deploy_grade_csv(src_path: str, target_dir: str) -> str:
 deploy_dat = deploy_grade_csv
 ```
 
-- [ ] **Step 3: 更新 data_trigger.py — 将 trigger_dat_check 改为 trigger_grade_csv_check**
+- [x] **Step 3: 更新 data_trigger.py — 将 trigger_dat_check 改为 trigger_grade_csv_check**
 
 在 `framework/upload/data_trigger.py` 中，找到 `trigger_dat_check` 函数（第 64-75 行）：
 
@@ -2213,7 +2213,7 @@ def trigger_grade_csv_check(target_dir: str, timeout: Optional[float] = None) ->
 trigger_dat_check = trigger_grade_csv_check
 ```
 
-- [ ] **Step 4: 更新 data_import.py 路由导入和调用**
+- [x] **Step 4: 更新 data_import.py 路由导入和调用**
 
 在 `framework/api/routes/data_import.py` 中，由于 Step 1-3 保留了向后兼容别名（`validate_dat`/`deploy_dat`/`trigger_dat_check`），路由代码无需改动函数名。但需更新文件顶部注释中的".dat"描述。
 
@@ -2236,7 +2236,7 @@ trigger_dat_check = trigger_grade_csv_check
 
 注意：`data_type="dat"` 枚举值保持不变（`_VALID_TYPES = ('csv', 'shapefile', 'dat')`），但 `dat` 分支现在接受 CSV 文件。校验、部署、触发函数通过别名继续以 `validate_dat`/`deploy_dat`/`trigger_dat_check` 名称被调用，实际执行 CSV 逻辑。
 
-- [ ] **Step 5: 更新 test_data_trigger.py 测试**
+- [x] **Step 5: 更新 test_data_trigger.py 测试**
 
 在 `tests/test_data_trigger.py` 中，找到 `test_trigger_dat_check_success`（第 75-80 行）：
 
@@ -2266,12 +2266,12 @@ def test_trigger_grade_csv_check_success(fake_adapter):
     assert len(fake_adapter['check_grade_eval_deployment']) == 1
 ```
 
-- [ ] **Step 6: 运行测试验证通过**
+- [x] **Step 6: 运行测试验证通过**
 
 Run: `python -m pytest tests/test_data_trigger.py -v`
 Expected: PASS（全部测试通过，包括新增的 `test_trigger_grade_csv_check_success`）
 
-- [ ] **Step 7: 提交**
+- [x] **Step 7: 提交**
 
 ```bash
 git add framework/upload/data_validator.py framework/upload/data_deployer.py framework/upload/data_trigger.py framework/api/routes/data_import.py tests/test_data_trigger.py
@@ -2288,7 +2288,7 @@ git commit -m "feat(grade-eval): HTTP data/import 改 CSV（校验/部署/触发
 
 **说明:** Task 1-6 已按 TDD 方式逐步编写了全部测试类。本任务执行全量回归验证，确保所有测试通过且覆盖 spec 要求的全部场景。
 
-- [ ] **Step 1: 运行 farmland_grade_eval 全量测试**
+- [x] **Step 1: 运行 farmland_grade_eval 全量测试**
 
 Run: `python -m pytest tests/test_farmland_grade_eval.py -v`
 Expected: PASS — 覆盖以下测试类：
@@ -2304,22 +2304,22 @@ Expected: PASS — 覆盖以下测试类：
 - `TestCountyStatistics`（武江区常规统计/理想潜力/最佳潜力、无数据错误）
 - `TestConditioner`（库函数返回 dict、自定义参数）
 
-- [ ] **Step 2: 运行数据导入触发器测试**
+- [x] **Step 2: 运行数据导入触发器测试**
 
 Run: `python -m pytest tests/test_data_trigger.py -v`
 Expected: PASS
 
-- [ ] **Step 3: 运行数据导入路由集成测试（如有）**
+- [x] **Step 3: 运行数据导入路由集成测试（如有）**
 
 Run: `python -m pytest tests/test_data_import_route.py tests/test_data_import_integration.py -v`
 Expected: PASS（如存在 dat 相关测试因别名机制仍通过；如有失败则更新测试适配 CSV 语义）
 
-- [ ] **Step 4: 运行全量测试套件验证无回归**
+- [x] **Step 4: 运行全量测试套件验证无回归**
 
 Run: `python -m pytest tests/ -v --tb=short`
 Expected: PASS（所有测试通过，无回归）
 
-- [ ] **Step 5: 提交（如有测试修复）**
+- [x] **Step 5: 提交（如有测试修复）**
 
 ```bash
 git add tests/
@@ -2336,7 +2336,7 @@ git commit -m "test(grade-eval): 全量回归验证通过"
 - Modify: `docs/openapi.json:6`（版本号递增）
 - Modify: `bin/farmland_quality_eval/README.md`（部署说明全面更新）
 
-- [ ] **Step 1: 更新 README.md model-7 架构说明**
+- [x] **Step 1: 更新 README.md model-7 架构说明**
 
 在 `README.md` 中，找到第 11 行：
 ```
@@ -2356,7 +2356,7 @@ git commit -m "test(grade-eval): 全量回归验证通过"
 | POST | `/api/v1/data/import` | 上传部署专题模型数据（CSV/shapefile/耕地质量评价CSV，需 admin） |
 ```
 
-- [ ] **Step 2: 更新 docs/api.md data/import 接口说明**
+- [x] **Step 2: 更新 docs/api.md data/import 接口说明**
 
 在 `docs/api.md` 中，找到第 681 行：
 ```
@@ -2417,7 +2417,7 @@ curl -X POST http://localhost:5000/api/v1/data/import \
 {"name": "quality-grade-evaluation", "description": "通过 Python 模型进行耕地质量等级评价，输出12指标原始值/隶属度、综合指数、质量等级和障碍度排序。"},
 ```
 
-- [ ] **Step 3: 更新 docs/openapi.json 版本号**
+- [x] **Step 3: 更新 docs/openapi.json 版本号**
 
 在 `docs/openapi.json` 中，找到第 6 行：
 ```json
@@ -2428,7 +2428,7 @@ curl -X POST http://localhost:5000/api/v1/data/import \
     "version": "1.5.0"
 ```
 
-- [ ] **Step 4: 重写 bin/farmland_quality_eval/README.md**
+- [x] **Step 4: 重写 bin/farmland_quality_eval/README.md**
 
 完全替换 `bin/farmland_quality_eval/README.md` 内容：
 
@@ -2488,7 +2488,7 @@ curl -X POST http://localhost:5000/api/v1/data/import \
 部署成功后接口返回 `deployed_path` 与 `backup_path`，部署前会自动备份现有 CSV 文件到 `backup/YYYYMMDD-HHMMSS/`（保留最近 3 份）。触发 `check_deployment` 失败时会自动回滚到备份。
 ```
 
-- [ ] **Step 5: 提交**
+- [x] **Step 5: 提交**
 
 ```bash
 git add README.md docs/api.md docs/openapi.json bin/farmland_quality_eval/README.md
@@ -2506,19 +2506,19 @@ git commit -m "docs(grade-eval): 更新文档（model-7 架构/data-import CSV/�
 
 **说明:** exe/.dat 文件已被 .gitignore 排除（不入库），本任务删除本地文件并验证无代码引用。由于这些文件不在 git 跟踪中，删除不需要 git commit。
 
-- [ ] **Step 1: 全局搜索确认无代码引用 exe/.dat**
+- [x] **Step 1: 全局搜索确认无代码引用 exe/.dat**
 
 Run: `Get-ChildItem -Recurse "d:\17417\Documents\agent_culti_demo" -File -Include *.py -Exclude *__pycache__*,*.venv* | Where-Object { $_.FullName -notmatch '\.venv|node_modules|__pycache__' } | Select-String -Pattern "Farmland_quality_evaluation\.exe|Farmlands_Quality_Level_Database\.dat|subprocess\.Popen|\.dat\b" | ForEach-Object { "$($_.Path):$($_.LineNumber): $($_.Line.Trim())" }`
 Expected: 仅 .gitignore 和 bin/farmland_quality_eval/README.md（已更新）中的历史引用，无 .py 代码文件引用 exe/.dat/subprocess
 
-- [ ] **Step 2: 删除 exe 和 .dat 文件**
+- [x] **Step 2: 删除 exe 和 .dat 文件**
 
 ```powershell
 Remove-Item "d:\17417\Documents\agent_culti_demo\bin\farmland_quality_eval\Farmland_quality_evaluation.exe" -Force
 Remove-Item "d:\17417\Documents\agent_culti_demo\bin\farmland_quality_eval\Farmlands_Quality_Level_Database.dat" -Force
 ```
 
-- [ ] **Step 3: 验证 .gitignore 仍排除 exe/.dat**
+- [x] **Step 3: 验证 .gitignore 仍排除 exe/.dat**
 
 确认 `.gitignore` 中的规则（Task 3 已更新）：
 ```
@@ -2530,12 +2530,12 @@ bin/farmland_quality_eval/*
 
 `bin/farmland_quality_eval/*` 排除所有文件（含 exe/.dat），仅 CSV/README/.gitkeep 被例外允许入库。
 
-- [ ] **Step 4: 运行全量测试验证无回归**
+- [x] **Step 4: 运行全量测试验证无回归**
 
 Run: `python -m pytest tests/ -v --tb=short`
 Expected: PASS（所有测试通过，exe/.dat 删除不影响 Python 模型运行）
 
-- [ ] **Step 5: 提交 .gitignore 变更（如有）**
+- [x] **Step 5: 提交 .gitignore 变更（如有）**
 
 ```bash
 git add .gitignore
