@@ -385,3 +385,38 @@ class TestCountyStatistics:
         result = run_county_potential(8, 2)
         assert result["status"] == "ok"
         assert result["scenario"] == 2
+
+
+# ========== Conditioner 库函数测试 ==========
+
+class TestConditioner:
+    """调理剂库函数测试（不接 API）。"""
+
+    def test_calculate_soil_conditioner_returns_dict(self):
+        from ai_culti_demo.farmland_grade_eval.config import EvaluationConfig
+        from ai_culti_demo.farmland_grade_eval.conditioner import calculate_soil_conditioner
+        config = EvaluationConfig()
+        result = calculate_soil_conditioner(
+            config, tybh="A0001", mj=100.0, xqmc=8,
+            ph_start=4.6, alex=1.0, hex_=0.5,
+        )
+        assert isinstance(result, dict)
+        assert "ytk_per_ha" in result
+        assert "mbnt_per_ha" in result
+        assert "ytk_tons" in result
+        assert "mbnt_tons" in result
+        assert result["ytk_per_ha"] > 0
+        assert result["mbnt_per_ha"] > 0
+
+    def test_calculate_soil_conditioner_custom_params(self):
+        from ai_culti_demo.farmland_grade_eval.config import EvaluationConfig
+        from ai_culti_demo.farmland_grade_eval.conditioner import calculate_soil_conditioner
+        config = EvaluationConfig()
+        result = calculate_soil_conditioner(
+            config, tybh="A0001", mj=100.0, xqmc=8,
+            ph_start=4.6, alex=1.0, hex_=0.5,
+            r=2000.0, rph=5.0, fert_n=200.0, ndep=50.0,
+            y=6000.0, s=6000.0, ph_target=6.5,
+        )
+        assert isinstance(result, dict)
+        assert result["ytk_per_ha"] > 0
