@@ -61,15 +61,19 @@ def trigger_shapefile_precompute(
     return _run_with_timeout(core_engine.precompute_stability, target_dir, manifest, timeout=timeout)
 
 
-def trigger_dat_check(target_dir: str, timeout: Optional[float] = None) -> Dict[str, Any]:
-    """触发 .dat 部署校验：调用 adapter.check_grade_eval_deployment。
+def trigger_grade_csv_check(target_dir: str, timeout: Optional[float] = None) -> Dict[str, Any]:
+    """触发耕地质量评价 CSV 部署校验：调用 adapter.check_grade_eval_deployment。
 
     注意：target_dir 参数保留用于与其他触发器签名一致（API 路由层统一调用），
     但不传给 adapter —— check_grade_eval_deployment() 无参数，
-    FarmlandGradeRunner 内部从配置解析 .dat 路径。
+    FarmlandGradeRunner 内部从配置解析 CSV 路径。
 
     Args:
-        target_dir: .dat 部署目录（仅用于日志/上下文一致性）
+        target_dir: CSV 部署目录（仅用于日志/上下文一致性）
         timeout: 超时秒数（None 时用 Config.DATA_IMPORT_TIMEOUT）
     """
     return _run_with_timeout(core_engine.check_grade_eval_deployment, timeout=timeout)
+
+
+# 向后兼容别名
+trigger_dat_check = trigger_grade_csv_check

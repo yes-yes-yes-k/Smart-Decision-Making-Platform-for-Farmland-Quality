@@ -282,7 +282,7 @@
 | `conversation_id` | int | 否 | 对话 ID，不传则创建新对话 |
 | `area_code` | string | 否 | 区域代码（默认 "lechang"，model-1/3/4 按 area_code 查 DB） |
 | `parcel_id` | string | 否 | 地块 ID（数字字符串，给 model-1/3/4 查 DB），农户端问题或 type 5 问题建议携带 |
-| `parcel_code` | string | 否 | 地块代码（字母数字，给 model-7 调 Fortran exe），type 5 质量等级评价必需 |
+| `parcel_code` | string | 否 | 地块代码（字母数字，给 model-7 调 Python 模型），type 5 质量等级评价必需 |
 | `land_type` | string | 否 | 土地利用类型（`upland` 旱地 / `paddy` 水田，默认 `upland`，酸化改良 model-4 使用，与 `fertilizer_type` 组合选择 4 子模型） |
 | `fertilizer_type` | string | 否 | 肥料类型（`compound` 复合肥 / `urea` 尿素，默认 `compound`，酸化改良 model-4 使用，与 `land_type` 组合选择 4 子模型） |
 | `context` | object | 否 | 专业模型参数 |
@@ -489,7 +489,7 @@ context 参数说明：
         {"name": "acidification-governance", "description": "基于过程模型（4 子模型：水田/旱地 × 尿素/复合肥）计算酸化改良剂需求，输出亿土康（YTK）与木本泥炭（MBNT）施用量。"},
         {"name": "organic-matter-improvement", "description": "对有机质不足问题进行占位识别、提升需求分析和措施匹配。"},
         {"name": "stability-risk-evaluation", "description": "基于3期历史数据，通过九模块综合评价耕地质量稳定性和退化风险。"},
-        {"name": "quality-grade-evaluation", "description": "通过Fortran exe进行耕地质量等级评价，输出12指标原始值/隶属度、综合指数、质量等级和障碍度排序。"},
+        {"name": "quality-grade-evaluation", "description": "通过 Python 模型进行耕地质量等级评价，输出12指标原始值/隶属度、综合指数、质量等级和障碍度排序。"},
         {"name": "multi-factor-collaborative-improvement", "description": "综合多个专题模型的占位结果，形成分区分类的综合提升建议。"}
     ]
 }
@@ -678,7 +678,7 @@ context 参数说明：
 > Content-Type: `multipart/form-data`
 > 文件大小限制：200MB
 
-用于上传部署三类专题模型数据（CSV / shapefile / .dat），部署前自动备份现有文件，部署后自动触发对应的处理流程。
+用于上传部署三类专题模型数据（CSV / shapefile / 耕地质量评价 CSV），部署前自动备份现有文件，部署后自动触发对应的处理流程。
 
 #### 请求字段
 
@@ -701,9 +701,9 @@ context 参数说明：
 - zip 限制：文件数 ≤ 30、解压后总大小 ≤ 200MB、无路径穿越
 - 触发：`precompute.main` 预计算 + 持久化
 
-**.dat（data_type=dat）**
-- 部署到 `bin/farmland_quality_eval/Farmlands_Quality_Level_Database.dat`（固定文件名）
-- 校验：非空、≤ 200MB
+**耕地质量评价 CSV（data_type=dat）**
+- 部署到 `bin/farmland_quality_eval/Farmland_quality_Level_Database.csv`（固定文件名）
+- 校验：非空、≤ 200MB、UTF-8 编码、含 20 个必需字段（SiteID/JD/WD/MJ/SJD/YJZ/YXL/SXJ/TRRZ/YXTCHD/GCHD/JHXLLZ/JHXQLZ/EJNYQcode/XQMCcode/GCZDcode/PSNLcode/GGNLcode/DXBWcode/ZDGXcode）
 - 触发：`FarmlandGradeRunner.check_deployment` 部署校验
 
 #### manifest.json 格式（shapefile 必需）
@@ -736,7 +736,7 @@ context 参数说明：
 
 | HTTP 状态码 | 说明 |
 |-------------|------|
-| 400 | 缺少 data_type/file、data_type 不合法、校验失败（缺列/shapefile 组件不全/.dat 为空等） |
+| 400 | 缺少 data_type/file、data_type 不合法、校验失败（缺列/shapefile 组件不全/CSV 为空或编码/字段不符等） |
 | 401 | 未携带 JWT |
 | 403 | 非 admin 用户 |
 | 413 | 文件大小超过 200MB |
@@ -763,11 +763,11 @@ curl -X POST http://localhost:5000/api/v1/data/import \
   -F "data_type=shapefile" \
   -F "file=@/path/to/stability_data.zip"
 
-# 上传 .dat 数据库
+# 上传耕地质量评价 CSV
 curl -X POST http://localhost:5000/api/v1/data/import \
   -H "Authorization: Bearer <token>" \
   -F "data_type=dat" \
-  -F "file=@/path/to/Farmlands_Quality_Level_Database.dat"
+  -F "file=@/path/to/Farmland_quality_Level_Database.csv"
 ```
 
 > 备份策略：部署前备份现有文件到 `backup/YYYYMMDD-HHMMSS/`，保留最近 3 份；触发失败自动回滚到备份。

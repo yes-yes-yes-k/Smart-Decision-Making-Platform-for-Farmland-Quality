@@ -1,5 +1,5 @@
 """
-稳定性风险模型、质量等级 exe 模型与 agent 路由的集成测试。
+稳定性风险模型、质量等级 Python 模型与 agent 路由的集成测试。
 
 覆盖任务：
 - 9.1-9.4: API 路由验证（通过 agent 层验证路由正确性）
@@ -8,7 +8,7 @@
 - 9.8: 响应字段结构符合统一调用契约
 - 10.1: 模型1 离线预计算单元测试
 - 10.2: 模型1 在线查询单元测试（正常/未就绪/地块不存在）
-- 10.3: exe 调用包装器单元测试（正常/超时/文件缺失/地块无效）
+- 10.3: Python 模型调用包装器单元测试（正常/文件缺失/地块无效）
 - 10.7: agent 路由和错误处理
 - 10.8: 综合诊断整合
 - 10.10: 端到端集成测试
@@ -17,7 +17,6 @@ from __future__ import annotations
 
 import os
 import sys
-import subprocess as sp
 from typing import Any, Dict
 from unittest.mock import patch, MagicMock
 
@@ -155,13 +154,13 @@ class TestStabilityOnlineQuery:
 
 
 # ---------------------------------------------------------------------------
-# 10.3 exe 调用包装器单元测试
+# 10.3 Python 模型调用包装器单元测试
 # ---------------------------------------------------------------------------
 class TestGradeRunner:
-    """exe 调用包装器（正常/超时/文件缺失/地块无效）"""
+    """Python 模型调用包装器（正常/文件缺失/地块无效）"""
 
     def test_deployment_check_missing_exe(self, tmp_path):
-        """exe 文件缺失返回 DEPLOYMENT_ERROR"""
+        """CSV 数据文件缺失返回 DEPLOYMENT_ERROR"""
         from ai_culti_demo.farmland_grade_eval.runner import FarmlandGradeRunner
 
         runner = FarmlandGradeRunner(
@@ -172,7 +171,7 @@ class TestGradeRunner:
         assert deployment["ready"] is False
 
     def test_deployment_check_ok(self, tmp_path):
-        """exe 和 .dat 均存在时部署校验通过"""
+        """CSV 数据文件存在时部署校验通过"""
         from ai_culti_demo.farmland_grade_eval.runner import FarmlandGradeRunner
 
         exe_path = tmp_path / "test.exe"
@@ -192,31 +191,6 @@ class TestGradeRunner:
         result = runner.run("110105001")
         assert result["status"] == "error"
         assert result["error"]["code"] == "DEPLOYMENT_ERROR"
-
-    def test_run_timeout_returns_timeout_error(self, tmp_path):
-        """超时返回 status=error 且 code=TIMEOUT"""
-        from ai_culti_demo.farmland_grade_eval.runner import FarmlandGradeRunner
-
-        exe_path = tmp_path / "test.exe"
-        dat_path = tmp_path / "test.dat"
-        exe_path.write_bytes(b"fake")
-        dat_path.write_bytes(b"fake")
-
-        runner = FarmlandGradeRunner(exe_path=str(exe_path), dat_path=str(dat_path), timeout=1)
-
-        # 模拟 Popen 和超时（第一次 communicate 超时，第二次清理调用返回空）
-        mock_proc = MagicMock()
-        mock_proc.returncode = 0
-        mock_proc.communicate.side_effect = [
-            sp.TimeoutExpired(cmd=str(exe_path), timeout=1),
-            (b"", b""),
-        ]
-
-        with patch("ai_culti_demo.farmland_grade_eval.runner.subprocess.Popen", return_value=mock_proc):
-            result = runner.run("110105001")
-
-        assert result["status"] == "error"
-        assert result["error"]["code"] == "TIMEOUT"
 
 
 # ---------------------------------------------------------------------------

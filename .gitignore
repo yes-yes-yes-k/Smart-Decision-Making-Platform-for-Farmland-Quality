@@ -32,10 +32,11 @@ data/farmland_diagnosis/*
 !data/farmland_diagnosis/.gitkeep
 !data/farmland_diagnosis/README.md
 
-# Fortran exe 及 .dat 数据库二进制文件（不入库）
+# 耕地质量评价数据（CSV 入库，exe/.dat 二进制不入库）
 bin/farmland_quality_eval/*
 !bin/farmland_quality_eval/.gitkeep
 !bin/farmland_quality_eval/README.md
+!bin/farmland_quality_eval/Farmland_quality_Level_Database.csv
 
 # 忽略训练过程临时文件
 *.pkl.bak

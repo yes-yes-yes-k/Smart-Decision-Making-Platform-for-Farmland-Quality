@@ -9,7 +9,7 @@
 - **多智能体编排**：7 个专业智能体 + AgentManager + QuestionTypeRouter（基于 question_type 1:1 映射）
   - model-1 稳定性风险识别 / model-2 潜力评估 / model-3 问题识别
   - model-4 酸化改良（过程模型，4 子模型：水田/旱地 × 尿素/复合肥，输出 YTK/MBNT） / model-5 有机质培肥 / model-6 综合地力提升（ML 预测）
-  - model-7 耕地质量等级评价（Fortran exe）
+  - model-7 耕地质量等级评价（Python 实现，移植 model2，含潜力分析/县域统计/调理剂库函数）
 - **RAG 知识检索**：基于 ChromaDB 的向量检索与 SiliconFlow LLM 问答，知识性问题自动路由到 RAG
 - **Function Calling**：工具注册表 + LangChain Tools 集成 + 自定义工具接口
 - **JWT 认证**：用户体系、会话管理、权限装饰器
@@ -162,7 +162,7 @@ python start_production_server.py --host 127.0.0.1 --port 8000 --threads 8
 
 | 方法 | 路径 | 说明 |
 |------|------|------|
-| POST | `/api/v1/data/import` | 上传部署专题模型数据（CSV/shapefile/.dat，需 admin） |
+| POST | `/api/v1/data/import` | 上传部署专题模型数据（CSV/shapefile/耕地质量评价CSV，需 admin） |
 
 完整 OpenAPI 规范见 [docs/openapi.json](docs/openapi.json)，可导入 Apifox 等工具查看。
 

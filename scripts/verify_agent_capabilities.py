@@ -57,8 +57,7 @@ def inspect_agent_load_status() -> dict:
     diagnosis_db = Path(DiagnosisStorage().db_path)
     soc_joblib = PROJECT_ROOT / "data" / "fertility" / "models" / "soc_etr_model.joblib"
     dose_joblib = PROJECT_ROOT / "data" / "fertility" / "models" / "dose_etr_model.joblib"
-    grade_exe = PROJECT_ROOT / "bin" / "farmland_quality_eval" / "Farmland_quality_evaluation.exe"
-    grade_dat = PROJECT_ROOT / "bin" / "farmland_quality_eval" / "Farmlands_Quality_Level_Database.dat"
+    grade_csv = PROJECT_ROOT / "bin" / "farmland_quality_eval" / "Farmland_quality_Level_Database.csv"
 
     resource_status = {
         "stability_db_exists": stability_db.exists(),
@@ -67,8 +66,7 @@ def inspect_agent_load_status() -> dict:
         "diagnosis_db_path": str(diagnosis_db),
         "soc_joblib_exists": soc_joblib.exists(),
         "dose_joblib_exists": dose_joblib.exists(),
-        "grade_exe_exists": grade_exe.exists(),
-        "grade_dat_exists": grade_dat.exists(),
+        "grade_csv_exists": grade_csv.exists(),
     }
 
     # 判断每个 agent 是 real 还是 stub
@@ -119,13 +117,11 @@ def inspect_agent_load_status() -> dict:
                 else "fallback 训练集均值（缺 .joblib）"
             )
         elif model_id == "model-7":
-            entry["real_model"] = "Fortran exe"
-            entry["resource_ready"] = (
-                resource_status["grade_exe_exists"] and resource_status["grade_dat_exists"]
-            )
+            entry["real_model"] = "Python implementation"
+            entry["resource_ready"] = resource_status["grade_csv_exists"]
             entry["expected_behavior"] = (
                 "真实计算" if entry["resource_ready"]
-                else "回退模拟数据（需部署 exe+dat 到 bin/farmland_quality_eval/）"
+                else "回退模拟数据（需部署 CSV 到 bin/farmland_quality_eval/）"
             )
         else:
             entry["real_model"] = None
