@@ -1,6 +1,6 @@
 ## ADDED Requirements
 
-### Requirement: 模型3 v2 版本标识
+### Requirement: 模型4 v2 版本标识
 系统 SHALL 将酸化过程模型的 `model_version` 标识更新为 `process_v2_20260801`，反映与模型作者 2026-08-01 发布的 v2 源码（`模型5_酸化模型_v2_20260801`）同步。所有计算结果（单次 API 调用、批量 CSV 计算）SHALL 返回该版本标识。4 个子模型的核心数学公式、默认参数、系数与 v2 源码逐行一致，无公式变更。
 
 #### Scenario: 单次计算返回 v2 版本
@@ -9,13 +9,13 @@
 
 #### Scenario: 批量计算返回 v2 版本
 - **WHEN** 系统通过 `run_csv` 执行批量 CSV 计算
-- **THEN** 输出的每行结果 SHALL 包含 `model_version = process_v2_20260801`（通过 CLI 脚本元数据或单独版本文件体现，CSV 行内可选）
+- **THEN** 系统 SHALL 通过 `MODEL_VERSION` 常量与单次 API 返回暴露版本号 `process_v2_20260801`；批量 CSV 输出不强制包含 `model_version` 列（run_csv 输出列仅为输入列 + 中间变量列 + 结果列）
 
 #### Scenario: model_4_execution 入口透传 v2 版本
 - **WHEN** 调用 `model_4_execution` 入口（含 fallback 场景 model_unavailable）
 - **THEN** 返回的 `model_version` 字段 SHALL 为 `process_v2_20260801`
 
-### Requirement: 模型3 批量 CSV 计算工具
+### Requirement: 模型4 批量 CSV 计算工具
 系统 SHALL 提供批量 CSV 计算能力，包含内部函数 `run_csv` 和 CLI 脚本 `scripts/run_acidification_batch.py`，支持从 CSV 文件读取多个地块数据，批量执行酸化模型计算，输出包含中间变量和结果变量的 CSV 文件。该能力 SHALL NOT 通过 HTTP API 暴露，仅用于离线批量分析场景。
 
 #### Scenario: run_csv 函数批量计算成功
@@ -42,7 +42,7 @@
 - **WHEN** 调用方尝试通过 HTTP API 触发批量 CSV 计算
 - **THEN** 系统 SHALL NOT 提供批量计算端点（`run_csv` 仅作为内部函数和 CLI 工具存在，`chat.py` 路由层无改动）
 
-### Requirement: 模型3 v2 回归测试验证
+### Requirement: 模型4 v2 回归测试验证
 系统 SHALL 通过 v2 源码提供的 393 个地块测试数据验证项目实现的正确性，确保在大数据集（含极端值如 `Alex=8.95`、`SJD=4.19`）上与 v2 源码输出偏差 < 0.01。测试数据 SHALL 自包含在 `tests/data/acidification_v2/` 目录下，不依赖外部路径。
 
 #### Scenario: 393 地块回归测试通过

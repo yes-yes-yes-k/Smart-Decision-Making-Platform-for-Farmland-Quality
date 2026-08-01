@@ -288,6 +288,7 @@ def run_csv(input_file: str, output_file: str,
     - 输出 CSV 含输入列 + 中间变量列（Adep/Acrop/ANcy/Aagri/Aback）+ 结果列（YTK/MBNT）
     - NaN 行输出 7 个 None，不抛异常
     - 不做越界校验（仅单次入口 calculate_acidification_amendment 做）
+    - 非数值输入（如字符串）会抛 ValueError（float() 转换失败），调用方需自行处理
 
     Args:
         input_file: 输入 CSV 路径（utf-8-sig 编码）
