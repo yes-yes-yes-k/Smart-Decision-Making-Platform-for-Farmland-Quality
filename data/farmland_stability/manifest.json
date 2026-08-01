@@ -1,0 +1,13 @@
+{
+  "model_version": "model1_v2_20260801",
+  "current_year": 2024,
+  "history_years": [2018, 2021],
+  "years": [2018, 2021, 2024],
+  "current_filename": "2024_测试数据.shp",
+  "history_filenames": [
+    "2018_测试数据.shp",
+    "2021_测试数据.shp",
+    "2024_测试数据.shp"
+  ],
+  "id_column": "TYBH"
+}

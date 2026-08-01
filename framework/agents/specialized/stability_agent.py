@@ -88,13 +88,34 @@ class StabilityRiskAgent(BaseAgent):
 
         return {}
 
+    @staticmethod
+    def _module_metric(
+        result: Dict[str, Any], module: int, metric: str, default: float,
+    ) -> float:
+        """从稳定性结果库的模块分组结构读取数值指标。"""
+        value = result.get(f"module_{module}", {}).get(metric, default)
+        try:
+            return float(value)
+        except (TypeError, ValueError):
+            return default
+
     def answer_question(self, question: str, context: Dict[str, Any]) -> Dict[str, Any]:
         # 尝试使用实际模型
         real_result = self._get_real_stability(context)
 
         if real_result:
-            stability_score = real_result.get('all_results', {}).get('BAL_ABS', 0.85)
-            risk_level = "低风险" if stability_score > 0.8 else "中风险"
+            stability_score = self._module_metric(
+                real_result, 2, '指标支撑均衡度_绝对', 0.0,
+            )
+            drop_risk = self._module_metric(
+                real_result, 6, '掉级风险_绝对', 0.0,
+            )
+            if drop_risk < 0.2:
+                risk_level = "低风险"
+            elif drop_risk < 0.5:
+                risk_level = "中风险"
+            else:
+                risk_level = "高风险"
 
             if "稳定性" in question or "稳不稳" in question:
                 answer = (
@@ -107,7 +128,6 @@ class StabilityRiskAgent(BaseAgent):
                 ]
                 confidence = 0.88
             elif "退化风险" in question or "掉级" in question:
-                drop_risk = real_result.get('all_results', {}).get('DROP_ABS', 0.15)
                 answer = (
                     f"退化风险评价结果：掉级风险得分 {drop_risk:.2f}，风险等级：{risk_level}。"
                     f"九模块评价均已完成，包括等级边界安全度、指标支撑均衡度等。"

@@ -24,6 +24,8 @@ response.json
 
 # 耕地质量稳定性模型 shapefile 测试数据（大文件，不入库）
 data/farmland_stability/*
+!data/farmland_stability/README.md
+!data/farmland_stability/manifest.json
 !data/farmland_stability/.gitkeep
 !data/farmland_stability/README.md
 
