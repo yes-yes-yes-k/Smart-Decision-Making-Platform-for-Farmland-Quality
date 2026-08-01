@@ -29,9 +29,16 @@ try:
 except ImportError:
     CORE_ENGINE_AVAILABLE = False
 
-QUESTION_TYPE_1_KEYWORDS = ["酸化程度", "酸化等级", "pH分级", "酸度", "酸化现状", "土壤酸性", "酸性分级", "土壤pH", "pH值"]
-QUESTION_TYPE_2_KEYWORDS = ["治理", "调理剂", "石灰", "碱性材料", "改良", "修复", "调理", "施加", "用量", "怎么治", "怎么办", "如何改"]
-QUESTION_TYPE_3_KEYWORDS = ["氮肥", "pH下降", "施氮", "酸化原因", "氮素", "化肥", "施肥", "氮"]
+# TYPE_1: 等级稳定性/退化风险（model-1）
+QUESTION_TYPE_1_KEYWORDS = ["稳定", "稳定性", "稳不稳", "关注清单", "退化风险"]
+# TYPE_2: 酸化程度/调理剂/改良方案（model-4）
+QUESTION_TYPE_2_KEYWORDS = ["酸化程度", "酸化", "调理剂", "石灰", "碱性材料", "修复", "怎么治", "怎么办", "如何改"]
+# TYPE_3: 潜力/障碍因素/主要问题（model-2/3）
+QUESTION_TYPE_3_KEYWORDS = ["潜力", "毛病", "问题", "障碍因素", "改良片区"]
+# TYPE_4: 有机质/有机肥/肥力/有机碳（model-5/6）
+QUESTION_TYPE_4_KEYWORDS = ["有机质", "有机肥", "秸秆", "肥力", "有机碳", "SOC", "Dose"]
+# TYPE_5: 质量等级评价（model-7）
+QUESTION_TYPE_5_KEYWORDS = ["质量等级", "综合指数", "障碍度排序", "等级评价", "耕地质量", "质量评价", "等级评估"]
 
 RELEVANCE_KEYWORDS = [
     "酸化", "pH", "土壤", "耕地", "治理", "改良", "氮肥", "施肥",
@@ -44,15 +51,14 @@ RELEVANCE_KEYWORDS = [
 ]
 
 REFERENCE_QUESTIONS: Dict[int, List[str]] = {
-    1: ["全省耕地酸化程度如何", "土壤pH分布情况", "酸化等级面积统计", "耕地酸性现状评估",
-        "土壤酸化情况怎么样", "耕地pH值是多少", "酸性土壤占比"],
-    2: ["如何治理强酸性耕地", "石灰施用量计算", "土壤改良方案", "酸性土壤调理方法",
-        "酸化土壤怎么改良", "耕地质量如何提升", "土壤改良措施有哪些"],
-    3: ["施氮肥会导致土壤pH下降多少", "氮肥对土壤酸化的影响", "不同施氮量对pH的影响",
-        "施肥过量会导致酸化吗", "氮肥用量与土壤酸度的关系"],
+    1: ["全省耕地质量等级整体稳定吗", "耕地稳定性如何", "哪些地方存在退化风险",
+        "等级稳定性较弱的地方", "需要纳入重点关注清单的对象"],
+    2: ["全省耕地酸化程度如何", "酸化等级面积统计", "如何治理强酸性耕地",
+        "碱性调理剂施用量", "土壤酸化怎么改良"],
+    3: ["辖区耕地质量提升的总体潜力有多大", "主要障碍因素是什么", "耕地质量问题诊断",
+        "优先改良片区在哪", "耕地存在哪些问题"],
     4: ["耕地有机质含量如何", "有机质怎么提升", "有机肥施用量", "土壤培肥措施"],
-    5: ["耕地质量稳定性怎么样", "退化风险有哪些", "哪些地方耕地质量在下降"],
-    6: ["耕地质量提升潜力多大", "主要障碍因素是什么", "耕地质量问题诊断"],
+    5: ["耕地质量等级是多少", "查询地块的综合指数和障碍度排序", "耕地质量等级评价结果"],
 }
 
 REFERENCE_VECTORS: Dict[int, List[List[float]]] = {}
@@ -105,11 +111,31 @@ def _check_relevance_keyword(question: str) -> float:
     match_count = sum(1 for keyword in RELEVANCE_KEYWORDS if keyword in question)
     return min(match_count / 3, 1.0)
 
+def _is_knowledge_question(question: str) -> bool:
+    """识别知识性问题（如"什么是X"/"X是什么意思"），路由到 RAG。"""
+    if not question:
+        return False
+    # 开头匹配（强信号）
+    if question.startswith(("什么是", "何为", "解释")):
+        return True
+    # 包含匹配（含义类）
+    contains_patterns = ["是什么意思", "什么意思", "定义", "概念", "含义"]
+    if any(p in question for p in contains_patterns):
+        return True
+    return False
+
 def identify_question_type(question: str) -> tuple[int, float]:
+    # 知识性预检：命中时走 RAG（TYPE_0）
+    if _is_knowledge_question(question):
+        return 0, 1.0
+    # 关键词优先匹配具体类型
+    kw_type, kw_rel = _identify_question_type_keyword(question)
+    if kw_type != 0:
+        return kw_type, kw_rel
+    # 关键词未命中具体类型，回退到向量匹配
     if EMBEDDING_AVAILABLE and embedding_service.is_available():
         return _identify_question_type_vector(question)
-    else:
-        return _identify_question_type_keyword(question)
+    return 0, kw_rel
 
 def _identify_question_type_vector(question: str) -> tuple[int, float]:
     keyword_relevance = _check_relevance_keyword(question)
@@ -137,14 +163,21 @@ def _identify_question_type_vector(question: str) -> tuple[int, float]:
 
 def _identify_question_type_keyword(question: str) -> tuple[int, float]:
     relevance = _check_relevance_keyword(question)
+    # 关键词优先匹配具体类型（按 TYPE_1→2→3→4→5 顺序，避免宽泛词误匹配）
+    if any(keyword in question for keyword in QUESTION_TYPE_1_KEYWORDS):
+        return 1, max(relevance, 0.3)
+    if any(keyword in question for keyword in QUESTION_TYPE_2_KEYWORDS):
+        return 2, max(relevance, 0.3)
+    if any(keyword in question for keyword in QUESTION_TYPE_3_KEYWORDS):
+        return 3, max(relevance, 0.3)
+    if any(keyword in question for keyword in QUESTION_TYPE_4_KEYWORDS):
+        return 4, max(relevance, 0.3)
+    if any(keyword in question for keyword in QUESTION_TYPE_5_KEYWORDS):
+        return 5, max(relevance, 0.3)
+    # 无具体关键词命中
     if relevance < 0.2:
         return 0, relevance
-    if any(keyword in question for keyword in QUESTION_TYPE_1_KEYWORDS):
-        return 1, relevance
-    elif any(keyword in question for keyword in QUESTION_TYPE_3_KEYWORDS):
-        return 3, relevance
-    else:
-        return 0, relevance
+    return 0, relevance
 
 def initialize_state(state: MultiAgentState) -> MultiAgentState:
     return {
@@ -240,6 +273,13 @@ def execute_models(state: MultiAgentState) -> MultiAgentState:
             "area_code": state["request"].get("area_code", "lechang"),
             "data": state.get("data", {}),
         }
+        # 透传地块标识符到 context top-level（模型优先从 top-level 读取）
+        for key in ("parcel_id", "parcel_code"):
+            if key in state["request"]:
+                context[key] = state["request"][key]
+        # 透传 question_type 到 context（agent 可能需要）
+        if "question_type" in state:
+            context["question_type"] = state["question_type"]
         # 透传可能的土壤参数与区域/土地类型
         for key in ("longitude", "latitude", "target_ph", "context", "land_type", "fertilizer_type"):
             if key in state["request"]:

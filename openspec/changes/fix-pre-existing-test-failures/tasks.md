@@ -1,14 +1,14 @@
 ## 1. question type 路由修复（framework/agents/nodes.py）
 
-- [ ] 1.1 定义 `QUESTION_TYPE_4_KEYWORDS`（肥力相关：有机质/有机肥/秸秆/肥力/SOC/Dose/有机碳/腐殖质等），参考 test_question_type_keywords.py 期望
-- [ ] 1.2 定义 `QUESTION_TYPE_5_KEYWORDS`（质量等级评价相关：质量等级/综合指数/障碍度排序/等级评价等），参考 project_memory 中 QUESTION_TYPE_5_KEYWORDS 定义
-- [ ] 1.3 在 `_identify_question_type_keyword` 中补充 TYPE_2/4/5 的关键词路由逻辑（当前只覆盖 TYPE_1/3），确保关键词优先于向量匹配
-- [ ] 1.4 实现 `_is_knowledge_question(question: str) -> bool` 函数，匹配开头模式（"什么是"/"何为"/"解释"）和包含模式（"是什么意思"/"什么意思"/"定义"/"概念"/"含义"），不匹配具体诊断/评价问题
-- [ ] 1.5 在 `identify_question_type` 最前端执行知识性问题预检，命中时返回 `(0, 1.0)` 走 RAG
+- [x] 1.1 定义 `QUESTION_TYPE_4_KEYWORDS`（肥力相关：有机质/有机肥/秸秆/肥力/SOC/Dose/有机碳/腐殖质等），参考 test_question_type_keywords.py 期望
+- [x] 1.2 定义 `QUESTION_TYPE_5_KEYWORDS`（质量等级评价相关：质量等级/综合指数/障碍度排序/等级评价等），参考 project_memory 中 QUESTION_TYPE_5_KEYWORDS 定义
+- [x] 1.3 在 `_identify_question_type_keyword` 中补充 TYPE_2/4/5 的关键词路由逻辑（当前只覆盖 TYPE_1/3），确保关键词优先于向量匹配
+- [x] 1.4 实现 `_is_knowledge_question(question: str) -> bool` 函数，匹配开头模式（"什么是"/"何为"/"解释"）和包含模式（"是什么意思"/"什么意思"/"定义"/"概念"/"含义"），不匹配具体诊断/评价问题
+- [x] 1.5 在 `identify_question_type` 最前端执行知识性问题预检，命中时返回 `(0, 1.0)` 走 RAG
 
 ## 2. parcel_id 透传修复（framework/agents/nodes.py）
 
-- [ ] 2.1 在 `execute_models` 的 context 透传列表中添加 `parcel_id` 和 `parcel_code`，确保传递到 context top-level
+- [x] 2.1 在 `execute_models` 的 context 透传列表中添加 `parcel_id` 和 `parcel_code`，确保传递到 context top-level
 
 ## 3. DataFile 模型补全（framework/models/data_file.py）
 
