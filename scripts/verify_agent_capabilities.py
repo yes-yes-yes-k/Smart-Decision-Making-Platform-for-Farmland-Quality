@@ -24,6 +24,14 @@ os.environ.setdefault("PYTHONPATH", str(PROJECT_ROOT / "src"))
 # 避免加载 .env 时引发副作用，仅设置最小环境变量
 os.environ.setdefault("FLASK_CONFIG", "default")
 
+# Excel 标准模型映射（单一事实源在 gen_full_verification_report，此处引入共享同一份）
+# MODEL_TO_STD: model_id -> (std_id, std_name)；未对应 Excel 标准的 model 返回 None
+try:
+    from scripts.gen_full_verification_report import MODEL_TO_STD, STANDARD_MODEL_MAPPING
+except ImportError:  # 直接以文件方式运行时的兜底
+    MODEL_TO_STD = {}
+    STANDARD_MODEL_MAPPING = []
+
 
 def section(title: str) -> None:
     print("\n" + "=" * 72)
@@ -75,6 +83,7 @@ def inspect_agent_load_status() -> dict:
 
     for model_id, agent in manager.agents.items():
         is_stub = isinstance(agent, _StubAgent)
+        std = MODEL_TO_STD.get(model_id)  # (std_id, std_name) or None
         entry = {
             "model_id": model_id,
             "class": type(agent).__name__,
@@ -83,6 +92,9 @@ def inspect_agent_load_status() -> dict:
             "domain": getattr(agent, "domain", ""),
             "dependencies": getattr(agent, "dependencies", []) or [],
             "model_id_registered": getattr(agent, "model_id", ""),
+            # Excel 标准模型对应关系（model-2/model-5 未对应 Excel 标准 → None）
+            "std_id": std[0] if std else None,
+            "std_name": std[1] if std else None,
         }
 
         # 附加具体模型可用性
@@ -290,14 +302,17 @@ def main() -> int:
         flag = "✓" if v else "✗"
         print(f"  {flag} {k}: {v}")
 
-    print("\n[7 个 Agent 加载状态]")
-    print(f"{'model_id':<10}{'class':<32}{'stub':<6}{'real_model':<28}{'expected_behavior'}")
+    print("\n[7 个 Agent 加载状态]（含 Excel 标准模型对应关系）")
+    print(f"{'Excel标准':<10}{'model_id':<10}{'class':<32}{'stub':<6}{'real_model':<28}{'expected_behavior'}")
     hr()
     for mid, entry in load_report["agents"].items():
-        print(f"{mid:<10}{entry['class']:<32}"
+        std_label = f"模型{entry['std_id']}" if entry.get("std_id") else "-"
+        print(f"{std_label:<10}{mid:<10}{entry['class']:<32}"
               f"{'是' if entry['is_stub'] else '否':<6}"
               f"{(entry['real_model'] or '-'):<28}"
               f"{entry['expected_behavior']}")
+    print("\n  注：Excel 标准模型6（耕地综合地力改良提升模型）尚未实现，项目中无对应 agent；"
+          "model-2 / model-5 为项目历史占位桩，未对应 Excel 标准。")
 
     # 第二部分
     section("二、问题库回答验证（REFERENCE_QUESTIONS 18 题）")

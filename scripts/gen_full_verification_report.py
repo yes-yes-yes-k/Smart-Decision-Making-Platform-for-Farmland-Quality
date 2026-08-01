@@ -24,6 +24,42 @@ os.environ.setdefault("FLASK_CONFIG", "default")
 REPORT_FILE = PROJECT_ROOT / "verification_full_report.md"
 RAW_JSON_FILE = PROJECT_ROOT / "verification_raw_outputs.json"
 
+# Excel 标准模型 ↔ 项目 model 映射（按 Excel「数据字段标准化」表格顺序）
+# 来源：D:\destkop\模型\数据字段标准化 (1).xlsx
+# - std_id: Excel 标准模型编号（1-6）
+# - std_name: Excel 标准模型全称
+# - model_id: 项目内部 model_id（None 表示 Excel 标准要求但项目尚未实现）
+# - agent_class: 对应 Agent 类名（占位符为 None）
+STANDARD_MODEL_MAPPING = [
+    {"std_id": 1, "std_name": "耕地质量等级稳定性与退化风险识别模型", "model_id": "model-1", "agent_class": "StabilityRiskAgent"},
+    {"std_id": 2, "std_name": "耕地质量提升潜力评估模型", "model_id": "model-7", "agent_class": "FarmlandGradeAgent"},
+    {"std_id": 3, "std_name": "耕地质量主要问题精准识别模型", "model_id": "model-3", "agent_class": "ProblemIdentificationAgent"},
+    {"std_id": 4, "std_name": "耕地土壤酸化改良模型", "model_id": "model-4", "agent_class": "AcidificationRemediationAgent"},
+    {"std_id": 5, "std_name": "耕地土壤有机质培肥提升模型", "model_id": "model-6", "agent_class": "FertilityMLAgent"},
+    {"std_id": 6, "std_name": "耕地综合地力改良提升模型", "model_id": None, "agent_class": None},  # 占位符（未实现）
+]
+
+# 反向映射：model_id -> (std_id, std_name)，供 verify_agent_capabilities 附加 std_name
+MODEL_TO_STD = {m["model_id"]: (m["std_id"], m["std_name"]) for m in STANDARD_MODEL_MAPPING if m["model_id"]}
+
+# 问题类型 -> Excel 标准模型（用于路由表展示；type 0 走 RAG 不对应专业模型）
+TYPE_TO_STD = {
+    1: (1, "耕地质量等级稳定性与退化风险识别模型", "model-1"),
+    2: (4, "耕地土壤酸化改良模型", "model-4"),
+    3: (3, "耕地质量主要问题精准识别模型", "model-3"),
+    4: (5, "耕地土壤有机质培肥提升模型", "model-6"),
+    5: (2, "耕地质量提升潜力评估模型", "model-7"),
+}
+
+# 问题类型语义（用于路由表展示）
+TYPE_SEMANTICS = {
+    1: "稳定性/退化风险",
+    2: "酸化改良",
+    3: "障碍诊断",
+    4: "肥力/SOC/Dose",
+    5: "耕地质量等级评价",
+}
+
 
 def truncate(s: str, n: int = 4000) -> str:
     if not s:
@@ -151,36 +187,62 @@ def build_markdown(report: Dict[str, Any]) -> str:
     md.append("---")
     md.append("")
 
-    # 一、Agent 加载状态
+    # 一、Agent 加载状态（按 Excel 标准模型顺序展示）
     md.append("## 一、Agent 加载状态盘点")
     md.append("")
-    md.append("| model_id | class | 占位桩 | 真实模型 | 资源就绪 | 期望行为 |")
-    md.append("|---|---|---|---|---|---|")
-    for mid, e in report["agents"].items():
+    md.append("> 按 Excel 标准表格「数据字段标准化」（`D:\\destkop\\模型\\数据字段标准化 (1).xlsx`）"
+              "定义的 6 个标准模型顺序展示，使用标准命名。"
+              "**模型6（耕地综合地力改良提升模型）项目尚未实现，以占位符行标注**。"
+              "项目内部 model-2 / model-5 未对应 Excel 标准，列于表末仅作记录。")
+    md.append("")
+    md.append("| Excel 标准模型 | 项目 model_id | class | 占位桩 | 真实模型 | 资源就绪 | 期望行为 |")
+    md.append("|---|---|---|---|---|---|---|")
+    agents_by_mid = report["agents"]
+    for m in STANDARD_MODEL_MAPPING:
+        std_label = f"模型{m['std_id']}：{m['std_name']}"
+        mid = m["model_id"]
+        if mid is None:
+            # 模型6 占位符（Excel 标准要求但项目未实现）
+            md.append(f"| {std_label} | —（占位符） | — | — | — | ✗ | 未实现（占位符） |")
+            continue
+        e = agents_by_mid.get(mid, {})
         md.append(
-            f"| {mid} | `{e['class']}` | {'是' if e['is_stub'] else '否'} | "
-            f"{e['real_model'] or '-'} | {'✓' if e.get('resource_ready') else '✗'} | "
-            f"{e['expected_behavior']} |"
+            f"| {std_label} | {mid} | `{e.get('class', '-')}` | "
+            f"{'是' if e.get('is_stub') else '否'} | {e.get('real_model') or '-'} | "
+            f"{'✓' if e.get('resource_ready') else '✗'} | {e.get('expected_behavior', '-')} |"
         )
+    # 末尾附加：项目内部 model-2 / model-5 未对应 Excel 标准的占位桩
+    for extra_mid in ("model-2", "model-5"):
+        e = agents_by_mid.get(extra_mid, {})
+        if not e:
+            continue
+        md.append(
+            f"| —（未对应 Excel 标准） | {extra_mid} | `{e.get('class', '-')}` | "
+            f"{'是' if e.get('is_stub') else '否'} | {e.get('real_model') or '-'} | "
+            f"{'✓' if e.get('resource_ready') else '✗'} | {e.get('expected_behavior', '-')} |"
+        )
+    md.append("")
+    md.append("> **Excel 标准 ↔ 项目 model 对应关系**：模型1→model-1；模型2→model-7；"
+              "模型3→model-3；模型4→model-4；模型5→model-6；模型6→未实现（占位符）。"
+              "model-2（PotentialAssessmentAgent）与 model-5（OrganicMatterAgent）为项目历史占位桩，"
+              "无真实模型绑定，未对应 Excel 标准。")
     md.append("")
     md.append("**资源就绪状态：**")
     md.append("")
     for k, v in report["resources"].items():
         md.append(f"- {'✓' if v else '✗'} `{k}`: `{v}`")
     md.append("")
-    md.append("**问题类型路由表（QuestionTypeRouter.TYPE_AGENTS，1:1 映射）：**")
+    md.append("**问题类型路由表（QuestionTypeRouter.TYPE_AGENTS，1:1 映射；含 Excel 标准模型对应关系）：**")
     md.append("")
-    md.append("| question_type | 语义 | 调用 agent |")
-    md.append("|---|---|---|")
-    md.append("| `1` | 稳定性/退化风险 | model-1 |")
-    md.append("| `2` | 酸化改良 | model-4 |")
-    md.append("| `3` | 障碍诊断 | model-3 |")
-    md.append("| `4` | 肥力/SOC/Dose | model-6 |")
-    md.append("| `5` | 耕地质量等级评价 | model-7 |")
-    md.append("| `0` | 知识性问题（什么是X/X是什么意思） | 走 RAG，不调专业模型 |")
+    md.append("| question_type | 语义 | 调用 agent | Excel 标准模型 |")
+    md.append("|---|---|---|---|")
+    for q_type, (std_id, std_name, mid) in TYPE_TO_STD.items():
+        md.append(f"| `{q_type}` | {TYPE_SEMANTICS.get(q_type, '-')} | {mid} | 模型{std_id}：{std_name} |")
+    md.append("| `0` | 知识性问题（什么是X/X是什么意思） | 走 RAG，不调专业模型 | —（不对应专业模型） |")
     md.append("")
     md.append("> 知识性问题（含「什么是」「何为」「解释」「是什么意思」「定义」「概念」「含义」等模式）"
-              "经 `_is_knowledge_question` 预检后返回 type 0，直接走 RAG 知识库，不进入专业模型路由。")
+              "经 `_is_knowledge_question` 预检后返回 type 0，直接走 RAG 知识库，不进入专业模型路由。"
+              "Excel 标准模型6（耕地综合地力改良提升模型）尚未实现，暂无 question_type 路由。")
     md.append("")
     md.append("---")
     md.append("")
