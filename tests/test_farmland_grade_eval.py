@@ -27,7 +27,7 @@ class TestModels:
             tybh="A0001", jd=112.97, wd=25.32, mj=100.0,
             sjd=4.6, yjz=16.2, yxl=66.9, sxj=51.7, trrz=1.24,
             yxtchd=120.0, gchd=17.0, jhxllz=0.0, jhxqlz=0.0,
-            ejnyq=1, xqmc=8, zdgc=6, psnl=3, ggnl=2, dxbw=6, zdgx=5,
+            ejnyq=1, xqmc=8, zdgc=6, psnl=3, ggnl=2, dxbw=6, zdgx=6,
         )
         assert parcel.tybh == "A0001"
         assert parcel.sjd == 4.6
@@ -75,7 +75,7 @@ class TestDataLoader:
             "JHXLLZ,JHXQLZ,EJNYQcode,XQMCcode,GCZDcode,PSNLcode,"
             "GGNLcode,DXBWcode,ZDGXcode\n"
             "A0001,112.973801,25.324301,100.0,4.600,16.200,66.900,51.700,"
-            "1.240,120.000,17.000,0.0,0.0,1,8,6,3,2,6,5\n"
+            "1.240,120.000,17.000,0.0,0.0,1,8,6,3,2,6,6\n"
             "A0002,113.0,25.3,80.0,5.5,25.0,30.0,100.0,1.35,60.0,20.0,"
             "0.0,0.0,1,8,3,1,1,1,2\n"
         )
@@ -137,7 +137,7 @@ class TestEvaluation:
             tybh="A0001", jd=112.973801, wd=25.324301, mj=100.0,
             sjd=4.600, yjz=16.200, yxl=66.900, sxj=51.700, trrz=1.240,
             yxtchd=120.000, gchd=17.000, jhxllz=0.0, jhxqlz=0.0,
-            ejnyq=1, xqmc=8, zdgc=6, psnl=3, ggnl=2, dxbw=6, zdgx=5,
+            ejnyq=1, xqmc=8, zdgc=6, psnl=3, ggnl=2, dxbw=6, zdgx=6,
         )
 
     def test_a0001_composite_index_matches_exe(self, config, parcel_a0001):
@@ -196,7 +196,7 @@ class TestObstacle:
             tybh="A0001", jd=112.973801, wd=25.324301, mj=100.0,
             sjd=4.600, yjz=16.200, yxl=66.900, sxj=51.700, trrz=1.240,
             yxtchd=120.000, gchd=17.000, jhxllz=0.0, jhxqlz=0.0,
-            ejnyq=1, xqmc=8, zdgc=6, psnl=3, ggnl=2, dxbw=6, zdgx=5,
+            ejnyq=1, xqmc=8, zdgc=6, psnl=3, ggnl=2, dxbw=6, zdgx=6,
         )
         result = evaluate_land_quality(config, parcel)
         obstacles = compute_obstacle_factors(config, parcel.ejnyq, result.y)
@@ -213,9 +213,120 @@ class TestObstacle:
             tybh="A0001", jd=112.973801, wd=25.324301, mj=100.0,
             sjd=4.600, yjz=16.200, yxl=66.900, sxj=51.700, trrz=1.240,
             yxtchd=120.000, gchd=17.000, jhxllz=0.0, jhxqlz=0.0,
-            ejnyq=1, xqmc=8, zdgc=6, psnl=3, ggnl=2, dxbw=6, zdgx=5,
+            ejnyq=1, xqmc=8, zdgc=6, psnl=3, ggnl=2, dxbw=6, zdgx=6,
         )
         result = evaluate_land_quality(config, parcel)
         obstacles = compute_obstacle_factors(config, parcel.ejnyq, result.y)
         assert obstacles[0].name.strip() == "质地构型"
         assert abs(obstacles[0].factor - 0.169) < 0.01
+
+
+# ========== Runner 集成测试 ==========
+
+@pytest.fixture
+def runner():
+    from ai_culti_demo.farmland_grade_eval.runner import FarmlandGradeRunner
+    return FarmlandGradeRunner()
+
+
+class TestRunnerDeployment:
+    """部署校验测试。"""
+
+    def test_check_deployment_csv_exists(self, runner):
+        """CSV 已部署时 check_deployment 返回 ready=True。"""
+        result = runner.check_deployment()
+        assert result["csv_exists"] is True
+        assert result["ready"] is True
+        assert "csv_path" in result
+
+    def test_check_deployment_csv_missing(self, tmp_path):
+        """CSV 不存在时 check_deployment 返回 ready=False。"""
+        from ai_culti_demo.farmland_grade_eval.runner import FarmlandGradeRunner
+        runner = FarmlandGradeRunner(dat_path=str(tmp_path / "nonexistent.csv"))
+        result = runner.check_deployment()
+        assert result["csv_exists"] is False
+        assert result["ready"] is False
+
+
+class TestRunnerRun:
+    """runner.run() 端到端测试（需要 CSV 已部署）。"""
+
+    def test_run_a0001_returns_ok(self, runner):
+        result = runner.run("A0001")
+        assert result["status"] == "ok"
+        assert result["parcel_code"] == "A0001"
+        assert result["model_version"] == "python_v1_20260801"
+
+    def test_run_a0001_composite_index_regression(self, runner):
+        """A0001 综合指数与 exe 历史输出 0.6728 一致。"""
+        result = runner.run("A0001")
+        assert abs(result["composite_index"] - 0.6728) < 0.01
+
+    def test_run_a0001_quality_grade(self, runner):
+        result = runner.run("A0001")
+        assert result["quality_grade"] == "10等"
+
+    def test_run_a0001_parcel_info(self, runner):
+        result = runner.run("A0001")
+        info = result["parcel_info"]
+        assert info["地块代码"] == "A0001"
+        assert "经度" in info
+        assert "纬度" in info
+        assert info["县区名称"] == "武江区"
+        assert info["二级农业区名称"].strip() == "闽南粤中农林水产区"
+
+    def test_run_a0001_indicators_format(self, runner):
+        """12 项指标，数值型 raw_value 格式为 {:.3f}，概念型为名称。"""
+        result = runner.run("A0001")
+        indicators = result["indicators"]
+        assert len(indicators) == 12
+        assert indicators[0] == {"name": "酸碱度", "code": "SJD", "raw_value": "4.600"}
+        # 概念型指标（耕层质地）
+        gczd = [i for i in indicators if i["code"] == "GCZD"][0]
+        assert gczd["name"] == "耕层质地"
+        assert gczd["raw_value"] == "黏壤土"
+
+    def test_run_a0001_obstacle_degree(self, runner):
+        """12 项障碍度，按 degree 降序，rank 1-12 递增。"""
+        result = runner.run("A0001")
+        obstacles = result["obstacle_degree"]
+        assert len(obstacles) == 12
+        assert obstacles[0]["indicator"] == "质地构型"
+        assert abs(obstacles[0]["degree"] - 0.169) < 0.01
+        assert obstacles[0]["level"].strip() == "中度障碍"
+        assert [o["rank"] for o in obstacles] == list(range(1, 13))
+        degrees = [o["degree"] for o in obstacles]
+        assert degrees == sorted(degrees, reverse=True)
+
+    def test_run_invalid_parcel_returns_error(self, runner):
+        result = runner.run("INVALID_CODE_99999")
+        assert result["status"] == "error"
+        assert result["error"]["code"] == "PARCEL_NOT_FOUND"
+
+    def test_run_csv_missing_returns_deployment_error(self, tmp_path):
+        from ai_culti_demo.farmland_grade_eval.runner import FarmlandGradeRunner
+        runner = FarmlandGradeRunner(dat_path=str(tmp_path / "nonexistent.csv"))
+        result = runner.run("A0001")
+        assert result["status"] == "error"
+        assert result["error"]["code"] == "DEPLOYMENT_ERROR"
+
+
+class TestBackwardCompatibility:
+    """向后兼容测试。"""
+
+    def test_run_grade_evaluation_default_path(self):
+        from ai_culti_demo.farmland_grade_eval.runner import run_grade_evaluation
+        result = run_grade_evaluation("A0001")
+        assert result["status"] == "ok"
+
+    def test_run_grade_evaluation_with_exe_path_ignored(self):
+        """传 exe_path（旧调用方式）不报错，被忽略。"""
+        from ai_culti_demo.farmland_grade_eval.runner import run_grade_evaluation
+        result = run_grade_evaluation("A0001", exe_path="bin/nonexistent.exe")
+        assert result["status"] == "ok"
+
+    def test_runner_init_with_exe_and_dat_path(self):
+        """FarmlandGradeRunner 接受 exe_path 和 dat_path 参数。"""
+        from ai_culti_demo.farmland_grade_eval.runner import FarmlandGradeRunner
+        runner = FarmlandGradeRunner(exe_path="ignored.exe", dat_path=None)
+        assert runner.csv_path is not None  # 使用默认 CSV 路径
