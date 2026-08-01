@@ -8,7 +8,11 @@ EXPECTED 数值由模型5源码 (D:\destkop\模型5\模型5\02_酸化模型计�
 import sys, os
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 import math
+import pandas as pd
+import pytest
 from ai_culti_demo.farmland_diagnosis.acidification import calculate_acidification_amendment
+
+V2_DATA_DIR = os.path.join(os.path.dirname(__file__), "data", "acidification_v2")
 
 PHSTART, HEX, ALEX = 4.31, 1.56, 4.08
 
@@ -181,3 +185,42 @@ def test_build_params():
     p["YN"] = -1.0
     assert _UPLAND_DEFAULTS["FertN"] == 180.0
     assert _UPLAND_COMPOUND_EXTRA["YN"] == 1.91
+
+
+# --- Task 4 (sync-acidification-model-v2): run_csv 批量 CSV 计算 ---
+def test_run_csv_basic(tmp_path):
+    """run_csv 基本功能：列结构、行数、结果非空、输出文件写入。"""
+    from ai_culti_demo.farmland_diagnosis.acidification import run_csv
+    input_csv = os.path.join(V2_DATA_DIR, "03_Data.csv")
+    output_csv = str(tmp_path / "_test_basic_output.csv")
+    df = run_csv(input_csv, output_csv, "upland", "compound")
+    # 列结构：输入列 + 中间变量列 + 结果列
+    expected_cols = {"TYBH", "SJD", "Hex", "Alex",
+                     "Adep", "Acrop", "ANcy", "Aagri", "Aback", "YTK", "MBNT"}
+    assert expected_cols <= set(df.columns), f"缺失列：{expected_cols - set(df.columns)}"
+    # 行数
+    assert len(df) == 393
+    # 结果列非空（输入无 NaN）
+    assert df["YTK"].notna().all(), "YTK 含意外 NaN"
+    assert df["MBNT"].notna().all(), "MBNT 含意外 NaN"
+    # 输出文件已写入
+    assert os.path.exists(output_csv)
+
+
+def test_run_csv_invalid_land_type(tmp_path):
+    """非法 land_type 抛 ValueError。"""
+    from ai_culti_demo.farmland_diagnosis.acidification import run_csv
+    input_csv = os.path.join(V2_DATA_DIR, "03_Data.csv")
+    output_csv = str(tmp_path / "_test_invalid.csv")
+    with pytest.raises(ValueError, match="土地类型"):
+        run_csv(input_csv, output_csv, "invalid", "compound")
+
+
+def test_run_csv_missing_columns(tmp_path):
+    """缺少必填列抛 ValueError。"""
+    from ai_culti_demo.farmland_diagnosis.acidification import run_csv
+    input_csv = str(tmp_path / "_bad_input.csv")
+    pd.DataFrame({"TYBH": [1], "SJD": [5.5]}).to_csv(input_csv, index=False, encoding="utf-8-sig")
+    output_csv = str(tmp_path / "_bad_output.csv")
+    with pytest.raises(ValueError, match="CSV必须包含"):
+        run_csv(input_csv, output_csv, "upland", "compound")

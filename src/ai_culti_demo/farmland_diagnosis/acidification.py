@@ -279,6 +279,50 @@ def calculate_acidification_amendment(
     return result
 
 
+def run_csv(input_file: str, output_file: str,
+            land_type: str, fertilizer_type: str) -> "pd.DataFrame":
+    """批量 CSV 计算：读 CSV → 4 子模型批量计算 → 输出 CSV。
+
+    与 v2 源码 02_酸化模型计算.py 语义一致：
+    - 输入 CSV 需包含 SJD（或 pH）、Hex、Alex 列
+    - 输出 CSV 含输入列 + 中间变量列（Adep/Acrop/ANcy/Aagri/Aback）+ 结果列（YTK/MBNT）
+    - NaN 行输出 7 个 None，不抛异常
+    - 不做越界校验（仅单次入口 calculate_acidification_amendment 做）
+
+    Args:
+        input_file: 输入 CSV 路径（utf-8-sig 编码）
+        output_file: 输出 CSV 路径
+        land_type: "paddy" 或 "upland"
+        fertilizer_type: "urea" 或 "compound"
+
+    Returns:
+        填充计算列后的 DataFrame
+    """
+    if land_type not in ("paddy", "upland") or fertilizer_type not in ("urea", "compound"):
+        raise ValueError("土地类型只能为水田或旱地，肥料类型只能为尿素或复合肥")
+
+    df = pd.read_csv(input_file, encoding="utf-8-sig")
+    p_col = "SJD" if "SJD" in df else "pH"
+    if not {p_col, "Hex", "Alex"} <= set(df):
+        raise ValueError("CSV必须包含pH或SJD、Hex、Alex列")
+
+    sub_fn = _SUB_MODEL_MAP[(land_type, fertilizer_type)]
+    params = _build_params(land_type, fertilizer_type)
+    cols = ["Adep", "Acrop", "ANcy", "Aagri", "Aback", "YTK", "MBNT"]
+
+    def _compute_row(v):
+        if pd.isna(v).any():
+            return [None] * 7
+        out = sub_fn(*map(float, v), params)
+        return [round(out["Adep"], 2), round(out["Acrop"], 2), round(out["ANcy"], 2),
+                round(out["Aagri"], 2), round(out["Aback"], 2),
+                round(out["ytk"], 2), round(out["mbnt"], 2)]
+
+    df[cols] = [_compute_row(v) for v in df[[p_col, "Hex", "Alex"]].to_numpy()]
+    df.to_csv(output_file, index=False, encoding="utf-8-sig")
+    return df
+
+
 # ===========================================================================
 # 旧函数（兼容层）
 # ===========================================================================
