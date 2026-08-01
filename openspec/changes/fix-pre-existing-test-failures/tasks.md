@@ -17,7 +17,7 @@
 
 ## 4. 测试引用过时修复
 
-- [ ] 4.1 更新 `tests/test_model_specs_sync.py` 中的路径引用，从 `openspec/changes/sync-model-specs-from-overview/specs/` 改为 `openspec/changes/archive/2026-07-24-sync-model-specs-from-overview/specs/`
+- [x] 4.1 更新 `tests/test_model_specs_sync.py` 中的路径引用，从 `openspec/changes/sync-model-specs-from-overview/specs/` 改为 `openspec/changes/archive/2026-07-24-sync-model-specs-from-overview/specs/`
 
 ## 5. 测试基础设施修复
 
