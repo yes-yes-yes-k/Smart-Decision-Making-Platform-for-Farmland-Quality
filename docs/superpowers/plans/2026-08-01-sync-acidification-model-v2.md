@@ -393,7 +393,7 @@ git commit -m "feat(acidification): MODEL_VERSION 升级为 process_v2_20260801
 - Consumes: Task 1 的 4 个子模型函数（返回 7 字段 dict）、Task 2 的 `_build_params`、现有 `_SUB_MODEL_MAP`
 - Produces: `run_csv(input_file: str, output_file: str, land_type: str, fertilizer_type: str) -> pd.DataFrame`。读取 CSV → 批量计算 → 写出 CSV → 返回 DataFrame。输出列含输入列 + `Adep/Acrop/ANcy/Aagri/Aback/YTK/MBNT`，NaN 行输出 7 个 None，不做越界校验。
 
-- [ ] **Step 1: 创建测试数据目录并复制 v2 数据文件**
+- [x] **Step 1: 创建测试数据目录并复制 v2 数据文件**
 
 Run:
 ```bash
@@ -402,7 +402,7 @@ Copy-Item "D:\destkop\模型\模型5_酸化模型_v2_20260801\模型5_酸化模�
 Copy-Item "D:\destkop\模型\模型5_酸化模型_v2_20260801\模型5_酸化模型_v2_20260801\04_旱地复合肥计算结果.csv" "d:\17417\Documents\agent_culti_demo\tests\data\acidification_v2\04_upland_compound_expected.csv"
 ```
 
-- [ ] **Step 2: 验证复制的测试数据完整性**
+- [x] **Step 2: 验证复制的测试数据完整性**
 
 Run:
 ```bash
@@ -410,7 +410,7 @@ python -c "import pandas as pd; df=pd.read_csv(r'd:\17417\Documents\agent_culti_
 ```
 Expected: input rows: 393, cols: `['TYBH', 'SJD', 'Hex', 'Alex']`；expected rows: 393, cols: `['TYBH', 'SJD', 'Hex', 'Alex', 'Adep', 'Acrop', 'ANcy', 'Aagri', 'Aback', 'YTK', 'MBNT']`
 
-- [ ] **Step 3: 在测试文件中新增 `V2_DATA_DIR` 常量与 pandas/pytest 导入**
+- [x] **Step 3: 在测试文件中新增 `V2_DATA_DIR` 常量与 pandas/pytest 导入**
 
 在 `tests/test_model4_acidification.py` 顶部导入区（第 8-11 行附近），将：
 ```python
@@ -431,7 +431,7 @@ from ai_culti_demo.farmland_diagnosis.acidification import calculate_acidificati
 V2_DATA_DIR = os.path.join(os.path.dirname(__file__), "data", "acidification_v2")
 ```
 
-- [ ] **Step 4: 编写失败的 `run_csv` 基础测试**
+- [x] **Step 4: 编写失败的 `run_csv` 基础测试**
 
 在 `tests/test_model4_acidification.py` 末尾（`test_model4_execution_missing_input` 之后）追加：
 
@@ -475,12 +475,12 @@ def test_run_csv_missing_columns(tmp_path):
         run_csv(input_csv, output_csv, "upland", "compound")
 ```
 
-- [ ] **Step 5: 运行测试确认失败（run_csv 未定义）**
+- [x] **Step 5: 运行测试确认失败（run_csv 未定义）**
 
 Run: `pytest tests/test_model4_acidification.py::test_run_csv_basic -v`
 Expected: FAIL with `ImportError: cannot import name 'run_csv'`
 
-- [ ] **Step 6: 实现 `run_csv` 函数**
+- [x] **Step 6: 实现 `run_csv` 函数**
 
 在 `src/ai_culti_demo/farmland_diagnosis/acidification.py` 的 `calculate_acidification_amendment` 函数之后（旧函数兼容层注释 `# ===...` 之前，约第 258 行）插入：
 
@@ -529,17 +529,17 @@ def run_csv(input_file: str, output_file: str,
     return df
 ```
 
-- [ ] **Step 7: 运行 `run_csv` 基础测试确认通过**
+- [x] **Step 7: 运行 `run_csv` 基础测试确认通过**
 
 Run: `pytest tests/test_model4_acidification.py::test_run_csv_basic tests/test_model4_acidification.py::test_run_csv_invalid_land_type tests/test_model4_acidification.py::test_run_csv_missing_columns -v`
 Expected: 三个测试 PASS
 
-- [ ] **Step 8: 运行完整测试套件确认无回归**
+- [x] **Step 8: 运行完整测试套件确认无回归**
 
 Run: `pytest tests/test_model4_acidification.py -v`
 Expected: 所有测试 PASS
 
-- [ ] **Step 9: Commit**
+- [x] **Step 9: Commit**
 
 ```bash
 git add tests/data/acidification_v2/03_Data.csv tests/data/acidification_v2/04_upland_compound_expected.csv src/ai_culti_demo/farmland_diagnosis/acidification.py tests/test_model4_acidification.py
