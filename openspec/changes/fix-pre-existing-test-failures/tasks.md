@@ -29,3 +29,13 @@
 
 - [x] 6.1 运行全量测试，确认所有修复生效且无 collection error
 - [x] 6.2 确认零回归（不引入新的测试失败），对比修复前的失败列表
+
+## 7. 代码审查（review_mode: standard，executing-plans review gate）
+
+- [x] 7.1 已加载 Superpowers `requesting-code-review` 技能，对整个 change diff（base-ref `41526ef`..HEAD `1ffc22a`）请求一次轻量代码审查（正确性、安全、边界）
+- [x] 7.2 审查发现并修复的问题：
+  - DataFile 模型未在 `framework/models/__init__.py` 注册 → 已补充导入注册（commit d130de6）
+  - pytest pythonpath 配置 → 已确认 `src` 布局导入路径正确，全量测试 442 passed
+  - delete_document 物理文件删除与向量库异常容错 → 已添加 try-except 不阻塞 db 删除（commit 84e4f45）
+- [x] 7.3 CRITICAL 发现已全部修复，无 CRITICAL 遗留带入 verify；非 CRITICAL 发现（如 SQLAlchemy `Query.get()` legacy warning）属既有代码风格，接受不改
+- [x] 7.4 全量回归测试通过：442 passed, 0 failed, 0 collection errors
