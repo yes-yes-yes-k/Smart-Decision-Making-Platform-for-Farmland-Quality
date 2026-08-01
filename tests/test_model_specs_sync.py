@@ -3,8 +3,8 @@ import sys
 import os
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-PROFESSIONAL_SPEC = "openspec/changes/sync-model-specs-from-overview/specs/professional-model-agents/spec.md"
-ROUTING_SPEC = "openspec/changes/sync-model-specs-from-overview/specs/role-based-routing/spec.md"
+PROFESSIONAL_SPEC = "openspec/changes/archive/2026-07-24-sync-model-specs-from-overview/specs/professional-model-agents/spec.md"
+ROUTING_SPEC = "openspec/changes/archive/2026-07-24-sync-model-specs-from-overview/specs/role-based-routing/spec.md"
 
 
 def _read(path):

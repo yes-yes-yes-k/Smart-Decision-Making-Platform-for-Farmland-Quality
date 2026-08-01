@@ -53,7 +53,9 @@ class TestStabilityPrecompute:
         mock_gdf = MagicMock()
         mock_gdf.copy.return_value = mock_gdf
 
-        with patch.object(stability_model, "calculate_boundary_safety", return_value=mock_gdf) as m1, \
+        with patch.object(stability_model, "gpd") as mock_gpd, \
+             patch.object(stability_model, "require_columns"), \
+             patch.object(stability_model, "calculate_boundary_safety", return_value=mock_gdf) as m1, \
              patch.object(stability_model, "calculate_support_balance", return_value=mock_gdf) as m2, \
              patch.object(stability_model, "calculate_key_criticality", return_value=mock_gdf) as m3, \
              patch.object(stability_model, "calculate_neighbor_consistency", return_value=mock_gdf) as m4, \
@@ -62,6 +64,8 @@ class TestStabilityPrecompute:
              patch.object(stability_model, "calculate_factor_degradation", return_value=mock_gdf) as m7, \
              patch.object(stability_model, "calculate_degradation_cluster", return_value=mock_gdf) as m8, \
              patch.object(stability_model, "calculate_persistent_low_quality", return_value=mock_gdf) as m9:
+
+            mock_gpd.read_file.return_value = mock_gdf
 
             result = stability_model.run_all_models(
                 current_file="fake.shp",
