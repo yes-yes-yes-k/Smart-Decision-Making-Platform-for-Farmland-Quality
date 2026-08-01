@@ -50,12 +50,12 @@ base-ref: 98f41e19a68a9a089cd89eb7012a4622fb691b02
 - Consumes: 无（重构内部函数）
 - Produces: `_finalize` 新签名 `(pHstart, Hex, Alex, pHtarget, Adep, Acrop, ANcy, Aagri, ytk_coef, mbnt_a, mbnt_b) -> Dict[str, float]`，返回 7 字段 dict（keys: `Adep/Acrop/ANcy/Aagri/Aback/ytk/mbnt`）。4 个子模型函数签名不变，仍返回 dict。`calculate_acidification_amendment` 读取 `out["ytk"]`/`out["mbnt"]` 无需改动。
 
-- [ ] **Step 1: 基线测试 — 确认现有测试通过**
+- [x] **Step 1: 基线测试 — 确认现有测试通过**
 
 Run: `pytest tests/test_model4_acidification.py -v`
 Expected: 所有测试 PASS（含 `test_four_submodels_calculation`、`test_submodel_selection`、`test_model_version_present` 等）
 
-- [ ] **Step 2: 重构 `_finalize` 签名与返回值**
+- [x] **Step 2: 重构 `_finalize` 签名与返回值**
 
 将 `src/ai_culti_demo/farmland_diagnosis/acidification.py` 第 110-119 行的 `_finalize` 替换为：
 
@@ -78,7 +78,7 @@ def _finalize(pHstart: float, Hex: float, Alex: float, pHtarget: float,
             "Aback": Aback, "ytk": ytk, "mbnt": mbnt}
 ```
 
-- [ ] **Step 3: 适配 `_paddy_urea` 传入 4 个中间变量**
+- [x] **Step 3: 适配 `_paddy_urea` 传入 4 个中间变量**
 
 将第 125-135 行的 `_paddy_urea` 替换为（仅改 `_finalize` 调用行，公式不变）：
 
@@ -97,7 +97,7 @@ def _paddy_urea(pHstart, Hex, Alex, p):
                      ytk_coef=0.6, mbnt_a=0.1, mbnt_b=1.0)
 ```
 
-- [ ] **Step 4: 适配 `_paddy_compound` 传入 4 个中间变量**
+- [x] **Step 4: 适配 `_paddy_compound` 传入 4 个中间变量**
 
 将第 138-150 行的 `_paddy_compound` 替换为：
 
@@ -118,7 +118,7 @@ def _paddy_compound(pHstart, Hex, Alex, p):
                      ytk_coef=0.6, mbnt_a=0.15, mbnt_b=1.0)
 ```
 
-- [ ] **Step 5: 适配 `_upland_urea` 传入 4 个中间变量**
+- [x] **Step 5: 适配 `_upland_urea` 传入 4 个中间变量**
 
 将第 153-163 行的 `_upland_urea` 替换为：
 
@@ -137,7 +137,7 @@ def _upland_urea(pHstart, Hex, Alex, p):
                      ytk_coef=0.77, mbnt_a=0.1, mbnt_b=0.2)
 ```
 
-- [ ] **Step 6: 适配 `_upland_compound` 传入 4 个中间变量**
+- [x] **Step 6: 适配 `_upland_compound` 传入 4 个中间变量**
 
 将第 166-178 行的 `_upland_compound` 替换为：
 
@@ -158,12 +158,12 @@ def _upland_compound(pHstart, Hex, Alex, p):
                      ytk_coef=0.7, mbnt_a=0.1, mbnt_b=0.3)
 ```
 
-- [ ] **Step 7: 运行测试确认无回归**
+- [x] **Step 7: 运行测试确认无回归**
 
 Run: `pytest tests/test_model4_acidification.py -v`
 Expected: 所有测试 PASS（`calculate_acidification_amendment` 读取 `out["ytk"]`/`out["mbnt"]`，7 字段 dict 仍含这两个 key，无破坏）
 
-- [ ] **Step 8: Commit**
+- [x] **Step 8: Commit**
 
 ```bash
 git add src/ai_culti_demo/farmland_diagnosis/acidification.py
