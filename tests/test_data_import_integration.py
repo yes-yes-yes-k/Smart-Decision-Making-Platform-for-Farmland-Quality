@@ -25,6 +25,13 @@ CSV_HEADER = '一级农业区,二级农业区,pH,有机质,有效磷,速效钾,�
 CSV_ROW = '珠江区,亚区1,6.5,2.5,15,100,1.3,壤土,高,中,平原,均质,100,20'
 CSV_CONTENT = CSV_HEADER + '\n' + CSV_ROW + '\n'
 
+# 耕地质量评价 CSV 20 必需字段（与 data_validator.py GRADE_CSV_REQUIRED_COLUMNS 一致）
+GRADE_CSV_HEADER = ('SiteID,JD,WD,MJ,SJD,YJZ,YXL,SXJ,TRRZ,YXTCHD,GCHD,'
+                    'JHXLLZ,JHXQLZ,EJNYQcode,XQMCcode,GCZDcode,PSNLcode,'
+                    'GGNLcode,DXBWcode,ZDGXcode')
+GRADE_CSV_ROW = 'A0001,112.97,25.32,100.0,4.6,16.2,66.9,51.7,1.24,120.0,17.0,0.0,0.0,1,8,6,3,2,6,6'
+GRADE_CSV_CONTENT = GRADE_CSV_HEADER + '\n' + GRADE_CSV_ROW + '\n'
+
 
 def _make_shapefile_zip():
     """创建有效的 shapefile zip（manifest + 3 期 × 5 组件）。"""
@@ -184,22 +191,22 @@ def test_shapefile_import_end_to_end(client):
 
 
 def test_dat_import_end_to_end(client):
-    """7.3 .dat 上传 → 校验 → 部署 → check_deployment → 审计日志。"""
+    """7.3 耕地质量评价 CSV（data_type=dat）上传 → 校验 → 部署 → check_deployment → 审计日志。"""
     token = _login(client)
-    dat_content = b'\x00\x01\x02\x03\x04\x05'
+    grade_csv_bytes = GRADE_CSV_CONTENT.encode('utf-8')
     resp = client.post(
         '/api/v1/data/import',
         headers={'Authorization': f'Bearer {token}'},
-        data={'data_type': 'dat', 'file': (io.BytesIO(dat_content), 'data.dat')},
+        data={'data_type': 'dat', 'file': (io.BytesIO(grade_csv_bytes), 'Farmland_quality_Level_Database.csv')},
         content_type='multipart/form-data',
     )
     assert resp.status_code == 200
 
-    # 验证文件已部署到 target_dir/Farmlands_Quality_Level_Database.dat
-    deployed = os.path.join(client._dat_dir, 'Farmlands_Quality_Level_Database.dat')
+    # 验证文件已部署到 target_dir/Farmland_quality_Level_Database.csv
+    deployed = os.path.join(client._dat_dir, 'Farmland_quality_Level_Database.csv')
     assert os.path.exists(deployed)
     with open(deployed, 'rb') as f:
-        assert f.read() == dat_content
+        assert f.read() == grade_csv_bytes
 
     # 验证审计日志
     entries = _read_audit_log(client)

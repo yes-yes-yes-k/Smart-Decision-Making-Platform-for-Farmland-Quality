@@ -1,6 +1,6 @@
 """数据导入 API 路由：POST /api/v1/data/import
 
-编排校验 → 部署 → 触发 → 审计日志的完整流程，支持 CSV / shapefile / .dat 三类数据。
+编排校验 → 部署 → 触发 → 审计日志的完整流程，支持 CSV / shapefile / 耕地质量评价 CSV 三类数据。
 仅 admin 角色可调用。触发失败时自动从备份回滚。
 """
 import os

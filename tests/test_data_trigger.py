@@ -80,6 +80,13 @@ def test_trigger_dat_check_success(fake_adapter):
     assert len(fake_adapter['check_grade_eval_deployment']) == 1
 
 
+def test_trigger_grade_csv_check_success(fake_adapter):
+    """grade_csv 触发成功：新函数名与旧别名行为一致。"""
+    result = data_trigger.trigger_grade_csv_check('/bin/farmland_quality_eval')
+    assert result['deployment_ok'] is True
+    assert len(fake_adapter['check_grade_eval_deployment']) == 1
+
+
 def test_trigger_timeout_raises_timeout_error(monkeypatch):
     """超时抛内置 TimeoutError。"""
     import time
