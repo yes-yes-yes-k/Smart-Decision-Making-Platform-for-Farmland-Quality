@@ -3,7 +3,7 @@
   "info": {
     "title": "耕地土壤酸化治理智能问答系统 API",
     "description": "集成 RAG、Function Calling 和多智能体架构的统一框架 API，底层引擎基于 ai_culti_demo",
-    "version": "1.4.0"
+    "version": "1.5.0"
   },
   "servers": [
     {
@@ -269,7 +269,7 @@
                   },
                   "parcel_code": {
                     "type": "string",
-                    "description": "地块代码（字母数字，给 model-7 调 Fortran exe），type 5 质量等级评价必需",
+                    "description": "地块代码（字母数字，给 model-7 调 Python 模型），type 5 质量等级评价必需",
                     "example": "A0001"
                   },
                   "land_type": {
