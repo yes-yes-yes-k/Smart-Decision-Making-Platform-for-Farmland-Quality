@@ -85,16 +85,15 @@ class TestStabilityOnlineQuery:
 
     @geopandas_required
     def test_normal_query_returns_ok(self):
-        """正常查询返回 status=ok 和九模块结果"""
+        """正常查询返回 status=ok 和结构化分析结果（analyze 包络）"""
         from ai_culti_demo.thematic_models import run_thematic_model
-        from ai_culti_demo.farmland_stability.storage import StabilityStorage
 
         mock_result = {"parcel_id": "110105001", "grade": 3, "score": 72.5, "module": 1}
         mock_storage = MagicMock()
-        mock_storage.is_ready.return_value = True
         mock_storage.get_result.return_value = mock_result
 
-        with patch("ai_culti_demo.thematic_models.StabilityStorage", return_value=mock_storage):
+        # run_thematic_model 对正式能力路由到 Agent.analyze，需 patch agent 命名空间的 StabilityStorage
+        with patch("framework.agents.specialized.stability_agent.StabilityStorage", return_value=mock_storage):
             out = run_thematic_model({
                 "model_id": "stability-risk-evaluation",
                 "parcel_id": "110105001",
@@ -103,43 +102,43 @@ class TestStabilityOnlineQuery:
         assert out["status"] == "ok"
         assert out["model"]["model_id"] == "stability-risk-evaluation"
         assert out["reliability"]["level"] == "real_model"
-        assert out["stability_detail"]["grade"] == 3
+        assert out["analysis"]["grade"] == 3
 
     @geopandas_required
-    def test_not_ready_returns_error(self):
-        """预计算未就绪返回 STABILITY_NOT_READY"""
+    def test_not_ready_falls_back_to_demo(self):
+        """预计算未就绪时回退到 demo_stub（analyze 包络的 fallback 字段）"""
         from ai_culti_demo.thematic_models import run_thematic_model
 
         mock_storage = MagicMock()
-        mock_storage.is_ready.return_value = False
-        mock_storage.get_result.return_value = None
+        mock_storage.get_result.return_value = None  # 无真实结果 → 走模拟回退
 
-        with patch("ai_culti_demo.thematic_models.StabilityStorage", return_value=mock_storage):
+        with patch("framework.agents.specialized.stability_agent.StabilityStorage", return_value=mock_storage):
             out = run_thematic_model({
                 "model_id": "stability-risk-evaluation",
                 "parcel_id": "110105001",
             })
 
-        assert out["status"] == "error"
-        assert out["error"]["code"] == "STABILITY_NOT_READY"
+        assert out["status"] == "ok"
+        assert out["reliability"]["level"] == "demo_stub"
+        assert out["fallback"]["used"] is True
 
     @geopandas_required
-    def test_parcel_not_found_returns_error(self):
-        """地块不存在返回 PARCEL_NOT_FOUND"""
+    def test_parcel_not_found_falls_back_to_demo(self):
+        """地块无真实数据时回退到 demo_stub（analyze 包络的 fallback 字段）"""
         from ai_culti_demo.thematic_models import run_thematic_model
 
         mock_storage = MagicMock()
-        mock_storage.is_ready.return_value = True
-        mock_storage.get_result.return_value = None
+        mock_storage.get_result.return_value = None  # 地块无真实结果 → 走模拟回退
 
-        with patch("ai_culti_demo.thematic_models.StabilityStorage", return_value=mock_storage):
+        with patch("framework.agents.specialized.stability_agent.StabilityStorage", return_value=mock_storage):
             out = run_thematic_model({
                 "model_id": "stability-risk-evaluation",
                 "parcel_id": "nonexistent",
             })
 
-        assert out["status"] == "error"
-        assert out["error"]["code"] == "PARCEL_NOT_FOUND"
+        assert out["status"] == "ok"
+        assert out["reliability"]["level"] == "demo_stub"
+        assert out["fallback"]["used"] is True
 
     def test_missing_parcel_id_falls_back_to_demo(self):
         """缺少 parcel_id 时回退到 demo 结果（不调用实际模型）"""
@@ -201,14 +200,13 @@ class TestCoreEngineDispatch:
 
     @geopandas_required
     def test_dispatch_stability_with_parcel_id(self):
-        """stability-risk-evaluation + parcel_id 调用实际模型"""
+        """stability-risk-evaluation + parcel_id 调用实际模型（analyze 包络 real_model）"""
         from ai_culti_demo.thematic_models import run_thematic_model
 
         mock_storage = MagicMock()
-        mock_storage.is_ready.return_value = True
         mock_storage.get_result.return_value = {"parcel_id": "P001", "grade": 4, "score": 80.0}
 
-        with patch("ai_culti_demo.thematic_models.StabilityStorage", return_value=mock_storage):
+        with patch("framework.agents.specialized.stability_agent.StabilityStorage", return_value=mock_storage):
             out = run_thematic_model({
                 "model_id": "stability-risk-evaluation",
                 "parcel_id": "P001",
@@ -218,7 +216,7 @@ class TestCoreEngineDispatch:
         assert out["reliability"]["level"] == "real_model"
 
     def test_dispatch_grade_with_parcel_code(self):
-        """quality-grade-evaluation + parcel_code 调用实际 exe 模型"""
+        """quality-grade-evaluation + parcel_code 调用实际 Python 模型（analyze 包络 real_model）"""
         from ai_culti_demo.thematic_models import run_thematic_model
 
         mock_exe_result = {
@@ -228,7 +226,7 @@ class TestCoreEngineDispatch:
             "indicators": [{"name": "pH", "raw_value": 6.5, "membership": 0.95, "weight": 0.1}],
             "obstacle_degree": [{"rank": 1, "indicator": "有效磷", "degree": 0.15}],
         }
-        with patch("ai_culti_demo.thematic_models.run_grade_evaluation", return_value=mock_exe_result):
+        with patch("framework.agents.specialized.grade_agent.run_grade_evaluation", return_value=mock_exe_result):
             out = run_thematic_model({
                 "model_id": "quality-grade-evaluation",
                 "parcel_code": "110105001",
@@ -236,7 +234,7 @@ class TestCoreEngineDispatch:
 
         assert out["status"] == "ok"
         assert out["reliability"]["level"] == "real_model"
-        assert out["grade_detail"]["quality_grade"] == "3"
+        assert out["analysis"]["quality_grade"] == "3"
 
     def test_dispatch_grade_missing_parcel_code_falls_back_to_demo(self):
         """quality-grade-evaluation 无 parcel_code 时回退到 demo"""
@@ -270,14 +268,13 @@ class TestResponseContract:
 
     @geopandas_required
     def test_stability_response_has_required_fields(self):
-        """稳定性模型响应包含 status/model/summary/findings/reliability"""
+        """稳定性模型响应包含 status/model/summary/findings/reliability（analyze 包络）"""
         from ai_culti_demo.thematic_models import run_thematic_model
 
         mock_storage = MagicMock()
-        mock_storage.is_ready.return_value = True
         mock_storage.get_result.return_value = {"grade": 3, "score": 72.0}
 
-        with patch("ai_culti_demo.thematic_models.StabilityStorage", return_value=mock_storage):
+        with patch("framework.agents.specialized.stability_agent.StabilityStorage", return_value=mock_storage):
             out = run_thematic_model({
                 "model_id": "stability-risk-evaluation",
                 "parcel_id": "P001",
@@ -285,10 +282,10 @@ class TestResponseContract:
 
         missing = self.REQUIRED_FIELDS - set(out.keys())
         assert not missing, f"缺少字段: {missing}"
-        assert "stability_detail" in out
+        assert "analysis" in out
 
     def test_grade_response_has_required_fields(self):
-        """质量等级模型响应包含统一字段 + grade_detail"""
+        """质量等级模型响应包含统一字段 + analysis（analyze 包络）"""
         from ai_culti_demo.thematic_models import run_thematic_model
 
         mock_result = {
@@ -298,7 +295,7 @@ class TestResponseContract:
             "indicators": [],
             "obstacle_degree": [],
         }
-        with patch("ai_culti_demo.thematic_models.run_grade_evaluation", return_value=mock_result):
+        with patch("framework.agents.specialized.grade_agent.run_grade_evaluation", return_value=mock_result):
             out = run_thematic_model({
                 "model_id": "quality-grade-evaluation",
                 "parcel_code": "110105001",
@@ -306,7 +303,7 @@ class TestResponseContract:
 
         missing = self.REQUIRED_FIELDS - set(out.keys())
         assert not missing, f"缺少字段: {missing}"
-        assert "grade_detail" in out
+        assert "analysis" in out
 
     def test_demo_response_has_required_fields(self):
         """demo 回退响应也包含统一字段 + fallback"""
@@ -430,16 +427,15 @@ class TestEndToEndIntegration:
 
     @geopandas_required
     def test_e2e_stability_full_pipeline(self):
-        """端到端：稳定性模型从调度到响应结构"""
+        """端到端：稳定性模型从调度到响应结构（analyze 包络）"""
         from ai_culti_demo.thematic_models import run_thematic_model
 
         mock_storage = MagicMock()
-        mock_storage.is_ready.return_value = True
         mock_storage.get_result.return_value = {
             "parcel_id": "E2E001", "grade": 3, "score": 75.0, "module": 1,
         }
 
-        with patch("ai_culti_demo.thematic_models.StabilityStorage", return_value=mock_storage):
+        with patch("framework.agents.specialized.stability_agent.StabilityStorage", return_value=mock_storage):
             out = run_thematic_model({
                 "model_id": "stability-risk-evaluation",
                 "parcel_id": "E2E001",
@@ -450,10 +446,10 @@ class TestEndToEndIntegration:
         assert out["reliability"]["level"] == "real_model"
         assert out["fallback"]["used"] is False
         assert len(out["findings"]) >= 1
-        assert "stability_detail" in out
+        assert "analysis" in out
 
     def test_e2e_grade_full_pipeline(self):
-        """端到端：质量等级模型从调度到响应结构"""
+        """端到端：质量等级模型从调度到响应结构（analyze 包络）"""
         from ai_culti_demo.thematic_models import run_thematic_model
 
         mock_exe_result = {
@@ -468,7 +464,7 @@ class TestEndToEndIntegration:
                 {"rank": 1, "indicator": "有效磷", "degree": 0.15},
             ],
         }
-        with patch("ai_culti_demo.thematic_models.run_grade_evaluation", return_value=mock_exe_result):
+        with patch("framework.agents.specialized.grade_agent.run_grade_evaluation", return_value=mock_exe_result):
             out = run_thematic_model({
                 "model_id": "quality-grade-evaluation",
                 "parcel_code": "E2E002",
@@ -477,5 +473,5 @@ class TestEndToEndIntegration:
         assert out["status"] == "ok"
         assert out["model"]["model_id"] == "quality-grade-evaluation"
         assert out["reliability"]["level"] == "real_model"
-        assert out["grade_detail"]["quality_grade"] == "4"
+        assert out["analysis"]["quality_grade"] == "4"
         assert len(out["findings"]) >= 1

@@ -29,7 +29,12 @@ class AcidificationRemediationAgent(BaseAgent):
         task = task or {}
         land_type = task.get("land_type")
         fertilizer_type = task.get("fertilizer_type")
-        result = model_4_execution(task, land_type=land_type, fertilizer_type=fertilizer_type)
+        # 兜底 mock 输入（与 answer_question 一致）：单模型接口（analyze→execute）在缺失
+        # SJD/JHX/JLA 时降级为 demo，而不是拒绝；仅在键缺失时填充，保留对越界值的拒绝语义。
+        enriched = dict(task)
+        for k, v in MOCK_INPUTS.items():
+            enriched.setdefault(k, v)
+        result = model_4_execution(enriched, land_type=land_type, fertilizer_type=fertilizer_type)
         return MockDataLoader.mark_simulated({
             "status": result["status"],
             "result": {
