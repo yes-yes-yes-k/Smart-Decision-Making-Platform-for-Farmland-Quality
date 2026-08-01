@@ -1,6 +1,6 @@
 from __future__ import annotations
 from typing import Dict, Any, Callable, Optional
-from langchain.tools import Tool
+from langchain_core.tools import Tool
 from framework.function_calling.registry import tool_registry
 
 class CustomTool:

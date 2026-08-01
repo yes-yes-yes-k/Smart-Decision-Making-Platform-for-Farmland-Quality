@@ -21,9 +21,9 @@
 
 ## 5. 测试基础设施修复
 
-- [ ] 5.1 修复 `tests/test_stability_and_grade_integration.py` 的 fake.shp 缺失问题（创建最小测试 shapefile 或 mock geopandas 读取）
-- [ ] 5.2 修复 `tests/test_rag.py` 的 chroma_db 损坏问题（重置 chroma_db 目录或修改测试容错）
-- [ ] 5.3 修复 `tests/test_function_calling.py` 的 langchain Tool import 变更（适配新版 import 路径，如 `from langchain_core.tools import Tool`）
+- [x] 5.1 修复 `tests/test_stability_and_grade_integration.py` 的 fake.shp 缺失问题（创建最小测试 shapefile 或 mock geopandas 读取）
+- [x] 5.2 修复 `tests/test_rag.py` 的 chroma_db 损坏问题（重置 chroma_db 目录或修改测试容错）
+- [x] 5.3 修复 `tests/test_function_calling.py` 的 langchain Tool import 变更（适配新版 import 路径，如 `from langchain_core.tools import Tool`）
 
 ## 6. 回归验证
 

@@ -1,5 +1,5 @@
 from __future__ import annotations
-from langchain.tools import Tool
+from langchain_core.tools import Tool
 from framework.function_calling.registry import tool_registry
 from framework.vector_store.chroma_store import vector_store
 

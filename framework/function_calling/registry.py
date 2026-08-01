@@ -1,6 +1,6 @@
 from __future__ import annotations
 from typing import Dict, Optional, Any, List
-from langchain.tools import Tool
+from langchain_core.tools import Tool
 
 class ToolRegistry:
     def __init__(self):
