@@ -108,15 +108,21 @@ def _hcrop(Y: float, S: float, ec: Dict[str, float]) -> float:
 
 
 def _finalize(pHstart: float, Hex: float, Alex: float, pHtarget: float,
-              Aagri: float, ytk_coef: float, mbnt_a: float, mbnt_b: float) -> Dict[str, float]:
-    """计算土壤本底酸量 Aback 与改良剂需求量 YTK/MBNT。"""
+              Adep: float, Acrop: float, ANcy: float, Aagri: float,
+              ytk_coef: float, mbnt_a: float, mbnt_b: float) -> Dict[str, float]:
+    """计算 Aback 与 YTK/MBNT，返回完整 7 字段 dict。
+
+    返回字段：Adep, Acrop, ANcy, Aagri, Aback, ytk, mbnt。
+    中间变量由调用方（4 个子模型）计算后传入，本函数只负责 Aback/YTK/MBNT 收尾。
+    """
     Aback = (6.25 * (10 ** (9 - pHstart))
              - 6.25 * (10 ** (9 - pHtarget))
              + 2.5 * Hex * 1e7
              + 2.5 * Alex * 1e7) / 1000.0
     ytk = (Aback + 0.8 * Aagri) / 17.042 * ytk_coef
     mbnt = mbnt_a * Aagri / 1.89 + Alex * 590 * 15 * mbnt_b
-    return {"ytk": ytk, "mbnt": mbnt, "Aagri": Aagri, "Aback": Aback}
+    return {"Adep": Adep, "Acrop": Acrop, "ANcy": ANcy, "Aagri": Aagri,
+            "Aback": Aback, "ytk": ytk, "mbnt": mbnt}
 
 
 # ---------------------------------------------------------------------------
@@ -131,7 +137,8 @@ def _paddy_urea(pHstart, Hex, Alex, p):
     Avol = (p["Ndep"] - (0.16 * p["Ndep"] + 2.97)) * 1000 / 14 * 2
     ANcy = Anit + Ano3_runoff + Ano3_crop + Avol
     Aagri = Adep + Acrop + ANcy
-    return _finalize(pHstart, Hex, Alex, p["pHtarget"], Aagri,
+    return _finalize(pHstart, Hex, Alex, p["pHtarget"],
+                     Adep, Acrop, ANcy, Aagri,
                      ytk_coef=0.6, mbnt_a=0.1, mbnt_b=1.0)
 
 
@@ -146,7 +153,8 @@ def _paddy_compound(pHstart, Hex, Alex, p):
             + (0.16 * p["Ndep"] + 2.97) * 1000 / 14)
     ANcy = Anit + Ano3_runoff + Ano3_crop + Avol
     Aagri = Adep + Acrop + ANcy
-    return _finalize(pHstart, Hex, Alex, p["pHtarget"], Aagri,
+    return _finalize(pHstart, Hex, Alex, p["pHtarget"],
+                     Adep, Acrop, ANcy, Aagri,
                      ytk_coef=0.6, mbnt_a=0.15, mbnt_b=1.0)
 
 
@@ -159,7 +167,8 @@ def _upland_urea(pHstart, Hex, Alex, p):
     Avol = (0.17 * p["Ndep"] - 4.95) * 1000 / 14
     ANcy = Anit + Ano3_runoff + Ano3_crop + Avol
     Aagri = Adep + Acrop + ANcy
-    return _finalize(pHstart, Hex, Alex, p["pHtarget"], Aagri,
+    return _finalize(pHstart, Hex, Alex, p["pHtarget"],
+                     Adep, Acrop, ANcy, Aagri,
                      ytk_coef=0.77, mbnt_a=0.1, mbnt_b=0.2)
 
 
@@ -174,7 +183,8 @@ def _upland_compound(pHstart, Hex, Alex, p):
             + (0.17 * p["Ndep"] - 4.95) * 1000 / 14)
     ANcy = Anit + Ano3_runoff + Ano3_crop + Avol
     Aagri = Adep + Acrop + ANcy
-    return _finalize(pHstart, Hex, Alex, p["pHtarget"], Aagri,
+    return _finalize(pHstart, Hex, Alex, p["pHtarget"],
+                     Adep, Acrop, ANcy, Aagri,
                      ytk_coef=0.7, mbnt_a=0.1, mbnt_b=0.3)
 
 

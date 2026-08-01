@@ -119,3 +119,40 @@ def test_model4_execution_parcel_id_not_found(monkeypatch):
 def test_model4_execution_missing_input():
     r = model_4_execution({"SJD": 4.31})
     assert r["status"] == "rejected" and r["reason"] == "missing_input"
+
+
+# --- Task 1 (sync-acidification-model-v2): _finalize 返回 7 字段（方案 A） ---
+from ai_culti_demo.farmland_diagnosis.acidification import (
+    _paddy_urea, _paddy_compound, _upland_urea, _upland_compound,
+    _PADDY_DEFAULTS, _UPLAND_DEFAULTS, _PADDY_COMPOUND_EXTRA, _UPLAND_COMPOUND_EXTRA,
+)
+
+_SEVEN_KEYS = {"Adep", "Acrop", "ANcy", "Aagri", "Aback", "ytk", "mbnt"}
+
+
+def test_submodel_returns_seven_fields():
+    """方案 A 重构闸门：4 个子模型函数必须返回恰好 7 字段 dict。
+
+    keys = {Adep, Acrop, ANcy, Aagri, Aback, ytk, mbnt}，
+    其中 Adep/Acrop/ANcy/Aagri 为中间变量，Aback/ytk/mbnt 为收尾计算结果。
+    """
+    paddy_p = dict(_PADDY_DEFAULTS); paddy_p.update(_PADDY_COMPOUND_EXTRA)
+    upland_p = dict(_UPLAND_DEFAULTS); upland_p.update(_UPLAND_COMPOUND_EXTRA)
+    submodels = [
+        ("paddy_urea",      _paddy_urea,      dict(_PADDY_DEFAULTS)),
+        ("paddy_compound",  _paddy_compound,  paddy_p),
+        ("upland_urea",     _upland_urea,     dict(_UPLAND_DEFAULTS)),
+        ("upland_compound", _upland_compound, upland_p),
+    ]
+    for name, fn, p in submodels:
+        out = fn(PHSTART, HEX, ALEX, p)
+        assert isinstance(out, dict), f"{name} 未返回 dict"
+        assert set(out.keys()) == _SEVEN_KEYS, (
+            f"{name} 返回字段不符：expected={sorted(_SEVEN_KEYS)}, got={sorted(out.keys())}"
+        )
+        # 中间变量必须为有限数值（非 None/NaN）
+        for k in _SEVEN_KEYS:
+            v = out[k]
+            assert v is not None and not (isinstance(v, float) and math.isnan(v)), (
+                f"{name}.{k} 为 None/NaN: {v!r}"
+            )
