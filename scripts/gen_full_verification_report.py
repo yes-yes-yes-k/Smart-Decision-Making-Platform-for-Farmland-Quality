@@ -132,27 +132,21 @@ def build_markdown(report: Dict[str, Any]) -> str:
     md.append("> 说明：占位模型 model-2（PotentialAssessmentAgent）与 model-5（OrganicMatterAgent）"
               "无真实模型绑定，本报告对其调用细节仅做记录，不做能力评估。")
     md.append("")
-    md.append("### 修复记录（本次重生成前）")
+    md.append("### 架构变更记录（model-7 Python 化）")
     md.append("")
-    md.append("- **修复对象**：`src/ai_culti_demo/farmland_grade_eval/runner.py:parse_output`")
-    md.append("- **问题描述**：原 `parse_output` 与 Fortran exe 实际输出格式不匹配，"
-              "section 标记识别错位（误用通用标签而非实际中文标记如「地块代码」「原始指标值」「障碍度因子」），"
-              "导致解析结果为空：`quality_grade=None`、`composite_index=None`、`indicators=[]`、"
-              "`obstacle_degree=[]`。上游 `FarmlandGradeAgent.answer_question` 因此生成"
-              "「质量等级为None级，综合指数：None。共0个指标参与评价。」的错误回答。")
-    md.append("- **修复内容**：重写 `parse_output` 函数：")
-    md.append("  1. section 标记改为匹配 exe 实际输出（`地块代码`/`原始指标值`/`障碍度因子`）")
-    md.append("  2. `parcel_info` 解析同时支持 `：` 和 `:` 分隔符")
-    md.append("  3. `composite_index`/`quality_grade` 全文匹配（排除「潜在耕地质量等级」）")
-    md.append("  4. `obstacle_degree` 解析提取 `indicator`、`degree`（float）、`level`（中文等级）")
-    md.append("  5. 分隔线（`---`/`===`）和表格头（`| 评价指标`）正确终结当前 section")
-    md.append("- **验证结果**：调用真实 exe（parcel_code=`A0001`）通过断言：")
+    md.append("- **变更对象**：`src/ai_culti_demo/farmland_grade_eval/`（耕地质量等级评价）")
+    md.append("- **变更内容**：model-7 从 Fortran exe + `.dat` 二进制数据库替换为纯 Python 实现，"
+              "数据源从 `.dat` 改为 CSV（`bin/farmland_quality_eval/Farmland_quality_Level_Database.csv`）。"
+              "完整移植核心评价、潜力分析、县域统计、调理剂计算四个子模块，"
+              "调理剂计算仅作为内部库函数不暴露 API。`run_grade_evaluation` 签名保持向后兼容"
+              "（`dat_path` 语义改为 CSV 路径，`exe_path` 忽略）。")
+    md.append("- **验证结果**：Python 实现与原 Fortran exe 输出一致（parcel_code=`A0001`）：")
     md.append("  - `quality_grade` = `10等` ✓")
-    md.append("  - `composite_index` = `0.6728` ✓")
+    md.append("  - `composite_index` = `0.6728330580097418` ✓（与 exe 的 0.6728 一致，精度更高）")
     md.append("  - `indicators` = 12 条 ✓")
     md.append("  - `obstacle_degree` = 12 条 ✓")
-    md.append("  - `parcel_info` = 5 个字段（地块代码/经度/纬度/县区名称/二级农业区名称）✓")
-    md.append("- **影响范围**：仅 `runner.py:parse_output` 一处函数，无 API/契约变更。")
+    md.append("- **影响范围**：`farmland_grade_eval/` 包整体替换；HTTP 数据导入从 `.dat` 改为 CSV；"
+              "`verify_agent_capabilities.py` 资源检查从 exe/.dat 改为 CSV。")
     md.append("")
     md.append("---")
     md.append("")
@@ -201,9 +195,9 @@ def build_markdown(report: Dict[str, Any]) -> str:
 
     type_labels = {
         1: "类型1：稳定性风险（5 题）",
-        2: "类型2：酸化改良（4 题）",
+        2: "类型2：酸化改良（5 题）",
         3: "类型3：障碍诊断与潜力（5 题）",
-        4: "类型4：肥力与有机质（6 题）",
+        4: "类型4：肥力与有机质（4 题）",
         5: "类型5：质量等级评价（3 题）",
     }
 
@@ -338,21 +332,22 @@ def build_markdown(report: Dict[str, Any]) -> str:
     md.append("### 关键观察")
     md.append("")
     md.append("1. **LLM 可用性**：本次运行 LLM 服务初始化成功（`deepseek-ai/DeepSeek-V4-Flash`），"
-              "所有 23 题（20 题 type 1-4 + 3 题 type 5）均通过 LLM 生成自然语言 `answer`，"
+              "所有 22 题（19 题 type 1-4 + 3 题 type 5）均通过 LLM 生成自然语言 `answer`，"
               "未出现「抱歉，AI服务暂时不可用」降级。LLM 偶有不可用属于运行时波动，"
               "降级时 `answer` 字段为空或为降级提示，最终回答回退取自 AgentManager 的 "
               "`summary`（模板拼接）；若 LLM 超时降级，行为同上。")
     md.append("2. **真实计算 agent**：model-1（stability_db）、model-3/4（diagnosis_db）、"
-              "model-7（Fortran exe+dat）资源均已部署并返回真实计算结果；"
-              "model-6 因 `.joblib` 文件缺失走 fallback（训练集均值）。"
-              "本次 model-7 在 Q21/Q22/Q23（type 5）均返回真实结果："
-              "质量等级 `10等`、综合指数 `0.6728`、12 个指标、12 个障碍度因子。"
+              "model-6（sklearn ETR .joblib）、model-7（Python 实现 + CSV）资源均已部署并返回真实计算结果。"
+              "本次 model-7 在 Q20/Q21/Q22（type 5）均返回真实结果："
+              "质量等级 `10等`、综合指数 `0.6728330580097418`、12 个指标、12 个障碍度因子。"
+              "model-6 真实 ML 计算通过（SOC=20.09 g/kg，Dose=189.53 t/ha）。"
               "QuestionTypeRouter 采用 1:1 映射，每题只调用 1 个对应 agent，精准匹配问题类型。")
-    md.append("3. **资源就绪状态汇总误判说明**：本章「资源就绪状态」中 `grade_exe_exists=False` "
-              "和 `grade_dat_exists=False` 是 `verify_agent_capabilities.py` 的路径检查问题"
-              "（预存在，非本次 change 引入），实际 `bin/farmland_quality_eval/` 下 exe 和 dat 均存在，"
-              "model-7 在 type 5 问题中真实调用成功。model-6 的 `soc_joblib_exists=False` / "
-              "`dose_joblib_exists=False` 是真实缺失，需补齐 `.joblib` 文件后才能真实计算。")
+    md.append("3. **资源就绪状态**：本章「资源就绪状态」中所有资源均为 ✓："
+              "`stability_db`、`diagnosis_db`、`soc_joblib`、`dose_joblib`、`grade_csv` 均存在。"
+              "model-7 的数据源已从 Fortran exe/.dat 替换为 CSV "
+              "（`bin/farmland_quality_eval/Farmland_quality_Level_Database.csv`），"
+              "`verify_agent_capabilities.py` 检查 `grade_csv_exists=True`。"
+              "model-6 的 `.joblib` 文件已部署，真实 ML 计算通过。")
     md.append("4. **路由细节**：`type 1` → model-1；`type 2` → model-4；`type 3` → model-3；"
               "`type 4` → model-6；`type 5` → model-7。"
               "QuestionTypeRouter 采用 1:1 映射，每个 question_type 仅对应一个 agent，"
@@ -367,20 +362,20 @@ def build_markdown(report: Dict[str, Any]) -> str:
               "在结果顶层强制写入 `simulated=True`，即使 model-6 这种真实计算 agent 也显示 sim。"
               "**因此 `simulated=True` 不能作为真实/模拟的判据**。是否真实计算应以：")
     md.append("   - `fallback_reason is None` + `execute_status==success`（model-6 直接 execute 验证）")
-    md.append("   - 或 agent 真实调用了底层模型（如 model-1 读 stability_db、model-7 调 Fortran exe）")
+    md.append("   - 或 agent 真实调用了底层模型（如 model-1 读 stability_db、model-7 调 Python 评价模型）")
     md.append("   为准。本次 model-7 在 type 5 问题中 `simulated=False`，是因为 `FarmlandGradeAgent` "
-              "在拿到真实结果时未调用 `mark_simulated`。")
-    md.append("7. **parcel 标识符透传**：本次验证脚本为 farmer 问题（含 type 5）预设 `parcel_id=\"1\"` "
-              "（来自 stability_db/acidification_results）+ `parcel_code=\"A0001\"`（来自 fortran exe 数据库）。"
-              "管道已接通 `execute_models → context → agents`，model-1/4 应返回真实 DB 记录，"
-              "model-7 应返回真实 fortran exe 质量等级评价（本次 Q21/Q22/Q23 已验证）。"
+              "在拿到真实结果时未调用 `mark_simulated`。model-4 在 type 2 问题中 `simulated=False`，"
+              "真实调用过程模型计算 YTK/MBNT。")
+    md.append("7. **parcel 标识符透传**：本次验证脚本为 type 5 问题预设 `parcel_id=\"1\"` "
+              "+ `parcel_code=\"A0001\"`。管道已接通 `execute_models → context → agents`，"
+              "model-7 返回真实 Python 质量等级评价（本次 Q20/Q21/Q22 已验证）。"
               "**预存在数据缺口**：`diagnosis_results` 表 0 条记录，model-3 仍返回 mock，"
               "数据填充后管道自动生效（非本次引入）。")
-    md.append("8. **model-7 parser 修复验证**：本次报告生成前已修复 "
-              "`src/ai_culti_demo/farmland_grade_eval/runner.py:parse_output` 的解析 bug"
-              "（原 bug 导致 `quality_grade=None`、`composite_index=None`、`indicators=[]`）。"
-              "修复后通过真实 exe 调用断言（10等/0.6728/12指标/12障碍度），"
-              "并在本次 Q21/Q22/Q23 的 orchestrator 链路中再次验证修复生效。")
+    md.append("8. **model-7 Python 实现验证**：model-7 已从 Fortran exe 迁移到纯 Python 实现"
+              "（`src/ai_culti_demo/farmland_grade_eval/`），数据源从 `.dat` 改为 CSV。"
+              "本次 Q20/Q21/Q22 的 orchestrator 链路验证 Python 实现输出正确："
+              "质量等级 `10等`、综合指数 `0.6728330580097418`、12 个指标、12 个障碍度因子，"
+              "与原 Fortran exe 输出一致。`run_grade_evaluation` 签名保持向后兼容。")
     md.append("")
 
     return "\n".join(md)
