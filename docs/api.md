@@ -250,9 +250,11 @@
 - **question_type=0** → RAG 链（知识性问题，如「什么是土壤酸化」「耕地质量等级是什么意思」）
 - **question_type=1** → model-1 稳定性风险识别（等级稳定性/退化风险）
 - **question_type=2** → model-4 酸化改良（酸化程度/调理剂/改良方案）
-- **question_type=3** → model-3 障碍诊断（潜力/障碍因素/主要问题）
-- **question_type=4** → model-6 肥力 ML 预测（有机质/有机肥/SOC/Dose）
+- **question_type=3** → model-3 障碍诊断（障碍因素/主要问题/障碍组合）
+- **question_type=4** → model-6 肥力 ML 预测（SOC/Dose/预测置信度）
 - **question_type=5** → model-7 耕地质量等级评价（综合指数/质量等级/障碍度排序）
+- **question_type=6** → model-2 提升潜力评估（提升潜力/增产潜力/改良片区）
+- **question_type=7** → model-5 有机质培肥（有机肥/秸秆还田/培肥方案）
 
 > 路由采用 1:1 映射：每个 question_type 仅调用对应的单一专业智能体，不再按用户角色固定调用多个模型组合。
 
@@ -333,8 +335,8 @@ context 参数说明：
 |------|------|------|
 | `answer` | string | 综合回答内容 |
 | `sources` | array | RAG 引用文档列表（仅 type 0 或 RAG 命中时返回） |
-| `question_type` | int | 问题类型（0-5），见上方路由说明 |
-| `model_results` | object | 多智能体框架返回的结构化结果（type 1-5 时返回） |
+| `question_type` | int | 问题类型（0-7），见上方路由说明 |
+| `model_results` | object | 多智能体框架返回的结构化结果（type 1-7 时返回） |
 | `agents_invoked` | array | 调用的智能体 ID 列表（1:1 映射，仅含单一模型） |
 | `recommendations` | array | 综合建议列表 |
 | `message_id` | int | 本次回答的消息 ID |
@@ -483,19 +485,20 @@ context 参数说明：
 {
     "status": "ok",
     "data": [
-        {"name": "spatial-structure-analysis", "description": "按区域、类型和图层组织县域耕地质量空间结构，用于总览和空间分区研判。"},
-        {"name": "soil-indicator-analysis", "description": "围绕 pH、有机质和养分等关键指标做多维占位解析，用于支撑专题判断。"},
-        {"name": "obstacle-factor-identification", "description": "基于耕地质量评价结果，识别限制耕地质量提升的主要障碍因素，判定障碍类型（单一障碍/多障碍），并输出分级治理方向。"},
-        {"name": "acidification-governance", "description": "基于过程模型（4 子模型：水田/旱地 × 尿素/复合肥）计算酸化改良剂需求，输出亿土康（YTK）与木本泥炭（MBNT）施用量。"},
-        {"name": "organic-matter-improvement", "description": "对有机质不足问题进行占位识别、提升需求分析和措施匹配。"},
-        {"name": "stability-risk-evaluation", "description": "基于3期历史数据，通过九模块综合评价耕地质量稳定性和退化风险。"},
-        {"name": "quality-grade-evaluation", "description": "通过 Python 模型进行耕地质量等级评价，输出12指标原始值/隶属度、综合指数、质量等级和障碍度排序。"},
-        {"name": "multi-factor-collaborative-improvement", "description": "综合多个专题模型的占位结果，形成分区分类的综合提升建议。"}
+        {"name": "stability-risk-evaluation", "description": "基于3期历史数据，通过九模块综合评价耕地质量稳定性和退化风险（model-1）。"},
+        {"name": "improvement-potential-assessment", "description": "耕地质量提升潜力评估（model-2）。"},
+        {"name": "obstacle-diagnosis", "description": "主要问题与障碍诊断（model-3）。"},
+        {"name": "acidification-remediation", "description": "基于过程模型（4 子模型：水田/旱地 × 尿素/复合肥）计算酸化改良剂需求，输出亿土康（YTK）与木本泥炭（MBNT）施用量（model-4）。"},
+        {"name": "organic-matter-improvement", "description": "有机质培肥提升（model-5）。"},
+        {"name": "fertility-soc-dose-prediction", "description": "肥力 SOC/Dose 预测（model-6）。"},
+        {"name": "quality-grade-evaluation", "description": "通过 Python 模型进行耕地质量等级评价，输出12指标原始值/隶属度、综合指数、质量等级和障碍度排序（model-7）。"}
     ]
 }
 ```
 
-> 注：以上 8 个为核心引擎提供的专题模型。多智能体框架中的 7 个专业智能体（model-1 至 model-7）基于这些专题模型实现，并通过 question_type 1:1 映射进行路由调用。
+> 注：默认列表仅返回 7 个正式专业模型，均与一个专业智能体一一对应。传入 `include_non_professional=true` 可查看辅助空间能力、辅助指标能力和实验性协同提升能力；它们不参与聊天路由。
+
+> `obstacle-factor-identification` 与 `acidification-governance` 为旧模型标识，仍可调用但响应会返回规范模型 ID 和弃用提示。`spatial-structure-analysis`、`soil-indicator-analysis` 为辅助能力，`multi-factor-collaborative-improvement` 为实验性能力。
 
 ---
 

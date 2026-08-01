@@ -1,19 +1,12 @@
 from __future__ import annotations
 from typing import Dict, List
+from .capabilities import CAPABILITY_BY_QUESTION_TYPE
 
 
-# question_type → 单一智能体的 1:1 映射
-# - type 1: 稳定性/退化风险 → model-1 (StabilityRiskAgent)
-# - type 2: 酸化改良 → model-4 (AcidificationRemediationAgent)
-# - type 3: 障碍诊断 → model-3 (ProblemIdentificationAgent)
-# - type 4: 肥力/SOC/Dose → model-6 (FertilityMLAgent)
-# - type 5: 耕地质量等级评价 → model-7 (FarmlandGradeAgent)
+# question_type → 单一专业智能体的 1:1 映射由统一能力目录生成。
 TYPE_AGENTS: Dict[int, List[str]] = {
-    1: ["model-1"],
-    2: ["model-4"],
-    3: ["model-3"],
-    4: ["model-6"],
-    5: ["model-7"],
+    question_type: [capability.agent_id]
+    for question_type, capability in CAPABILITY_BY_QUESTION_TYPE.items()
 }
 
 

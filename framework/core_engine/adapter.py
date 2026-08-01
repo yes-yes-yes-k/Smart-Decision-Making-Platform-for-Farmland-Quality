@@ -48,10 +48,14 @@ class CoreEngine:
                 "error": {"code": "DIAGNOSIS_ERROR", "message": str(e)}
             }
 
-    def list_thematic_models(self, area_code: str = "lechang") -> Dict[str, Any]:
+    def list_thematic_models(
+        self, area_code: str = "lechang", *, include_non_professional: bool = False
+    ) -> Dict[str, Any]:
         self._ensure_import()
         try:
-            return self._list_thematic_models(area_code)
+            return self._list_thematic_models(
+                area_code, include_non_professional=include_non_professional
+            )
         except Exception as e:
             return {
                 "status": "error",

@@ -3,35 +3,27 @@
 ## Purpose
 TBD - created by archiving change add-model-run-apifox-examples. Update Purpose after archive.
 ## Requirements
-### Requirement: 模型调用接口提供六个可切换的请求示例
+### Requirement: 模型调用文档展示七个正式专业模型
 
-系统 MUST 在 `POST /api/v1/models/run` 的 `application/json` 请求体中提供 6 个具名示例，分别对应 `spatial-structure-analysis`、`soil-indicator-analysis`、`obstacle-factor-identification`、`acidification-governance`、`organic-matter-improvement` 和 `multi-factor-collaborative-improvement`。
+系统 MUST 在 `POST /api/v1/models/run` 的文档中展示 7 个正式专业模型请求示例：`stability-risk-evaluation`、`improvement-potential-assessment`、`obstacle-diagnosis`、`acidification-remediation`、`organic-matter-improvement`、`fertility-soc-dose-prediction` 和 `quality-grade-evaluation`。每个示例 MUST 给出最小输入、地块标识或运行前提以及预期可靠性状态。
 
-#### Scenario: 在接口文档中选择模型示例
-
+#### Scenario: 在接口文档中选择正式模型示例
 - **WHEN** 调用者查看模型调用接口的 JSON 请求示例
-- **THEN** 文档 MUST 显示 6 个有明确中文名称的示例，且每个示例的 `model_id` 与一个已注册专题模型一一对应
+- **THEN** 文档 MUST 显示 7 个正式模型的规范 ID、中文名称和可直接调用的示例
 
-### Requirement: 请求示例符合实际路由契约
+### Requirement: 文档区分正式、辅助和实验性能力
 
-系统 MUST 只在模型调用请求示例中使用路由支持的顶层字段：`model_id`、`area_code`、`longitude`、`latitude`、`indicators` 与 `context`。`model_id` 必须为必填字段。
+系统 MUST 在模型 API 与聊天 API 文档中标明空间结构解析和关键指标解析为辅助能力，协同提升为实验性能力，并说明它们不属于正式专业 Agent 或聊天路由范围。
 
-#### Scenario: 使用任一示例发起调用
+#### Scenario: 查阅辅助或实验性能力说明
+- **WHEN** 调用者查阅模型目录说明
+- **THEN** 文档 MUST 显示能力分类、是否可聊天路由、可靠性状态和运行限制
 
-- **WHEN** 调用者使用任一具名示例发送请求
-- **THEN** 请求体 MUST 包含有效的 `model_id`，且不包含路由不会透传的顶层字段
+### Requirement: 聊天接口文档展示零至七的问题类型
 
-### Requirement: 文档展示模型调用的完整响应结构
+系统 MUST 在 `/api/v1/chat/` 文档中说明 `question_type=0` 为 RAG，`question_type=1..7` 各自对应单一正式 Agent，并明确 type 4 肥力预测与 type 7 有机质培肥的业务边界。
 
-系统 MUST 提供一个协同提升模型的成功示例，展示外层 `status` 与 `data` 包装结构，以及结果中的模型信息、发现项、推荐图层、溯源、可靠性、回退、依赖模型和分区建议。系统还 MUST 提供缺少 `model_id` 时的 `400` 错误示例。
-
-#### Scenario: 查阅协同提升模型的成功响应
-
-- **WHEN** 调用者查看 `200` 响应示例
-- **THEN** 示例 MUST 展示 `data.model.model_id` 为 `multi-factor-collaborative-improvement`，并包含 `dependent_models` 与 `zoning_recommendations`
-
-#### Scenario: 查阅缺少模型标识的错误响应
-
-- **WHEN** 调用者查看 `400` 响应示例
-- **THEN** 示例 MUST 返回 `MISSING_MODEL_ID` 错误码和清晰的中文错误信息
+#### Scenario: 查阅有机质相关问题路由
+- **WHEN** 调用者查看 SOC 预测或有机肥施用问题的聊天示例
+- **THEN** 文档 MUST 分别展示 type 4/model-6 与 type 7/model-5 的路由和返回字段差异
 

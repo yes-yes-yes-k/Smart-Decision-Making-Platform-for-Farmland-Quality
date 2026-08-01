@@ -124,6 +124,93 @@ class BaseAgent(ABC):
 
 请以自然、专业的语言回答，回答要准确、有条理。"""
 
+    def analyze(self, payload: Dict[str, Any]) -> Dict[str, Any]:
+        """以统一结构化包络执行专业分析。
+
+        子类可覆盖此方法以暴露更丰富的专业字段；默认实现复用既有
+        ``execute`` 结果，确保单模型接口不会再维护独立计算路径。
+        """
+        execution = self.execute(payload or {})
+        raw_status = execution.get("status", "error")
+        result = execution.get("result", {})
+        metadata = execution.get("metadata", {})
+        simulated = bool(metadata.get("simulated", execution.get("simulated", False)))
+        findings = [
+            {"title": str(key), "content": str(value)}
+            for key, value in result.items()
+            if key not in {"indicators", "obstacle_degree"}
+        ]
+        if result.get("indicators"):
+            findings.append({"title": "指标评价", "content": f"共 {len(result['indicators'])} 项指标"})
+        if result.get("obstacle_degree"):
+            findings.append({"title": "障碍度排序", "content": str(result["obstacle_degree"])})
+
+        capability = getattr(self, "capability", {
+            "agent_id": self.model_id,
+            "model_id": self.model_id,
+            "name": self.name,
+            "purpose": self.description,
+        })
+        fallback_used = raw_status in {"fallback", "rejected"} or simulated
+        return {
+            "status": "ok" if raw_status in {"ok", "success", "fallback"} else raw_status,
+            "capability": capability,
+            "model": capability,
+            "summary": f"{capability['name']}已完成结构化分析。",
+            "findings": findings,
+            "recommendations": [],
+            "evidence": result,
+            "lineage": {"runtime_dependency": "agent"},
+            "reliability": {
+                "level": "demo_stub" if simulated else "real_model",
+                "message": "结果来自模拟/规则分析。" if simulated else "结果来自已接入的专业计算。",
+            },
+            "fallback": {
+                "used": fallback_used,
+                "fields": [],
+                "strategy": metadata.get("fallback_reason") or metadata.get("reason") or "未使用回退",
+            },
+            "analysis": result,
+        }
+
+    def answer_from_analysis(self, analysis: Dict[str, Any]) -> Dict[str, Any]:
+        """将统一结构化分析转换为聊天链路可汇总的专业答复。"""
+        findings = analysis.get("findings", [])
+        finding_text = "；".join(
+            f"{item.get('title', '结果')}：{item.get('content', '')}"
+            for item in findings[:4]
+            if isinstance(item, dict)
+        )
+        recommendations = analysis.get("recommendations", [])
+        recommendation_text = "；".join(str(item) for item in recommendations[:3])
+        answer_parts = [analysis.get("summary", "暂无可用专业分析结果。")]
+        if finding_text:
+            answer_parts.append(finding_text)
+        if recommendation_text:
+            answer_parts.append(f"建议：{recommendation_text}")
+
+        raw_evidence = analysis.get("evidence", {})
+        if isinstance(raw_evidence, list):
+            evidence = raw_evidence
+        elif isinstance(raw_evidence, dict):
+            evidence = [
+                {"metric": str(key), "value": value}
+                for key, value in raw_evidence.items()
+                if not isinstance(value, (dict, list))
+            ]
+        else:
+            evidence = []
+
+        reliability = analysis.get("reliability", {})
+        return {
+            "answer": "\n".join(answer_parts),
+            "evidence": evidence,
+            "confidence": 0.9 if reliability.get("level") == "real_model" else 0.5,
+            "simulated": reliability.get("level") == "demo_stub",
+            "analysis": analysis,
+            "sources": [],
+        }
+
     @abstractmethod
     def execute(self, task: Dict[str, Any]) -> Dict[str, Any]:
         """执行模拟计算。

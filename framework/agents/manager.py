@@ -2,6 +2,7 @@ from __future__ import annotations
 from typing import Any, Dict, List
 
 from .base import BaseAgent
+from .capabilities import PROFESSIONAL_CAPABILITIES, public_capability_descriptor
 from .router import QuestionTypeRouter
 
 
@@ -37,22 +38,19 @@ class AgentManager:
 
     def _register_agents(self) -> None:
         """注册所有 7 个专业智能体；若专业实现尚未就绪，回退到桩智能体。"""
-        specs = [
-            ("model-1", "StabilityRiskAgent", "耕地质量等级稳定性与退化风险识别", "stability"),
-            ("model-2", "PotentialAssessmentAgent", "耕地质量提升潜力评估", "potential"),
-            ("model-3", "ProblemIdentificationAgent", "耕地质量主要问题精准识别", "problem"),
-            ("model-4", "AcidificationRemediationAgent", "耕地土壤酸化改良", "acidification"),
-            ("model-5", "OrganicMatterAgent", "耕地土壤有机质培肥提升", "organic_matter"),
-            ("model-6", "FertilityMLAgent", "耕地肥力 SOC/Dose ML 预测", "fertility_ml"),
-            ("model-7", "FarmlandGradeAgent", "耕地质量等级评价（Fortran exe）", "grade"),
-        ]
-
         real_agents = self._load_real_agents()
-        for model_id, class_name, description, domain in specs:
-            if model_id in real_agents:
-                self.agents[model_id] = real_agents[model_id]
+        for capability in PROFESSIONAL_CAPABILITIES:
+            if capability.agent_id in real_agents:
+                agent = real_agents[capability.agent_id]
             else:
-                self.agents[model_id] = _StubAgent(class_name, description, model_id, domain)
+                agent = _StubAgent(
+                    f"{capability.agent_id}Stub",
+                    capability.description,
+                    capability.agent_id,
+                    capability.domain,
+                )
+            agent.capability = public_capability_descriptor(capability)
+            self.agents[capability.agent_id] = agent
 
         # 显式声明依赖关系
         self.agents["model-1"].dependencies = []
@@ -144,7 +142,9 @@ class AgentManager:
         for agent_id in ordered:
             agent = self.agents[agent_id]
             try:
-                result = agent.answer_question(question, accumulated)
+                payload = self._analysis_payload(accumulated)
+                analysis = agent.analyze(payload)
+                result = agent.answer_from_analysis(analysis)
             except Exception as exc:
                 result = {
                     "answer": f"智能体执行失败: {exc}",
@@ -157,6 +157,18 @@ class AgentManager:
             accumulated[agent_id] = result
 
         return results
+
+    @staticmethod
+    def _analysis_payload(context: Dict[str, Any]) -> Dict[str, Any]:
+        """将聊天上下文转换为可供结构化专业分析复用的输入。"""
+        payload: Dict[str, Any] = {}
+        if isinstance(context.get("data"), dict):
+            payload.update(context["data"])
+            payload["indicators"] = context["data"]
+        for key, value in context.items():
+            if key not in {"data", "question_type"} and not key.startswith("model-"):
+                payload[key] = value
+        return payload
 
     def _topological_sort(self, agent_ids: List[str]) -> List[str]:
         """对给定的智能体子集进行拓扑排序。
