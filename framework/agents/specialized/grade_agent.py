@@ -4,7 +4,7 @@ from typing import Any, Dict, List
 from ..base import BaseAgent
 from ..mock_data import MockDataLoader
 
-# 尝试导入实际exe模型实现
+# 尝试导入实际 Python 模型实现
 try:
     from ai_culti_demo.farmland_grade_eval import run_grade_evaluation
     GRADE_EVAL_AVAILABLE = True
@@ -13,12 +13,12 @@ except ImportError:
 
 
 class FarmlandGradeAgent(BaseAgent):
-    """耕地质量等级评价智能体（调用Fortran exe）"""
+    """耕地质量等级评价智能体（Python 模型实现）"""
 
     def __init__(self):
         super().__init__(
             name="FarmlandGradeAgent",
-            description="通过Fortran exe进行耕地质量等级评价",
+            description="通过 Python 模型进行耕地质量等级评价",
             model_id="quality-grade-evaluation",
             domain="grade",
         )
@@ -27,7 +27,7 @@ class FarmlandGradeAgent(BaseAgent):
         if not data:
             data = {}
 
-        # 尝试使用实际exe模型
+        # 尝试使用实际 Python 模型
         if GRADE_EVAL_AVAILABLE:
             parcel_code = data.get("parcel_code")
             exe_path = data.get("exe_path")

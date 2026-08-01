@@ -138,7 +138,7 @@ MODEL_SPECS: dict[str, ModelSpec] = {
     "quality-grade-evaluation": {
         "model_id": "quality-grade-evaluation",
         "name": "耕地质量等级评价模型",
-        "purpose": "通过Fortran exe进行耕地质量等级评价，输出12指标原始值/隶属度、综合指数、质量等级和障碍度排序。",
+        "purpose": "通过 Python 模型进行耕地质量等级评价，输出12指标原始值/隶属度、综合指数、质量等级和障碍度排序。",
         "minimum_inputs": ["parcel_code"],
         "recommended_layers": ["quality-overview", "obstacle-degree"],
         "findings": [
@@ -147,7 +147,7 @@ MODEL_SPECS: dict[str, ModelSpec] = {
             {"title": "障碍度排序", "content": "按障碍度对指标进行排序。"},
         ],
         "recommendations": [
-            "确保exe和dat文件已部署到指定目录。",
+            "确保 CSV 数据文件已部署到指定目录。",
             "输入有效的地块代码进行查询。",
         ],
         "fallback_fields": ["longitude", "latitude", "parcel_code"],
@@ -474,7 +474,7 @@ def _run_real_stability_model(payload: dict[str, Any], model: ModelSpec) -> dict
 
 
 def _run_real_grade_model(payload: dict[str, Any], model: ModelSpec) -> dict[str, Any]:
-    """调用实际的耕地质量等级评价exe"""
+    """调用实际的耕地质量等级评价 Python 模型"""
     parcel_code = payload.get("parcel_code")
     exe_path = payload.get("exe_path")
     dat_path = payload.get("dat_path")
@@ -512,7 +512,7 @@ def _run_real_grade_model(payload: dict[str, Any], model: ModelSpec) -> dict[str
         "lineage": _lineage_for_model(model),
         "reliability": {
             "level": "real_model",
-            "message": "当前结果来自实际耕地质量等级评价模型（Fortran exe）计算。",
+            "message": "当前结果来自实际耕地质量等级评价模型（Python 实现）计算。",
         },
         "fallback": {"used": False, "fields": [], "strategy": "已使用实际模型计算"},
         "grade_detail": result,
