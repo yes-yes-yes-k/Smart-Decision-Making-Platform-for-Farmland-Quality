@@ -36,7 +36,7 @@ QUESTION_TYPE_2_KEYWORDS = ["酸化程度", "酸化", "调理剂", "石灰", "�
 # TYPE_3: 潜力/障碍因素/主要问题（model-2/3）
 QUESTION_TYPE_3_KEYWORDS = ["潜力", "毛病", "问题", "障碍因素", "改良片区"]
 # TYPE_4: 有机质/有机肥/肥力/有机碳（model-5/6）
-QUESTION_TYPE_4_KEYWORDS = ["有机质", "有机肥", "秸秆", "肥力", "有机碳", "SOC", "Dose"]
+QUESTION_TYPE_4_KEYWORDS = ["有机质", "有机肥", "秸秆", "肥力", "有机碳", "SOC", "Dose", "施氮", "氮肥"]
 # TYPE_5: 质量等级评价（model-7）
 QUESTION_TYPE_5_KEYWORDS = ["质量等级", "综合指数", "障碍度排序", "等级评价", "耕地质量", "质量评价", "等级评估"]
 
