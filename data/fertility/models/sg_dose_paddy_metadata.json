@@ -1,0 +1,41 @@
+{
+  "model_type": "RandomForestRegressor",
+  "land_type": "paddy",
+  "region": "shaoguan",
+  "trained_at": "2026-07-31T23:40:06",
+  "model_version": "SG_RF_v1_20260731",
+  "hyperparameters": {
+    "n_estimators": 100,
+    "random_state": 230
+  },
+  "metrics": {
+    "cv_r2": 0.9938,
+    "cv_rmse": 11.8467,
+    "test_r2": 0.9931,
+    "test_rmse": 11.9411
+  },
+  "feature_names": [
+    "pH",
+    "SOCbe",
+    "TN",
+    "TP",
+    "TK",
+    "AP",
+    "AK",
+    "Gap",
+    "Fertilizer type"
+  ],
+  "feature_means": {
+    "pH": 6.268145896656534,
+    "SOCbe": 9.25450861195542,
+    "TN": 0.5949949341438703,
+    "TP": 0.3554103343465046,
+    "TK": 20.19118541033435,
+    "AP": 11.703617021276598,
+    "AK": 215.3066869300912,
+    "Gap": 18.339209726443773,
+    "Fertilizer type": 1.494934143870314
+  },
+  "training_samples": 1974,
+  "test_samples": 220
+}

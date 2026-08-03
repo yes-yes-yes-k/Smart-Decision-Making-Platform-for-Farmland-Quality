@@ -1,9 +1,9 @@
-"""数据导入校验器：CSV / shapefile zip / .dat。
+"""数据导入校验器：CSV / shapefile zip / 耕地质量评价 CSV。
 
 校验仅检查文件结构和必需字段，不触发离线计算。
 - CSV：校验 14 项必需列（UTF-8 失败回退 GBK）
 - shapefile zip：校验 manifest + 5 组件完整性 + 防 zip bomb + 路径穿越
-- .dat：校验非空且 ≤ 200MB
+- 耕地质量评价 CSV：校验非空、≤200MB、UTF-8、含 20 个必需字段
 """
 import os
 import zipfile
@@ -52,18 +52,45 @@ def validate_csv(file_path: str) -> Tuple[bool, str]:
     return True, ''
 
 
-def validate_dat(file_path: str) -> Tuple[bool, str]:
-    """校验 .dat 文件非空且大小 ≤ 200MB。
+# 耕地质量评价 CSV 必需的 20 个字段（以 CSV 首行表头为准）
+GRADE_CSV_REQUIRED_COLUMNS = [
+    'SiteID', 'JD', 'WD', 'MJ', 'SJD', 'YJZ', 'YXL', 'SXJ', 'TRRZ',
+    'YXTCHD', 'GCHD', 'JHXLLZ', 'JHXQLZ', 'EJNYQcode', 'XQMCcode',
+    'GCZDcode', 'PSNLcode', 'GGNLcode', 'DXBWcode', 'ZDGXcode',
+]
+
+
+def validate_grade_csv(file_path: str) -> Tuple[bool, str]:
+    """校验耕地质量评价 CSV 文件：非空、≤200MB、UTF-8、含 20 个必需字段。
 
     Returns:
-        (ok, error_msg)
+        (ok, error_msg): ok=True 时 error_msg 为空字符串
     """
     size = os.path.getsize(file_path)
     if size == 0:
-        return False, ".dat 文件为空"
+        return False, "CSV 文件为空"
     if size > Config.MAX_DATA_IMPORT_SIZE:
-        return False, f".dat 文件大小超过 {Config.MAX_DATA_IMPORT_SIZE // (1024 * 1024)}MB 限制"
+        return False, f"CSV 文件大小超过 {Config.MAX_DATA_IMPORT_SIZE // (1024 * 1024)}MB 限制"
+
+    try:
+        try:
+            df = pd.read_csv(file_path, encoding='utf-8', nrows=1)
+        except UnicodeDecodeError:
+            try:
+                df = pd.read_csv(file_path, encoding='utf-8-sig', nrows=1)
+            except UnicodeDecodeError:
+                return False, "CSV 文件编码非 UTF-8"
+    except Exception as e:
+        return False, f"CSV 文件解析失败: {e}"
+
+    missing = [c for c in GRADE_CSV_REQUIRED_COLUMNS if c not in df.columns]
+    if missing:
+        return False, f"CSV 缺少必需字段: {missing}"
     return True, ''
+
+
+# 向后兼容别名（data_import.py 仍使用 validate_dat 名称）
+validate_dat = validate_grade_csv
 
 
 def validate_shapefile_zip(zip_path: str) -> Tuple[bool, str, Dict[str, Any]]:

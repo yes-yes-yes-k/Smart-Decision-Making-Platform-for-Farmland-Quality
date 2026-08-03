@@ -1,6 +1,6 @@
 """数据部署器：备份、部署、清理、回滚。
 
-部署语义：覆盖目标目录下的现有数据文件，保留原文件名约定（test.csv / Farmlands_Quality_Level_Database.dat）。
+部署语义：覆盖目标目录下的现有数据文件，保留原文件名约定（test.csv / Farmland_quality_Level_Database.csv）。
 备份语义：将现有文件移动到 <target_dir>/backup/YYYYMMDD-HHMMSS/，保留最近 N 份。
 """
 import os
@@ -57,16 +57,20 @@ def deploy_csv(src_path: str, target_dir: str) -> str:
     return dst
 
 
-def deploy_dat(src_path: str, target_dir: str) -> str:
-    """将 .dat 部署到 target_dir/Farmlands_Quality_Level_Database.dat（固定文件名）。
+def deploy_grade_csv(src_path: str, target_dir: str) -> str:
+    """将耕地质量评价 CSV 部署到 target_dir/Farmland_quality_Level_Database.csv（固定文件名）。
 
     Returns:
         部署后的绝对路径
     """
     os.makedirs(target_dir, exist_ok=True)
-    dst = os.path.join(target_dir, 'Farmlands_Quality_Level_Database.dat')
+    dst = os.path.join(target_dir, 'Farmland_quality_Level_Database.csv')
     shutil.copy2(src_path, dst)
     return dst
+
+
+# 向后兼容别名
+deploy_dat = deploy_grade_csv
 
 
 def deploy_shapefile(zip_path: str, target_dir: str, manifest: dict) -> List[str]:

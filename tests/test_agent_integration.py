@@ -1,10 +1,46 @@
 """测试 AgentManager 与 LangGraph 节点集成"""
 import sys
 import os
+import pytest
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from framework.agents.state import MultiAgentState
 from framework.agents.nodes import execute_models
+
+
+class _UnavailableLLM:
+    """防止 API 集成测试访问本机配置的外部模型服务。"""
+
+    def is_available(self):
+        return False
+
+    def generate(self, prompt, messages=None, **kwargs):
+        return {
+            "success": False,
+            "content": "AI服务暂时不可用",
+            "type": "fallback",
+        }
+
+
+@pytest.fixture(autouse=True)
+def disable_external_llm(monkeypatch):
+    """集成测试只验证本地路由和降级结构，不依赖外部运行时。"""
+    from framework.agents import nodes
+    from framework.rag import chain
+
+    llm = _UnavailableLLM()
+    monkeypatch.setattr(nodes, "llm_service", llm)
+    monkeypatch.setattr(chain, "llm_service", llm)
+    monkeypatch.setattr(chain.rag_chain, "llm_service", llm)
+    monkeypatch.setattr(
+        chain.rag_chain,
+        "chat",
+        lambda question, conversation_history=None: {
+            "success": False,
+            "answer": "RAG服务暂时不可用",
+            "sources": [],
+        },
+    )
 
 
 def _make_state(question: str, question_type: int = 1) -> MultiAgentState:
@@ -62,7 +98,7 @@ def test_chat_api_returns_structured_multi_agent_result():
     """通过 Flask test client 验证 /api/v1/chat/ 返回多智能体结构化结果"""
     from framework.api.app import create_app
 
-    app = create_app()
+    app = create_app("sqlite")
     app.config["TESTING"] = True
 
     with app.app_context():
@@ -153,7 +189,10 @@ def test_e2e_recommendations_aggregated():
     class _FakeAgent:
         dependencies: list = []
 
-        def answer_question(self, question, context):
+        def analyze(self, payload):
+            return {"status": "ok", "result": {}}
+
+        def answer_from_analysis(self, analysis):
             return {
                 "answer": "测试回复",
                 "evidence": [
@@ -187,7 +226,7 @@ def test_chat_api_passes_top_level_parcel_id_and_code():
     from framework.api.app import create_app
     from framework.agents.orchestrator import multi_agent_orchestrator
 
-    app = create_app()
+    app = create_app("sqlite")
     app.config["TESTING"] = True
 
     with app.app_context():
@@ -250,7 +289,7 @@ def test_chat_api_top_level_parcel_overrides_context():
     from framework.api.app import create_app
     from framework.agents.orchestrator import multi_agent_orchestrator
 
-    app = create_app()
+    app = create_app("sqlite")
     app.config["TESTING"] = True
 
     with app.app_context():
@@ -303,7 +342,7 @@ def test_chat_api_no_parcel_when_absent():
     from framework.api.app import create_app
     from framework.agents.orchestrator import multi_agent_orchestrator
 
-    app = create_app()
+    app = create_app("sqlite")
     app.config["TESTING"] = True
 
     with app.app_context():
@@ -352,7 +391,7 @@ def test_chat_api_type5_routes_to_model7_only():
     """Task 6.2: type 5 问题经 API 路由后 agents_invoked 仅含 model-7，无 role 字段"""
     from framework.api.app import create_app
 
-    app = create_app()
+    app = create_app("sqlite")
     app.config["TESTING"] = True
 
     with app.app_context():
@@ -396,7 +435,7 @@ def test_chat_api_knowledge_question_routes_to_rag():
     """Task 6.3: 知识性问题「什么是土壤酸化」经 API 路由后 question_type=0（走 RAG）"""
     from framework.api.app import create_app
 
-    app = create_app()
+    app = create_app("sqlite")
     app.config["TESTING"] = True
 
     with app.app_context():
@@ -437,7 +476,7 @@ def test_chat_api_knowledge_question_概念_pattern():
     """Task 6.3: 「耕地质量等级是什么意思」也应走 RAG（type 0）"""
     from framework.api.app import create_app
 
-    app = create_app()
+    app = create_app("sqlite")
     app.config["TESTING"] = True
 
     with app.app_context():

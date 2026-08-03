@@ -1,0 +1,16 @@
+{
+  "change": "replace-grade-eval-with-python-model",
+  "phase": "design",
+  "mode": "compact",
+  "canonical_spec": "openspec",
+  "generated_by": "comet-handoff.sh",
+  "context_hash": "5aabfcd2b9d522b49c62b4f9bbbf97ba539f7f646374a54c765eec73c8a23732",
+  "files": [
+    { "path": "openspec/changes/replace-grade-eval-with-python-model/proposal.md", "sha256": "68ccc228808cc824879f7bac8b0a0d54bffe218d2f09e4e985d9e84865151d6c" },
+    { "path": "openspec/changes/replace-grade-eval-with-python-model/design.md", "sha256": "e0d78afde035173e77348225d49260018cca14b4fbd174b0ed61995893e91a3b" },
+    { "path": "openspec/changes/replace-grade-eval-with-python-model/tasks.md", "sha256": "5714da9e0499574dd23ca82c5a49c517d74e80a25a5ace40912b37e311490ae9" },
+    { "path": "openspec/changes/replace-grade-eval-with-python-model/specs/farmland-quality-grade-evaluation/spec.md", "sha256": "4eb584a1bd3777760b581d49fa65f62fc92f109ee5ed2505904b041e13428ea9" },
+    { "path": "openspec/changes/replace-grade-eval-with-python-model/specs/professional-model-agents/spec.md", "sha256": "694e2de0c140039fca38bdb09b0daffddbe389b1d989191ce49e3b9a0365d369" },
+    { "path": "openspec/changes/replace-grade-eval-with-python-model/specs/thematic-data-import/spec.md", "sha256": "64ab6d4bc3de83cc7e9967fa0469dde6ce1d959c32f0fc880a725aeab99366d9" }
+  ]
+}

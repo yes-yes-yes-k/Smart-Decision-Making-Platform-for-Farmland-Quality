@@ -31,6 +31,7 @@ tests/test_agent_manager.py
 tests/test_agent_specialized.py
 tests/test_audit_logger.py
 tests/test_auth.py
+tests/test_config_indicators.py
 tests/test_data_deployer.py
 tests/test_data_import_integration.py
 tests/test_data_import_route.py
@@ -45,8 +46,10 @@ tests/test_function_calling.py
 tests/test_import_lechang_data.py
 tests/test_interfaces.py
 tests/test_knowledge_question.py
+tests/test_model4_acidification.py
 tests/test_model_specs_sync.py
 tests/test_multi_agent.py
+tests/test_nodes_passthrough.py
 tests/test_precompute.py
 tests/test_question_type_keywords.py
 tests/test_question_type_router.py
@@ -55,4 +58,5 @@ tests/test_soil_data_loader_db.py
 tests/test_soil_data_models.py
 tests/test_stability_and_grade_integration.py
 tests/test_thematic_models.py
+tests/test_train_fertility_sg.py
 tests/test_upload.py

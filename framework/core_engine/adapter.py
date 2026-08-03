@@ -48,10 +48,14 @@ class CoreEngine:
                 "error": {"code": "DIAGNOSIS_ERROR", "message": str(e)}
             }
 
-    def list_thematic_models(self, area_code: str = "lechang") -> Dict[str, Any]:
+    def list_thematic_models(
+        self, area_code: str = "lechang", *, include_non_professional: bool = False
+    ) -> Dict[str, Any]:
         self._ensure_import()
         try:
-            return self._list_thematic_models(area_code)
+            return self._list_thematic_models(
+                area_code, include_non_professional=include_non_professional
+            )
         except Exception as e:
             return {
                 "status": "error",
@@ -145,7 +149,8 @@ class CoreEngine:
         try:
             runner = self._FarmlandGradeRunner()
             result = runner.check_deployment()
-            return {"deployment_ok": True, "detail": result} if result else {"deployment_ok": False, "detail": None}
+            deployment_ok = bool(result and result.get("ready", False))
+            return {"deployment_ok": deployment_ok, "detail": result}
         except Exception as e:
             return {"deployment_ok": False, "error": {"code": "DEPLOYMENT_CHECK_ERROR", "message": str(e)}}
 

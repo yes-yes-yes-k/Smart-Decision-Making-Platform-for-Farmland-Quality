@@ -1,0 +1,14 @@
+{
+  "change": "add-shaoguan-fertility-model",
+  "phase": "design",
+  "mode": "compact",
+  "canonical_spec": "openspec",
+  "generated_by": "comet-handoff.sh",
+  "context_hash": "d4bbd18ae6fa0ca1ccbea2a32149f8c6e1a56c3835344f7f1831f149285c939b",
+  "files": [
+    { "path": "openspec/changes/add-shaoguan-fertility-model/proposal.md", "sha256": "11438b5e34859f7070a392e31fdd52d1ee479c1863ef0ddb2310a1119166f4fd" },
+    { "path": "openspec/changes/add-shaoguan-fertility-model/design.md", "sha256": "d0ce199eb7daa4d8cca6c71086e1c607d17db3d12d8b1336ee7c543d93d823ae" },
+    { "path": "openspec/changes/add-shaoguan-fertility-model/tasks.md", "sha256": "5c0cfa0aa33a0acda7e4f7829e2545a5b05bf59c6fced38b0a242123c7b60b09" },
+    { "path": "openspec/changes/add-shaoguan-fertility-model/specs/fertility-ml-prediction/spec.md", "sha256": "1f4b15750a21a3698ab58569bc5751aeb53119aaaf2ace220f7188c382b76739" }
+  ]
+}

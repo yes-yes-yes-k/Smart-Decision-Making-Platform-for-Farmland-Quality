@@ -109,15 +109,18 @@ class ProblemIdentificationAgent(BaseAgent):
         if real_result:
             diagnosis = real_result.get("diagnosis", {})
             evaluation = real_result.get("evaluation", {})
-            obstacle_type = diagnosis.get("obstacle_type", "无明显障碍")
-            main_factors = diagnosis.get("main_factors", [])
-            secondary_factors = diagnosis.get("secondary_factors", [])
-            grade = evaluation.get("grade", "未知")
+            obstacle_type = diagnosis.get("ZALX", "无明显障碍")
+            main_factors_str = diagnosis.get("ZYZAYS", "")  # 已是 '；' 连接的可读字符串
+            secondary_factors_str = diagnosis.get("CYZAYS", "")  # 已是 '；' 连接的可读字符串
+            grade = evaluation.get("GDZLDJ", "未知")
+            # 兼容 evidence 构造：按 '；' 切分为列表，空串/无 → 空列表
+            main_factors = [f for f in main_factors_str.split('；') if f and f != '无'] if main_factors_str else []
+            secondary_factors = [f for f in secondary_factors_str.split('；') if f and f != '无'] if secondary_factors_str else []
 
             if "有没有问题" in question or ("我这块地" in question and "问题" in question):
                 answer = (
                     f"您的地块耕地质量诊断结果：障碍类型为{obstacle_type}。"
-                    f"主要障碍因素：{'; '.join(main_factors) if main_factors else '无'}。"
+                    f"主要障碍因素：{main_factors_str or '无'}。"
                     f"耕地质量等级：{grade}级。"
                 )
                 evidence = [
@@ -129,8 +132,8 @@ class ProblemIdentificationAgent(BaseAgent):
             elif "县" in question or "乡镇" in question or "方面" in question:
                 answer = (
                     f"障碍诊断结果：障碍类型为{obstacle_type}；"
-                    f"主要障碍因素：{'; '.join(main_factors) if main_factors else '无'}；"
-                    f"次要障碍因素：{'; '.join(secondary_factors) if secondary_factors else '无'}。"
+                    f"主要障碍因素：{main_factors_str or '无'}；"
+                    f"次要障碍因素：{secondary_factors_str or '无'}。"
                     f"耕地质量等级：{grade}级。"
                 )
                 evidence = [
@@ -141,8 +144,8 @@ class ProblemIdentificationAgent(BaseAgent):
                 confidence = 0.88
             else:
                 answer = (
-                    f"主要障碍因素：{'; '.join(main_factors) if main_factors else '无'}；"
-                    f"次要障碍因素：{'; '.join(secondary_factors) if secondary_factors else '无'}。"
+                    f"主要障碍因素：{main_factors_str or '无'}；"
+                    f"次要障碍因素：{secondary_factors_str or '无'}。"
                     f"障碍类型：{obstacle_type}。"
                     f"耕地质量等级：{grade}级。"
                 )

@@ -250,9 +250,11 @@
 - **question_type=0** → RAG 链（知识性问题，如「什么是土壤酸化」「耕地质量等级是什么意思」）
 - **question_type=1** → model-1 稳定性风险识别（等级稳定性/退化风险）
 - **question_type=2** → model-4 酸化改良（酸化程度/调理剂/改良方案）
-- **question_type=3** → model-3 障碍诊断（潜力/障碍因素/主要问题）
-- **question_type=4** → model-6 肥力 ML 预测（有机质/有机肥/SOC/Dose）
+- **question_type=3** → model-3 障碍诊断（障碍因素/主要问题/障碍组合）
+- **question_type=4** → model-6 肥力 ML 预测（SOC/Dose/预测置信度）
 - **question_type=5** → model-7 耕地质量等级评价（综合指数/质量等级/障碍度排序）
+- **question_type=6** → model-2 提升潜力评估（提升潜力/增产潜力/改良片区）
+- **question_type=7** → model-5 有机质培肥（有机肥/秸秆还田/培肥方案）
 
 > 路由采用 1:1 映射：每个 question_type 仅调用对应的单一专业智能体，不再按用户角色固定调用多个模型组合。
 
@@ -282,7 +284,9 @@
 | `conversation_id` | int | 否 | 对话 ID，不传则创建新对话 |
 | `area_code` | string | 否 | 区域代码（默认 "lechang"，model-1/3/4 按 area_code 查 DB） |
 | `parcel_id` | string | 否 | 地块 ID（数字字符串，给 model-1/3/4 查 DB），农户端问题或 type 5 问题建议携带 |
-| `parcel_code` | string | 否 | 地块代码（字母数字，给 model-7 调 Fortran exe），type 5 质量等级评价必需 |
+| `parcel_code` | string | 否 | 地块代码（字母数字，给 model-7 调 Python 模型），type 5 质量等级评价必需 |
+| `land_type` | string | 否 | 土地利用类型（`upland` 旱地 / `paddy` 水田，默认 `upland`，酸化改良 model-4 使用，与 `fertilizer_type` 组合选择 4 子模型） |
+| `fertilizer_type` | string | 否 | 肥料类型（`compound` 复合肥 / `urea` 尿素，默认 `compound`，酸化改良 model-4 使用，与 `land_type` 组合选择 4 子模型） |
 | `context` | object | 否 | 专业模型参数 |
 
 context 参数说明：
@@ -331,13 +335,142 @@ context 参数说明：
 |------|------|------|
 | `answer` | string | 综合回答内容 |
 | `sources` | array | RAG 引用文档列表（仅 type 0 或 RAG 命中时返回） |
-| `question_type` | int | 问题类型（0-5），见上方路由说明 |
-| `model_results` | object | 多智能体框架返回的结构化结果（type 1-5 时返回） |
+| `question_type` | int | 问题类型（0-7），见上方路由说明 |
+| `model_results` | object | 多智能体框架返回的结构化结果（type 1-7 时返回） |
 | `agents_invoked` | array | 调用的智能体 ID 列表（1:1 映射，仅含单一模型） |
 | `recommendations` | array | 综合建议列表 |
 | `message_id` | int | 本次回答的消息 ID |
 
 > 注：API 响应不再包含 `role` 字段（已移除）。客户端应使用 `question_type` 字段判断问题类型。
+
+---
+
+### 酸化改良（model-4，question_type=2）
+
+酸化改良模型已从规则导向（GB/T 42817-2023 石灰剂量）替换为**过程模型**（移植自模型5源码），按 `land_type` × `fertilizer_type` 组合选择 4 个子模型之一，计算亿土康（YTK）与木本泥炭（MBNT）需求量。
+
+#### 4 个子模型
+
+| land_type | fertilizer_type | sub_model 名称 |
+|-----------|-----------------|----------------|
+| `paddy`（水田） | `urea`（尿素） | `paddy_urea` |
+| `paddy`（水田） | `compound`（复合肥） | `paddy_compound` |
+| `upland`（旱地） | `urea`（尿素） | `upland_urea` |
+| `upland`（旱地） | `compound`（复合肥） | `upland_compound` |
+
+#### 输入参数
+
+模型输入通过 `context.data`（或 `context.task`）传递，`land_type` / `fertilizer_type` / `parcel_id` 也可在请求体顶层传递（顶层优先级高于 context）。
+
+**必填输入：**
+
+| 字段 | 类型 | 说明 |
+|------|------|------|
+| `SJD` | float | 土壤 pH 值（三普标准指标代码，对应 pHstart） |
+| `JHX` | float | 交换性氢（cmol/kg，对应 Hex） |
+| `JLA` | float | 交换性铝（cmol/kg，对应 Alex） |
+
+**可选输入：**
+
+| 字段 | 类型 | 默认值 | 说明 |
+|------|------|--------|------|
+| `land_type` | string | `upland` | 土地利用类型（`upland` 旱地 / `paddy` 水田），非法值回退 `upland` 并发 warning |
+| `fertilizer_type` | string | `compound` | 肥料类型（`compound` 复合肥 / `urea` 尿素），非法值回退 `compound` 并发 warning |
+| `parcel_id` | string | - | 地块 ID；当 `SJD` 缺失时自动从 DB 查询 SJD（基于 `evaluation_results` 表） |
+| `RPH` | float | 5.5 | 降水 pH 年均值（可配参数白名单） |
+| `R` | float | 1893.0 | 年降水量 mm（可配参数白名单） |
+| `Y` | float | 6700.0（旱地）/ 5109.0（水田） | 籽粒产量 kg/ha/yr（可配参数白名单） |
+| `S` | float | 6968.0（旱地）/ 5109.0（水田） | 秸秆产量 kg/ha/yr（可配参数白名单） |
+| `FertN` | float | 180.0 | 施肥量（以 N 计）kg/ha（可配参数白名单） |
+| `Ndep` | float | 47.6 | N 沉降 kg/ha（可配参数白名单） |
+| `pHtarget` | float | 6.0（旱地）/ 6.5（水田） | 目标 pH（可配参数白名单） |
+
+> 可配参数白名单为 `{RPH, R, Y, S, FertN, Ndep, pHtarget}`，覆盖后的值记入响应 `customized_params`；元素含量等内置参数不允许 API 覆盖。
+
+#### 响应字段
+
+`question_type=2` 时，`model_results.data.details["model-4"]` 返回 `acidification_detail` 对象：
+
+| 字段 | 类型 | 说明 |
+|------|------|------|
+| `acidification_detail.status` | string | 执行状态：`success` / `rejected` |
+| `acidification_detail.result.ytk` | float | 亿土康施用量（kg/ha），rejected 时为 `null` |
+| `acidification_detail.result.mbnt` | float | 木本泥炭施用量（kg/ha），rejected 时为 `null` |
+| `acidification_detail.result.sub_model` | string | 命中的子模型名称（如 `upland_compound`） |
+| `acidification_detail.result.customized_params` | object | API 覆盖的可配参数，空对象表示全用默认值 |
+| `acidification_detail.metadata.model_version` | string | 过程模型版本号（`process_v2_20260801`） |
+| `acidification_detail.metadata.warning` | string | 警告信息（如 land_type/fertilizer_type 非法回退），无警告时缺省 |
+| `acidification_detail.metadata.reason` | string | rejected 原因：`missing_input` / `input_out_of_range` / `cannot_get_ph` / `model_unavailable` |
+
+#### 响应示例（question_type=2 酸化改良）
+
+```json
+{
+    "status": "ok",
+    "data": {
+        "answer": "基于过程模型（upland_compound）计算，建议亿土康（YTK）施用量约 6413.6 kg/ha，木本泥炭（MBNT）约 11814.1 kg/ha（土地利用类型：upland，肥料类型：compound）。",
+        "sources": [],
+        "question_type": 2,
+        "model_results": {
+            "status": "ok",
+            "data": {
+                "question_type": 2,
+                "agents_invoked": ["model-4"],
+                "summary": "[model-4] 酸化改良：亿土康 6413.6 kg/ha, 木本泥炭 11814.1 kg/ha (upland_compound)",
+                "details": {
+                    "model-4": {
+                        "answer": "基于过程模型（upland_compound）计算，建议亿土康（YTK）施用量约 6413.6 kg/ha，木本泥炭（MBNT）约 11814.1 kg/ha（土地利用类型：upland，肥料类型：compound）。",
+                        "evidence": [
+                            {"metric": "ytk", "value": 6413.6, "unit": "kg/ha"},
+                            {"metric": "mbnt", "value": 11814.1, "unit": "kg/ha"},
+                            {"metric": "sub_model", "value": "upland_compound"},
+                            {"metric": "land_type", "value": "upland"},
+                            {"metric": "fertilizer_type", "value": "compound"}
+                        ],
+                        "confidence": 0.88,
+                        "acidification_detail": {
+                            "status": "success",
+                            "result": {
+                                "ytk": 6413.6,
+                                "mbnt": 11814.1,
+                                "sub_model": "upland_compound",
+                                "customized_params": {}
+                            },
+                            "metadata": {
+                                "model_version": "process_v2_20260801",
+                                "warning": null,
+                                "reason": null
+                            }
+                        },
+                        "simulated": false
+                    }
+                },
+                "recommendations": ["建议施用亿土康（YTK）约 6413.6 kg/ha 调节土壤酸度", "配合木本泥炭（MBNT）约 11814.1 kg/ha 提升有机质"]
+            }
+        },
+        "agents_invoked": ["model-4"],
+        "recommendations": ["建议施用亿土康（YTK）约 6413.6 kg/ha 调节土壤酸度", "配合木本泥炭（MBNT）约 11814.1 kg/ha 提升有机质"],
+        "message_id": 4
+    }
+}
+```
+
+#### rejected 响应示例（缺少必填输入）
+
+```json
+{
+    "acidification_detail": {
+        "status": "rejected",
+        "result": {"ytk": null, "mbnt": null, "sub_model": null, "customized_params": {}},
+        "metadata": {
+            "model_version": "process_v2_20260801",
+            "reason": "cannot_get_ph"
+        }
+    }
+}
+```
+
+> `reason` 取值：`missing_input`（SJD/JHX/JLA 任一缺失）、`input_out_of_range`（pHstart 不在 [3,10] 或 Hex/Alex < 0）、`cannot_get_ph`（parcel_id 查 DB 未取到 SJD）、`model_unavailable`（acidification 模块不可用，优雅降级）。
 
 ---
 
@@ -352,19 +485,20 @@ context 参数说明：
 {
     "status": "ok",
     "data": [
-        {"name": "spatial-structure-analysis", "description": "按区域、类型和图层组织县域耕地质量空间结构，用于总览和空间分区研判。"},
-        {"name": "soil-indicator-analysis", "description": "围绕 pH、有机质和养分等关键指标做多维占位解析，用于支撑专题判断。"},
-        {"name": "obstacle-factor-identification", "description": "基于耕地质量评价结果，识别限制耕地质量提升的主要障碍因素，判定障碍类型（单一障碍/多障碍），并输出分级治理方向。"},
-        {"name": "acidification-governance", "description": "对酸化问题进行分区识别、治理需求分析和改良措施匹配，生成针对性的酸化改良方案。"},
-        {"name": "organic-matter-improvement", "description": "对有机质不足问题进行占位识别、提升需求分析和措施匹配。"},
-        {"name": "stability-risk-evaluation", "description": "基于3期历史数据，通过九模块综合评价耕地质量稳定性和退化风险。"},
-        {"name": "quality-grade-evaluation", "description": "通过Fortran exe进行耕地质量等级评价，输出12指标原始值/隶属度、综合指数、质量等级和障碍度排序。"},
-        {"name": "multi-factor-collaborative-improvement", "description": "综合多个专题模型的占位结果，形成分区分类的综合提升建议。"}
+        {"name": "stability-risk-evaluation", "description": "基于3期历史数据，通过九模块综合评价耕地质量稳定性和退化风险（model-1）。"},
+        {"name": "improvement-potential-assessment", "description": "耕地质量提升潜力评估（model-2）。"},
+        {"name": "obstacle-diagnosis", "description": "主要问题与障碍诊断（model-3）。"},
+        {"name": "acidification-remediation", "description": "基于过程模型（4 子模型：水田/旱地 × 尿素/复合肥）计算酸化改良剂需求，输出亿土康（YTK）与木本泥炭（MBNT）施用量（model-4）。"},
+        {"name": "organic-matter-improvement", "description": "有机质培肥提升（model-5）。"},
+        {"name": "fertility-soc-dose-prediction", "description": "肥力 SOC/Dose 预测（model-6）。"},
+        {"name": "quality-grade-evaluation", "description": "通过 Python 模型进行耕地质量等级评价，输出12指标原始值/隶属度、综合指数、质量等级和障碍度排序（model-7）。"}
     ]
 }
 ```
 
-> 注：以上 8 个为核心引擎提供的专题模型。多智能体框架中的 7 个专业智能体（model-1 至 model-7）基于这些专题模型实现，并通过 question_type 1:1 映射进行路由调用。
+> 注：默认列表仅返回 7 个正式专业模型，均与一个专业智能体一一对应。传入 `include_non_professional=true` 可查看辅助空间能力、辅助指标能力和实验性协同提升能力；它们不参与聊天路由。
+
+> `obstacle-factor-identification` 与 `acidification-governance` 为旧模型标识，仍可调用但响应会返回规范模型 ID 和弃用提示。`spatial-structure-analysis`、`soil-indicator-analysis` 为辅助能力，`multi-factor-collaborative-improvement` 为实验性能力。
 
 ---
 
@@ -547,7 +681,7 @@ context 参数说明：
 > Content-Type: `multipart/form-data`
 > 文件大小限制：200MB
 
-用于上传部署三类专题模型数据（CSV / shapefile / .dat），部署前自动备份现有文件，部署后自动触发对应的处理流程。
+用于上传部署三类专题模型数据（CSV / shapefile / 耕地质量评价 CSV），部署前自动备份现有文件，部署后自动触发对应的处理流程。
 
 #### 请求字段
 
@@ -570,9 +704,9 @@ context 参数说明：
 - zip 限制：文件数 ≤ 30、解压后总大小 ≤ 200MB、无路径穿越
 - 触发：`precompute.main` 预计算 + 持久化
 
-**.dat（data_type=dat）**
-- 部署到 `bin/farmland_quality_eval/Farmlands_Quality_Level_Database.dat`（固定文件名）
-- 校验：非空、≤ 200MB
+**耕地质量评价 CSV（data_type=dat）**
+- 部署到 `bin/farmland_quality_eval/Farmland_quality_Level_Database.csv`（固定文件名）
+- 校验：非空、≤ 200MB、UTF-8 编码、含 20 个必需字段（SiteID/JD/WD/MJ/SJD/YJZ/YXL/SXJ/TRRZ/YXTCHD/GCHD/JHXLLZ/JHXQLZ/EJNYQcode/XQMCcode/GCZDcode/PSNLcode/GGNLcode/DXBWcode/ZDGXcode）
 - 触发：`FarmlandGradeRunner.check_deployment` 部署校验
 
 #### manifest.json 格式（shapefile 必需）
@@ -605,7 +739,7 @@ context 参数说明：
 
 | HTTP 状态码 | 说明 |
 |-------------|------|
-| 400 | 缺少 data_type/file、data_type 不合法、校验失败（缺列/shapefile 组件不全/.dat 为空等） |
+| 400 | 缺少 data_type/file、data_type 不合法、校验失败（缺列/shapefile 组件不全/CSV 为空或编码/字段不符等） |
 | 401 | 未携带 JWT |
 | 403 | 非 admin 用户 |
 | 413 | 文件大小超过 200MB |
@@ -632,11 +766,11 @@ curl -X POST http://localhost:5000/api/v1/data/import \
   -F "data_type=shapefile" \
   -F "file=@/path/to/stability_data.zip"
 
-# 上传 .dat 数据库
+# 上传耕地质量评价 CSV
 curl -X POST http://localhost:5000/api/v1/data/import \
   -H "Authorization: Bearer <token>" \
   -F "data_type=dat" \
-  -F "file=@/path/to/Farmlands_Quality_Level_Database.dat"
+  -F "file=@/path/to/Farmland_quality_Level_Database.csv"
 ```
 
 > 备份策略：部署前备份现有文件到 `backup/YYYYMMDD-HHMMSS/`，保留最近 3 份；触发失败自动回滚到备份。

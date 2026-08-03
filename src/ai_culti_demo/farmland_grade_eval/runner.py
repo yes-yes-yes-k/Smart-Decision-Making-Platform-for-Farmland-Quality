@@ -1,250 +1,255 @@
-import subprocess
-import os
-import time
-from typing import Dict, Any, Optional
-from pathlib import Path
+"""耕地质量等级评价 Python 调用层。
 
-DEFAULT_EXE_PATH = "bin/farmland_quality_eval/Farmland_quality_evaluation.exe"
-DEFAULT_DAT_PATH = "bin/farmland_quality_eval/Farmlands_Quality_Level_Database.dat"
+纯 Python 实现，替代原 Fortran exe + subprocess 调用。
+通过直接调用 evaluation/obstacle 模块完成评价，数据源从 CSV 加载。
+"""
+import os
+import dataclasses
+from typing import Dict, Any, List
+
+from .config import EvaluationConfig
+from .models import Parcel
+from .data_loader import load_parcels_from_csv
+from .evaluation import evaluate_land_quality
+from .obstacle import compute_obstacle_factors
+from .potential import compute_single_parcel_potential, county_potential_statistics_data
+from .statistics import county_statistics_data
+
+MODEL_VERSION = "python_v1_20260801"
+DEFAULT_CSV_PATH = "bin/farmland_quality_eval/Farmland_quality_Level_Database.csv"
+
+# 数值型指标映射：(name, code, 取值函数)
+_INDICATOR_MAP = [
+    ("酸碱度", "SJD", lambda p: p.sjd),
+    ("有机质含量", "YJZ", lambda p: p.yjz),
+    ("有效磷含量", "YXL", lambda p: p.yxl),
+    ("速效钾含量", "SXJ", lambda p: p.sxj),
+    ("土壤容重", "TRRZ", lambda p: p.trrz),
+    ("有效土层厚度", "YXTCHD", lambda p: p.yxtchd),
+    ("耕层厚度", "GCHD", lambda p: p.gchd),
+]
+
+# 概念型指标映射：(name, code, names_list, parcel_field)
+_CONCEPT_MAP = [
+    ("耕层质地", "GCZD", "zdgc_names", "zdgc"),
+    ("排水能力", "PSNL", "psnl_names", "psnl"),
+    ("灌溉能力", "GGNL", "ggnl_names", "ggnl"),
+    ("地形部位", "DXBW", "dxbw_names", "dxbw"),
+    ("质地构型", "ZDGX", "zdgx_names", "zdgx"),
+]
 
 
 class FarmlandGradeRunner:
-    """耕地质量等级评价exe调用包装器"""
+    """耕地质量等级评价 Python 模型调用包装器。
+
+    签名向后兼容：exe_path 被忽略，dat_path 语义改为 csv_path。
+    """
+
+    _parcels_cache = None
+    _csv_path_cached = None
+    _csv_mtime_cached = None
 
     def __init__(self, exe_path: str = None, dat_path: str = None, timeout: int = 30):
-        self.exe_path = exe_path or DEFAULT_EXE_PATH
-        self.dat_path = dat_path or DEFAULT_DAT_PATH
-        self.timeout = timeout
+        # dat_path 语义改为 csv_path；exe_path 忽略；timeout 保留但不使用
+        self.csv_path = dat_path or DEFAULT_CSV_PATH
+        self.exe_path = exe_path  # 忽略，仅保留属性
+        self.timeout = timeout    # 保留，不再用于 subprocess
 
     def check_deployment(self) -> Dict[str, Any]:
-        """检查exe和dat文件是否已部署"""
-        exe_exists = os.path.exists(self.exe_path)
-        dat_exists = os.path.exists(self.dat_path)
-
+        """检查 CSV 数据文件是否已部署。"""
+        csv_exists = os.path.exists(self.csv_path) and os.path.getsize(self.csv_path) > 0
         return {
-            "exe_exists": exe_exists,
-            "dat_exists": dat_exists,
-            "exe_path": self.exe_path,
-            "dat_path": self.dat_path,
-            "ready": exe_exists and dat_exists
+            "csv_exists": csv_exists,
+            "csv_path": self.csv_path,
+            "ready": csv_exists,
         }
 
-    def parse_output(self, output: str) -> Dict[str, Any]:
-        """解析exe输出为结构化JSON
+    def _load_parcels(self) -> List[Parcel]:
+        """加载 CSV 数据，带类级缓存 + mtime 校验。
 
-        exe 实际输出格式（2026-07-25 验证）：
-          地块代码：A0001
-          经度：  112.973801
-          ...
-          ------------------- 原始指标值 -------------------
-          酸碱度(SJD):    4.600
-          ...
-          ------------------------------------------------
-          耕地质量综合指数：  0.6728
-          耕地质量等级：10等
-          ------------ 障碍度因子（从大到小） ------------
-          质地构型    :  0.1690  中度障碍
-          ...
+        CSV 重新部署后 mtime 变化，自动失效重载。
         """
-        lines = output.strip().split('\n')
-        result = {
-            "raw_output": output,
-            "parcel_info": {},
-            "indicators": [],
-            "composite_index": None,
-            "quality_grade": None,
-            "obstacle_degree": []
-        }
-
-        current_section = None
-
-        for line in lines:
-            stripped = line.strip()
-            if not stripped:
-                continue
-
-            # Section markers — match actual exe output (not generic labels)
-            if '地块代码' in stripped and '：' in stripped:
-                current_section = 'parcel'
-            elif '原始指标值' in stripped:
-                current_section = 'indicators'
-                continue
-            elif '障碍度因子' in stripped:
-                current_section = 'obstacle'
-                continue
-            elif stripped.startswith('---') or stripped.startswith('==='):
-                # Separator line — end current section (but keep scanning for composite)
-                if current_section in ('indicators', 'obstacle'):
-                    current_section = None
-                continue
-            elif stripped.startswith('|') and '评价指标' in stripped:
-                # Table header — stop parsing indicators
-                current_section = None
-                continue
-
-            # Composite index / quality grade — match anywhere (no section needed)
-            if '耕地质量综合指数' in stripped:
-                # 耕地质量综合指数：  0.6728
-                for sep in ('：', ':'):
-                    if sep in stripped:
-                        val = stripped.split(sep, 1)[1].strip()
-                        try:
-                            result["composite_index"] = float(val)
-                        except ValueError:
-                            pass
-                        break
-                continue
-            if '耕地质量等级' in stripped and '潜在' not in stripped:
-                # 耕地质量等级：10等  (exclude 潜在耕地质量等级)
-                for sep in ('：', ':'):
-                    if sep in stripped:
-                        result["quality_grade"] = stripped.split(sep, 1)[1].strip()
-                        break
-                continue
-
-            if current_section == 'parcel':
-                # 地块代码：A0001 / 经度：  112.973801 / 县区名称：武江区
-                for sep in ('：', ':'):
-                    if sep in stripped:
-                        key, value = stripped.split(sep, 1)
-                        result["parcel_info"][key.strip()] = value.strip()
-                        break
-
-            elif current_section == 'indicators':
-                # 酸碱度(SJD):    4.600 / 耕层质地(GCZD): 黏壤土
-                # 拆分 name 和 code：name 不含括号，code 从括号中提取
-                for sep in (':', '：'):
-                    if sep in stripped:
-                        key, value = stripped.split(sep, 1)
-                        key = key.strip()
-                        indicator = {
-                            "name": key,
-                            "raw_value": value.strip()
-                        }
-                        # 提取括号中的代码：酸碱度(SJD) → name="酸碱度", code="SJD"
-                        if '(' in key and key.endswith(')'):
-                            code_start = key.index('(')
-                            indicator["name"] = key[:code_start].strip()
-                            indicator["code"] = key[code_start + 1:-1].strip()
-                        result["indicators"].append(indicator)
-                        break
-
-            elif current_section == 'obstacle':
-                # 质地构型    :  0.1690  中度障碍
-                for sep in (':', '：'):
-                    if sep in stripped:
-                        name_part, rest = stripped.split(sep, 1)
-                        rest_parts = rest.strip().split()
-                        if len(rest_parts) >= 2:
-                            try:
-                                degree = float(rest_parts[0])
-                            except ValueError:
-                                # 非数字 degree，跳过该行（不抛异常）
-                                break
-                            obstacle = {
-                                "rank": len(result["obstacle_degree"]) + 1,
-                                "indicator": name_part.strip(),
-                                "degree": degree,
-                                "level": rest_parts[1]
-                            }
-                            result["obstacle_degree"].append(obstacle)
-                        break
-
-        return result
+        mtime = os.path.getmtime(self.csv_path)
+        if (FarmlandGradeRunner._parcels_cache is not None
+                and FarmlandGradeRunner._csv_path_cached == self.csv_path
+                and FarmlandGradeRunner._csv_mtime_cached == mtime):
+            return FarmlandGradeRunner._parcels_cache
+        parcels = load_parcels_from_csv(self.csv_path)
+        FarmlandGradeRunner._parcels_cache = parcels
+        FarmlandGradeRunner._csv_path_cached = self.csv_path
+        FarmlandGradeRunner._csv_mtime_cached = mtime
+        return parcels
 
     def run(self, parcel_code: str) -> Dict[str, Any]:
-        """调用exe进行质量等级评价"""
+        """调用 Python 模型进行质量等级评价。"""
         deployment = self.check_deployment()
         if not deployment["ready"]:
             return {
                 "status": "error",
                 "error": {
                     "code": "DEPLOYMENT_ERROR",
-                    "message": f"exe或dat文件缺失: exe={deployment['exe_exists']}, dat={deployment['dat_exists']}"
+                    "message": f"CSV 数据文件缺失: {self.csv_path}"
                 }
             }
 
         try:
-            # 不使用 encoding 参数（文本模式），手动编解码以避免
-            # "bytes input to text stream" 和 "str has no decode" 的冲突
-            proc = subprocess.Popen(
-                [self.exe_path],
-                stdin=subprocess.PIPE,
-                stdout=subprocess.PIPE,
-                stderr=subprocess.PIPE,
-                cwd=os.path.dirname(self.exe_path) or os.getcwd(),
-            )
-
-            start_time = time.time()
-            stdout, stderr = proc.communicate(
-                input=f"{parcel_code}\nquit\n".encode('gbk'),
-                timeout=self.timeout
-            )
-
-            elapsed = time.time() - start_time
-
-            if proc.returncode != 0:
-                return {
-                    "status": "error",
-                    "error": {
-                        "code": "EXECUTION_ERROR",
-                        "message": f"exe执行失败，返回码: {proc.returncode}",
-                        "stderr": stderr.decode('gbk', errors='replace').strip()
-                    }
-                }
-
-            output = stdout.decode('gbk', errors='replace')
-
-            if "未找到" in output or "不存在" in output:
-                return {
-                    "status": "error",
-                    "error": {
-                        "code": "PARCEL_NOT_FOUND",
-                        "message": f"未找到地块代码: {parcel_code}"
-                    }
-                }
-
-            parsed = self.parse_output(output)
-
-            return {
-                "status": "ok",
-                "parcel_code": parcel_code,
-                "execution_time": round(elapsed, 2),
-                "parcel_info": parsed["parcel_info"],
-                "indicators": parsed["indicators"],
-                "composite_index": parsed["composite_index"],
-                "quality_grade": parsed["quality_grade"],
-                "obstacle_degree": parsed["obstacle_degree"],
-                "raw_output": output
-            }
-
-        except subprocess.TimeoutExpired:
-            proc.kill()
-            proc.communicate()
+            parcels = self._load_parcels()
+        except (FileNotFoundError, ValueError) as e:
             return {
                 "status": "error",
                 "error": {
-                    "code": "TIMEOUT",
-                    "message": f"exe执行超时（{self.timeout}秒）"
+                    "code": "DEPLOYMENT_ERROR",
+                    "message": f"CSV 数据加载失败: {e}"
                 }
             }
-        except Exception as e:
-            # 确保子进程被清理，避免僵尸进程泄漏
-            try:
-                proc.kill()
-                proc.communicate()
-            except Exception:
-                pass
+
+        parcel = next((p for p in parcels if p.tybh.strip() == parcel_code), None)
+        if parcel is None:
             return {
                 "status": "error",
                 "error": {
-                    "code": "UNKNOWN_ERROR",
+                    "code": "PARCEL_NOT_FOUND",
+                    "message": f"未找到地块代码: {parcel_code}"
+                }
+            }
+
+        config = EvaluationConfig()
+        try:
+            result = evaluate_land_quality(config, parcel)
+            obstacles = compute_obstacle_factors(config, parcel.ejnyq, result.y)
+        except ValueError as e:
+            return {
+                "status": "error",
+                "error": {
+                    "code": "INVALID_ENCODING",
                     "message": str(e)
                 }
             }
 
+        return {
+            "status": "ok",
+            "parcel_code": parcel_code,
+            "model_version": MODEL_VERSION,
+            "parcel_info": self._build_parcel_info(parcel, config),
+            "indicators": self._build_indicators(parcel, config),
+            "composite_index": result.quality_index,
+            "quality_grade": f"{result.grade}等",
+            "obstacle_degree": self._build_obstacle_degree(obstacles),
+        }
+
+    def _build_parcel_info(self, parcel: Parcel, config: EvaluationConfig) -> dict:
+        return {
+            "地块代码": parcel.tybh,
+            "经度": str(parcel.jd),
+            "纬度": str(parcel.wd),
+            "县区名称": config.xqmc_names[parcel.xqmc - 1].strip(),
+            "二级农业区名称": config.ejnyq_names[parcel.ejnyq - 1].strip(),
+        }
+
+    def _build_indicators(self, parcel: Parcel, config: EvaluationConfig) -> list:
+        indicators = []
+        # 7 个数值型
+        for name, code, fn in _INDICATOR_MAP:
+            indicators.append({"name": name, "code": code, "raw_value": f"{fn(parcel):.3f}"})
+        # 5 个概念型
+        for name, code, names_attr, field in _CONCEPT_MAP:
+            names = getattr(config, names_attr)
+            idx = getattr(parcel, field)
+            indicators.append({"name": name, "code": code, "raw_value": names[idx - 1].strip()})
+        return indicators
+
+    def _build_obstacle_degree(self, obstacles) -> list:
+        return [
+            {"rank": i + 1, "indicator": o.name.strip(), "degree": o.factor, "level": o.degree.strip()}
+            for i, o in enumerate(obstacles)
+        ]
+
 
 def run_grade_evaluation(parcel_code: str, exe_path: str = None, dat_path: str = None) -> Dict[str, Any]:
-    """便捷函数：调用exe进行质量等级评价"""
+    """便捷函数：调用 Python 模型进行质量等级评价。
+
+    签名向后兼容：exe_path 被忽略，dat_path 语义改为 CSV 路径。
+    """
     runner = FarmlandGradeRunner(exe_path, dat_path)
     return runner.run(parcel_code)
+
+
+def run_potential_analysis(parcel_code: str, csv_path: str = None) -> Dict[str, Any]:
+    """单地块潜力分析：模拟各指标改良后的潜在质量指数与等级提升。"""
+    runner = FarmlandGradeRunner(dat_path=csv_path)
+    deployment = runner.check_deployment()
+    if not deployment["ready"]:
+        return {"status": "error", "error": {"code": "DEPLOYMENT_ERROR",
+                "message": f"CSV 数据文件缺失: {runner.csv_path}"}}
+
+    try:
+        parcels = runner._load_parcels()
+    except (FileNotFoundError, ValueError) as e:
+        return {"status": "error", "error": {"code": "DEPLOYMENT_ERROR",
+                "message": f"CSV 数据加载失败: {e}"}}
+
+    parcel = next((p for p in parcels if p.tybh.strip() == parcel_code), None)
+    if parcel is None:
+        return {"status": "error", "error": {"code": "PARCEL_NOT_FOUND",
+                "message": f"未找到地块代码: {parcel_code}"}}
+
+    config = EvaluationConfig()
+    try:
+        result = evaluate_land_quality(config, parcel)
+        items, full_result = compute_single_parcel_potential(
+            config, parcel, result.y, result.quality_index, result.grade)
+    except ValueError as e:
+        return {"status": "error", "error": {"code": "INVALID_ENCODING", "message": str(e)}}
+
+    return {
+        "status": "ok",
+        "parcel_code": parcel_code,
+        "original": {"quality_index": result.quality_index, "grade": result.grade},
+        "full_potential": {"quality_index": full_result.quality_index, "grade": full_result.grade},
+        "items": [dataclasses.asdict(item) for item in items],
+    }
+
+
+def run_county_statistics(xqmc_code: int, csv_path: str = None) -> Dict[str, Any]:
+    """县域常规统计：等级分布、障碍度统计、首要障碍指标。"""
+    runner = FarmlandGradeRunner(dat_path=csv_path)
+    deployment = runner.check_deployment()
+    if not deployment["ready"]:
+        return {"status": "error", "error": {"code": "DEPLOYMENT_ERROR",
+                "message": f"CSV 数据文件缺失: {runner.csv_path}"}}
+
+    try:
+        parcels = runner._load_parcels()
+    except (FileNotFoundError, ValueError) as e:
+        return {"status": "error", "error": {"code": "DEPLOYMENT_ERROR",
+                "message": f"CSV 数据加载失败: {e}"}}
+
+    config = EvaluationConfig()
+    stats = county_statistics_data(config, parcels, xqmc_code)
+    if stats is None:
+        return {"status": "error", "error": {"code": "NO_DATA",
+                "message": f"县区 {xqmc_code} 无地块数据"}}
+    return {"status": "ok", "county_code": xqmc_code, "stats": dataclasses.asdict(stats)}
+
+
+def run_county_potential(xqmc_code: int, scenario: int, csv_path: str = None) -> Dict[str, Any]:
+    """县域潜力情景分析：scenario=1 理想潜力，scenario=2 最佳潜力。"""
+    runner = FarmlandGradeRunner(dat_path=csv_path)
+    deployment = runner.check_deployment()
+    if not deployment["ready"]:
+        return {"status": "error", "error": {"code": "DEPLOYMENT_ERROR",
+                "message": f"CSV 数据文件缺失: {runner.csv_path}"}}
+
+    try:
+        parcels = runner._load_parcels()
+    except (FileNotFoundError, ValueError) as e:
+        return {"status": "error", "error": {"code": "DEPLOYMENT_ERROR",
+                "message": f"CSV 数据加载失败: {e}"}}
+
+    config = EvaluationConfig()
+    result = county_potential_statistics_data(config, parcels, xqmc_code, scenario)
+    if result is None:
+        return {"status": "error", "error": {"code": "NO_DATA",
+                "message": f"县区 {xqmc_code} 无地块数据"}}
+    return {"status": "ok", "county_code": xqmc_code, "scenario": scenario,
+            "result": dataclasses.asdict(result)}

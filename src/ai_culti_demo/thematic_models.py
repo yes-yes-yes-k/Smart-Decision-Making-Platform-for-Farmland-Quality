@@ -3,6 +3,12 @@ from __future__ import annotations
 from typing import Any
 
 from .overview import get_county_overview
+from framework.agents.capabilities import (
+    LEGACY_MODEL_ALIASES,
+    PROFESSIONAL_CAPABILITIES,
+    get_capability_by_model_id,
+    public_capability_descriptor,
+)
 
 try:
     from .farmland_diagnosis import query_parcel, query_acidification, DiagnosisStorage
@@ -138,7 +144,7 @@ MODEL_SPECS: dict[str, ModelSpec] = {
     "quality-grade-evaluation": {
         "model_id": "quality-grade-evaluation",
         "name": "耕地质量等级评价模型",
-        "purpose": "通过Fortran exe进行耕地质量等级评价，输出12指标原始值/隶属度、综合指数、质量等级和障碍度排序。",
+        "purpose": "通过 Python 模型进行耕地质量等级评价，输出12指标原始值/隶属度、综合指数、质量等级和障碍度排序。",
         "minimum_inputs": ["parcel_code"],
         "recommended_layers": ["quality-overview", "obstacle-degree"],
         "findings": [
@@ -147,7 +153,7 @@ MODEL_SPECS: dict[str, ModelSpec] = {
             {"title": "障碍度排序", "content": "按障碍度对指标进行排序。"},
         ],
         "recommendations": [
-            "确保exe和dat文件已部署到指定目录。",
+            "确保 CSV 数据文件已部署到指定目录。",
             "输入有效的地块代码进行查询。",
         ],
         "fallback_fields": ["longitude", "latitude", "parcel_code"],
@@ -190,6 +196,13 @@ MODEL_SPECS: dict[str, ModelSpec] = {
     },
 }
 
+# 这些能力没有对应的专业 Agent，保留为独立辅助/实验能力，不能混入正式专业模型目录。
+NON_PROFESSIONAL_CATEGORIES = {
+    "spatial-structure-analysis": "auxiliary",
+    "soil-indicator-analysis": "auxiliary",
+    "multi-factor-collaborative-improvement": "experimental",
+}
+
 
 def _lineage_for_model(model: ModelSpec) -> dict[str, Any]:
     return {
@@ -223,23 +236,75 @@ def _base_model_descriptor(model: ModelSpec) -> dict[str, Any]:
     return descriptor
 
 
-def list_thematic_models(area_code: str = "lechang") -> dict[str, Any]:
-    """返回可供大模型或 Agent 列举的专题模型目录。"""
+def list_thematic_models(
+    area_code: str = "lechang", *, include_non_professional: bool = False
+) -> dict[str, Any]:
+    """返回正式专业模型目录，可选附带辅助和实验性能力。"""
 
     overview = get_county_overview(area_code)
     if overview.get("status") != "ok":
         return overview
 
+    models = [public_capability_descriptor(capability) for capability in PROFESSIONAL_CAPABILITIES]
+    if include_non_professional:
+        for model_id, category in NON_PROFESSIONAL_CATEGORIES.items():
+            descriptor = _base_model_descriptor(MODEL_SPECS[model_id])
+            descriptor.update({
+                "category": category,
+                "chat_routable": False,
+                "runtime_requirement": "当前为独立辅助/实验能力，不调用专业 Agent。",
+            })
+            models.append(descriptor)
+
     return {
         "status": "ok",
         "area": overview["area"],
-        "models": [_base_model_descriptor(model) for model in MODEL_SPECS.values()],
+        "models": models,
         "lineage": {
             "catalog": "data/lechang/catalog.json",
             "runtime_dependency": "none",
         },
-        "reliability": _reliability(),
+        "reliability": {
+            "level": "mixed",
+            "message": "正式能力按各 Agent 的真实/模拟状态返回；辅助和实验性能力明确标注为 Demo。",
+        },
     }
+
+
+def _run_professional_capability(payload: dict[str, Any], requested_model_id: str) -> dict[str, Any]:
+    """延迟创建专业 Agent，避免专题模块与 Agent 实现产生导入环。"""
+    capability = get_capability_by_model_id(requested_model_id)
+    if capability is None:
+        raise ValueError(f"未找到正式能力：{requested_model_id}")
+
+    try:
+        from framework.agents.manager import AgentManager
+
+        agent = AgentManager().agents[capability.agent_id]
+        result = agent.analyze(payload)
+        result["model"] = public_capability_descriptor(capability)
+        result["capability"] = public_capability_descriptor(capability)
+        result.setdefault("recommended_layers", [])
+        result.setdefault("area", {"code": payload.get("area_code", "lechang")})
+        if requested_model_id in LEGACY_MODEL_ALIASES:
+            result["deprecation"] = {
+                "deprecated_model_id": requested_model_id,
+                "canonical_model_id": capability.model_id,
+                "message": "该模型标识已弃用，请迁移到 canonical_model_id。",
+            }
+        return result
+    except Exception as exc:
+        return {
+            "status": "error",
+            "model": public_capability_descriptor(capability),
+            "capability": public_capability_descriptor(capability),
+            "error": {
+                "code": "PROFESSIONAL_AGENT_ERROR",
+                "message": f"专业能力执行失败：{exc}",
+            },
+            "reliability": {"level": "unavailable", "message": "专业 Agent 未能完成分析。"},
+            "fallback": {"used": True, "fields": [], "strategy": "不调用其他专业模型。"},
+        }
 
 
 def _fallback_for_payload(payload: dict[str, Any], model: ModelSpec) -> dict[str, Any]:
@@ -326,16 +391,16 @@ def _run_real_diagnosis_model(payload: dict[str, Any], model: ModelSpec) -> dict
         "status": "ok",
         "model": _base_model_descriptor(model),
         "area": {"name": "地块诊断", "code": parcel_id},
-        "summary": f"{model['name']} 已返回实际诊断结果。障碍类型：{diagnosis.get('obstacle_type', '未知')}",
+        "summary": f"{model['name']} 已返回实际诊断结果。障碍类型：{diagnosis.get('ZALX', '未知')}",
         "findings": [
-            {"title": "障碍类型", "content": diagnosis.get('obstacle_type', '无明显障碍')},
-            {"title": "主要障碍因素", "content": "; ".join(diagnosis.get('main_factors', [])) or "无"},
-            {"title": "次要障碍因素", "content": "; ".join(diagnosis.get('secondary_factors', [])) or "无"},
-            {"title": "质量等级", "content": f"综合等级：{evaluation.get('grade', '未知')}"},
+            {"title": "障碍类型", "content": diagnosis.get('ZALX', '无明显障碍')},
+            {"title": "主要障碍因素", "content": diagnosis.get('ZYZAYS', '') or "无"},
+            {"title": "次要障碍因素", "content": diagnosis.get('CYZAYS', '') or "无"},
+            {"title": "质量等级", "content": f"综合等级：{evaluation.get('GDZLDJ', '未知')}"},
         ],
         "recommended_layers": model["recommended_layers"],
         "recommendations": [
-            f"针对{diagnosis.get('obstacle_type', '')}问题，建议优先治理主要障碍因素",
+            f"针对{diagnosis.get('ZALX', '')}问题，建议优先治理主要障碍因素",
             "结合酸化治理模型制定综合改良方案",
         ],
         "lineage": _lineage_for_model(model),
@@ -474,7 +539,7 @@ def _run_real_stability_model(payload: dict[str, Any], model: ModelSpec) -> dict
 
 
 def _run_real_grade_model(payload: dict[str, Any], model: ModelSpec) -> dict[str, Any]:
-    """调用实际的耕地质量等级评价exe"""
+    """调用实际的耕地质量等级评价 Python 模型"""
     parcel_code = payload.get("parcel_code")
     exe_path = payload.get("exe_path")
     dat_path = payload.get("dat_path")
@@ -512,7 +577,7 @@ def _run_real_grade_model(payload: dict[str, Any], model: ModelSpec) -> dict[str
         "lineage": _lineage_for_model(model),
         "reliability": {
             "level": "real_model",
-            "message": "当前结果来自实际耕地质量等级评价模型（Fortran exe）计算。",
+            "message": "当前结果来自实际耕地质量等级评价模型（Python 实现）计算。",
         },
         "fallback": {"used": False, "fields": [], "strategy": "已使用实际模型计算"},
         "grade_detail": result,
@@ -520,7 +585,7 @@ def _run_real_grade_model(payload: dict[str, Any], model: ModelSpec) -> dict[str
 
 
 def run_thematic_model(payload: dict[str, Any]) -> dict[str, Any]:
-    """执行单个模拟专题模型。"""
+    """执行正式专业模型或独立辅助/实验性能力。"""
 
     model_id = payload.get("model_id")
     if not model_id:
@@ -532,15 +597,21 @@ def run_thematic_model(payload: dict[str, Any]) -> dict[str, Any]:
             },
         }
 
+    # 正式专业能力优先由对应 Agent 的统一结构化分析入口执行。
+    if get_capability_by_model_id(model_id) is not None:
+        return _run_professional_capability(payload, model_id)
+
     model = MODEL_SPECS.get(model_id)
     if model is None:
         return {
             "status": "error",
             "error": {
                 "code": "INVALID_MODEL_ID",
-                "message": "model_id 不在当前已注册的 8 个模拟专题模型目录中",
+                "message": "model_id 不在当前已注册的正式、辅助或实验性能力目录中",
             },
-            "supported_model_ids": list(MODEL_SPECS.keys()),
+            "supported_model_ids": [
+                capability.model_id for capability in PROFESSIONAL_CAPABILITIES
+            ] + list(NON_PROFESSIONAL_CATEGORIES),
         }
 
     # 检查是否有实际模型实现
@@ -561,5 +632,13 @@ def run_thematic_model(payload: dict[str, Any]) -> dict[str, Any]:
         return overview
 
     if model_id == "multi-factor-collaborative-improvement":
-        return _collaborative_result(payload, model, overview["area"])
-    return _single_model_result(payload, model, overview["area"])
+        result = _collaborative_result(payload, model, overview["area"])
+    else:
+        result = _single_model_result(payload, model, overview["area"])
+
+    result["capability"] = {
+        **_base_model_descriptor(model),
+        "category": NON_PROFESSIONAL_CATEGORIES[model_id],
+        "chat_routable": False,
+    }
+    return result

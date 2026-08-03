@@ -34,8 +34,14 @@ class FertilityMLAgent(BaseAgent):
         self.dependencies = []  # 独立 ML 模型，不依赖 model-4/5
 
     def execute(self, task: Dict[str, Any]) -> Dict[str, Any]:
-        """调用 model_6_execution 执行 ML 预测，包装为三层结构。"""
-        result = model_6_execution(task or {})
+        """调用 model_6_execution 执行 ML 预测，包装为三层结构。
+
+        从 task 提取 land_type 透传给 model_6_execution；task 未提供时传 None，
+        由 model_6_execution 默认 upland 并在韶关区域追加"未指定 land_type"提示。
+        area_code 已在 task 字典中自然流转，无需额外传递。
+        """
+        land_type = (task or {}).get("land_type")
+        result = model_6_execution(task or {}, land_type=land_type)
         return MockDataLoader.mark_simulated({
             "status": result["status"],
             "result": {
@@ -56,10 +62,20 @@ class FertilityMLAgent(BaseAgent):
         })
 
     def answer_question(self, question: str, context: Dict[str, Any]) -> Dict[str, Any]:
-        """按关键词优先级处理问答：Dose > SOC > 综合/默认。"""
-        exec_result = self.execute(
-            context.get("data", {}) or context.get("task", {}) or {}
-        )
+        """按关键词优先级处理问答：Dose > SOC > 综合/默认。
+
+        从 context 顶层提取 area_code/land_type 注入 task（task 内已有值则不覆盖），
+        确保 model_6_execution 能收到区域与土地类型信息。
+        """
+        task = context.get("data", {}) or context.get("task", {}) or {}
+        enriched = dict(task)
+        # 透传 context 顶层的 area_code/land_type（task 内已有值优先）
+        if "area_code" in context and "area_code" not in enriched:
+            enriched["area_code"] = context["area_code"]
+        if "land_type" in context and "land_type" not in enriched:
+            enriched["land_type"] = context["land_type"]
+
+        exec_result = self.execute(enriched)
         pred = exec_result["result"]
 
         q_lower = question.lower()

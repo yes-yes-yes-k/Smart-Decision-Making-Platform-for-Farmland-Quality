@@ -1,0 +1,14 @@
+{
+  "change": "sync-acidification-model-v2",
+  "phase": "design",
+  "mode": "compact",
+  "canonical_spec": "openspec",
+  "generated_by": "comet-handoff.sh",
+  "context_hash": "93b7c5f4e9c734334c72272881286fd9fc7f1f2b6b1871213b54b1ea90a51cf3",
+  "files": [
+    { "path": "openspec/changes/sync-acidification-model-v2/proposal.md", "sha256": "76c9f4520e12fa59a61c99760a324405a3021aafe75a77fb852cac5c7fcc8f65" },
+    { "path": "openspec/changes/sync-acidification-model-v2/design.md", "sha256": "e8e42c5f9eac7adff12cdb254a69e64f94cc1ad304f8ede0d4ddd1adfbd3176c" },
+    { "path": "openspec/changes/sync-acidification-model-v2/tasks.md", "sha256": "54a23d36c5de9d2137714c998a943d7826efed712f1f167f0da71753c6c3c4d7" },
+    { "path": "openspec/changes/sync-acidification-model-v2/specs/farmland-acidification-improvement-model/spec.md", "sha256": "05627eed4d0c337deded626f240df453b33282520325fe3c98c677c843e80173" }
+  ]
+}

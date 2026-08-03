@@ -107,37 +107,131 @@ def test_problem_agent_uses_model2_target_ph():
     print("✓ ProblemIdentificationAgent 消费 model-2 的 target_ph")
 
 
-def test_acidification_agent_execute():
+def test_problem_agent_consumes_standard_field_names_has_question(monkeypatch):
+    """真实诊断分支应读取标准码字段 GDZLDJ/ZALX/ZYZAYS（"有没有问题"分支）"""
+    from framework.agents.specialized.problem_agent import ProblemIdentificationAgent
+    agent = ProblemIdentificationAgent()
+    fake_real_result = {
+        "status": "ok",
+        "diagnosis": {
+            "ZALX": "酸化障碍",
+            "ZYZAYS": "pH偏低；有机质贫瘠；耕层浅薄",
+            "CYZAYS": "有效磷不足；速效钾偏低",
+        },
+        "evaluation": {"GDZLDJ": 7},
+    }
+    monkeypatch.setattr(agent, "_get_real_diagnosis", lambda context: fake_real_result)
+
+    out = agent.answer_question("我这块地有没有问题？", {})
+    assert out["simulated"] is False
+    assert "酸化障碍" in out["answer"]
+    assert "pH偏低" in out["answer"]
+    assert "7级" in out["answer"]
+    assert "无明显障碍" not in out["answer"]
+    assert "未知" not in out["answer"]
+    print("✓ ProblemIdentificationAgent 真实诊断分支消费 GDZLDJ/ZALX/ZYZAYS（有没有问题分支）")
+
+
+def test_problem_agent_consumes_standard_field_names_county_question(monkeypatch):
+    """真实诊断分支应读取标准码字段含 CYZAYS（"县/乡镇/方面"分支）"""
+    from framework.agents.specialized.problem_agent import ProblemIdentificationAgent
+    agent = ProblemIdentificationAgent()
+    fake_real_result = {
+        "status": "ok",
+        "diagnosis": {
+            "ZALX": "酸化障碍",
+            "ZYZAYS": "pH偏低；有机质贫瘠",
+            "CYZAYS": "有效磷不足；速效钾偏低",
+        },
+        "evaluation": {"GDZLDJ": 7},
+    }
+    monkeypatch.setattr(agent, "_get_real_diagnosis", lambda context: fake_real_result)
+
+    out = agent.answer_question("县域耕地在哪些方面有问题？", {})
+    assert out["simulated"] is False
+    assert "酸化障碍" in out["answer"]
+    assert "pH偏低" in out["answer"]
+    assert "有效磷不足" in out["answer"]
+    assert "7级" in out["answer"]
+    print("✓ ProblemIdentificationAgent 真实诊断分支消费 CYZAYS（县域方面分支）")
+
+
+def test_problem_agent_consumes_standard_field_names_else_branch(monkeypatch):
+    """真实诊断分支应读取标准码字段（else 兜底分支）"""
+    from framework.agents.specialized.problem_agent import ProblemIdentificationAgent
+    agent = ProblemIdentificationAgent()
+    fake_real_result = {
+        "status": "ok",
+        "diagnosis": {
+            "ZALX": "板结障碍",
+            "ZYZAYS": "容重偏高；孔隙度偏低",
+            "CYZAYS": "耕层浅薄",
+        },
+        "evaluation": {"GDZLDJ": 8},
+    }
+    monkeypatch.setattr(agent, "_get_real_diagnosis", lambda context: fake_real_result)
+
+    out = agent.answer_question("主要障碍因素是什么？", {})
+    assert out["simulated"] is False
+    assert "板结障碍" in out["answer"]
+    assert "容重偏高" in out["answer"]
+    assert "耕层浅薄" in out["answer"]
+    assert "8级" in out["answer"]
+    print("✓ ProblemIdentificationAgent 真实诊断分支消费标准字段（else 分支）")
+
+
+def test_acidification_agent_execute(monkeypatch):
     from framework.agents.specialized.acidification_agent import AcidificationRemediationAgent
+    monkeypatch.setattr(
+        "framework.agents.specialized.acidification_agent.model_4_execution",
+        lambda data, land_type=None, fertilizer_type=None: {
+            "status": "success", "ytk": 1234.5, "mbnt": 567.8,
+            "sub_model": "upland_compound", "land_type": "upland",
+            "fertilizer_type": "compound", "model_version": "process_v2_20260801",
+            "customized_params": {"FertN": 200.0},
+        }
+    )
     agent = AcidificationRemediationAgent()
     assert agent.model_id == "model-4"
-    assert agent.dependencies == []
-    result = agent.execute({"area_code": "lechang"})
-    assert result["status"] == "ok"
-    assert result["metadata"]["simulated"] is True
-    assert "degree" in result["result"]
-    assert "lime_dosage" in result["result"]
-    assert "ph_after_remediation" in result["result"]
-    print("✓ AcidificationRemediationAgent.execute 返回酸化判定与石灰用量")
+    result = agent.execute({"SJD":4.31,"JHX":1.56,"JLA":4.08})
+    assert result["status"] == "success"
+    assert result["result"]["ytk"] == 1234.5
+    assert result["result"]["mbnt"] == 567.8
+    assert result["metadata"]["model_version"] == "process_v2_20260801"
+    print("✓ AcidificationRemediationAgent.execute 返回三层结构含 ytk/mbnt")
 
 
-def test_acidification_agent_answer_question_degree():
+def test_acidification_agent_passes_through_params(monkeypatch):
     from framework.agents.specialized.acidification_agent import AcidificationRemediationAgent
+    captured = {}
+    def fake(data, land_type=None, fertilizer_type=None):
+        captured["land_type"] = land_type
+        captured["fertilizer_type"] = fertilizer_type
+        return {"status":"success","ytk":1.0,"mbnt":2.0,"sub_model":"paddy_urea",
+                "land_type":land_type,"fertilizer_type":fertilizer_type,
+                "model_version":"process_v2_20260801","customized_params":{}}
+    monkeypatch.setattr("framework.agents.specialized.acidification_agent.model_4_execution", fake)
     agent = AcidificationRemediationAgent()
-    out = agent.answer_question("全省耕地酸化程度如何？", {})
-    assert out["simulated"] is True
-    assert "酸化" in out["answer"] or "pH" in out["answer"]
-    print("✓ AcidificationRemediationAgent 返回酸化程度")
+    agent.answer_question("如何治理酸化？", {"data":{"SJD":4.31,"JHX":1.56,"JLA":4.08},
+                                          "land_type":"paddy","fertilizer_type":"urea"})
+    assert captured["land_type"] == "paddy"
+    assert captured["fertilizer_type"] == "urea"
+    print("✓ AcidificationRemediationAgent 透传 land_type/fertilizer_type 给 model_4_execution")
 
 
-def test_acidification_agent_answer_question_dosage():
+def test_acidification_agent_answer_no_gb_standard(monkeypatch):
     from framework.agents.specialized.acidification_agent import AcidificationRemediationAgent
+    monkeypatch.setattr(
+        "framework.agents.specialized.acidification_agent.model_4_execution",
+        lambda data, land_type=None, fertilizer_type=None: {
+            "status":"success","ytk":1234.5,"mbnt":567.8,"sub_model":"upland_compound",
+            "land_type":"upland","fertilizer_type":"compound",
+            "model_version":"process_v2_20260801","customized_params":{}})
     agent = AcidificationRemediationAgent()
-    out = agent.answer_question("如何治理强酸性耕地？施加多少调理剂？", {})
-    assert out["simulated"] is True
-    assert "石灰" in out["answer"] or "kg" in out["answer"]
-    assert any("lime_dosage" in str(e) or "石灰" in str(e) for e in out["evidence"])
-    print("✓ AcidificationRemediationAgent 返回石灰施用量建议")
+    out = agent.answer_question("如何治理强酸性耕地？施加多少调理剂？", {"data":{"SJD":4.31,"JHX":1.56,"JLA":4.08}})
+    assert "GB/T 42817-2023" not in out["answer"]
+    assert "亿土康" in out["answer"] or "ytk" in str(out["evidence"]).lower() or "木本泥炭" in out["answer"]
+    print("✓ AcidificationRemediationAgent answer 不含 GB/T 42817-2023，含 YTK/MBNT")
 
 
 def test_organic_matter_agent_execute():
@@ -180,7 +274,7 @@ def test_fertility_ml_agent_execute_structure(monkeypatch):
     # mock model_6_execution 返回 success
     monkeypatch.setattr(
         "framework.agents.specialized.fertility_ml_agent.model_6_execution",
-        lambda data: {
+        lambda data, land_type="upland": {
             "status": "success",
             "soc_prediction": 12.5,
             "soc_confidence": 0.91,
@@ -208,7 +302,7 @@ def test_fertility_ml_agent_answer_dose_keywords(monkeypatch):
     from framework.agents.specialized.fertility_ml_agent import FertilityMLAgent
     monkeypatch.setattr(
         "framework.agents.specialized.fertility_ml_agent.model_6_execution",
-        lambda data: {
+        lambda data, land_type="upland": {
             "status": "success",
             "soc_prediction": 12.5,
             "soc_confidence": 0.91,
@@ -235,7 +329,7 @@ def test_fertility_ml_agent_answer_soc_keywords(monkeypatch):
     from framework.agents.specialized.fertility_ml_agent import FertilityMLAgent
     monkeypatch.setattr(
         "framework.agents.specialized.fertility_ml_agent.model_6_execution",
-        lambda data: {
+        lambda data, land_type="upland": {
             "status": "success",
             "soc_prediction": 12.5,
             "soc_confidence": 0.91,
@@ -261,7 +355,7 @@ def test_fertility_ml_agent_answer_fertility_keywords(monkeypatch):
     from framework.agents.specialized.fertility_ml_agent import FertilityMLAgent
     monkeypatch.setattr(
         "framework.agents.specialized.fertility_ml_agent.model_6_execution",
-        lambda data: {
+        lambda data, land_type="upland": {
             "status": "success",
             "soc_prediction": 12.5,
             "soc_confidence": 0.91,
@@ -286,7 +380,7 @@ def test_fertility_ml_agent_answer_fallback_status(monkeypatch):
     from framework.agents.specialized.fertility_ml_agent import FertilityMLAgent
     monkeypatch.setattr(
         "framework.agents.specialized.fertility_ml_agent.model_6_execution",
-        lambda data: {
+        lambda data, land_type="upland": {
             "status": "fallback",
             "soc_prediction": 12.0,
             "soc_confidence": 0.3,
@@ -310,7 +404,7 @@ def test_fertility_ml_agent_answer_rejected_status(monkeypatch):
     from framework.agents.specialized.fertility_ml_agent import FertilityMLAgent
     monkeypatch.setattr(
         "framework.agents.specialized.fertility_ml_agent.model_6_execution",
-        lambda data: {
+        lambda data, land_type="upland": {
             "status": "rejected",
             "reason": "input_out_of_range",
             "out_of_range_features": [
@@ -344,9 +438,6 @@ if __name__ == "__main__":
     test_problem_agent_execute()
     test_problem_agent_answer_question()
     test_problem_agent_uses_model2_target_ph()
-    test_acidification_agent_execute()
-    test_acidification_agent_answer_question_degree()
-    test_acidification_agent_answer_question_dosage()
     test_organic_matter_agent_execute()
     test_organic_matter_agent_answer_question_content()
     test_organic_matter_agent_answer_question_dosage()

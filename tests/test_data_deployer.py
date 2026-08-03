@@ -78,16 +78,16 @@ def test_deploy_csv_renames_to_test_csv():
 
 
 def test_deploy_dat_renames_to_fixed_name():
-    """dat 部署时重命名为 Farmlands_Quality_Level_Database.dat。"""
+    """耕地质量评价 CSV 部署时重命名为 Farmland_quality_Level_Database.csv。"""
     with tempfile.TemporaryDirectory() as tmpdir:
-        src = os.path.join(tmpdir, 'upload', 'custom.dat')
+        src = os.path.join(tmpdir, 'upload', 'custom.csv')
         os.makedirs(os.path.dirname(src))
         with open(src, 'wb') as f:
-            f.write(b'\x00\x01')
+            f.write(b'SiteID,JD\nA0001,112.97\n')
         target = os.path.join(tmpdir, 'target')
 
         deployed = deploy_dat(src, target)
-        assert deployed.endswith('Farmlands_Quality_Level_Database.dat')
+        assert deployed.endswith('Farmland_quality_Level_Database.csv')
         assert os.path.exists(deployed)
 
 

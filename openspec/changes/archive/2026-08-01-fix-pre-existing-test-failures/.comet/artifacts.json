@@ -1,0 +1,9 @@
+{
+  "openspec_proposal": "openspec/changes/fix-pre-existing-test-failures/proposal.md",
+  "openspec_design": "openspec/changes/fix-pre-existing-test-failures/design.md",
+  "openspec_tasks": "openspec/changes/fix-pre-existing-test-failures/tasks.md",
+  "openspec_delta_spec": "openspec/changes/fix-pre-existing-test-failures/specs/database-models/spec.md",
+  "handoff_context": "openspec/changes/fix-pre-existing-test-failures/.comet/handoff/design-context.json",
+  "handoff_markdown": "openspec/changes/fix-pre-existing-test-failures/.comet/handoff/design-context.md",
+  "archive_directory": "openspec/changes/archive/2026-08-01-fix-pre-existing-test-failures"
+}

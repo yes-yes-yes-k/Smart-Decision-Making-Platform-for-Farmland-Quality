@@ -1,0 +1,9 @@
+{
+  "openspec_proposal": "openspec/changes/replace-grade-eval-with-python-model/proposal.md",
+  "openspec_design": "openspec/changes/replace-grade-eval-with-python-model/design.md",
+  "openspec_tasks": "openspec/changes/replace-grade-eval-with-python-model/tasks.md",
+  "openspec_delta_spec": "openspec/changes/replace-grade-eval-with-python-model/specs/farmland-quality-grade-evaluation/spec.md",
+  "handoff_context": "openspec/changes/replace-grade-eval-with-python-model/.comet/handoff/design-context.json",
+  "handoff_markdown": "openspec/changes/replace-grade-eval-with-python-model/.comet/handoff/design-context.md",
+  "archive_directory": "openspec/changes/archive/2026-08-01-replace-grade-eval-with-python-model"
+}

@@ -3,45 +3,42 @@
 ## Purpose
 TBD - created by archiving change multi-agent-model-framework. Update Purpose after archive.
 ## Requirements
-### Requirement: StabilityRiskAgent 智能体
-系统 SHALL 实现 `StabilityRiskAgent` 智能体，对应模型1「耕地质量等级稳定性与退化风险识别模型」，通过调用模型1 的在线查询接口（`get_parcel_result`）获取预计算结果，返回基于真实九模块分析的稳定性评价和退化风险识别，不再使用模拟数据。
+### Requirement: 专业智能体目录与正式能力一一对应
 
-#### Scenario: 等级稳定性评价
-- **WHEN** 用户询问"全省耕地质量整体稳定吗？"，且模型1 预计算结果已就绪
-- **THEN** 智能体 SHALL 调用模型1 在线查询接口获取历史变化趋势模块（module=5）结果，返回基于真实数据的稳定性评价，包括持续改善/基本稳定/波动退化/持续退化的分类统计
+系统 SHALL 以 7 个已注册专业智能体作为正式专业能力的唯一来源。每个 Agent SHALL 有一个稳定内部 `agent_id`、一个规范公开 `model_id`、明确中文名称、业务边界、最小输入、数据前提、可靠性状态和降级方式。正式能力为：`model-1/stability-risk-evaluation`、`model-2/improvement-potential-assessment`、`model-3/obstacle-diagnosis`、`model-4/acidification-remediation`、`model-5/organic-matter-improvement`、`model-6/fertility-soc-dose-prediction`、`model-7/quality-grade-evaluation`。
 
-#### Scenario: 退化风险识别
-- **WHEN** 用户询问"哪些县区高等级耕地存在退化风险？"，且模型1 预计算结果已就绪
-- **THEN** 智能体 SHALL 调用模型1 在线查询接口获取掉级风险（module=6）和关键因子退化风险（module=7）模块结果，返回真实的退化风险分布和关键退化因子
+#### Scenario: 读取正式专业能力目录
+- **WHEN** 系统初始化专业能力目录
+- **THEN** 目录 SHALL 包含且仅包含 7 项正式专业能力
+- **AND** 每一项 SHALL 同时给出 Agent ID、公开模型 ID、名称和运行前提
 
-#### Scenario: 重点关注清单
-- **WHEN** 用户询问"哪些对象需要纳入重点关注清单？"，且模型1 预计算结果已就绪
-- **THEN** 智能体 SHALL 调用模型1 在线查询接口获取持续低质风险（module=9）模块结果，输出需要关注的地块清单、低质年份数和风险类型
+#### Scenario: Agent 注册引用正式能力定义
+- **WHEN** `AgentManager` 注册专业智能体
+- **THEN** 每个已注册 Agent SHALL 引用统一能力定义
+- **AND** SHALL NOT 在 Manager 内重复维护与能力目录冲突的名称或模型标识
 
-#### Scenario: 预计算数据未就绪
-- **WHEN** 用户询问稳定性或退化风险相关问题，但模型1 离线预计算结果未就绪
-- **THEN** 智能体 SHALL 返回"模型1 数据未就绪，请先执行离线预计算"的提示，`confidence` 字段降低，不返回模拟数据冒充真实结果
+### Requirement: 专业 Agent 提供可复用的结构化分析
 
-### Requirement: PotentialAssessmentAgent 智能体
-系统 SHALL 实现 `PotentialAssessmentAgent` 智能体，对应模型2「耕地质量提升潜力评估模型」，负责评估耕地质量提升潜力和计算障碍度值。
+系统 SHALL 为每个正式专业 Agent 提供 `analyze(payload)` 结构化分析入口。该入口 SHALL 返回 `status`、`capability`、`summary`、`findings`、`recommendations`、`evidence`、`lineage`、`reliability` 和 `fallback`，并包含成功、数据未就绪、输入不足、拒绝或降级时的机器可读状态。
 
-**模型输入**（来源：xlsx 总览表）：
-- 地块唯一编码、地块经纬度、pH值、有机质、有效磷、速效钾、土壤容重、有效土层厚度、耕层质地、质地构型、灌溉能力、排水能力、地形部位、耕地质量等级、pH增加值（模型4传参）、有机质增加值（模型5传参）
+#### Scenario: Agent 为单模型接口执行分析
+- **WHEN** 单模型接口按公开模型 ID 调用正式能力
+- **THEN** 对应 Agent SHALL 使用 `analyze(payload)` 返回结构化结果
+- **AND** 结果 SHALL 标示实际数据来源、可靠性和降级状态
 
-**模型输出**（来源：xlsx 总览表）：
-- 潜在pH值、潜在有机质、潜在有效磷、潜在速效钾、潜在土壤容重、潜在有效土层厚度、潜在耕层质地、潜在灌溉能力、潜在地形部位、潜在排水能力、潜在耕地质量等级、11 个评价指标的潜在障碍度值
+#### Scenario: Agent 为聊天链路复用分析
+- **WHEN** 聊天链路路由到某个正式 Agent
+- **THEN** Agent 的专业答复 SHALL 基于同一次 `analyze(payload)` 结果生成
+- **AND** SHALL NOT 另行产生与单模型接口冲突的专业计算结论
 
-#### Scenario: 提升潜力评估
-- **WHEN** 用户询问"辖区耕地质量提升的总体潜力有多大？可增产多少粮食？"
-- **THEN** 智能体 SHALL 回答耕地质量平均可从 xx 等提升至 xx 等，可改善面积 xx 万亩，粮食增产潜力约 xx 万吨
+### Requirement: 肥力预测与有机质培肥边界明确
 
-#### Scenario: 目标 pH 计算
-- **WHEN** 智能体接收到当前 pH 值和质量目标
-- **THEN** 智能体 SHALL 计算目标 pH 或 pH 增加值，供模型1和模型3使用
+系统 SHALL 将 `model-6` 限定为 SOC/Dose 等肥力预测能力，将 `model-5` 限定为有机肥、秸秆还田和培肥措施等治理建议能力。两项能力 SHALL 在名称、输入、输出、路由关键词和可靠性说明上可区分。
 
-#### Scenario: 县域潜力分布
-- **WHEN** 县域执行端用户询问"我们县划定的优先改良片区具体在哪几个村？每块潜力多大？"
-- **THEN** 智能体 SHALL 输出一幅大比例尺地图，以地块为单元用颜色深浅表示潜力值，选中任一地块弹出信息窗显示村名、地块编号、面积、当前质量等级、目标等级、潜力分值
+#### Scenario: 查询 SOC 或 Dose 预测
+- **WHEN** 用户请求 SOC、有机碳、Dose、施肥量预测或预测置信度
+- **THEN** 系统 SHALL 使用 `model-6/fertility-soc-dose-prediction`
+- **AND** 返回预测值、模型可用性和置信度/降级说明
 
 #### Scenario: 农户地块诊断
 - **WHEN** 农户询问"我这块地到底有啥毛病？"
@@ -160,19 +157,19 @@ TBD - created by archiving change multi-agent-model-framework. Update Purpose af
 - **THEN** Agent SHALL 在回答中明文标注越界特征和合法范围，不返回预测值
 
 ### Requirement: FarmlandGradeObstacleAgent 智能体
-系统 SHALL 实现 `FarmlandGradeObstacleAgent` 智能体，对应耕地质量等级和障碍度评价模型（Fortran exe），通过 subprocess 调用 `Farmland_quality_evaluation.exe` 获取地块评价结果，返回基于 GB/T 33469-2016 标准的真实质量等级和障碍度诊断。
+系统 SHALL 实现 `FarmlandGradeObstacleAgent` 智能体，对应耕地质量等级和障碍度评价模型（纯 Python 实现），通过调用 `run_grade_evaluation` 获取地块评价结果，返回基于 GB/T 33469-2016 标准的真实质量等级和障碍度诊断，不再依赖 Fortran exe 或 subprocess。
 
 #### Scenario: 质量等级查询
 - **WHEN** 用户询问某地块的耕地质量等级，且提供了合法的地块统一代码
-- **THEN** 智能体 SHALL 通过 subprocess 调用 exe，返回质量等级（1-10等）、综合指数和 12 项指标的隶属度
+- **THEN** 智能体 SHALL 调用 `run_grade_evaluation`（Python 实现），返回质量等级（1-10等）、综合指数和 12 项指标的原始值
 
 #### Scenario: 障碍度诊断
 - **WHEN** 用户询问某地块的主要障碍因素，且提供了合法的地块统一代码
-- **THEN** 智能体 SHALL 通过 subprocess 调用 exe，返回障碍度因子排序表（从大到小），识别主要限制因子
+- **THEN** 智能体 SHALL 调用 `run_grade_evaluation`（Python 实现），返回障碍度因子排序表（从大到小），识别主要限制因子
 
-#### Scenario: exe 调用失败
-- **WHEN** exe 调用失败（超时、数据库缺失、exe 未部署、地块代码无效）
-- **THEN** 智能体 SHALL 返回明确的错误信息（如"评价服务超时"、"数据库文件缺失"、"未找到地块代码"），`confidence` 字段降低，不返回模拟数据
+#### Scenario: 评价调用失败
+- **WHEN** Python 评价调用失败（CSV 数据缺失、地块代码无效、编码字段越界）
+- **THEN** 智能体 SHALL 返回明确的错误信息（如"CSV 数据文件缺失"、"未找到地块代码"），`confidence` 字段降低，不返回模拟数据
 
 ### Requirement: ObstacleDiagnosisAgent 智能体
 系统 SHALL 实现 `ObstacleDiagnosisAgent` 智能体，对应模型3「耕地质量主要问题精准识别模型」，通过调用模型3 的在线查询接口获取障碍诊断结果，返回真实的障碍类型、主要/次要障碍因素和障碍组合类型。

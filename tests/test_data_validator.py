@@ -1,4 +1,4 @@
-"""测试数据校验器：CSV / shapefile zip / .dat。"""
+"""测试数据校验器：CSV / shapefile zip / 耕地质量评价 CSV。"""
 import sys
 import os
 import zipfile
@@ -65,12 +65,17 @@ def test_validate_csv_unparseable():
     os.unlink(path)
 
 
-# ---------- validate_dat ----------
+# ---------- validate_dat（耕地质量评价 CSV，别名 validate_grade_csv）----------
+
+GRADE_CSV_COLS = ['SiteID', 'JD', 'WD', 'MJ', 'SJD', 'YJZ', 'YXL', 'SXJ', 'TRRZ',
+                  'YXTCHD', 'GCHD', 'JHXLLZ', 'JHXQLZ', 'EJNYQcode', 'XQMCcode',
+                  'GCZDcode', 'PSNLcode', 'GGNLcode', 'DXBWcode', 'ZDGXcode']
+
 
 def test_validate_dat_success():
-    with tempfile.NamedTemporaryFile(suffix='.dat', delete=False) as f:
-        f.write(b'\x00\x01\x02\x03')
+    with tempfile.NamedTemporaryFile(suffix='.csv', delete=False) as f:
         path = f.name
+    _write_csv(path, GRADE_CSV_COLS)
     ok, msg = validate_dat(path)
     assert ok is True
     os.unlink(path)
@@ -83,6 +88,19 @@ def test_validate_dat_empty():
     ok, msg = validate_dat(path)
     assert ok is False
     assert '空' in msg
+    os.unlink(path)
+
+
+def test_validate_dat_missing_column():
+    """耕地质量评价 CSV 缺少必需字段时校验失败。"""
+    cols = GRADE_CSV_COLS.copy()
+    cols.remove('ZDGXcode')
+    with tempfile.NamedTemporaryFile(suffix='.csv', delete=False) as f:
+        path = f.name
+    _write_csv(path, cols)
+    ok, msg = validate_dat(path)
+    assert ok is False
+    assert 'ZDGXcode' in msg
     os.unlink(path)
 
 

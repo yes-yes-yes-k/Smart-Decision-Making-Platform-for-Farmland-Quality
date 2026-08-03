@@ -60,15 +60,15 @@ def test_type2_no_generic_words_collision():
 
 
 def test_type3_potential_question():
-    """潜力评估 → TYPE_3（model-2/3）"""
+    """潜力评估 → TYPE_6（model-2）"""
     qt, _ = _identify("辖区耕地质量提升的总体潜力有多大？可增产多少粮食？")
-    assert qt == 3
+    assert qt == 6
 
 
 def test_type3_county_potential_distribution():
-    """县域优先改良片区 → TYPE_3"""
+    """县域优先改良片区 → TYPE_6"""
     qt, _ = _identify("我们县划定的优先改良片区具体在哪几个村？每块潜力多大？")
-    assert qt == 3
+    assert qt == 6
 
 
 def test_type3_farmer_plot_diagnosis():
@@ -84,15 +84,15 @@ def test_type3_problem_identification():
 
 
 def test_type4_organic_matter_content():
-    """有机质含量 → TYPE_4（model-5/6）"""
+    """有机质含量 → TYPE_7（model-5）"""
     qt, _ = _identify("全省耕地土壤有机质含量如何，空间分布情况？")
-    assert qt == 4
+    assert qt == 7
 
 
 def test_type4_manure_dosage():
-    """有机肥/秸秆施用量 → TYPE_4"""
+    """有机肥/秸秆施用量 → TYPE_7"""
     qt, _ = _identify("为了提升耕地土壤有机质，有机肥或者秸秆每亩施用量多少？")
-    assert qt == 4
+    assert qt == 7
 
 
 def test_type4_fertility_ml():
@@ -102,9 +102,9 @@ def test_type4_fertility_ml():
 
 
 def test_type4_county_organic_average():
-    """县域有机质平均含量 → TYPE_4"""
+    """县域有机质平均含量 → TYPE_7"""
     qt, _ = _identify("本县耕地土壤有机质平均含量是多少？")
-    assert qt == 4
+    assert qt == 7
 
 
 def test_keyword_match_priority_over_vector():
@@ -117,10 +117,10 @@ def test_keyword_match_priority_over_vector():
 
     real_vector = nodes._identify_question_type_vector
     try:
-        # 向量返回 TYPE_2 高分，但关键词应判定为 TYPE_4
+        # 向量返回 TYPE_2 高分，但关键词应判定为 TYPE_7
         nodes._identify_question_type_vector = lambda q: (2, 0.95)
         qt, _ = nodes.identify_question_type("有机肥每亩施用量多少？")
-        assert qt == 4, f"关键词优先应返回 TYPE_4，实际 {qt}"
+        assert qt == 7, f"关键词优先应返回 TYPE_7，实际 {qt}"
         # 向量返回 TYPE_4 高分，但关键词应判定为 TYPE_2
         nodes._identify_question_type_vector = lambda q: (4, 0.95)
         qt, _ = nodes.identify_question_type("我要施加多少碱性调理剂？")
@@ -156,14 +156,20 @@ def test_type4_soc_query():
 
 def test_type4_dose_query():
     """model-6 Dose 查询 → TYPE_4"""
-    qt, _ = _identify("我这块地大概需要施多少有机肥？")
+    qt, _ = _identify("我这块地预测需要施多少肥？")
+    assert qt == 4
+
+
+def test_type4_nitrogen_fertilizer_dose_query():
+    """氮肥施用量查询 → TYPE_4（model-6）"""
+    qt, _ = _identify("我的田施氮肥施多少？")
     assert qt == 4
 
 
 def test_type4_straw_query():
-    """秸秆还田 → TYPE_4"""
+    """秸秆还田 → TYPE_7"""
     qt, _ = _identify("秸秆还田每亩施用量多少？")
-    assert qt == 4
+    assert qt == 7
 
 
 def test_type2_farmer_severity():
@@ -194,8 +200,8 @@ def test_all_xlsx_classic_questions_routed():
         ("本县哪些乡镇或地块等级稳定性较弱，需要现场复核？", 1),
         ("我的这块田质量等级稳不稳？", 1),
         ("查询区域内哪些对象需要纳入重点关注清单？", 1),
-        ("辖区耕地质量提升的总体潜力有多大？可增产多少粮食？", 3),
-        ("我们县划定的优先改良片区具体在哪几个村？每块潜力多大？", 3),
+        ("辖区耕地质量提升的总体潜力有多大？可增产多少粮食？", 6),
+        ("我们县划定的优先改良片区具体在哪几个村？每块潜力多大？", 6),
         ("我这块地到底有啥毛病？", 3),
         ("全省耕地质量存在哪些问题？", 3),
         ("县/乡镇里的耕地在哪些方面有问题", 3),
@@ -203,13 +209,13 @@ def test_all_xlsx_classic_questions_routed():
         ("我的田酸化了，pH是5.0，我要施加多少碱性调理剂可以治理好？", 2),
         ("查询区域内不同土地利用类型的酸化程度", 2),
         ("我的这块田酸化严重吗？", 2),
-        ("全省耕地土壤有机质含量如何，空间分布情况？", 4),
-        ("为了提升耕地土壤有机质，有机肥或者秸秆每亩施用量多少？", 4),
-        ("本县耕地土壤有机质平均含量是多少？", 4),
-        ("耕地有机质含量低的原因是什么？", 4),
+        ("全省耕地土壤有机质含量如何，空间分布情况？", 7),
+        ("为了提升耕地土壤有机质，有机肥或者秸秆每亩施用量多少？", 7),
+        ("本县耕地土壤有机质平均含量是多少？", 7),
+        ("耕地有机质含量低的原因是什么？", 7),
         ("我的田肥力怎么样？", 4),
         ("我的田土壤有机碳含量大概多少？", 4),
-        ("我这块地大概需要施多少有机肥？", 4),
+        ("我这块地大概需要施多少有机肥？", 7),
     ]
     for q, expected in cases:
         qt, _ = _identify(q)

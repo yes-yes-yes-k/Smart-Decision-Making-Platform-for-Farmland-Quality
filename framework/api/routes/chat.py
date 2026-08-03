@@ -76,7 +76,7 @@ def chat():
     orchestrator_request = {"question": message, **context}
     # top-level parcel_id/parcel_code 优先（覆盖 context 内同名字段）
     # parcel_id（数字字符串）给 model-1/3/4 查 DB，parcel_code（字母数字）给 model-7 调 fortran exe
-    for k in ("parcel_id", "parcel_code"):
+    for k in ("parcel_id", "parcel_code", "land_type", "fertilizer_type"):
         if data.get(k) is not None:
             orchestrator_request[k] = data[k]
     result = multi_agent_orchestrator.run(orchestrator_request, conversation_history=history)

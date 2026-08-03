@@ -1,101 +1,98 @@
-# 耕地质量稳定性模型数据目录
+# 模型1 v2 数据部署与分发说明
 
-本目录存放模型1（耕地质量稳定性与退化风险评价模型）所需的 3 期历史 shapefile 测试数据。
+本目录存放模型1 v2（`model1_v2_20260801`）“耕地质量等级稳定性与退化风险识别模型”的三期运行数据和本地预计算产物。模型运行时只读取本目录，不依赖外部模型交付路径。
 
-## 数据文件
+## 数据版本与来源
 
-| 文件 | 说明 |
-|------|------|
-| `2018_测试数据.shp` (及 .cpg/.dbf/.prj/.shx) | 2018 年耕地质量测试数据 |
-| `2021_测试数据.shp` (及 .cpg/.dbf/.prj/.shx) | 2021 年耕地质量测试数据 |
-| `2024_测试数据.shp` (及 .cpg/.dbf/.prj/.shx) | 2024 年耕地质量测试数据 |
+| 项目 | 说明 |
+| --- | --- |
+| 模型版本 | `model1_v2_20260801` |
+| 数据期次 | 2018、2021、2024 |
+| 当前期 | 2024 |
+| 地块统一编码 | `TYBH` |
+| 原始交付来源 | 模型1 v2 交付包，最近更新时间 2026-08-01 |
+| 本机交付包位置 | `D:\work\2026\0801\模型1_v2\模型1_v2`，仅用于一次性导入和校验，不是运行依赖 |
+| 项目运行位置 | `data/farmland_stability` |
 
-## 必需字段
+分发前应确认耕地质量空间数据的授权范围、脱敏要求和接收方权限。不得将该数据直接提交到公开 Git 仓库。
 
-每期 shapefile 需包含以下字段：
+## 标准数据包
 
-- 12 指标 LSD/QZ：`LSD1`~`LSD12`、`QZ1`~`QZ12`
-- 综合质量指数：`ZHQZ`
-- 耕地质量等级：`GDZLDJ`
-- 地块 ID：`ID`
-- 区域字段：`PJFQ`（评价分区）
+标准数据包用于接收方在本地重新执行模型1 v2。必须同时提供以下 15 个原始输入文件和本目录的 `manifest.json`：
 
-## 数据来源
+| 年份 | 必需组件 |
+| --- | --- |
+| 2018 | `2018_测试数据.cpg`、`.dbf`、`.prj`、`.shp`、`.shx` |
+| 2021 | `2021_测试数据.cpg`、`.dbf`、`.prj`、`.shp`、`.shx` |
+| 2024 | `2024_测试数据.cpg`、`.dbf`、`.prj`、`.shp`、`.shx` |
 
-外部数据源：`F:\BaiduNetdiskDownload\模型1\`
+Shapefile 的五个组件缺一不可。接收方应将它们解压到项目的 `data/farmland_stability` 目录，不要嵌套额外目录。
 
-## 部署方式
+## SHA-256 校验值
 
-shapefile 为大文件（每期约 36MB），已通过 `.gitignore` 排除，不入库。部署时需手动从外部数据源复制：
+以下校验值对应本机已完成 v2 输出比对的原始输入数据。接收方可以在 PowerShell 中使用 `Get-FileHash <文件> -Algorithm SHA256` 校验。
+
+| 文件 | 大小（字节） | SHA-256 |
+| --- | ---: | --- |
+| `2018_测试数据.cpg` | 5 | `3AD3031F5503A4404AF825262EE8232CC04D4EA6683D42C5DD0A2F2A27AC9824` |
+| `2018_测试数据.dbf` | 14,780,658 | `E0665841671D60D4F84A563F84F9D415FC2ABE40A27E571EB4562198C51D0B3D` |
+| `2018_测试数据.prj` | 176 | `B10DBE4D6D1DE908D340F892C90B3D31A552630AF3742BB515BFE1BD26124F2C` |
+| `2018_测试数据.shp` | 20,918,264 | `F55FFEABF1B3CE9C79E40DD8C135EBF02255044D831A0F0B7F7ED58EEA736D21` |
+| `2018_测试数据.shx` | 44,004 | `A850E616209C57945B3A172D52F5CE56FB80EE83F77E2FE1BC813678A6CAD416` |
+| `2021_测试数据.cpg` | 5 | `3AD3031F5503A4404AF825262EE8232CC04D4EA6683D42C5DD0A2F2A27AC9824` |
+| `2021_测试数据.dbf` | 14,780,658 | `43361577A91F7D20B3BDEE685DD51DFAA6C236DCDEE1214EA5123BB9E81828F4` |
+| `2021_测试数据.prj` | 176 | `B10DBE4D6D1DE908D340F892C90B3D31A552630AF3742BB515BFE1BD26124F2C` |
+| `2021_测试数据.shp` | 20,918,264 | `F55FFEABF1B3CE9C79E40DD8C135EBF02255044D831A0F0B7F7ED58EEA736D21` |
+| `2021_测试数据.shx` | 44,004 | `A850E616209C57945B3A172D52F5CE56FB80EE83F77E2FE1BC813678A6CAD416` |
+| `2024_测试数据.cpg` | 5 | `3AD3031F5503A4404AF825262EE8232CC04D4EA6683D42C5DD0A2F2A27AC9824` |
+| `2024_测试数据.dbf` | 14,780,658 | `BE2FD9EE572BD5AE32ACE21F88D06E0F1DACF344A777D39CB08B4BE9FE8C7185` |
+| `2024_测试数据.prj` | 176 | `B10DBE4D6D1DE908D340F892C90B3D31A552630AF3742BB515BFE1BD26124F2C` |
+| `2024_测试数据.shp` | 20,918,264 | `F55FFEABF1B3CE9C79E40DD8C135EBF02255044D831A0F0B7F7ED58EEA736D21` |
+| `2024_测试数据.shx` | 44,004 | `A850E616209C57945B3A172D52F5CE56FB80EE83F77E2FE1BC813678A6CAD416` |
+
+## 输入字段口径
+
+每期数据必须具有下列字段：
+
+- 地块与分区：`TYBH`、`PJFQ`。
+- 质量结果：`ZHQZ`、`GDZLDJ`。
+- 12 个 v2 指标：`SJD`、`YJZ`、`YXL`、`SXJ`、`TRRZ`、`GCZD`、`GGNL`、`PSNL`、`DXBW`、`ZDGX`、`YXTCHD`、`GCHD`。
+- 每个指标对应的隶属度和权重字段：`<指标>LSD`、`<指标>QZ`。
+
+`manifest.json` 已声明当前期为 2024、三期计算年份和 `id_column=TYBH`。三期文件均参与模型1的历史趋势、关键因子退化和持续低质等时间序列计算。
+
+## 接收方部署步骤
+
+1. 获取项目代码，并将标准数据包解压到 `data/farmland_stability`。
+2. 使用本项目指定的 Python 3.12 Conda 环境安装项目依赖。模型1需要 GeoPandas、SciPy、Shapely、Pyogrio 和 PROJ 数据库。
+3. 校验上述 15 个文件的 SHA-256。
+4. 在项目根目录执行预计算：
 
 ```powershell
-$src = "F:\BaiduNetdiskDownload\模型1"
-$dst = "data\farmland_stability"
-foreach ($year in @("2018","2021","2024")) {
-    foreach ($ext in @("cpg","dbf","prj","shp","shx")) {
-        Copy-Item "$src\${year}_测试数据.$ext" $dst -Force
-    }
-}
+& 'C:\Users\PC\.conda\envs\agent_culti_demo_py312\python.exe' `
+  -m src.ai_culti_demo.farmland_stability.precompute
 ```
 
-## 通过 HTTP API 部署
+5. 成功后将生成以下本地文件：
 
-通过 `POST /api/v1/data/import` 接口上传 shapefile zip 包，需 admin 权限。接口会将 zip 解压并扁平化部署到本目录，并自动触发 `precompute.main` 预计算与持久化。
-
-### zip 打包要求
-
-zip 包内需包含：
-
-- 1 个 `manifest.json` 清单文件
-- 每期 shapefile 的 5 个组件文件（`.shp` / `.cpg` / `.dbf` / `.prj` / `.shx`）
-
-限制：文件数 ≤ 30、解压后总大小 ≤ 200MB、不得包含路径穿越条目。
-
-### manifest.json 格式
-
-清单文件需包含以下 5 个字段：
-
-```json
-{
-    "current_year": 2024,
-    "history_years": [2020, 2021],
-    "years": [2020, 2021, 2024],
-    "current_filename": "current.shp",
-    "history_filenames": ["2020.shp", "2021.shp"]
-}
+```text
+data/farmland_stability/stability_results.db
+data/farmland_stability/stability_results.shp
+data/farmland_stability/stability_results.xlsx
 ```
 
-| 字段 | 类型 | 说明 |
-|------|------|------|
-| `current_year` | int | 当期年份 |
-| `history_years` | array | 历史年份列表 |
-| `years` | array | 全部年份列表（含当期） |
-| `current_filename` | string | 当期 shapefile 主文件名（.shp） |
-| `history_filenames` | array | 历史期 shapefile 主文件名列表（.shp） |
+预计算会处理三期数据中的 5,488 个地块，并将九模块结果保存到 `stability_results.db`，供模型1在线查询和 Agent 调用。
 
-### curl 示例
+## 快速演示包
 
-```bash
-# 1. 登录获取 token（需 admin 账号）
-curl -X POST http://localhost:5000/api/v1/auth/login \
-  -H "Content-Type: application/json" \
-  -d '{"username":"admin","password":"admin123"}'
+快速演示包适用于接收方无需重新预计算、直接进行模型1查询的场景。它应包含：
 
-# 2. 上传 shapefile zip 包（替换 <token>）
-curl -X POST http://localhost:5000/api/v1/data/import \
-  -H "Authorization: Bearer <token>" \
-  -F "data_type=shapefile" \
-  -F "file=@/path/to/stability_data.zip"
-```
+- 标准数据包的全部内容；
+- 已生成的 `stability_results.db`；
+- 可选的 `stability_results.shp` 和 `stability_results.xlsx`，用于 GIS 或表格审阅。
 
-部署成功后接口返回 `deployed_path` 与 `backup_path`，部署前会自动备份现有 shapefile 到 `backup/YYYYMMDD-HHMMSS/`（保留最近 3 份）。触发 `precompute.main` 失败或超时（600s）时会自动回滚到备份。
+接收方将快速演示包解压到相同目录后，可直接调用模型1查询。若替换任一原始 Shapefile，必须重新运行预计算，不能继续使用旧的 `stability_results.db`。
 
-## 预计算流程
+## Git 与分发边界
 
-数据部署后，运行离线预计算脚本生成持久化结果：
-
-```bash
-python -m src.ai_culti_demo.farmland_stability.precompute
-```
-
-预计算结果存储在 SQLite 数据库（`instance/farmland_stability.db`），在线查询通过 `get_parcel_result(parcel_id, module)` 接口读取。
+原始 Shapefile 和预计算结果均被 `.gitignore` 排除，避免大文件和受控空间数据进入仓库。`manifest.json`、本 README 和模型代码会纳入版本控制，确保部署方式和字段口径可追溯。

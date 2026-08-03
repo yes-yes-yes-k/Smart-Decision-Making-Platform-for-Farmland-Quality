@@ -1,0 +1,41 @@
+{
+  "model_type": "RandomForestRegressor",
+  "land_type": "upland",
+  "region": "shaoguan",
+  "trained_at": "2026-07-31T23:39:56",
+  "model_version": "SG_RF_v1_20260731",
+  "hyperparameters": {
+    "n_estimators": 100,
+    "random_state": 230
+  },
+  "metrics": {
+    "cv_r2": 0.9711,
+    "cv_rmse": 24.8955,
+    "test_r2": 0.9616,
+    "test_rmse": 22.8021
+  },
+  "feature_names": [
+    "pH",
+    "SOCbe",
+    "TN",
+    "TP",
+    "TK",
+    "AP",
+    "AK",
+    "Gap",
+    "Fertilizer type"
+  ],
+  "feature_means": {
+    "pH": 6.088864864864865,
+    "SOCbe": 10.438324324324325,
+    "TN": 0.703081081081081,
+    "TP": 0.3205945945945946,
+    "TK": 18.947891891891892,
+    "AP": 7.259837837837838,
+    "AK": 227.27027027027026,
+    "Gap": 17.264378378378378,
+    "Fertilizer type": 1.4702702702702704
+  },
+  "training_samples": 185,
+  "test_samples": 47
+}

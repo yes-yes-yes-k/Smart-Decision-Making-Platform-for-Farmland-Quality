@@ -8,7 +8,8 @@ models_bp = Blueprint('models', __name__)
 @jwt_required()
 def get_models():
     area_code = request.args.get('area_code', 'lechang')
-    result = core_engine.list_thematic_models(area_code)
+    include_non_professional = request.args.get('include_non_professional', 'false').lower() == 'true'
+    result = core_engine.list_thematic_models(area_code, include_non_professional=include_non_professional)
     if result.get('status') == 'ok':
         models = [
             {"name": model.get('model_id', model.get('name')), "description": model.get('purpose', model.get('description', ''))}
@@ -36,6 +37,9 @@ def run_model():
         payload['indicators'] = data['indicators']
     if 'context' in data:
         payload['context'] = data['context']
+    for key in ('parcel_id', 'parcel_code', 'target_ph', 'exe_path', 'dat_path'):
+        if key in data:
+            payload[key] = data[key]
 
     result = core_engine.run_thematic_model(payload)
     if result.get('status') == 'ok':

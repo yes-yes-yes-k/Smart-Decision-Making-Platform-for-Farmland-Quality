@@ -86,6 +86,39 @@ def test_main_full_flow_with_mocks():
         m_save_final.assert_called_once()
 
 
+def test_main_uses_manifest_id_column():
+    """模型1 v2 应将 TYBH 传入预计算和结果持久化流程。"""
+    from ai_culti_demo.farmland_stability import precompute
+
+    mock_gdf = _make_mock_gdf()
+    mock_storage = MagicMock()
+
+    with patch.object(precompute, 'run_all_models', return_value=mock_gdf) as m_run, \
+         patch.object(precompute, 'StabilityStorage', return_value=mock_storage), \
+         patch.object(precompute, 'g_to_records', return_value=[]) as m_records, \
+         patch.object(precompute, 'save_final_results'):
+
+        manifest = {
+            'current_filename': '2024_测试数据.shp',
+            'history_filenames': ['2018_测试数据.shp', '2021_测试数据.shp', '2024_测试数据.shp'],
+            'years': [2018, 2021, 2024],
+            'id_column': 'TYBH',
+        }
+        precompute.main('/fake/shapefile_dir', manifest)
+
+    m_run.assert_called_once_with(
+        os.path.join('/fake/shapefile_dir', '2024_测试数据.shp'),
+        [
+            os.path.join('/fake/shapefile_dir', '2018_测试数据.shp'),
+            os.path.join('/fake/shapefile_dir', '2021_测试数据.shp'),
+            os.path.join('/fake/shapefile_dir', '2024_测试数据.shp'),
+        ],
+        [2018, 2021, 2024],
+        id_col='TYBH',
+    )
+    m_records.assert_called_once_with(mock_gdf, id_col='TYBH')
+
+
 def test_adapter_bulk_evaluate_csv_delegates():
     """验证 adapter.bulk_evaluate_csv 委托给 bulk_evaluate 并捕获异常。"""
     from framework.core_engine.adapter import CoreEngine
