@@ -36,7 +36,7 @@ DOSE_BEST_PARAMS = {
 MODEL_VERSION = "ETR_v1_20260713"
 
 SG_RF_PARAMS = {"n_estimators": 100, "random_state": 230}
-SG_MODEL_VERSION = "SG_RF_v1_20260731"
+SG_MODEL_VERSION = "SG_RF_v2_20260804"
 SG_DOSE_FEATURE_COLS = ["pH", "SOMbe", "TN", "TP", "TK", "AP", "AK", "Gap", "Fertilizer type"]
 
 

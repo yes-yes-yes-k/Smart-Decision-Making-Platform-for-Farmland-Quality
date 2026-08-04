@@ -346,6 +346,8 @@ def model_6_execution(input_data: Dict[str, Any], land_type: Optional[str] = Non
             # 低样本量提示
             if sg_meta.get("training_samples", 0) < 30:
                 dose_warning += "（训练样本量较少，置信度偏低）"
+            # 韶关 dose 返回 SG RF 模型版本号（spec: 韶关 dose 响应 model_version）
+            response_model_version = sg_meta["model_version"]
         else:
             dose_pred = float(_DOSE_MODEL.predict(dose_df)[0])
             # 非韶关区域忽略 land_type（spec: 非韶关 SHALL 忽略 land_type）
@@ -353,6 +355,8 @@ def model_6_execution(input_data: Dict[str, Any], land_type: Optional[str] = Non
                 "Dose 模型 R²=0.47，预测结果仅供参考，建议结合田间试验校准"
             )
             dose_confidence = round(_DOSE_META["metrics"]["test_r2"], 2)
+            # 非韶关 dose 返回全局 ETR 版本号
+            response_model_version = _MODEL_VERSION
 
         logger.info(
             "model_6_execution success: SOC=%.4f, Dose=%.4f, is_shaoguan=%s, land_type=%s",
@@ -369,7 +373,7 @@ def model_6_execution(input_data: Dict[str, Any], land_type: Optional[str] = Non
             "dose_warning": dose_warning.strip(),
             "imputed_features": sorted(set(soc_imputed + dose_imputed)),
             "imputation_applied": bool(soc_imputed or dose_imputed),
-            "model_version": _MODEL_VERSION,
+            "model_version": response_model_version,
         }
 
     except Exception as e:

@@ -351,7 +351,7 @@ FAKE_SG_UPLAND_META = {
     "model_type": "RandomForestRegressor",
     "land_type": "upland",
     "region": "shaoguan",
-    "model_version": "SG_RF_v1_20260731",
+    "model_version": "SG_RF_v2_20260804",
     "feature_names": ["pH", "SOCbe", "TN", "TP", "TK", "AP", "AK", "Gap", "Fertilizer type"],
     "feature_means": {
         "pH": 7.0, "SOCbe": 12.0, "TN": 0.8, "TP": 0.5, "TK": 30.0,
@@ -365,7 +365,7 @@ FAKE_SG_PADDY_META = {
     "model_type": "RandomForestRegressor",
     "land_type": "paddy",
     "region": "shaoguan",
-    "model_version": "SG_RF_v1_20260731",
+    "model_version": "SG_RF_v2_20260804",
     "feature_names": ["pH", "SOCbe", "TN", "TP", "TK", "AP", "AK", "Gap", "Fertilizer type"],
     "feature_means": {
         "pH": 6.5, "SOCbe": 14.0, "TN": 1.0, "TP": 0.6, "TK": 28.0,
