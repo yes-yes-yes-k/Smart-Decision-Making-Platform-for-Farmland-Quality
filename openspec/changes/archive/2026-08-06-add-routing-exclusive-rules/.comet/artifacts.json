@@ -1,0 +1,9 @@
+{
+  "openspec_proposal": "openspec/changes/add-routing-exclusive-rules/proposal.md",
+  "openspec_design": "openspec/changes/add-routing-exclusive-rules/design.md",
+  "openspec_tasks": "openspec/changes/add-routing-exclusive-rules/tasks.md",
+  "openspec_delta_spec": "openspec/changes/add-routing-exclusive-rules/specs/role-based-routing/spec.md",
+  "handoff_context": "openspec/changes/add-routing-exclusive-rules/.comet/handoff/design-context.json",
+  "handoff_markdown": "openspec/changes/add-routing-exclusive-rules/.comet/handoff/design-context.md",
+  "archive_directory": "openspec/changes/archive/2026-08-06-add-routing-exclusive-rules"
+}

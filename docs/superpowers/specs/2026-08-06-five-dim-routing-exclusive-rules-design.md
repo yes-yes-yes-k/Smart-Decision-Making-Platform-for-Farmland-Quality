@@ -2,6 +2,8 @@
 comet_change: add-routing-exclusive-rules
 role: technical-design
 canonical_spec: openspec
+archived-with: 2026-08-06-add-routing-exclusive-rules
+status: final
 ---
 
 # 五维路由升级与排他规则建立 — 技术设计

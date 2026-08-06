@@ -2,6 +2,7 @@
 change: add-routing-exclusive-rules
 design-doc: docs/superpowers/specs/2026-08-06-five-dim-routing-exclusive-rules-design.md
 base-ref: 574b1a8a86fba188e6c875072a75fa4130a1ad82
+archived-with: 2026-08-06-add-routing-exclusive-rules
 ---
 
 # 五维路由升级与排他规则建立 — 实施计划
@@ -24,6 +25,7 @@ base-ref: 574b1a8a86fba188e6c875072a75fa4130a1ad82
 - 易混淆对测试：model-3/7、model-2/7、model-4/6 各 ≥20 条正例 + 反例。
 - 测试文件位于 `tests/`，运行方式：`python -m pytest tests/ -v`（或逐文件 `python tests/test_xxx.py`）。
 
+archived-with: 2026-08-06-add-routing-exclusive-rules
 ---
 
 ## 文件结构与职责
@@ -51,6 +53,7 @@ base-ref: 574b1a8a86fba188e6c875072a75fa4130a1ad82
 - 图节点：`boundary_pending_node(state) -> MultiAgentState`（`nodes.py`）
 - `route_models(state) -> str` 返回值新增分支 `"boundary_pending"`（`nodes.py`）
 
+archived-with: 2026-08-06-add-routing-exclusive-rules
 ---
 
 ### Task 1: 五维路由特征扩展（capabilities 字段 + routing.py 模块化 + nodes.py 再导出）
@@ -422,6 +425,7 @@ git add framework/agents/capabilities.py framework/agents/routing.py framework/a
 git commit -m "feat: 五维路由特征扩展并抽离独立路由模块 routing.py"
 ```
 
+archived-with: 2026-08-06-add-routing-exclusive-rules
 ---
 
 ### Task 2: 排他规则配置（exclusive_rules.py）
@@ -658,6 +662,7 @@ git add framework/agents/exclusive_rules.py tests/test_exclusive_rules.py
 git commit -m "feat: 新增数据驱动排他规则与边界待确认降级"
 ```
 
+archived-with: 2026-08-06-add-routing-exclusive-rules
 ---
 
 ### Task 3: 路由集成与 API 响应（state / nodes / orchestrator / chat）
@@ -963,6 +968,7 @@ git add framework/agents/state.py framework/agents/nodes.py framework/agents/orc
 git commit -m "feat: 路由集成与 API 透传 routing_status 与边界待确认降级"
 ```
 
+archived-with: 2026-08-06-add-routing-exclusive-rules
 ---
 
 ### Task 4: 路由测试集扩充（三组易混淆对 + 回归）
@@ -1184,6 +1190,7 @@ git add tests/test_question_type_keywords.py openspec/changes/add-routing-exclus
 git commit -m "test: 扩充三组易混淆对路由测试集与全量回归"
 ```
 
+archived-with: 2026-08-06-add-routing-exclusive-rules
 ---
 
 ## 自审（Self-Review）
