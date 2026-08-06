@@ -9,6 +9,62 @@ def _identify(question):
     return identify_question_type(question)
 
 
+MODEL_TO_QTYPE = {
+    "model-1": 1, "model-2": 6, "model-3": 3,
+    "model-4": 2, "model-5": 7, "model-6": 4, "model-7": 5,
+}
+
+
+def _expand(stems, prefixes, suffixes):
+    """由基础句干 × 前缀 × 后缀展开为 ≥20 条问题，去重保序。"""
+    out, seen = [], set()
+    for s in stems:
+        for p in prefixes:
+            for suf in suffixes:
+                c = p + s + suf
+                if c not in seen:
+                    seen.add(c)
+                    out.append(c)
+    return out
+
+
+def _assert_rule_batch(questions, base_qtype, expected_model):
+    from framework.agents.exclusive_rules import apply_exclusive_rules
+    assert len(questions) >= 20, f"{expected_model} 正例应 ≥20，实际 {len(questions)}"
+    for q in questions:
+        final_type, status = apply_exclusive_rules(q, base_qtype, {"scale": "地块"})
+        exp = MODEL_TO_QTYPE[expected_model]
+        assert final_type == exp, f"「{q}」应路由到 {expected_model}(type {exp})，实际 type {final_type}"
+        assert status == "normal", f"「{q}」状态应为 normal，实际 {status}"
+
+
+def _assert_not_routed_to(questions, base_qtype, forbidden_model):
+    from framework.agents.exclusive_rules import apply_exclusive_rules
+    forb = MODEL_TO_QTYPE[forbidden_model]
+    for q in questions:
+        final_type, _ = apply_exclusive_rules(q, base_qtype, {"scale": "地块"})
+        assert final_type != forb, f"「{q}」不应路由到 {forbidden_model}"
+
+
+PREFIXES = ["", "全省", "全县", "我们县", "本县", "辖区"]
+SUFFIXES = ["", "？"]
+MODEL3_STEMS = ["耕地质量现状评价", "土壤障碍现状如何", "耕地质量现状诊断",
+                "作物生长障碍现状评价", "耕地退化现状如何", "土壤环境现状评价",
+                "耕地质量现状如何", "土壤肥力现状诊断", "耕地酸碱现状评价",
+                "耕地质量现状评估"]
+MODEL7_STEMS = ["耕地质量等级评价结果", "耕地质量等级评价", "综合指数和障碍度排序",
+                "耕地质量等级评定", "耕地质量等级是多少", "质量等级评价结果",
+                "耕地质量等级综合评价", "地块质量等级评价"]
+MODEL2_STEMS = ["耕地质量提升潜力", "耕地质量潜力评估", "增产潜力多大",
+                "改良片区提升潜力", "耕地提升空间", "目标等级提升潜力",
+                "潜力分布范围", "提升潜力评估"]
+MODEL4_STEMS = ["酸化调理剂选择", "酸化调理剂用法", "石灰改良酸化土壤",
+                "碱性材料作用", "木本泥炭作用", "酸性改良剂用法",
+                "酸化治理调理剂选择"]
+MODEL6_STEMS = ["有机肥每亩施用量", "有机质投入量", "秸秆每亩施用量",
+                "有机肥施用量多少", "有机质投入量多少", "有机肥投入量"]
+
+
 def test_type1_stability_province_question():
     """省市端稳定性问题 → TYPE_1"""
     qt, _ = _identify("查询区域内耕地质量等级整体稳定吗？")
@@ -111,22 +167,22 @@ def test_keyword_match_priority_over_vector():
     """D5：关键词匹配优先于向量匹配。
 
     即使向量返回不同的（更高分）类型，含具体关键词的问题仍应被关键词逻辑判定。
-    手动 patch _identify_question_type_vector（兼容 __main__ 直接运行，无需 pytest fixture）。
+    手动 patch routing._identify_question_type_vector（兼容 __main__ 直接运行，无需 pytest fixture）。
     """
-    from framework.agents import nodes
+    from framework.agents import routing
 
-    real_vector = nodes._identify_question_type_vector
+    real_vector = routing._identify_question_type_vector
     try:
         # 向量返回 TYPE_2 高分，但关键词应判定为 TYPE_7
-        nodes._identify_question_type_vector = lambda q: (2, 0.95)
-        qt, _ = nodes.identify_question_type("有机肥每亩施用量多少？")
+        routing._identify_question_type_vector = lambda q: (2, 0.95)
+        qt, _ = routing.identify_question_type("有机肥每亩施用量多少？")
         assert qt == 7, f"关键词优先应返回 TYPE_7，实际 {qt}"
         # 向量返回 TYPE_4 高分，但关键词应判定为 TYPE_2
-        nodes._identify_question_type_vector = lambda q: (4, 0.95)
-        qt, _ = nodes.identify_question_type("我要施加多少碱性调理剂？")
+        routing._identify_question_type_vector = lambda q: (4, 0.95)
+        qt, _ = routing.identify_question_type("我要施加多少碱性调理剂？")
         assert qt == 2, f"关键词优先应返回 TYPE_2，实际 {qt}"
     finally:
-        nodes._identify_question_type_vector = real_vector
+        routing._identify_question_type_vector = real_vector
     print("✓ 关键词匹配优先于向量匹配（D5）")
 
 
@@ -180,15 +236,15 @@ def test_type2_farmer_severity():
 
 def test_unrelated_question_returns_zero():
     """无关问题 → TYPE_0（强制 embedding 不可用，纯关键词路径确定返回 0，避免向量阈值边界 flaky）"""
-    from framework.agents import nodes
+    from framework.agents import routing
 
-    real_flag = nodes.EMBEDDING_AVAILABLE
+    real_flag = routing.EMBEDDING_AVAILABLE
     try:
-        nodes.EMBEDDING_AVAILABLE = False
+        routing.EMBEDDING_AVAILABLE = False
         qt, _ = _identify("今天天气怎么样？")
         assert qt == 0, f"无关问题期望 TYPE_0，实际 {qt}"
     finally:
-        nodes.EMBEDDING_AVAILABLE = real_flag
+        routing.EMBEDDING_AVAILABLE = real_flag
     print("✓ 无关问题返回 TYPE_0")
 
 
@@ -313,6 +369,81 @@ def test_routing_module_migrated():
     assert qt2 == qt  # context 追加不改变无规则命中的既有行为
 
 
+def test_pair_model3_vs_model7_positive():
+    """model-3/7：现状评价正例(→model-3) 与 质量等级评价正例(→model-7) 各 ≥20"""
+    _assert_rule_batch(_expand(MODEL3_STEMS, PREFIXES, SUFFIXES), 5, "model-3")
+    _assert_rule_batch(_expand(MODEL7_STEMS, PREFIXES, SUFFIXES), 3, "model-7")
+
+
+def test_pair_model3_vs_model7_negative():
+    """model-3/7：反例（不误路由到对方）各 ≥20"""
+    _assert_not_routed_to(_expand(MODEL3_STEMS, PREFIXES, SUFFIXES), 5, "model-7")
+    _assert_not_routed_to(_expand(MODEL7_STEMS, PREFIXES, SUFFIXES), 3, "model-3")
+
+
+def test_pair_model2_vs_model7_positive():
+    """model-2/7：潜力正例(→model-2) 与 质量等级评价正例(→model-7) 各 ≥20"""
+    _assert_rule_batch(_expand(MODEL2_STEMS, PREFIXES, SUFFIXES), 5, "model-2")
+    _assert_rule_batch(_expand(MODEL7_STEMS, PREFIXES, SUFFIXES), 6, "model-7")
+
+
+def test_pair_model2_vs_model7_negative():
+    """model-2/7：反例各 ≥20"""
+    _assert_not_routed_to(_expand(MODEL2_STEMS, PREFIXES, SUFFIXES), 5, "model-7")
+    _assert_not_routed_to(_expand(MODEL7_STEMS, PREFIXES, SUFFIXES), 6, "model-2")
+
+
+def test_pair_model4_vs_model6_positive():
+    """model-4/6：酸化调理剂正例(→model-4) 与 有机质投入量正例(→model-6) 各 ≥20"""
+    _assert_rule_batch(_expand(MODEL4_STEMS, PREFIXES, SUFFIXES), 4, "model-4")
+    _assert_rule_batch(_expand(MODEL6_STEMS, PREFIXES, SUFFIXES), 2, "model-6")
+
+
+def test_pair_model4_vs_model6_negative():
+    """model-4/6：反例各 ≥20"""
+    _assert_not_routed_to(_expand(MODEL4_STEMS, PREFIXES, SUFFIXES), 4, "model-6")
+    _assert_not_routed_to(_expand(MODEL6_STEMS, PREFIXES, SUFFIXES), 2, "model-4")
+
+
+def test_five_dim_does_not_break_existing_1to1_routing():
+    """context 提供时，未命中排他规则的正常问题保持既有 question_type"""
+    from framework.agents import routing
+    real_flag = routing.EMBEDDING_AVAILABLE
+    try:
+        routing.EMBEDDING_AVAILABLE = False  # 纯关键词，确定性
+        cases = [
+            ("查询区域内哪些高等级耕地存在退化风险？", 1),
+            ("辖区耕地质量提升的总体潜力有多大？可增产多少粮食？", 6),
+            ("我这块地到底有啥毛病？", 3),
+            ("查询区域内农用地土壤酸化程度如何，不同酸化等级比例分别多少？", 2),
+            ("我的田土壤有机碳含量大概多少？", 4),
+            ("我的田耕地质量等级是多少？", 5),
+            ("全省耕地土壤有机质含量如何，空间分布情况？", 7),
+        ]
+        for q, expected in cases:
+            qt, _ = routing.identify_question_type(q, {"scale": "县"})
+            assert qt == expected, f"「{q}」期望 TYPE_{expected}，实际 TYPE_{qt}"
+    finally:
+        routing.EMBEDDING_AVAILABLE = real_flag
+
+
+def test_normal_questions_not_degraded():
+    """未命中排他规则的正常问题，routing_status 保持 normal"""
+    from framework.agents.exclusive_rules import apply_exclusive_rules as _apply
+    final_type, status = _apply("我的田肥力怎么样", 4, {"scale": "地块"})
+    assert status == "normal"
+    assert final_type == 4
+
+
+def test_all_confusing_pair_batches_size_ge_20():
+    """三组易混淆对正例/反例批量规模均 ≥20"""
+    assert len(_expand(MODEL3_STEMS, PREFIXES, SUFFIXES)) >= 20
+    assert len(_expand(MODEL7_STEMS, PREFIXES, SUFFIXES)) >= 20
+    assert len(_expand(MODEL2_STEMS, PREFIXES, SUFFIXES)) >= 20
+    assert len(_expand(MODEL4_STEMS, PREFIXES, SUFFIXES)) >= 20
+    assert len(_expand(MODEL6_STEMS, PREFIXES, SUFFIXES)) >= 20
+
+
 if __name__ == "__main__":
     test_type1_stability_province_question()
     test_type1_stability_county_question()
@@ -348,4 +479,13 @@ if __name__ == "__main__":
     test_type5_questions_routed_to_type5()
     test_capability_has_five_dim_fields()
     test_routing_module_migrated()
+    test_pair_model3_vs_model7_positive()
+    test_pair_model3_vs_model7_negative()
+    test_pair_model2_vs_model7_positive()
+    test_pair_model2_vs_model7_negative()
+    test_pair_model4_vs_model6_positive()
+    test_pair_model4_vs_model6_negative()
+    test_five_dim_does_not_break_existing_1to1_routing()
+    test_normal_questions_not_degraded()
+    test_all_confusing_pair_batches_size_ge_20()
     print("\n全部问题类型关键词测试通过！")
