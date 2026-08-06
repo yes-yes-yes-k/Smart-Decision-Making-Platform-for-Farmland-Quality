@@ -20,6 +20,8 @@ class ProfessionalCapability:
     question_type: int
     minimum_inputs: tuple[str, ...] = ()
     runtime_requirement: str = "无需额外运行时前置条件"
+    analysis_scale: str = "地块"        # 分析尺度：省/县/片区/地块
+    data_type: str = "指标数据"          # 数据类型：指标数据/评价结果/处方用量
 
 
 PROFESSIONAL_CAPABILITIES: tuple[ProfessionalCapability, ...] = (
@@ -27,36 +29,43 @@ PROFESSIONAL_CAPABILITIES: tuple[ProfessionalCapability, ...] = (
         "model-1", "stability-risk-evaluation", "耕地质量稳定性与退化风险评价",
         "基于预计算结果识别稳定性、历史变化和退化风险。", "stability", 1,
         ("parcel_id",), "需先完成稳定性离线预计算并提供 parcel_id。",
+        "地块", "评价结果",   # model-1 稳定性风险：地块级评价结果
     ),
     ProfessionalCapability(
         "model-2", "improvement-potential-assessment", "耕地质量提升潜力评估",
         "评估耕地质量提升空间、目标指标和潜在障碍度。", "potential", 6,
         ("indicators",), "可使用结构化土壤指标；缺失字段将按 Agent 既有规则处理。",
+        "县", "指标数据",     # model-2 提升潜力：县级指标数据
     ),
     ProfessionalCapability(
         "model-3", "obstacle-diagnosis", "耕地质量主要问题与障碍诊断",
         "识别主要/次要障碍因素、障碍类型和组合。", "problem", 3,
         ("parcel_id",), "需完成障碍诊断批量计算并提供 parcel_id。",
+        "地块", "指标数据",   # model-3 障碍诊断：地块级指标数据
     ),
     ProfessionalCapability(
         "model-4", "acidification-remediation", "耕地土壤酸化改良",
         "判定酸化程度并给出调理剂和改良措施建议。", "acidification", 2,
         ("parcel_id",), "需完成酸化评估并提供 parcel_id；结构化指标可用于规则降级。",
+        "地块", "处方用量",   # model-4 酸化改良：地块级处方用量
     ),
     ProfessionalCapability(
         "model-5", "organic-matter-improvement", "耕地土壤有机质培肥提升",
         "围绕有机肥、秸秆还田和培肥措施提供治理建议。", "organic_matter", 7,
         ("indicators",), "可使用结构化土壤指标；当前规则结果会明确模拟状态。",
+        "县", "处方用量",     # model-5 有机质培肥：县级处方用量
     ),
     ProfessionalCapability(
         "model-6", "fertility-soc-dose-prediction", "耕地肥力 SOC/Dose 预测",
         "使用 ML 模型预测土壤有机碳和施肥量。", "fertility_ml", 4,
         ("indicators",), "需提供模型特征；模型文件不可用时返回训练集均值降级结果。",
+        "地块", "处方用量",   # model-6 肥力 SOC/Dose 预测：地块级处方用量
     ),
     ProfessionalCapability(
         "model-7", "quality-grade-evaluation", "耕地质量等级评价",
         "通过质量等级评价程序输出综合指数、等级和障碍度。", "grade", 5,
         ("parcel_code",), "真实评价需部署 exe/dat 文件并提供 parcel_code。",
+        "地块", "评价结果",   # model-7 质量等级评价：地块级评价结果
     ),
 )
 

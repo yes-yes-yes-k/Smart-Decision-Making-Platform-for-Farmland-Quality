@@ -289,6 +289,30 @@ def test_type5_questions_routed_to_type5():
         assert qt == 5, f"type 5 问题「{q}」期望 TYPE_5，实际 TYPE_{qt}"
 
 
+def test_capability_has_five_dim_fields():
+    """ProfessionalCapability 应含 analysis_scale/data_type 字段且 7 个能力均已填充"""
+    from framework.agents.capabilities import PROFESSIONAL_CAPABILITIES
+    for cap in PROFESSIONAL_CAPABILITIES:
+        assert hasattr(cap, "analysis_scale"), f"{cap.agent_id} 缺少 analysis_scale"
+        assert hasattr(cap, "data_type"), f"{cap.agent_id} 缺少 data_type"
+        assert cap.analysis_scale, f"{cap.agent_id} 的 analysis_scale 为空"
+        assert cap.data_type, f"{cap.agent_id} 的 data_type 为空"
+    assert len(PROFESSIONAL_CAPABILITIES) == 7
+
+
+def test_routing_module_migrated():
+    """路由判定函数应从 routing 模块导出且签名向后兼容"""
+    from framework.agents import routing
+    for name in ("identify_question_type", "_identify_question_type_keyword",
+                 "_identify_question_type_vector", "check_relevance"):
+        assert hasattr(routing, name), f"routing 缺少 {name}"
+    # identify_question_type 支持可选 context 参数
+    qt, rel = routing.identify_question_type("我的这块田稳不稳")
+    assert qt == 1
+    qt2, rel2 = routing.identify_question_type("我的这块田稳不稳", {"scale": "地块"})
+    assert qt2 == qt  # context 追加不改变无规则命中的既有行为
+
+
 if __name__ == "__main__":
     test_type1_stability_province_question()
     test_type1_stability_county_question()
@@ -322,4 +346,6 @@ if __name__ == "__main__":
     test_type5_keyword_function_direct()
     test_reference_questions_has_type5()
     test_type5_questions_routed_to_type5()
+    test_capability_has_five_dim_fields()
+    test_routing_module_migrated()
     print("\n全部问题类型关键词测试通过！")
