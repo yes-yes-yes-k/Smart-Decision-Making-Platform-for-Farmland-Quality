@@ -5,7 +5,7 @@ context 为 None 时行为与旧版 nodes.py 完全一致。
 """
 from __future__ import annotations
 import numpy as np
-from typing import Any, List, Dict, Optional
+from typing import List, Dict, Optional
 
 try:
     from framework.embedding.service import embedding_service
