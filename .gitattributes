@@ -1,0 +1,3 @@
+# Comet skill snapshots must preserve exact byte content (hash verification).
+# Prevent git CRLF auto-conversion on Windows which breaks snapshot validation.
+.comet/skill-snapshots/** -text
