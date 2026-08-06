@@ -1,6 +1,6 @@
 """数据驱动的排他规则配置与判定。
 
-用于消除 model-3/7、model-2/7、model-4/6 三组易混淆对的误选。
+用于消除 model-1/5、model-2/3 两组易混淆对的误选。
 排他规则无法消解重叠（优先级冲突）时返回「模型边界待确认」显式降级，
 不自行选择任一易混淆专业 Agent。
 """
@@ -36,26 +36,20 @@ class ExclusiveRule:
 # 条件短语 → 触发关键词（子串匹配）
 EXCLUSIVE_CONDITION_KEYWORDS: Dict[str, Tuple[str, ...]] = {
     "现状评价": ("现状评价", "现状如何", "现状诊断", "现状评估"),
-    "潜力": ("潜力", "提升空间", "增产潜力", "目标等级"),
-    "有机质投入量": ("施多少", "每亩施", "施用量", "投入量", "用量"),
     "酸化调理剂": ("调理剂", "石灰", "碱性材料", "木本泥炭", "酸性改良"),
     "稳定性风险": ("稳定性", "退化风险", "掉级", "重点关注清单", "等级稳定"),
     "质量等级评价": ("质量等级", "等级评价", "综合指数", "等级评定", "评价结果"),
 }
 
 EXCLUSIVE_RULES: Tuple[ExclusiveRule, ...] = (
-    # model-3 vs model-7：现状评价 → model-3（障碍诊断）
-    ExclusiveRule(frozenset({"model-3", "model-7"}), "业务任务", "现状评价", "model-3"),
-    # model-2 vs model-7：潜力 → model-2（潜力评估）
-    ExclusiveRule(frozenset({"model-2", "model-7"}), "业务任务", "潜力", "model-2"),
-    # model-4 vs model-6：有机质投入量 → model-6（SOC/Dose 预测）
-    ExclusiveRule(frozenset({"model-4", "model-6"}), "预期输出", "有机质投入量", "model-6"),
-    # model-4 vs model-6：酸化调理剂 → model-4（酸化改良）
-    ExclusiveRule(frozenset({"model-4", "model-6"}), "业务任务", "酸化调理剂", "model-4"),
-    # model-1：稳定性风险 → model-1
-    ExclusiveRule(frozenset({"model-1"}), "业务任务", "稳定性风险", "model-1"),
-    # model-7：质量等级评价 → model-7
-    ExclusiveRule(frozenset({"model-7"}), "预期输出", "质量等级评价", "model-7"),
+    # model-1 vs model-5：现状评价 → model-1（障碍诊断）
+    ExclusiveRule(frozenset({"model-1", "model-5"}), "业务任务", "现状评价", "model-1"),
+    # model-2 vs model-3：酸化调理剂 → model-2（酸化改良）
+    ExclusiveRule(frozenset({"model-2", "model-3"}), "业务任务", "酸化调理剂", "model-2"),
+    # model-4：稳定性风险 → model-4
+    ExclusiveRule(frozenset({"model-4"}), "业务任务", "稳定性风险", "model-4"),
+    # model-5：质量等级评价 → model-5
+    ExclusiveRule(frozenset({"model-5"}), "预期输出", "质量等级评价", "model-5"),
 )
 
 
@@ -67,7 +61,7 @@ def _condition_matches(question: str, condition: str) -> bool:
 
 
 def model_id_to_question_type(model_id: str) -> Optional[int]:
-    # "model-1".."model-7" 在 capabilities 注册表中登记为 agent_id，据此反查 question_type
+    # "model-1".."model-5" 在 capabilities 注册表中登记为 agent_id，据此反查 question_type
     capability = CAPABILITY_BY_AGENT_ID.get(model_id)
     return capability.question_type if capability else None
 
