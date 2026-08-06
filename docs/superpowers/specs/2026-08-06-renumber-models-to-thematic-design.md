@@ -2,6 +2,8 @@
 comet_change: renumber-models-to-thematic
 role: technical-design
 canonical_spec: openspec
+archived-with: 2026-08-06-renumber-models-to-thematic
+status: final
 ---
 
 # 技术设计：模型编号对齐专题模型编号
@@ -90,3 +92,4 @@ canonical_spec: openspec
 
 - 路由相关三文件套件（test_question_type_keywords.py、test_exclusive_rules.py、test_multi_agent.py）全部通过为验收标准
 - 全量回归测试确认无新增失败
+

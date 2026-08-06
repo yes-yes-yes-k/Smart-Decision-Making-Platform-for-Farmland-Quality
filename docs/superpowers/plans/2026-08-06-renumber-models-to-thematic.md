@@ -2,6 +2,7 @@
 change: renumber-models-to-thematic
 design-doc: docs/superpowers/specs/2026-08-06-renumber-models-to-thematic-design.md
 base-ref: 6238591761227cdf78a84e611c320cb50b374efb
+archived-with: 2026-08-06-renumber-models-to-thematic
 ---
 
 # 实施计划：模型编号对齐专题模型编号
@@ -87,3 +88,4 @@ base-ref: 6238591761227cdf78a84e611c320cb50b374efb
 ### Step 9: 运行测试验证
 - [x] 运行 `python -m pytest tests/test_question_type_keywords.py tests/test_exclusive_rules.py tests/test_multi_agent.py -q`
 - [x] 全部通过为验收标准
+

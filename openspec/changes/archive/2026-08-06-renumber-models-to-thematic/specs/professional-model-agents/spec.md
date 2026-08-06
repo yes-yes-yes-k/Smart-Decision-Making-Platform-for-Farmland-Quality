@@ -104,6 +104,8 @@
 - **WHEN** Python 评价调用失败（CSV 数据缺失、地块代码无效、编码字段越界）
 - **THEN** 智能体 SHALL 返回明确的错误信息（如"CSV 数据文件缺失"、"未找到地块代码"），`confidence` 字段降低，不返回模拟数据
 
+## ADDED Requirements
+
 ### Requirement: StabilityRiskAgent 智能体
 系统 SHALL 实现 `StabilityRiskAgent` 智能体，对应模型4「耕地质量稳定性与退化风险评价模型」，基于预计算结果识别稳定性、历史变化和退化风险。
 

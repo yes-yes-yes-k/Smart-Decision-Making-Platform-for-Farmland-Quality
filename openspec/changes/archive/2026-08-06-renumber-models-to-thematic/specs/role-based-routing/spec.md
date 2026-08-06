@@ -64,7 +64,7 @@
 - **WHEN** 用户问题包含"障碍度"、"障碍因子"、"主要障碍"、"限制因素"等关键词，且包含地块代码
 - **THEN** 系统 SHALL 识别为 type 5，路由到 FarmlandGradeObstacleAgent，获取障碍度排序
 
-### Requirement: 障碍诊断路由
+### Requirement: 模型3 障碍诊断路由
 系统 SHALL 为障碍诊断模型分配 question_type=1，并扩展关键词路由规则，使用户可通过 `/api/v1/chat/` 接口提问障碍诊断相关问题并路由到对应智能体。
 
 #### Scenario: 障碍诊断问题路由
@@ -75,7 +75,7 @@
 - **WHEN** 用户问题包含"障碍组合"、"多重障碍"、"障碍叠加"等关键词
 - **THEN** 系统 SHALL 识别为 type 1，路由到 ObstacleDiagnosisAgent，调用障碍诊断在线查询接口获取障碍组合类型
 
-### Requirement: 酸化改良路由
+### Requirement: 模型3 酸化改良路由
 系统 SHALL 为酸化改良模型分配 question_type=2，并扩展关键词路由规则，使用户可通过 `/api/v1/chat/` 接口提问酸化改良相关问题并路由到对应智能体。
 
 #### Scenario: 酸化程度问题路由

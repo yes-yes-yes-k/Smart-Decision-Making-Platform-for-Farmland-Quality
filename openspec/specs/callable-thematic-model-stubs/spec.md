@@ -34,11 +34,11 @@
 
 ### Requirement: 专题能力按正式、辅助与实验性分类发布
 
-系统 MUST 发布统一能力目录。正式专业模型 SHALL 由 7 个专业 Agent 一一提供；`spatial-structure-analysis` SHALL 标记为辅助空间能力，`soil-indicator-analysis` SHALL 标记为辅助指标能力，`multi-factor-collaborative-improvement` SHALL 标记为实验性能力。辅助和实验性能力 SHALL NOT 被列为正式专业模型，也 SHALL NOT 获得聊天 `question_type` 路由。
+系统 MUST 发布统一能力目录。正式专业模型 SHALL 由 5 个专业 Agent 一一提供；`spatial-structure-analysis` SHALL 标记为辅助空间能力，`soil-indicator-analysis` SHALL 标记为辅助指标能力，`multi-factor-collaborative-improvement` SHALL 标记为实验性能力。辅助和实验性能力 SHALL NOT 被列为正式专业模型，也 SHALL NOT 获得聊天 `question_type` 路由。
 
 #### Scenario: 请求默认专业模型清单
 - **WHEN** 调用方请求正式专业模型清单
-- **THEN** 系统 MUST 返回 7 个正式模型的公开 ID、中文名称、最小输入和运行前提
+- **THEN** 系统 MUST 返回 5 个正式模型的公开 ID、中文名称、最小输入和运行前提
 - **AND** SHALL NOT 返回空间结构、指标分析或协同提升为正式专业模型
 
 #### Scenario: 请求全量能力清单
@@ -73,3 +73,4 @@
 - **WHEN** 调用方使用 `multi-factor-collaborative-improvement`
 - **THEN** 系统 MUST 将其标示为实验性能力
 - **AND** SHALL NOT 映射到 `model-6` 或其他正式专业 Agent
+
