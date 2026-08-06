@@ -75,7 +75,7 @@ def chat():
 
     orchestrator_request = {"question": message, **context}
     # top-level parcel_id/parcel_code 优先（覆盖 context 内同名字段）
-    # parcel_id（数字字符串）给 model-1/3/4 查 DB，parcel_code（字母数字）给 model-7 调 fortran exe
+    # parcel_id（数字字符串）给 model-1/2/4 查 DB，parcel_code（字母数字）给 model-5 调评价程序
     for k in ("parcel_id", "parcel_code", "land_type", "fertilizer_type"):
         if data.get(k) is not None:
             orchestrator_request[k] = data[k]
