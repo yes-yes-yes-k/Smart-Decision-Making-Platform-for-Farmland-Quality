@@ -85,6 +85,8 @@ def chat():
     sources = result.get("sources", [])
     model_results = result.get("model_results", {})
     question_type = result.get("question_type", 0)
+    routing_status = result.get("routing_status", "normal")
+    degradation = result.get("degradation")
 
     # 解析 AgentManager 结构化结果（若存在）
     agent_data = model_results.get("data", {}) if isinstance(model_results, dict) else {}
@@ -107,11 +109,14 @@ def chat():
         "question_type": question_type,
         "model_results": model_results,
         "message_id": assistant_message.id,
+        "routing_status": routing_status,
     }
     if agents_invoked:
         response_data["agents_invoked"] = agents_invoked
     if recommendations:
         response_data["recommendations"] = recommendations
+    if degradation:
+        response_data["degradation"] = degradation
 
     return jsonify({
         "status": "ok",

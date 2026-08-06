@@ -1,5 +1,11 @@
 from __future__ import annotations
 from .state import MultiAgentState
+from .exclusive_rules import (
+    apply_exclusive_rules,
+    BOUNDARY_PENDING_MESSAGE,
+    ROUTING_STATUS_NORMAL,
+    ROUTING_STATUS_BOUNDARY_PENDING,
+)
 from .routing import (
     identify_question_type,
     _identify_question_type_keyword,
@@ -47,19 +53,54 @@ def initialize_state(state: MultiAgentState) -> MultiAgentState:
         "conversation_history": state.get("conversation_history", []),
         "question_type": None,
         "relevance": None,
+        "routing_status": "normal",
     }
 
 def identify_question_node(state: MultiAgentState) -> MultiAgentState:
     question = state["request"].get("question", "")
-    question_type, relevance = identify_question_type(question)
+    context = _extract_five_dim_context(state)
+    question_type, relevance = identify_question_type(question, context)
+    final_type, routing_status = apply_exclusive_rules(question, question_type, context)
     return {
         **state,
-        "question_type": question_type,
+        "question_type": final_type,
         "relevance": relevance,
+        "routing_status": routing_status,
         "error": None,
     }
 
+def _extract_five_dim_context(state: MultiAgentState) -> dict:
+    """从请求提取五维特征上下文（分析尺度/数据类型）。"""
+    request = state.get("request", {})
+    context: dict = {}
+    scale = request.get("scale")
+    if not scale:
+        question = request.get("question", "")
+        if any(w in question for w in ("我的田", "我的地", "这块", "这个地块", "地块")):
+            scale = "地块"
+        elif any(w in question for w in ("片区", "村")):
+            scale = "片区"
+        elif any(w in question for w in ("全省", "全市", "全省耕地")):
+            scale = "省"
+        elif any(w in question for w in ("全县", "县域", "我们县", "本县")):
+            scale = "县"
+    context["scale"] = scale or "县"
+    if request.get("indicators"):
+        context["data_type"] = "指标数据"
+    elif request.get("parcel_id") or request.get("parcel_code"):
+        context["data_type"] = "评价结果"
+    else:
+        question = request.get("question", "")
+        if any(w in question for w in ("施多少", "每亩", "施用量", "用量", "投入量")):
+            context["data_type"] = "处方用量"
+        else:
+            context["data_type"] = "指标数据"
+    return context
+
 def route_models(state: MultiAgentState) -> str:
+    routing_status = state.get("routing_status", ROUTING_STATUS_NORMAL)
+    if routing_status == ROUTING_STATUS_BOUNDARY_PENDING:
+        return "boundary_pending"
     question_type = state["question_type"]
     if question_type == 0:
         return "rag_chat"
@@ -146,6 +187,24 @@ def execute_models(state: MultiAgentState) -> MultiAgentState:
             "error": None,
         }
 
+def boundary_pending_node(state: MultiAgentState) -> MultiAgentState:
+    """模型边界待确认：不调用任一易混淆专业 Agent，返回显式降级。"""
+    return {
+        **state,
+        "model_results": {
+            "status": "boundary_pending",
+            "data": {
+                "question_type": state.get("question_type"),
+                "agents_invoked": [],
+                "summary": BOUNDARY_PENDING_MESSAGE,
+                "details": {},
+                "recommendations": [],
+            },
+        },
+        "status": "model_completed",
+        "error": None,
+    }
+
 def llm_generate(state: MultiAgentState) -> MultiAgentState:
     if not LLM_AVAILABLE or not llm_service.is_available():
         return {**state, "llm_response": {}, "error": None}
@@ -179,14 +238,22 @@ def aggregate_results(state: MultiAgentState) -> MultiAgentState:
         llm_response = state.get("llm_response", {})
         rag_response = state.get("rag_response", {})
 
+        routing_status = state.get("routing_status", ROUTING_STATUS_NORMAL)
         final_result = {
             "status": "ok",
             "question": question,
             "question_type": question_type,
             "relevance": relevance,
+            "routing_status": routing_status,
         }
 
-        if question_type == 0:
+        if routing_status == ROUTING_STATUS_BOUNDARY_PENDING:
+            final_result["answer"] = BOUNDARY_PENDING_MESSAGE
+            final_result["sources"] = []
+            final_result["model_results"] = model_results
+            final_result["llm_response"] = ""
+            final_result["degradation"] = BOUNDARY_PENDING_MESSAGE
+        elif question_type == 0:
             final_result["answer"] = rag_response.get("answer", "")
             final_result["sources"] = rag_response.get("sources", [])
             final_result["model_results"] = {}

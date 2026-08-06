@@ -73,6 +73,45 @@ def test_model_id_to_question_type_mapping():
     assert model_id_to_question_type("model-1") == 1
 
 
+def test_route_models_boundary_pending():
+    """route_models 对 boundary_pending 返回降级分支，且缺省时保持旧行为"""
+    from framework.agents.nodes import route_models
+    assert route_models({"question_type": 2, "routing_status": "boundary_pending"}) == "boundary_pending"
+    assert route_models({"question_type": 1}) == "execute_models"
+    assert route_models({"question_type": 0}) == "rag_chat"
+
+
+def test_aggregate_results_passthrough_boundary_pending():
+    """aggregate_results 透传 routing_status 与降级提示"""
+    from framework.agents.nodes import aggregate_results
+    state = {
+        "request": {"question": "酸化调理剂每亩施用量多少"},
+        "data": {},
+        "model_results": {},
+        "llm_response": {},
+        "rag_response": {},
+        "conversation_history": [],
+        "status": "running",
+        "error": None,
+        "question_type": 2,
+        "relevance": 0.8,
+        "routing_status": "boundary_pending",
+    }
+    result = aggregate_results(state)
+    assert result["status"] == "completed"
+    assert result["model_results"]["routing_status"] == "boundary_pending"
+    assert result["model_results"]["degradation"]
+    assert "模型边界待确认" in result["model_results"]["answer"]
+
+
+def test_identify_question_node_writes_routing_status():
+    """identify_question_node 写入 routing_status（缺省 normal）"""
+    from framework.agents.nodes import identify_question_node
+    state = {"request": {"question": "耕地质量现状评价如何", "scale": "地块"}}
+    result = identify_question_node(state)
+    assert result["routing_status"] == "normal"
+
+
 if __name__ == "__main__":
     test_rule_status_refers_to_model()
     test_rule_potential_refers_to_model2()
@@ -83,4 +122,7 @@ if __name__ == "__main__":
     test_conflicting_rules_return_boundary_pending()
     test_type0_untouched()
     test_model_id_to_question_type_mapping()
+    test_route_models_boundary_pending()
+    test_aggregate_results_passthrough_boundary_pending()
+    test_identify_question_node_writes_routing_status()
     print("\n全部排他规则测试通过！")

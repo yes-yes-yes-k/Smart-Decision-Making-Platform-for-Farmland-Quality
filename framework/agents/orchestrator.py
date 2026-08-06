@@ -10,6 +10,7 @@ from .nodes import (
     execute_models,
     llm_generate,
     rag_chat_node,
+    boundary_pending_node,
     aggregate_results,
     finalize,
 )
@@ -27,6 +28,7 @@ class MultiAgentOrchestrator:
         graph.add_node("execute_models", execute_models)
         graph.add_node("llm_generate", llm_generate)
         graph.add_node("rag_chat", rag_chat_node)
+        graph.add_node("boundary_pending", boundary_pending_node)
         graph.add_node("aggregate_results", aggregate_results)
         graph.add_node("finalize", finalize)
 
@@ -40,12 +42,14 @@ class MultiAgentOrchestrator:
             {
                 "rag_chat": "rag_chat",
                 "execute_models": "execute_models",
+                "boundary_pending": "boundary_pending",
             },
         )
 
         graph.add_edge("execute_models", "llm_generate")
         graph.add_edge("llm_generate", "aggregate_results")
         graph.add_edge("rag_chat", "aggregate_results")
+        graph.add_edge("boundary_pending", "aggregate_results")
         graph.add_edge("aggregate_results", "finalize")
         graph.add_edge("finalize", END)
 
@@ -67,6 +71,7 @@ class MultiAgentOrchestrator:
             "error": None,
             "question_type": None,
             "relevance": None,
+            "routing_status": "normal",
         }
 
         result = self._app.invoke(initial_state)
