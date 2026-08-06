@@ -12,3 +12,4 @@ class MultiAgentState(TypedDict):
     error: Optional[str]
     question_type: Optional[int]
     relevance: Optional[float]
+    routing_status: Optional[str]
