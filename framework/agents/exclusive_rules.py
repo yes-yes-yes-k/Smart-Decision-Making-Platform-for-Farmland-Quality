@@ -44,6 +44,7 @@ EXCLUSIVE_CONDITION_KEYWORDS: Dict[str, Tuple[str, ...]] = {
 }
 
 EXCLUSIVE_RULES: Tuple[ExclusiveRule, ...] = (
+    # ===== v1 纯关键词规则（向后兼容，dimension_conditions 为空）=====
     # model-1 vs model-5：现状评价 → model-1（障碍诊断）
     ExclusiveRule(frozenset({"model-1", "model-5"}), "业务任务", "现状评价", "model-1"),
     # model-2 vs model-3：酸化调理剂 → model-2（酸化改良）
@@ -52,6 +53,40 @@ EXCLUSIVE_RULES: Tuple[ExclusiveRule, ...] = (
     ExclusiveRule(frozenset({"model-4"}), "业务任务", "稳定性风险", "model-4"),
     # model-5：质量等级评价 → model-5
     ExclusiveRule(frozenset({"model-5"}), "预期输出", "质量等级评价", "model-5"),
+
+    # ===== v1.1 维度驱动规则（condition=None，仅依赖 dimension_conditions）=====
+    # model-1/5：地块级质量等级评价 → model-5
+    ExclusiveRule(
+        frozenset({"model-1", "model-5"}),
+        "分析尺度+数据类型+业务任务",
+        None,
+        "model-5",
+        dimension_conditions={"scale": "地块", "data_type": "评价结果", "business_task": "质量等级评价"},
+    ),
+    # model-1/5：地块级障碍诊断 → model-1
+    ExclusiveRule(
+        frozenset({"model-1", "model-5"}),
+        "分析尺度+业务任务",
+        None,
+        "model-1",
+        dimension_conditions={"scale": "地块", "business_task": "障碍诊断"},
+    ),
+    # model-2/3：酸化调理剂用量 → model-2
+    ExclusiveRule(
+        frozenset({"model-2", "model-3"}),
+        "数据类型+业务任务",
+        None,
+        "model-2",
+        dimension_conditions={"data_type": "处方用量", "business_task": "酸化改良"},
+    ),
+    # model-2/3：有机肥施用量 → model-3
+    ExclusiveRule(
+        frozenset({"model-2", "model-3"}),
+        "数据类型+业务任务",
+        None,
+        "model-3",
+        dimension_conditions={"data_type": "处方用量", "business_task": "有机质培肥"},
+    ),
 )
 
 
