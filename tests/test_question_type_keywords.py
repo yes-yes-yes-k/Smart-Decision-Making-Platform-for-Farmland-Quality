@@ -450,6 +450,46 @@ def test_extract_five_dim_context_returns_four_fields():
     assert ctx["data_type"] is not None
 
 
+def test_v1_compat_context_none_identical_to_v1():
+    """context=None 时 identify_question_type 行为与 v1 完全一致（不应用排他规则）"""
+    from framework.agents import routing
+    real_flag = routing.EMBEDDING_AVAILABLE
+    try:
+        routing.EMBEDDING_AVAILABLE = False  # 纯关键词，确定性
+        cases = [
+            ("我这块地到底有啥毛病？", 1),    # TYPE_1 关键词
+            ("酸化调理剂每亩施用量", 2),      # TYPE_2 关键词
+            ("有机肥每亩施用量多少", 3),      # TYPE_3 关键词
+            ("这块地稳定性退化风险", 4),      # TYPE_4 关键词
+            ("耕地质量等级评价结果", 5),      # TYPE_5 关键词
+        ]
+        for q, expected in cases:
+            qt_no_ctx, _ = routing.identify_question_type(q)              # 无 context
+            qt_with_none, _ = routing.identify_question_type(q, None)     # context=None
+            assert qt_no_ctx == expected, f"无 context「{q}」期望 TYPE_{expected}，实际 TYPE_{qt_no_ctx}"
+            assert qt_with_none == qt_no_ctx, f"context=None 应与无 context 一致"
+    finally:
+        routing.EMBEDDING_AVAILABLE = real_flag
+
+
+def test_v1_compat_context_scale_only_does_not_trigger_dim_rules():
+    """context 仅含 scale（v1 测试基础设施场景）不应触发 v1.1 维度规则"""
+    from framework.agents.exclusive_rules import apply_exclusive_rules
+    # v1 测试中 _assert_rule_batch 传入 {"scale": "地块"}，
+    # 维度规则要求 data_type+business_task 同时匹配，scale-only context 不应触发
+    cases = [
+        ("耕地质量现状评价如何", 5, 1),   # v1 规则：现状评价 → model-1
+        ("酸化调理剂每亩施用量", 3, 2),   # v1 规则：酸化调理剂 → model-2
+        ("这块地稳定性退化风险", 3, 4),   # v1 规则：稳定性风险 → model-4
+        ("耕地质量等级评价结果", 3, 5),   # v1 规则：质量等级评价 → model-5
+    ]
+    for q, base, expected in cases:
+        final_type, status = apply_exclusive_rules(q, base, {"scale": "地块"})
+        assert (final_type, status) == (expected, "normal"), (
+            f"scale-only context「{q}」应保持 v1 行为 (→{expected})，实际 ({final_type}, {status})"
+        )
+
+
 if __name__ == "__main__":
     test_type4_stability_province_question()
     test_type4_stability_county_question()

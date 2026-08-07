@@ -255,6 +255,25 @@ def test_dim_rules_do_not_affect_wrong_scale():
     assert (final_type, status) == (5, "normal")
 
 
+def test_v1_compat_no_dimension_conditions_rules_unchanged():
+    """v1 4 条规则（dimension_conditions 为空）匹配行为完全不变"""
+    from framework.agents.exclusive_rules import EXCLUSIVE_RULES
+    # v1 规则集合
+    v1_rules = [r for r in EXCLUSIVE_RULES if not r.dimension_conditions]
+    assert len(v1_rules) == 4, f"v1 纯关键词规则应保留 4 条，实际 {len(v1_rules)}"
+    # v1 规则 condition 必为字符串
+    for rule in v1_rules:
+        assert isinstance(rule.condition, str)
+
+
+def test_v1_compat_conflict_still_boundary_pending():
+    """v1 冲突场景（现状评价 + 质量等级评价）仍降级 boundary_pending"""
+    from framework.agents.exclusive_rules import apply_exclusive_rules
+    # "耕地质量等级现状评价" 同时命中 v1 现状评价(→model-1) 与 质量等级评价(→model-5)
+    final_type, status = apply_exclusive_rules("耕地质量等级现状评价", 1, {"scale": "地块"})
+    assert status == "boundary_pending", f"v1 冲突应保持 boundary_pending，实际 {status}"
+
+
 if __name__ == "__main__":
     test_rule_status_refers_to_model1()
     test_rule_acidification_refers_to_model2()
