@@ -99,6 +99,53 @@ def test_identify_question_node_writes_routing_status():
     assert result["routing_status"] == "normal"
 
 
+def test_exclusive_rule_supports_dimension_conditions():
+    """ExclusiveRule 支持 dimension_conditions 字段，且默认空 dict"""
+    from framework.agents.exclusive_rules import ExclusiveRule
+
+    # 默认构造：condition=None、dimension_conditions={}
+    rule_default = ExclusiveRule(
+        pair=frozenset({"model-1", "model-5"}),
+        discriminator="测试",
+    )
+    assert rule_default.condition is None
+    assert rule_default.dimension_conditions == {}
+    assert rule_default.target == ""
+
+    # 完整构造
+    rule_full = ExclusiveRule(
+        pair=frozenset({"model-1", "model-5"}),
+        discriminator="分析尺度+数据类型+业务任务",
+        condition=None,
+        target="model-5",
+        dimension_conditions={"scale": "地块", "data_type": "评价结果", "business_task": "质量等级评价"},
+    )
+    assert rule_full.target == "model-5"
+    assert rule_full.dimension_conditions == {"scale": "地块", "data_type": "评价结果", "business_task": "质量等级评价"}
+
+    # 现有 v1 规则：condition 保持字符串值，dimension_conditions 默认空
+    rule_v1 = ExclusiveRule(
+        pair=frozenset({"model-1", "model-5"}),
+        discriminator="业务任务",
+        condition="现状评价",
+        target="model-1",
+    )
+    assert rule_v1.condition == "现状评价"
+    assert rule_v1.dimension_conditions == {}
+
+
+def test_existing_exclusive_rules_backward_compatible():
+    """现有 4 条 v1 规则字段保持向后兼容：condition 为字符串、dimension_conditions 为空"""
+    from framework.agents.exclusive_rules import EXCLUSIVE_RULES
+    # v1 规则应至少 4 条
+    assert len(EXCLUSIVE_RULES) >= 4
+    for rule in EXCLUSIVE_RULES:
+        # 现有规则 condition 必为字符串（非 None）
+        assert isinstance(rule.condition, str), f"{rule} 的 condition 应为字符串"
+        # 现有规则 dimension_conditions 必为空 dict
+        assert rule.dimension_conditions == {}, f"{rule} 的 dimension_conditions 应为空"
+
+
 if __name__ == "__main__":
     test_rule_status_refers_to_model1()
     test_rule_acidification_refers_to_model2()

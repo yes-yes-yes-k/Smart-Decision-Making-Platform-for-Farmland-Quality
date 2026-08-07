@@ -5,7 +5,7 @@
 不自行选择任一易混淆专业 Agent。
 """
 from __future__ import annotations
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import Dict, FrozenSet, Optional, Tuple
 
 from .capabilities import CAPABILITY_BY_AGENT_ID, CAPABILITY_BY_QUESTION_TYPE
@@ -24,13 +24,15 @@ BOUNDARY_PENDING_MESSAGE = (
 class ExclusiveRule:
     """一条排他规则。
 
-    当问题命中 condition 时，将易混淆对判定到 target 模型。
+    匹配逻辑为 AND：condition（关键词条件）与 dimension_conditions（维度条件）
+    必须同时满足（任一声明缺失则跳过对应检查）。
     pair 仅用于文档化该规则所属的易混淆模型对。
     """
     pair: FrozenSet[str]
     discriminator: str   # 判别维度：业务任务/分析尺度/数据类型/预期输出/模型依赖
-    condition: str       # 条件短语（对应 EXCLUSIVE_CONDITION_KEYWORDS 中的键）
-    target: str          # 目标 model_id
+    condition: Optional[str] = None  # None = 无关键词条件，仅依赖维度
+    target: str = ""                  # 目标 model_id
+    dimension_conditions: Dict[str, str] = field(default_factory=dict)  # 空 = 无维度条件
 
 
 # 条件短语 → 触发关键词（子串匹配）
