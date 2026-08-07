@@ -274,6 +274,122 @@ def test_v1_compat_conflict_still_boundary_pending():
     assert status == "boundary_pending", f"v1 冲突应保持 boundary_pending，实际 {status}"
 
 
+# ===== 维度规则批量正例/反例 =====
+
+def _ctx_from_question(question, scale="地块", **extra_request):
+    """通过 _extract_five_dim_context 从问题文本动态提取四维 context（模拟真实数据流）"""
+    from framework.agents.nodes import _extract_five_dim_context
+    state = {"request": {"question": question, "scale": scale, **extra_request}}
+    return _extract_five_dim_context(state)
+
+
+def _assert_dim_rule_batch(questions, base_qtype, expected_model, scale="地块", **extra_request):
+    """维度规则正例批量断言：≥20 条，每条经 _extract_five_dim_context 生成 context 后路由到 expected_model"""
+    from framework.agents.exclusive_rules import apply_exclusive_rules
+    assert len(questions) >= 20, f"{expected_model} 维度正例应 ≥20，实际 {len(questions)}"
+    MODEL_TO_QTYPE = {"model-1": 1, "model-2": 2, "model-3": 3, "model-4": 4, "model-5": 5}
+    exp = MODEL_TO_QTYPE[expected_model]
+    for q in questions:
+        ctx = _ctx_from_question(q, scale, **extra_request)
+        final_type, status = apply_exclusive_rules(q, base_qtype, ctx)
+        assert final_type == exp, (
+            f"维度正例「{q}」应路由 {expected_model}(type {exp})，实际 type {final_type}，ctx={ctx}"
+        )
+        assert status == "normal", f"维度正例「{q}」状态应为 normal，实际 {status}"
+
+
+def _assert_dim_not_routed_to(questions, base_qtype, forbidden_model, scale="地块", **extra_request):
+    """维度规则反例批量断言：每条不路由到 forbidden_model"""
+    from framework.agents.exclusive_rules import apply_exclusive_rules
+    MODEL_TO_QTYPE = {"model-1": 1, "model-2": 2, "model-3": 3, "model-4": 4, "model-5": 5}
+    forb = MODEL_TO_QTYPE[forbidden_model]
+    for q in questions:
+        ctx = _ctx_from_question(q, scale, **extra_request)
+        final_type, _ = apply_exclusive_rules(q, base_qtype, ctx)
+        assert final_type != forb, (
+            f"维度反例「{q}」不应路由 {forbidden_model}，实际 type {final_type}，ctx={ctx}"
+        )
+
+
+def _expand(stems, prefixes, suffixes):
+    """由基础句干 × 前缀 × 后缀展开为 ≥20 条问题，去重保序。"""
+    out, seen = [], set()
+    for s in stems:
+        for p in prefixes:
+            for suf in suffixes:
+                c = p + s + suf
+                if c not in seen:
+                    seen.add(c)
+                    out.append(c)
+    return out
+
+
+# model-5 维度正例：地块级质量等级评价（含"质量等级"关键词触发 business_task=质量等级评价）
+# 注意：需 parcel_id 触发 data_type=评价结果
+MODEL5_DIM_STEMS = [
+    "耕地质量等级评价结果", "耕地质量等级评价", "地块质量等级评价",
+    "我的田质量等级是多少", "这块地质量等级评定", "耕地质量等级综合指数",
+    "地块质量等级评价结果", "我的田耕地质量等级评价", "耕地质量等级综合评价",
+    "耕地质量等级评定结果",
+]
+# model-1 维度正例：地块级障碍诊断（含"毛病/障碍/诊断"关键词触发 business_task=障碍诊断）
+MODEL1_DIM_STEMS = [
+    "我这块地有啥毛病", "地块障碍诊断", "我的田障碍问题",
+    "这块地障碍诊断", "我这块地障碍因素", "我的田地块诊断",
+    "这块地到底有啥毛病", "地块障碍识别", "我的田有啥问题",
+    "这块地主要毛病",
+]
+# model-2 维度正例：酸化调理剂用量（含"酸化/调理剂" + "每亩/用量"）
+MODEL2_DIM_STEMS = [
+    "酸化调理剂每亩施用量", "酸化调理剂用量多少", "酸化土壤每亩石灰用量",
+    "酸化田每亩调理剂用量", "酸性土壤调理剂施用量", "酸化治理每亩用量",
+    "酸化改良调理剂每亩", "酸化田石灰每亩用量", "酸化调理剂投入量",
+    "酸化土壤碱性调理剂用量",
+]
+# model-3 维度正例：有机肥施用量（含"有机肥/有机质/秸秆" + "每亩/用量"）
+MODEL3_DIM_STEMS = [
+    "有机肥每亩施用量", "有机质每亩用量", "秸秆每亩施用量",
+    "有机肥投入量多少", "有机肥每亩用量", "提升有机质每亩用量",
+    "有机肥施用量多少", "秸秆还田每亩用量", "有机质培肥每亩用量",
+    "有机肥每亩投入量",
+]
+
+DIM_PREFIXES = ["", "我的田", "这块地", "我这块地", "我的地块"]
+DIM_SUFFIXES = ["", "？", "呢"]
+
+
+def test_dim_pair_model5_vs_model1_positive():
+    """model-1/5 维度正例：地块级质量等级评价 → model-5；地块级障碍诊断 → model-1"""
+    _assert_dim_rule_batch(_expand(MODEL5_DIM_STEMS, DIM_PREFIXES, DIM_SUFFIXES), 1, "model-5", parcel_id="P001")
+    _assert_dim_rule_batch(_expand(MODEL1_DIM_STEMS, DIM_PREFIXES, DIM_SUFFIXES), 5, "model-1")
+
+
+def test_dim_pair_model5_vs_model1_negative():
+    """model-1/5 维度反例：不误路由到对方"""
+    _assert_dim_not_routed_to(_expand(MODEL5_DIM_STEMS, DIM_PREFIXES, DIM_SUFFIXES), 1, "model-1", parcel_id="P001")
+    _assert_dim_not_routed_to(_expand(MODEL1_DIM_STEMS, DIM_PREFIXES, DIM_SUFFIXES), 5, "model-5")
+
+
+def test_dim_pair_model2_vs_model3_positive():
+    """model-2/3 维度正例：酸化调理剂用量 → model-2；有机肥施用量 → model-3"""
+    _assert_dim_rule_batch(_expand(MODEL2_DIM_STEMS, DIM_PREFIXES, DIM_SUFFIXES), 3, "model-2")
+    _assert_dim_rule_batch(_expand(MODEL3_DIM_STEMS, DIM_PREFIXES, DIM_SUFFIXES), 2, "model-3")
+
+
+def test_dim_pair_model2_vs_model3_negative():
+    """model-2/3 维度反例：不误路由到对方"""
+    _assert_dim_not_routed_to(_expand(MODEL2_DIM_STEMS, DIM_PREFIXES, DIM_SUFFIXES), 3, "model-3")
+    _assert_dim_not_routed_to(_expand(MODEL3_DIM_STEMS, DIM_PREFIXES, DIM_SUFFIXES), 2, "model-2")
+
+
+def test_dim_pair_batches_size_ge_20():
+    """4 组维度正例批量规模均 ≥20"""
+    assert len(_expand(MODEL5_DIM_STEMS, DIM_PREFIXES, DIM_SUFFIXES)) >= 20
+    assert len(_expand(MODEL1_DIM_STEMS, DIM_PREFIXES, DIM_SUFFIXES)) >= 20
+    assert len(_expand(MODEL2_DIM_STEMS, DIM_PREFIXES, DIM_SUFFIXES)) >= 20
+    assert len(_expand(MODEL3_DIM_STEMS, DIM_PREFIXES, DIM_SUFFIXES)) >= 20
+
+
 if __name__ == "__main__":
     test_rule_status_refers_to_model1()
     test_rule_acidification_refers_to_model2()
