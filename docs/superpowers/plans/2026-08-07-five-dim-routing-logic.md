@@ -58,7 +58,7 @@ base-ref: d79932523bc82e77aa3422effd5cd877aa90ccb0
 - Consumes: 现有 `_extract_five_dim_context` 已提取的 `scale`/`data_type` 逻辑保持不变。
 - Produces: `nodes.py` 模块级常量 `BUSINESS_TASK_KEYWORDS`、`EXPECTED_OUTPUT_KEYWORDS`；`_extract_five_dim_context` 返回的 dict 新增 `business_task`、`expected_output` 两个键（值可能为 `None`）。
 
-- [ ] **Step 1: 写失败测试 —— 业务任务/预期输出提取**
+- [x] **Step 1: 写失败测试 —— 业务任务/预期输出提取**
 
 在 `tests/test_question_type_keywords.py` 末尾追加以下测试函数：
 
@@ -121,12 +121,12 @@ def test_extract_five_dim_context_returns_four_fields():
     assert ctx["data_type"] is not None
 ```
 
-- [ ] **Step 2: 运行测试验证失败**
+- [x] **Step 2: 运行测试验证失败**
 
 Run: `python -m pytest tests/test_question_type_keywords.py::test_extract_business_task_keywords tests/test_question_type_keywords.py::test_extract_expected_output_keywords tests/test_question_type_keywords.py::test_extract_five_dim_context_returns_four_fields -v`
 Expected: FAIL with `ImportError: cannot import name 'BUSINESS_TASK_KEYWORDS'` 或 `KeyError: 'business_task'`。
 
-- [ ] **Step 3: 实现 BUSINESS_TASK_KEYWORDS / EXPECTED_OUTPUT_KEYWORDS 与维度提取**
+- [x] **Step 3: 实现 BUSINESS_TASK_KEYWORDS / EXPECTED_OUTPUT_KEYWORDS 与维度提取**
 
 在 `framework/agents/nodes.py` 顶部导入区下方（`initialize_state` 之前）新增两个模块级常量：
 
@@ -199,17 +199,17 @@ def _match_first_keyword(question: str, table: Dict[str, Tuple[str, ...]]) -> Op
 
 注意：`Optional` 已在 `nodes.py` 顶部从 `typing` 导入（若未导入需补充 `from typing import Optional`）。
 
-- [ ] **Step 4: 运行测试验证通过**
+- [x] **Step 4: 运行测试验证通过**
 
 Run: `python -m pytest tests/test_question_type_keywords.py::test_extract_business_task_keywords tests/test_question_type_keywords.py::test_extract_expected_output_keywords tests/test_question_type_keywords.py::test_extract_five_dim_context_returns_four_fields -v`
 Expected: PASS（3 个测试全绿）。
 
-- [ ] **Step 5: 回归现有 question_type 关键词测试**
+- [x] **Step 5: 回归现有 question_type 关键词测试**
 
 Run: `python -m pytest tests/test_question_type_keywords.py tests/test_exclusive_rules.py tests/test_multi_agent.py -q`
 Expected: PASS（确保维度提取扩展未破坏 v1 行为；现有测试不依赖 `business_task`/`expected_output` 字段，应全绿）。
 
-- [ ] **Step 6: 提交**
+- [x] **Step 6: 提交**
 
 ```bash
 git add framework/agents/nodes.py tests/test_question_type_keywords.py
@@ -228,7 +228,7 @@ git commit -m "feat(five-dim): 业务任务/预期输出维度提取写入 conte
 - Consumes: 无外部依赖。
 - Produces: `ExclusiveRule.condition` 类型由 `str` 改为 `Optional[str] = None`；新增 `ExclusiveRule.dimension_conditions: Dict[str, str] = field(default_factory=dict)`。现有 `EXCLUSIVE_RULES` 中 4 条规则的构造调用需补齐 `target` 关键字参数（因 `condition` 现在有默认值，参数顺序变化）。
 
-- [ ] **Step 1: 写失败测试 —— ExclusiveRule 新字段**
+- [x] **Step 1: 写失败测试 —— ExclusiveRule 新字段**
 
 在 `tests/test_exclusive_rules.py` 末尾追加：
 
@@ -281,12 +281,12 @@ def test_existing_exclusive_rules_backward_compatible():
         assert rule.dimension_conditions == {}, f"{rule} 的 dimension_conditions 应为空"
 ```
 
-- [ ] **Step 2: 运行测试验证失败**
+- [x] **Step 2: 运行测试验证失败**
 
 Run: `python -m pytest tests/test_exclusive_rules.py::test_exclusive_rule_supports_dimension_conditions tests/test_exclusive_rules.py::test_existing_exclusive_rules_backward_compatible -v`
 Expected: FAIL with `TypeError: __init__() got an unexpected keyword argument 'dimension_conditions'` 或 v1 规则字段不匹配。
 
-- [ ] **Step 3: 扩展 ExclusiveRule dataclass**
+- [x] **Step 3: 扩展 ExclusiveRule dataclass**
 
 修改 `framework/agents/exclusive_rules.py` 顶部导入与 dataclass：
 
@@ -339,17 +339,17 @@ EXCLUSIVE_RULES: Tuple[ExclusiveRule, ...] = (
 
 注意：v1 规则的 4 元组构造 `(pair, discriminator, condition, target)` 与新字段顺序一致，无需改动；仅 dataclass 定义变化即可让默认值生效。
 
-- [ ] **Step 4: 运行测试验证通过**
+- [x] **Step 4: 运行测试验证通过**
 
 Run: `python -m pytest tests/test_exclusive_rules.py::test_exclusive_rule_supports_dimension_conditions tests/test_exclusive_rules.py::test_existing_exclusive_rules_backward_compatible -v`
 Expected: PASS（2 个测试全绿）。
 
-- [ ] **Step 5: 回归 v1 排他规则测试**
+- [x] **Step 5: 回归 v1 排他规则测试**
 
 Run: `python -m pytest tests/test_exclusive_rules.py -q`
 Expected: PASS（v1 4 条规则匹配行为不变；`test_rule_status_refers_to_model1` 等仍绿）。
 
-- [ ] **Step 6: 提交**
+- [x] **Step 6: 提交**
 
 ```bash
 git add framework/agents/exclusive_rules.py tests/test_exclusive_rules.py
@@ -368,7 +368,7 @@ git commit -m "feat(exclusive-rules): ExclusiveRule 支持 condition 可选与 d
 - Consumes: Task 2 产出的 `ExclusiveRule.condition`/`ExclusiveRule.dimension_conditions` 字段；Task 1 产出的 context 四维字段。
 - Produces: `_dimension_conditions_match(dimension_conditions, context) -> bool`；`apply_exclusive_rules` 改为 AND 逻辑遍历，行为遵循 Design Doc 决策 C。
 
-- [ ] **Step 1: 写失败测试 —— _dimension_conditions_match 与 AND 逻辑**
+- [x] **Step 1: 写失败测试 —— _dimension_conditions_match 与 AND 逻辑**
 
 在 `tests/test_exclusive_rules.py` 末尾追加：
 
@@ -439,12 +439,12 @@ def test_apply_exclusive_rules_no_context_backward_compat():
     assert (final_type, status) == (2, "normal")
 ```
 
-- [ ] **Step 2: 运行测试验证失败**
+- [x] **Step 2: 运行测试验证失败**
 
 Run: `python -m pytest tests/test_exclusive_rules.py -k "dimension_conditions_match or and_logic or backward_compat" -v`
 Expected: FAIL with `ImportError: cannot import name '_dimension_conditions_match'`。
 
-- [ ] **Step 3: 实现 _dimension_conditions_match 与 AND 逻辑**
+- [x] **Step 3: 实现 _dimension_conditions_match 与 AND 逻辑**
 
 修改 `framework/agents/exclusive_rules.py`，在 `_condition_matches` 函数之后新增 `_dimension_conditions_match`，并重写 `apply_exclusive_rules` 的匹配逻辑：
 
@@ -541,17 +541,17 @@ def apply_exclusive_rules(
     return question_type, ROUTING_STATUS_NORMAL
 ```
 
-- [ ] **Step 4: 运行测试验证通过**
+- [x] **Step 4: 运行测试验证通过**
 
 Run: `python -m pytest tests/test_exclusive_rules.py -k "dimension_conditions_match or and_logic or backward_compat" -v`
 Expected: PASS（新增 8 个测试全绿）。
 
-- [ ] **Step 5: 回归 v1 全部排他规则测试**
+- [x] **Step 5: 回归 v1 全部排他规则测试**
 
 Run: `python -m pytest tests/test_exclusive_rules.py tests/test_question_type_keywords.py tests/test_multi_agent.py -q`
 Expected: PASS（v1 关键词规则行为不变；`test_rule_status_refers_to_model1` 等仍绿）。
 
-- [ ] **Step 6: 提交**
+- [x] **Step 6: 提交**
 
 ```bash
 git add framework/agents/exclusive_rules.py tests/test_exclusive_rules.py
@@ -570,7 +570,7 @@ git commit -m "feat(exclusive-rules): _dimension_conditions_match 与 AND 逻辑
 - Consumes: Task 1 的 context 四维字段；Task 2/3 的 `ExclusiveRule.dimension_conditions` 与 `_rule_matches` AND 逻辑。
 - Produces: `EXCLUSIVE_RULES` 元组新增 4 条 `condition=None` 的纯维度规则，覆盖 model-1/5（地块级质量等级评价 → model-5；地块级障碍诊断 → model-1）与 model-2/3（酸化调理剂用量 → model-2；有机肥施用量 → model-3）。
 
-- [ ] **Step 1: 写失败测试 —— 4 条维度规则正例**
+- [x] **Step 1: 写失败测试 —— 4 条维度规则正例**
 
 在 `tests/test_exclusive_rules.py` 末尾追加：
 
@@ -616,12 +616,12 @@ def test_dim_rules_do_not_affect_wrong_scale():
     assert (final_type, status) == (5, "normal")
 ```
 
-- [ ] **Step 2: 运行测试验证失败**
+- [x] **Step 2: 运行测试验证失败**
 
 Run: `python -m pytest tests/test_exclusive_rules.py -k "dim_rule" -v`
 Expected: FAIL — 4 条正例测试因无维度规则触发而回退到 base_type（如 model-5 正例返回 1 而非 5）。
 
-- [ ] **Step 3: 新增 4 条维度驱动规则**
+- [x] **Step 3: 新增 4 条维度驱动规则**
 
 修改 `framework/agents/exclusive_rules.py` 的 `EXCLUSIVE_RULES` 元组，在 v1 4 条规则之后追加 4 条维度规则（与 Design Doc 决策 D 逐字一致）：
 
@@ -673,17 +673,17 @@ EXCLUSIVE_RULES: Tuple[ExclusiveRule, ...] = (
 )
 ```
 
-- [ ] **Step 4: 运行测试验证通过**
+- [x] **Step 4: 运行测试验证通过**
 
 Run: `python -m pytest tests/test_exclusive_rules.py -k "dim_rule" -v`
 Expected: PASS（5 个测试全绿，包括 wrong_scale 反例）。
 
-- [ ] **Step 5: 回归 v1 全部测试**
+- [x] **Step 5: 回归 v1 全部测试**
 
 Run: `python -m pytest tests/test_exclusive_rules.py tests/test_question_type_keywords.py tests/test_multi_agent.py -q`
 Expected: PASS — 注意 v1 关键词规则（如 `test_pair_model1_vs_model5_positive`）调用 `apply_exclusive_rules(q, base, {"scale": "地块"})`，此时 context 只有 `scale`，维度规则因 `data_type`/`business_task` 缺失不会触发，行为与 v1 一致。
 
-- [ ] **Step 6: 提交**
+- [x] **Step 6: 提交**
 
 ```bash
 git add framework/agents/exclusive_rules.py tests/test_exclusive_rules.py
@@ -703,7 +703,7 @@ git commit -m "feat(exclusive-rules): 新增 4 条维度驱动规则覆盖 model
 - Consumes: Task 1-4 全部产出。
 - Produces: 显式测试用例证明 v1 行为（context=None、context 仅含 scale、无 business_task/expected_output）在 v1.1 实现下完全一致。
 
-- [ ] **Step 1: 写向后兼容测试**
+- [x] **Step 1: 写向后兼容测试**
 
 在 `tests/test_question_type_keywords.py` 末尾追加：
 
@@ -770,12 +770,12 @@ def test_v1_compat_conflict_still_boundary_pending():
     assert status == "boundary_pending", f"v1 冲突应保持 boundary_pending，实际 {status}"
 ```
 
-- [ ] **Step 2: 运行测试验证通过**
+- [x] **Step 2: 运行测试验证通过**
 
 Run: `python -m pytest tests/test_question_type_keywords.py::test_v1_compat_context_none_identical_to_v1 tests/test_question_type_keywords.py::test_v1_compat_context_scale_only_does_not_trigger_dim_rules tests/test_exclusive_rules.py::test_v1_compat_no_dimension_conditions_rules_unchanged tests/test_exclusive_rules.py::test_v1_compat_conflict_still_boundary_pending -v`
 Expected: PASS（4 个测试全绿；若失败需检查 Task 4 维度规则是否在 scale-only context 误触发）。
 
-- [ ] **Step 3: 提交**
+- [x] **Step 3: 提交**
 
 ```bash
 git add tests/test_question_type_keywords.py tests/test_exclusive_rules.py
@@ -794,7 +794,7 @@ git commit -m "test(exclusive-rules): 显式向后兼容测试覆盖 v1 行为�
 - Consumes: Task 4 的 4 条维度规则；Task 1 的 `_extract_five_dim_context`（用于从问题文本动态生成 context，模拟真实数据流）。
 - Produces: 4 组易混淆对（model-1/5 × 2 方向、model-2/3 × 2 方向）各 ≥20 条正例 + 反例测试。
 
-- [ ] **Step 1: 写维度判别批量测试**
+- [x] **Step 1: 写维度判别批量测试**
 
 在 `tests/test_exclusive_rules.py` 顶部辅助函数区（`_apply` 之后）新增维度 context 构造器与批量断言工具：
 
@@ -905,12 +905,12 @@ def test_dim_pair_batches_size_ge_20():
     assert len(_expand(MODEL3_DIM_STEMS, DIM_PREFIXES, DIM_SUFFIXES)) >= 20
 ```
 
-- [ ] **Step 2: 运行测试验证通过**
+- [x] **Step 2: 运行测试验证通过**
 
 Run: `python -m pytest tests/test_exclusive_rules.py -k "dim_pair" -v`
 Expected: PASS — 5 个测试全绿。若某条问题未路由到预期 target，检查 `_extract_five_dim_context` 提取的 `business_task`/`data_type` 是否符合维度规则声明（必要时调整 stem 关键词确保命中正确维度）。
 
-- [ ] **Step 3: 提交**
+- [x] **Step 3: 提交**
 
 ```bash
 git add tests/test_exclusive_rules.py
@@ -929,7 +929,7 @@ git commit -m "test(exclusive-rules): 维度判别批量正例反例 ≥20 条/�
 - Consumes: Task 4 的 4 条维度规则；Task 1 的 `_extract_five_dim_context`。
 - Produces: 测试用例证明 `boundary_pending` 降级机制（多 target 命中）与维度缺失回退（无 scale/data_type 时回退到 base_type）在 v1.1 下生效。
 
-- [ ] **Step 1: 写维度冲突降级测试**
+- [x] **Step 1: 写维度冲突降级测试**
 
 在 `tests/test_exclusive_rules.py` 末尾追加：
 
@@ -996,12 +996,12 @@ def test_dim_fallback_through_full_pipeline():
     assert result["question_type"] == 3  # 有机质关键词命中 TYPE_3
 ```
 
-- [ ] **Step 2: 运行测试验证通过**
+- [x] **Step 2: 运行测试验证通过**
 
 Run: `python -m pytest tests/test_exclusive_rules.py -k "dim_conflict or dim_fallback" -v`
 Expected: PASS（5 个测试全绿）。
 
-- [ ] **Step 3: 提交**
+- [x] **Step 3: 提交**
 
 ```bash
 git add tests/test_exclusive_rules.py
@@ -1019,17 +1019,17 @@ git commit -m "test(exclusive-rules): 维度冲突降级与维度缺失回退测
 - Consumes: Task 1-7 全部产出。
 - Produces: 全量测试通过，作为变更验收标准。
 
-- [ ] **Step 1: 运行目标测试套件**
+- [x] **Step 1: 运行目标测试套件**
 
 Run: `python -m pytest tests/test_question_type_keywords.py tests/test_exclusive_rules.py tests/test_multi_agent.py -q`
 Expected: PASS — 全部测试通过，无 fail/error。
 
-- [ ] **Step 2: 检查测试覆盖统计**
+- [x] **Step 2: 检查测试覆盖统计**
 
 Run: `python -m pytest tests/test_question_type_keywords.py tests/test_exclusive_rules.py tests/test_multi_agent.py --tb=short -v`
 Expected: 输出中应包含本计划新增的测试函数名（如 `test_extract_business_task_keywords`、`test_dim_rule_model5_plot_grade_eval`、`test_dim_pair_model5_vs_model1_positive`、`test_dim_conflict_boundary_pending_model1_vs_model5` 等），且全部 PASSED。
 
-- [ ] **Step 3: 若有失败，定位并修复**
+- [x] **Step 3: 若有失败，定位并修复**
 
 若 Step 1 失败，按失败信息定位：
 - 维度提取错误 → 检查 `BUSINESS_TASK_KEYWORDS`/`EXPECTED_OUTPUT_KEYWORDS` 关键词是否与 Design Doc 决策 A 逐字一致；
@@ -1038,14 +1038,14 @@ Expected: 输出中应包含本计划新增的测试函数名（如 `test_extrac
 
 修复后重新运行 Step 1，直到全绿。
 
-- [ ] **Step 4: 提交（如有修复）**
+- [x] **Step 4: 提交（如有修复）**
 
 ```bash
 git add -u
 git commit -m "test(five-dim): 全量回归通过 — 五维路由逻辑完善 v1 验收"
 ```
 
-- [ ] **Step 5: 标记 tasks.md 全部完成**
+- [x] **Step 5: 标记 tasks.md 全部完成**
 
 修改 `openspec/changes/five-dim-routing-logic/tasks.md`，将所有 `- [ ]` 改为 `- [x]`。
 
