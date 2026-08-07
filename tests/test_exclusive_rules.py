@@ -390,6 +390,54 @@ def test_dim_pair_batches_size_ge_20():
     assert len(_expand(MODEL3_DIM_STEMS, DIM_PREFIXES, DIM_SUFFIXES)) >= 20
 
 
+def test_dim_conflict_boundary_pending_model1_vs_model5():
+    """维度冲突：v1 现状评价(→model-1) 与 v1.1 地块级质量等级评价(→model-5) 同时命中 → boundary_pending"""
+    from framework.agents.exclusive_rules import apply_exclusive_rules
+    # "耕地质量等级现状评价" 同时命中 v1 现状评价(→model-1) 与 v1 质量等级评价(→model-5)
+    # 同时 context 中 business_task=质量等级评价 + data_type=评价结果 命中 v1.1 model-5 维度规则
+    ctx = {"scale": "地块", "data_type": "评价结果", "business_task": "质量等级评价", "expected_output": "评价结果"}
+    final_type, status = apply_exclusive_rules("耕地质量等级现状评价", 1, ctx)
+    assert status == "boundary_pending", f"维度冲突应降级，实际 ({final_type}, {status})"
+
+
+def test_dim_conflict_boundary_pending_model2_vs_model3():
+    """维度冲突：v1 关键词(→model-2) 与 v1.1 维度规则(→model-3) 同时命中不同 target → boundary_pending"""
+    from framework.agents.exclusive_rules import apply_exclusive_rules
+    # "酸化调理剂每亩施用量" v1 关键词"调理剂"命中 →model-2，
+    # 同时 context 显式声明 business_task=有机质培肥 + data_type=处方用量 → 命中 model-3 维度规则
+    ctx = {"scale": "地块", "data_type": "处方用量", "business_task": "有机质培肥", "expected_output": "处方用量"}
+    final_type, status = apply_exclusive_rules("酸化调理剂每亩施用量", 2, ctx)
+    assert status == "boundary_pending", f"model-2/3 冲突应降级，实际 ({final_type}, {status})"
+
+
+def test_dim_fallback_when_context_missing_dimensions():
+    """维度缺失回退：context 缺 scale/data_type/business_task 时不触发维度规则，回退 base_type"""
+    from framework.agents.exclusive_rules import apply_exclusive_rules
+    # context 为空 dict：维度规则因 dimension_conditions 不匹配而跳过，v1 关键词规则也未命中 → 回退
+    final_type, status = apply_exclusive_rules("普通问题没有关键词", 2, {})
+    assert (final_type, status) == (2, "normal")
+    # context 仅含 scale（无 data_type/business_task）：维度规则不触发
+    final_type, status = apply_exclusive_rules("普通问题没有关键词", 3, {"scale": "地块"})
+    assert (final_type, status) == (3, "normal")
+
+
+def test_dim_fallback_when_context_none():
+    """context=None 回退：仅 v1 关键词规则生效，无关键词命中时回退 base_type"""
+    from framework.agents.exclusive_rules import apply_exclusive_rules
+    final_type, status = apply_exclusive_rules("普通问题没有关键词", 2, None)
+    assert (final_type, status) == (2, "normal")
+
+
+def test_dim_fallback_through_full_pipeline():
+    """端到端回退：identify_question_node 在无排他规则命中时保持 question_type 关键词路由结果"""
+    from framework.agents.nodes import identify_question_node
+    # 无任何排他规则命中的问题，应保持 question_type 关键词路由结果
+    state = {"request": {"question": "全省耕地土壤有机质含量如何空间分布情况"}}
+    result = identify_question_node(state)
+    assert result["routing_status"] == "normal"
+    assert result["question_type"] == 3  # 有机质关键词命中 TYPE_3
+
+
 if __name__ == "__main__":
     test_rule_status_refers_to_model1()
     test_rule_acidification_refers_to_model2()
