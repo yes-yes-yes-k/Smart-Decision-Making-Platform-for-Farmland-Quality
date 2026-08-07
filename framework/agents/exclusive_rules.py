@@ -62,6 +62,43 @@ def _condition_matches(question: str, condition: str) -> bool:
     return False
 
 
+def _dimension_conditions_match(
+    dimension_conditions: Dict[str, str],
+    context: Optional[dict],
+) -> bool:
+    """检查 context 中对应维度值是否全部匹配 dimension_conditions。
+
+    - dimension_conditions 为空 → 跳过维度检查，返回 True
+    - context 为 None 且 dimension_conditions 非空 → 返回 False
+    - 任一声明维度在 context 中缺失或值不匹配 → 返回 False
+    """
+    if not dimension_conditions:
+        return True
+    if context is None:
+        return False
+    for dim_key, expected_value in dimension_conditions.items():
+        actual_value = context.get(dim_key)
+        if actual_value != expected_value:
+            return False
+    return True
+
+
+def _rule_matches(rule: ExclusiveRule, question: str, context: Optional[dict]) -> bool:
+    """单条规则匹配判定（AND 逻辑）。
+
+    - condition is None：跳过关键词检查
+    - dimension_conditions 为空：跳过维度检查
+    - 两者皆声明时必须同时满足
+    """
+    if rule.condition is not None:
+        if not _condition_matches(question, rule.condition):
+            return False
+    if rule.dimension_conditions:
+        if not _dimension_conditions_match(rule.dimension_conditions, context):
+            return False
+    return True
+
+
 def model_id_to_question_type(model_id: str) -> Optional[int]:
     # "model-1".."model-5" 在 capabilities 注册表中登记为 agent_id，据此反查 question_type
     capability = CAPABILITY_BY_AGENT_ID.get(model_id)
@@ -74,6 +111,14 @@ def apply_exclusive_rules(
     context: Optional[dict] = None,
 ) -> Tuple[int, str]:
     """应用排他规则判定，返回 (question_type, routing_status)。
+
+    匹配算法（AND 逻辑）：
+    - 遍历 EXCLUSIVE_RULES，对每条规则检查 condition（关键词）与 dimension_conditions（维度）
+      是否同时满足（任一声明缺失则跳过对应检查）。
+    - 收集所有匹配规则的 target 到 set。
+    - len(matched_targets) > 1 → boundary_pending（优先级冲突）
+    - len(matched_targets) == 1 → 该 target
+    - len(matched_targets) == 0 → 原始 question_type（回退）
 
     - routing_status == "normal"：正常路由。
     - routing_status == "boundary_pending"：规则优先级冲突、重叠无法消解，显式降级，
@@ -89,7 +134,7 @@ def apply_exclusive_rules(
     matched_targets = {
         rule.target
         for rule in EXCLUSIVE_RULES
-        if _condition_matches(question, rule.condition)
+        if _rule_matches(rule, question, context)
     }
 
     if len(matched_targets) > 1:

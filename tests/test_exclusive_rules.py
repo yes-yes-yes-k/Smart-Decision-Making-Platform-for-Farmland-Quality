@@ -146,6 +146,72 @@ def test_existing_exclusive_rules_backward_compatible():
         assert rule.dimension_conditions == {}, f"{rule} 的 dimension_conditions 应为空"
 
 
+def test_dimension_conditions_match_all_match():
+    """context 四维全部满足 dimension_conditions → True"""
+    from framework.agents.exclusive_rules import _dimension_conditions_match
+    dim_conds = {"scale": "地块", "data_type": "评价结果", "business_task": "质量等级评价"}
+    ctx = {"scale": "地块", "data_type": "评价结果", "business_task": "质量等级评价", "expected_output": "评价结果"}
+    assert _dimension_conditions_match(dim_conds, ctx) is True
+
+
+def test_dimension_conditions_match_partial_mismatch():
+    """任一维度不匹配 → False"""
+    from framework.agents.exclusive_rules import _dimension_conditions_match
+    dim_conds = {"scale": "地块", "data_type": "评价结果"}
+    assert _dimension_conditions_match(dim_conds, {"scale": "县", "data_type": "评价结果"}) is False
+    assert _dimension_conditions_match(dim_conds, {"scale": "地块", "data_type": "指标数据"}) is False
+
+
+def test_dimension_conditions_match_missing_field_in_context():
+    """context 缺少声明维度 → 该维度视为不匹配 → False"""
+    from framework.agents.exclusive_rules import _dimension_conditions_match
+    dim_conds = {"scale": "地块", "business_task": "障碍诊断"}
+    # context 缺 business_task 键
+    assert _dimension_conditions_match(dim_conds, {"scale": "地块", "data_type": "指标数据"}) is False
+    # context 中 business_task 为 None
+    assert _dimension_conditions_match(dim_conds, {"scale": "地块", "business_task": None}) is False
+
+
+def test_dimension_conditions_match_empty_conditions():
+    """dimension_conditions 为空 → 跳过维度检查 → True"""
+    from framework.agents.exclusive_rules import _dimension_conditions_match
+    assert _dimension_conditions_match({}, {"scale": "地块"}) is True
+    assert _dimension_conditions_match({}, None) is True
+
+
+def test_dimension_conditions_match_none_context():
+    """context 为 None 且 dimension_conditions 非空 → False"""
+    from framework.agents.exclusive_rules import _dimension_conditions_match
+    assert _dimension_conditions_match({"scale": "地块"}, None) is False
+
+
+def test_apply_exclusive_rules_and_logic_condition_only():
+    """AND 逻辑：v1 纯关键词规则（dimension_conditions 为空）行为不变"""
+    from framework.agents.exclusive_rules import apply_exclusive_rules
+    # 现状评价 → model-1（无 dimension_conditions，仅关键词）
+    final_type, status = apply_exclusive_rules("耕地质量现状评价如何", 5, {"scale": "地块"})
+    assert (final_type, status) == (1, "normal")
+
+
+def test_apply_exclusive_rules_and_logic_dimension_only_no_match():
+    """AND 逻辑：condition=None 的规则（仅维度条件）暂未新增时，无关键词命中的问题应回退原 type"""
+    from framework.agents.exclusive_rules import apply_exclusive_rules
+    # 此时还未新增维度规则（Task 4 才加），无任何规则命中 → 回退 base_type
+    final_type, status = apply_exclusive_rules("普通问题没有关键词", 2, {"scale": "地块", "data_type": "处方用量"})
+    assert (final_type, status) == (2, "normal")
+
+
+def test_apply_exclusive_rules_no_context_backward_compat():
+    """context=None 时行为与 v1 完全一致：仅关键词规则生效"""
+    from framework.agents.exclusive_rules import apply_exclusive_rules
+    # context=None：v1 关键词规则仍触发
+    final_type, status = apply_exclusive_rules("耕地质量现状评价如何", 5, None)
+    assert (final_type, status) == (1, "normal")
+    # context=None：无关键词命中 → 回退
+    final_type, status = apply_exclusive_rules("普通问题", 2, None)
+    assert (final_type, status) == (2, "normal")
+
+
 if __name__ == "__main__":
     test_rule_status_refers_to_model1()
     test_rule_acidification_refers_to_model2()
