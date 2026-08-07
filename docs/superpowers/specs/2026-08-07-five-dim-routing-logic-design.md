@@ -2,6 +2,8 @@
 comet_change: five-dim-routing-logic
 role: technical-design
 canonical_spec: openspec
+archived-with: 2026-08-07-five-dim-routing-logic
+status: final
 ---
 
 # 五维路由逻辑完善 v1 — 技术设计
@@ -171,3 +173,4 @@ question_type + routing_status
 - **[维度提取精度]** → 关键词表覆盖度有限，可能漏判或误判。缓解：测试集覆盖正例反例 ≥20 条/组
 - **[规则冲突复杂度]** → 新增维度条件后规则间可能产生新的冲突路径。缓解：保持 `matched_targets > 1 → boundary_pending` 的冲突处理逻辑
 - **[向后兼容]** → 现有纯关键词规则需保持行为不变。缓解：无 `dimension_conditions` 的规则仅依赖关键词
+

@@ -18,7 +18,7 @@ verification_report: docs/superpowers/reports/2026-08-07-five-dim-routing-logic-
 branch_status: handled
 created_at: 2026-08-06
 verified_at: 2026-08-07
-archived: false
+archived: true
 direct_override: null
 handoff_context: openspec/changes/five-dim-routing-logic/.comet/handoff/design-context.json
 handoff_hash: 8f8103e9aa1b44df465ce6096834cb37b22213d46e0a8524c8513558dfa52c70

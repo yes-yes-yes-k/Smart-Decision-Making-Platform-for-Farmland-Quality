@@ -2,6 +2,7 @@
 change: five-dim-routing-logic
 design-doc: docs/superpowers/specs/2026-08-07-five-dim-routing-logic-design.md
 base-ref: d79932523bc82e77aa3422effd5cd877aa90ccb0
+archived-with: 2026-08-07-five-dim-routing-logic
 ---
 
 # 五维路由逻辑完善 v1 — 实施计划
@@ -27,6 +28,7 @@ base-ref: d79932523bc82e77aa3422effd5cd877aa90ccb0
 - 测试运行命令：`python -m pytest tests/test_question_type_keywords.py tests/test_exclusive_rules.py tests/test_multi_agent.py -q`，全部通过为验收标准。
 - TDD 节奏：每个任务先写失败测试 → 验证失败 → 最小实现 → 验证通过 → 提交。
 
+archived-with: 2026-08-07-five-dim-routing-logic
 ---
 
 ## 文件结构与职责
@@ -46,6 +48,7 @@ base-ref: d79932523bc82e77aa3422effd5cd877aa90ccb0
 - `_dimension_conditions_match(dimension_conditions: Dict[str, str], context: Optional[dict]) -> bool`（`exclusive_rules.py`）
 - `apply_exclusive_rules(question: str, question_type: int, context: Optional[dict] = None) -> Tuple[int, str]`（`exclusive_rules.py`，签名不变）
 
+archived-with: 2026-08-07-five-dim-routing-logic
 ---
 
 ### Task 1: 业务任务与预期输出维度提取（nodes.py）
@@ -216,6 +219,7 @@ git add framework/agents/nodes.py tests/test_question_type_keywords.py
 git commit -m "feat(five-dim): 业务任务/预期输出维度提取写入 context"
 ```
 
+archived-with: 2026-08-07-five-dim-routing-logic
 ---
 
 ### Task 2: ExclusiveRule 结构扩展（condition 可选 + dimension_conditions 字段）
@@ -356,6 +360,7 @@ git add framework/agents/exclusive_rules.py tests/test_exclusive_rules.py
 git commit -m "feat(exclusive-rules): ExclusiveRule 支持 condition 可选与 dimension_conditions 字段"
 ```
 
+archived-with: 2026-08-07-five-dim-routing-logic
 ---
 
 ### Task 3: _dimension_conditions_match 函数与 apply_exclusive_rules AND 逻辑
@@ -558,6 +563,7 @@ git add framework/agents/exclusive_rules.py tests/test_exclusive_rules.py
 git commit -m "feat(exclusive-rules): _dimension_conditions_match 与 AND 逻辑判定"
 ```
 
+archived-with: 2026-08-07-five-dim-routing-logic
 ---
 
 ### Task 4: 新增 4 条维度驱动排他规则（model-1/5 与 model-2/3）
@@ -690,6 +696,7 @@ git add framework/agents/exclusive_rules.py tests/test_exclusive_rules.py
 git commit -m "feat(exclusive-rules): 新增 4 条维度驱动规则覆盖 model-1/5 与 model-2/3"
 ```
 
+archived-with: 2026-08-07-five-dim-routing-logic
 ---
 
 ### Task 5: 向后兼容验证（v1 纯关键词规则行为不变）
@@ -782,6 +789,7 @@ git add tests/test_question_type_keywords.py tests/test_exclusive_rules.py
 git commit -m "test(exclusive-rules): 显式向后兼容测试覆盖 v1 行为不变"
 ```
 
+archived-with: 2026-08-07-five-dim-routing-logic
 ---
 
 ### Task 6: 维度判别批量正例/反例测试（≥20 条/组）
@@ -917,6 +925,7 @@ git add tests/test_exclusive_rules.py
 git commit -m "test(exclusive-rules): 维度判别批量正例反例 ≥20 条/组"
 ```
 
+archived-with: 2026-08-07-five-dim-routing-logic
 ---
 
 ### Task 7: 维度冲突降级与维度缺失回退测试
@@ -1008,6 +1017,7 @@ git add tests/test_exclusive_rules.py
 git commit -m "test(exclusive-rules): 维度冲突降级与维度缺失回退测试"
 ```
 
+archived-with: 2026-08-07-five-dim-routing-logic
 ---
 
 ### Task 8: 全量回归与验收
@@ -1054,6 +1064,7 @@ git add openspec/changes/five-dim-routing-logic/tasks.md
 git commit -m "chore(openspec): 标记 five-dim-routing-logic 任务全部完成"
 ```
 
+archived-with: 2026-08-07-five-dim-routing-logic
 ---
 
 ## 自检清单
@@ -1078,6 +1089,7 @@ git commit -m "chore(openspec): 标记 five-dim-routing-logic 任务全部完成
 - [x] **Placeholder scan**：所有步骤含完整代码/命令/预期输出，无 TBD/TODO。
 - [x] **Type consistency**：`_dimension_conditions_match(dimension_conditions, context)`、`_rule_matches(rule, question, context)`、`_match_first_keyword(question, table)` 在所有任务中签名一致；`ExclusiveRule` 字段顺序与默认值在 Task 2 定义后被 Task 4 构造调用一致使用；context 四维字段名（`scale`/`data_type`/`business_task`/`expected_output`）在 Task 1 产出后被 Task 3/4/6/7 一致引用。
 
+archived-with: 2026-08-07-five-dim-routing-logic
 ---
 
 ## 执行交接
@@ -1089,3 +1101,4 @@ git commit -m "chore(openspec): 标记 five-dim-routing-logic 任务全部完成
 **2. Inline Execution** — 在当前会话内按 executing-plans 批量执行，含检查点 review。
 
 **请选择执行方式？**
+
