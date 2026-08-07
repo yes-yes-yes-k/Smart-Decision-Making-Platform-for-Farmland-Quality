@@ -332,11 +332,11 @@ MODEL5_DIM_STEMS = [
     "地块质量等级评价结果", "我的田耕地质量等级评价", "耕地质量等级综合评价",
     "耕地质量等级评定结果",
 ]
-# model-1 维度正例：地块级障碍诊断（含"毛病/障碍/诊断"关键词触发 business_task=障碍诊断）
+# model-1 维度正例：地块级障碍诊断（含"诊断/毛病/障碍"关键词触发 business_task=障碍诊断 + expected_output=诊断报告）
 MODEL1_DIM_STEMS = [
-    "我这块地有啥毛病", "地块障碍诊断", "我的田障碍问题",
-    "这块地障碍诊断", "我这块地障碍因素", "我的田地块诊断",
-    "这块地到底有啥毛病", "地块障碍识别", "我的田有啥问题",
+    "我这块地有啥毛病", "地块障碍诊断", "我的田障碍因素",
+    "这块地障碍诊断", "我这块地障碍识别", "我的田地块诊断",
+    "这块地到底有啥毛病", "地块障碍问题", "我的田有啥障碍",
     "这块地主要毛病",
 ]
 # model-2 维度正例：酸化调理剂用量（含"酸化/调理剂" + "每亩/用量"）
@@ -436,6 +436,34 @@ def test_dim_fallback_through_full_pipeline():
     result = identify_question_node(state)
     assert result["routing_status"] == "normal"
     assert result["question_type"] == 3  # 有机质关键词命中 TYPE_3
+
+
+def test_cross_domain_no_misroute_to_model1_via_bare_words():
+    """跨域反例：含裸词「问题」的非诊断地块级问题不应被 v1.1 model-1 维度规则误路由
+
+    v1.1 model-1 维度规则要求 business_task=障碍诊断；移除「问题/现状」裸词后，
+    酸化/有机质/稳定性问题不会被误判为障碍诊断。
+    注：含「现状如何」等 v1 现状评价复合词的问题仍走 v1 规则，属既有行为，不在本反例范围。
+    """
+    from framework.agents.exclusive_rules import apply_exclusive_rules
+    # 酸化问题含「问题」→ business_task=酸化改良，model-1 维度规则不命中，应保持 model-2
+    q1 = "我的田酸化问题怎么治"
+    ctx1 = _ctx_from_question(q1)
+    final1, status1 = apply_exclusive_rules(q1, 2, ctx1)
+    assert final1 != 1, f"「{q1}」不应误路由 model-1，实际 ({final1}, {status1})，ctx={ctx1}"
+    assert status1 != "boundary_pending", f"「{q1}」不应误降级，实际 ({final1}, {status1})"
+    # 有机质问题含「问题」→ business_task=有机质培肥，model-1 维度规则不命中，应保持 model-3
+    q2 = "我的田有机质含量问题严重吗"
+    ctx2 = _ctx_from_question(q2)
+    final2, status2 = apply_exclusive_rules(q2, 3, ctx2)
+    assert final2 != 1, f"「{q2}」不应误路由 model-1，实际 ({final2}, {status2})，ctx={ctx2}"
+    assert status2 != "boundary_pending", f"「{q2}」不应误降级，实际 ({final2}, {status2})"
+    # 稳定性问题含「问题」→ business_task=稳定性评价，model-1 维度规则不命中，应保持 model-4
+    q3 = "我的田稳定性问题严重吗"
+    ctx3 = _ctx_from_question(q3)
+    final3, status3 = apply_exclusive_rules(q3, 4, ctx3)
+    assert final3 != 1, f"「{q3}」不应误路由 model-1，实际 ({final3}, {status3})，ctx={ctx3}"
+    assert status3 != "boundary_pending", f"「{q3}」不应误降级，实际 ({final3}, {status3})"
 
 
 if __name__ == "__main__":

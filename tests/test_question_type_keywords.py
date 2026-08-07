@@ -399,7 +399,7 @@ def test_extract_business_task_keywords():
     assert set(BUSINESS_TASK_KEYWORDS.keys()) == {
         "障碍诊断", "酸化改良", "有机质培肥", "稳定性评价", "质量等级评价",
     }
-    assert BUSINESS_TASK_KEYWORDS["障碍诊断"] == ("诊断", "毛病", "障碍", "问题", "现状")
+    assert BUSINESS_TASK_KEYWORDS["障碍诊断"] == ("诊断", "毛病", "障碍")
     assert BUSINESS_TASK_KEYWORDS["酸化改良"] == ("酸化", "调理剂", "石灰", "治酸", "pH提升", "碱性")
     assert BUSINESS_TASK_KEYWORDS["有机质培肥"] == ("有机质", "有机肥", "秸秆", "培肥")
     assert BUSINESS_TASK_KEYWORDS["稳定性评价"] == ("稳定性", "退化", "掉级", "稳定")

@@ -55,21 +55,21 @@ EXCLUSIVE_RULES: Tuple[ExclusiveRule, ...] = (
     ExclusiveRule(frozenset({"model-5"}), "预期输出", "质量等级评价", "model-5"),
 
     # ===== v1.1 维度驱动规则（condition=None，仅依赖 dimension_conditions）=====
-    # model-1/5：地块级质量等级评价 → model-5
+    # model-1/5：地块级质量等级评价 → model-5（五维全量参与：scale+data_type+business_task+expected_output）
     ExclusiveRule(
         frozenset({"model-1", "model-5"}),
-        "分析尺度+数据类型+业务任务",
+        "分析尺度+数据类型+业务任务+预期输出",
         None,
         "model-5",
-        dimension_conditions={"scale": "地块", "data_type": "评价结果", "business_task": "质量等级评价"},
+        dimension_conditions={"scale": "地块", "data_type": "评价结果", "business_task": "质量等级评价", "expected_output": "评价结果"},
     ),
-    # model-1/5：地块级障碍诊断 → model-1
+    # model-1/5：地块级障碍诊断 → model-1（加 expected_output 收敛，避免裸词跨域误触）
     ExclusiveRule(
         frozenset({"model-1", "model-5"}),
-        "分析尺度+业务任务",
+        "分析尺度+业务任务+预期输出",
         None,
         "model-1",
-        dimension_conditions={"scale": "地块", "business_task": "障碍诊断"},
+        dimension_conditions={"scale": "地块", "business_task": "障碍诊断", "expected_output": "诊断报告"},
     ),
     # model-2/3：酸化调理剂用量 → model-2
     ExclusiveRule(
