@@ -1,4 +1,5 @@
 from __future__ import annotations
+from typing import Dict, Optional, Tuple
 from .state import MultiAgentState
 from .exclusive_rules import (
     apply_exclusive_rules,
@@ -39,6 +40,32 @@ try:
 except ImportError:
     CORE_ENGINE_AVAILABLE = False
 
+# 业务任务关键词表（Design Doc 决策 A）
+BUSINESS_TASK_KEYWORDS: Dict[str, Tuple[str, ...]] = {
+    "障碍诊断": ("诊断", "毛病", "障碍", "问题", "现状"),
+    "酸化改良": ("酸化", "调理剂", "石灰", "治酸", "pH提升", "碱性"),
+    "有机质培肥": ("有机质", "有机肥", "秸秆", "培肥"),
+    "稳定性评价": ("稳定性", "退化", "掉级", "稳定"),
+    "质量等级评价": ("质量等级", "等级评价", "综合指数", "等级评定"),
+}
+
+# 预期输出关键词表（Design Doc 决策 A）
+EXPECTED_OUTPUT_KEYWORDS: Dict[str, Tuple[str, ...]] = {
+    "评价结果": ("等级", "指数", "评价结果", "评定"),
+    "处方用量": ("施多少", "每亩", "用量", "投入量"),
+    "诊断报告": ("诊断", "问题", "毛病", "障碍"),
+}
+
+
+def _match_first_keyword(question: str, table: Dict[str, Tuple[str, ...]]) -> Optional[str]:
+    """遍历关键词表，返回第一个命中关键词的标签；未命中返回 None。"""
+    for label, keywords in table.items():
+        for kw in keywords:
+            if kw in question:
+                return label
+    return None
+
+
 def initialize_state(state: MultiAgentState) -> MultiAgentState:
     return {
         **state,
@@ -68,7 +95,7 @@ def identify_question_node(state: MultiAgentState) -> MultiAgentState:
     }
 
 def _extract_five_dim_context(state: MultiAgentState) -> dict:
-    """从请求提取五维特征上下文（分析尺度/数据类型）。"""
+    """从请求提取五维特征上下文（分析尺度/数据类型/业务任务/预期输出）。"""
     request = state.get("request", {})
     context: dict = {}
     scale = request.get("scale")
@@ -93,6 +120,12 @@ def _extract_five_dim_context(state: MultiAgentState) -> dict:
             context["data_type"] = "处方用量"
         else:
             context["data_type"] = "指标数据"
+
+    # 业务任务提取：第一个命中关键词表的标签作为维度值
+    question_text = request.get("question", "")
+    context["business_task"] = _match_first_keyword(question_text, BUSINESS_TASK_KEYWORDS)
+    # 预期输出提取
+    context["expected_output"] = _match_first_keyword(question_text, EXPECTED_OUTPUT_KEYWORDS)
     return context
 
 def route_models(state: MultiAgentState) -> str:

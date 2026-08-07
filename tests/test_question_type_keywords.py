@@ -392,6 +392,64 @@ def test_all_confusing_pair_batches_size_ge_20():
     assert len(_expand(MODEL3_STEMS, PREFIXES, SUFFIXES)) >= 20
 
 
+def test_extract_business_task_keywords():
+    """_extract_five_dim_context 应从问题文本提取 business_task 标签"""
+    from framework.agents.nodes import _extract_five_dim_context, BUSINESS_TASK_KEYWORDS
+    # 关键词表完整性与 Design Doc 决策 A 一致
+    assert set(BUSINESS_TASK_KEYWORDS.keys()) == {
+        "障碍诊断", "酸化改良", "有机质培肥", "稳定性评价", "质量等级评价",
+    }
+    assert BUSINESS_TASK_KEYWORDS["障碍诊断"] == ("诊断", "毛病", "障碍", "问题", "现状")
+    assert BUSINESS_TASK_KEYWORDS["酸化改良"] == ("酸化", "调理剂", "石灰", "治酸", "pH提升", "碱性")
+    assert BUSINESS_TASK_KEYWORDS["有机质培肥"] == ("有机质", "有机肥", "秸秆", "培肥")
+    assert BUSINESS_TASK_KEYWORDS["稳定性评价"] == ("稳定性", "退化", "掉级", "稳定")
+    assert BUSINESS_TASK_KEYWORDS["质量等级评价"] == ("质量等级", "等级评价", "综合指数", "等级评定")
+
+    cases = [
+        ("我这块地到底有啥毛病", "障碍诊断"),
+        ("土壤酸化了怎么治酸", "酸化改良"),
+        ("有机肥每亩施用量多少", "有机质培肥"),
+        ("这块地稳定性退化风险", "稳定性评价"),  # "稳定性"/"退化" 命中稳定性评价
+        ("耕地质量等级评价结果", "质量等级评价"),
+    ]
+    for question, expected_task in cases:
+        state = {"request": {"question": question}}
+        ctx = _extract_five_dim_context(state)
+        assert ctx["business_task"] == expected_task, (
+            f"「{question}」business_task 应为 {expected_task}，实际 {ctx.get('business_task')}"
+        )
+
+
+def test_extract_expected_output_keywords():
+    """_extract_five_dim_context 应从问题文本提取 expected_output 标签"""
+    from framework.agents.nodes import _extract_five_dim_context, EXPECTED_OUTPUT_KEYWORDS
+    assert set(EXPECTED_OUTPUT_KEYWORDS.keys()) == {"评价结果", "处方用量", "诊断报告"}
+    assert EXPECTED_OUTPUT_KEYWORDS["评价结果"] == ("等级", "指数", "评价结果", "评定")
+    assert EXPECTED_OUTPUT_KEYWORDS["处方用量"] == ("施多少", "每亩", "用量", "投入量")
+    assert EXPECTED_OUTPUT_KEYWORDS["诊断报告"] == ("诊断", "问题", "毛病", "障碍")
+
+    cases = [
+        ("耕地质量等级评价结果", "评价结果"),
+        ("有机肥每亩施用量多少", "处方用量"),
+        ("我这块地到底有啥毛病", "诊断报告"),
+    ]
+    for question, expected_out in cases:
+        state = {"request": {"question": question}}
+        ctx = _extract_five_dim_context(state)
+        assert ctx["expected_output"] == expected_out, (
+            f"「{question}」expected_output 应为 {expected_out}，实际 {ctx.get('expected_output')}"
+        )
+
+
+def test_extract_five_dim_context_returns_four_fields():
+    """_extract_five_dim_context 返回的 context 必含 scale/data_type/business_task/expected_output 四字段"""
+    from framework.agents.nodes import _extract_five_dim_context
+    ctx = _extract_five_dim_context({"request": {"question": "我的田耕地质量等级是多少"}})
+    assert set(ctx.keys()) >= {"scale", "data_type", "business_task", "expected_output"}
+    assert ctx["scale"] == "地块"  # "我的田" 命中地块
+    assert ctx["data_type"] is not None
+
+
 if __name__ == "__main__":
     test_type4_stability_province_question()
     test_type4_stability_county_question()
