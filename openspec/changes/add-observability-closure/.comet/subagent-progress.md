@@ -39,12 +39,15 @@
 - 风险信号: 无命中
 - 每任务 reviewer: 未派发（standard 非风险任务放行）
 
-## 当前任务
-- plan task: Task 5: 验证与文档
-- openspec task: 5.1/5.2/5.3
-- 阶段: implementing
-- 实现提交: (待)
-- RED/GREEN 证据: (待)
-- 风险信号: (待)
-- 审查轮次: standard 风险触发
+## 已完成: Task 5: 验证与文档
+- openspec task: 5.1/5.2/5.3 已勾选
+- 阶段: done
+- 实现提交: e11d9c5
+- RED/GREEN: 有（95 passed；回归退出码 0；看板生成四类指标；logs/ 已忽略）
+- 风险信号: 无命中
+- 每任务 reviewer: 未派发（standard 非风险任务放行）
+
+## 当前阶段
+- 阶段: final-review（所有 5 个 plan task 已勾选，进入最终轻量代码审查）
+- 审查轮次: standard 最终轻量 1 轮
 

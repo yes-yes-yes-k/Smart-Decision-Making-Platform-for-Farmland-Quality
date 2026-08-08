@@ -898,22 +898,22 @@ git commit -m "feat(observability): 路由文本看板与 Markdown 导出"
 
 **模式：direct**
 
-- [ ] **Step 1: 运行全部相关测试**
+- [x] **Step 1: 运行全部相关测试**
 
 Run: `python -m pytest tests/test_routing_observability.py tests/test_question_type_keywords.py tests/test_exclusive_rules.py tests/test_question_type_router.py -v`
 Expected: 全部 PASS
 
-- [ ] **Step 2: 运行回归脚本输出混淆矩阵**
+- [x] **Step 2: 运行回归脚本输出混淆矩阵**
 
 Run: `python scripts/run_routing_regression.py`
 Expected: 输出两组混淆矩阵，退出码 0（混淆率 ≤ 3% 达成）
 
-- [ ] **Step 3: 生成看板并抽查 Markdown 导出**
+- [x] **Step 3: 生成看板并抽查 Markdown 导出**
 
 Run: `python -m framework.observability.dashboard --matrix logs/confusion_matrix.json --markdown --output logs/dashboard.md`
 Expected: `logs/dashboard.md` 存在，含四类指标
 
-- [ ] **Step 4: 更新 `openspec/specs/langsmith-monitoring/spec.md`**
+- [x] **Step 4: 更新 `openspec/specs/langsmith-monitoring/spec.md`**
 
 将文件头部 Purpose 更新，并新增「本地持久化调用日志」需求（与 change 增量 spec 同步）：
 
@@ -942,7 +942,7 @@ Expected: `logs/dashboard.md` 存在，含四类指标
 
 > 在现有 `## Requirements` 标题下、`### Requirement: LangSmith 环境变量配置` 之前插入上述 `### Requirement: 本地持久化调用日志` 段落，并替换原有 `## Purpose` 的 TBD 行。
 
-- [ ] **Step 5: 更新 `.gitignore` 忽略本地日志**
+- [x] **Step 5: 更新 `.gitignore` 忽略本地日志**
 
 在 `.gitignore` 末尾追加：
 
@@ -952,7 +952,7 @@ Expected: `logs/dashboard.md` 存在，含四类指标
 logs/
 ```
 
-- [ ] **Step 6: 提交**
+- [x] **Step 6: 提交**
 
 ```bash
 git add openspec/specs/langsmith-monitoring/spec.md .gitignore
