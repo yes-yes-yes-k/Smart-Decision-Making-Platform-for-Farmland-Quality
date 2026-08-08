@@ -21,15 +21,29 @@ def get_documents():
     page_size = request.args.get('page_size', 20, type=int)
     category = request.args.get('category')
 
+    category_list = [c.strip() for c in category.split(',') if c.strip()] if category else []
+
+    # 数据文件分类（raw_data / improved_data）查 DataFile 表
+    requested_data_categories = [c for c in category_list if c in DATA_CATEGORIES]
+    if requested_data_categories:
+        query = DataFile.query.filter_by(create_by=user_id)
+        query = query.filter(DataFile.category.in_(requested_data_categories))
+        query = query.order_by(DataFile.create_time.desc())
+        pagination = query.paginate(page=page, per_page=page_size, error_out=False)
+        return jsonify({
+            "status": "ok",
+            "data": {
+                "list": [f.to_dict() for f in pagination.items],
+                "total": pagination.total
+            }
+        })
+
+    # 文档分类查 Document 表，排除数据文件分类
     query = Document.query.filter_by(create_by=user_id)
-
     query = query.filter(Document.category.notin_(DATA_CATEGORIES))
-
-    if category:
-        category_list = [c.strip() for c in category.split(',') if c.strip()]
-        if category_list:
-            query = query.filter(Document.category.in_(category_list))
-
+    doc_categories = [c for c in category_list if c not in DATA_CATEGORIES]
+    if doc_categories:
+        query = query.filter(Document.category.in_(doc_categories))
     query = query.order_by(Document.create_time.desc())
 
     pagination = query.paginate(page=page, per_page=page_size, error_out=False)
@@ -136,35 +150,55 @@ def upload_document():
 @jwt_required()
 def get_document(id):
     user_id = get_jwt_identity()
+
     document = Document.query.filter_by(id=id, create_by=user_id).first()
-    if not document:
-        return jsonify({"status": "error", "message": "文档不存在"}), 404
-    return jsonify({"status": "ok", "data": document.to_dict()})
+    if document:
+        return jsonify({"status": "ok", "data": document.to_dict()})
+
+    data_file = DataFile.query.filter_by(id=id, create_by=user_id).first()
+    if data_file:
+        return jsonify({"status": "ok", "data": data_file.to_dict()})
+
+    return jsonify({"status": "error", "message": "文档不存在"}), 404
 
 @docs_bp.route('/<int:id>', methods=['DELETE'])
 @jwt_required()
 def delete_document(id):
     user_id = get_jwt_identity()
+
+    # 先查 Document 表
     document = Document.query.filter_by(id=id, create_by=user_id).first()
-    if not document:
-        return jsonify({"status": "error", "message": "文档不存在"}), 404
+    if document:
+        try:
+            vector_store.delete_by_source(document.doc_name)
+        except Exception:
+            pass
 
-    # 删除向量库数据（容错：向量库失败不阻塞 db 删除）
-    try:
-        vector_store.delete_by_source(document.doc_name)
-    except Exception:
-        pass
+        try:
+            if document.file_path:
+                file_full_path = os.path.join(Config.UPLOAD_FOLDER, document.file_path)
+                if os.path.exists(file_full_path):
+                    os.remove(file_full_path)
+        except Exception:
+            pass
 
-    # 删除物理文件（容错：文件不存在或删除失败不阻塞 db 删除）
-    try:
-        if document.file_path:
-            file_full_path = os.path.join(Config.UPLOAD_FOLDER, document.file_path)
-            if os.path.exists(file_full_path):
-                os.remove(file_full_path)
-    except Exception:
-        pass
+        db.session.delete(document)
+        db.session.commit()
+        return jsonify({"status": "ok", "message": "文档删除成功"})
 
-    db.session.delete(document)
-    db.session.commit()
+    # 再查 DataFile 表
+    data_file = DataFile.query.filter_by(id=id, create_by=user_id).first()
+    if data_file:
+        try:
+            if data_file.file_path:
+                file_full_path = os.path.join(Config.UPLOAD_FOLDER, data_file.file_path)
+                if os.path.exists(file_full_path):
+                    os.remove(file_full_path)
+        except Exception:
+            pass
 
-    return jsonify({"status": "ok", "message": "文档删除成功"})
+        db.session.delete(data_file)
+        db.session.commit()
+        return jsonify({"status": "ok", "message": "数据文件删除成功"})
+
+    return jsonify({"status": "error", "message": "文档不存在"}), 404
