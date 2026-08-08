@@ -87,11 +87,35 @@ class ChromaVectorStore:
                     except Exception as e2:
                         print(f"[Chroma] 删除持久化目录失败: {e2}")
 
-            self._collection = self._client.create_collection(
-                name=collection_name,
-                embedding_function=NoOpEmbeddingFunction(),
-            )
-            print(f"[Chroma] 集合 '{collection_name}' 初始化完成")
+            try:
+                self._collection = self._client.create_collection(
+                    name=collection_name,
+                    embedding_function=NoOpEmbeddingFunction(),
+                )
+                print(f"[Chroma] 集合 '{collection_name}' 初始化完成")
+            except Exception as e:
+                # 创建失败，常见于旧版本 ChromaDB 写入的元数据不兼容
+                # （如 KeyError: '_type'）。清理持久化目录后重试一次。
+                print(f"[Chroma] 创建集合失败: {e}，清理持久化目录后重试")
+                try:
+                    shutil.rmtree(persist_dir, ignore_errors=True)
+                    os.makedirs(persist_dir, exist_ok=True)
+                    self._client = chromadb.PersistentClient(
+                        path=persist_dir,
+                        settings=Settings(
+                            anonymized_telemetry=False,
+                            allow_reset=False,
+                        )
+                    )
+                    self._collection = self._client.create_collection(
+                        name=collection_name,
+                        embedding_function=NoOpEmbeddingFunction(),
+                    )
+                    print(f"[Chroma] 集合 '{collection_name}' 初始化完成（已重建持久化目录）")
+                except Exception as e2:
+                    print(f"Chroma初始化失败: {e2}")
+                    import traceback
+                    traceback.print_exc()
         except Exception as e:
             print(f"Chroma初始化失败: {e}")
             import traceback

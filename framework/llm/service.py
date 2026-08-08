@@ -86,6 +86,46 @@ class LLMService:
             )
             return self._get_fallback_response(prompt)
 
+    def generate_stream(
+        self,
+        prompt: str,
+        messages: Optional[list] = None,
+        **kwargs,
+    ):
+        if not self.is_available():
+            yield "抱歉，AI服务暂时不可用，请稍后重试。"
+            return
+
+        started_at = time.perf_counter()
+        print(
+            f"[LLM] 流式调用开始 - 模型: {Config.SILICONFLOW_CHAT_MODEL}, "
+            f"提示长度: {len(prompt)}, 历史消息: {len(messages or [])}",
+            flush=True,
+        )
+        try:
+            if messages:
+                full_messages = messages.copy()
+                full_messages.append({"role": "user", "content": prompt})
+            else:
+                full_messages = [{"role": "user", "content": prompt}]
+
+            for chunk in self._client.stream(full_messages):
+                content = chunk.content if hasattr(chunk, "content") else str(chunk)
+                if content:
+                    yield content
+
+            print(
+                f"[LLM] 流式调用成功 - 耗时: {time.perf_counter() - started_at:.2f}s",
+                flush=True,
+            )
+        except Exception as e:
+            print(
+                f"[LLM] 流式调用失败 - 耗时: {time.perf_counter() - started_at:.2f}s, "
+                f"错误: {type(e).__name__}: {e}",
+                flush=True,
+            )
+            yield "抱歉，AI服务暂时不可用，请稍后重试。"
+
     def _get_fallback_response(self, prompt: str) -> Dict[str, Any]:
         return {
             "success": False,

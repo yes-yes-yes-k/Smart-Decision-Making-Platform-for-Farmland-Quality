@@ -34,16 +34,49 @@ def _source_for_assets(catalog: dict[str, Any], asset_ids: list[str]) -> list[di
     return sources
 
 
+# 前端区域筛选传中文名，首版 demo 仅乐昌有完整数据，这里统一归并
+# 空字符串代表"全省"，以下别名均映射到 lechang
+_LECHANG_ALIASES = {
+    "",
+    "lechang",
+    "Lechang",
+    "乐昌",
+    "乐昌市",
+    # 韶关市及下属区县
+    "韶关市", "韶关", "Shaoguan",
+    "浈江区", "武江区", "曲江区", "乐昌市", "南雄市",
+    "始兴县", "仁化县", "翁源县", "新丰县", "乳源瑶族自治县",
+    # 广东省及其他地市（前端可选择，但后端当前仅返回乐昌数据）
+    "广东省", "Guangdong",
+    "广州市", "深圳市", "珠海市", "佛山市", "东莞市",
+    "中山市", "惠州市", "江门市", "肇庆市", "茂名市",
+    "湛江市", "清远市", "梅州市", "河源市", "揭阳市",
+    "汕头市", "潮州市", "汕尾市", "阳江市", "云浮市",
+}
+
+
+def _normalize_area_code(area_code: str | None) -> str:
+    """把前端传入的中文/空/code 统一归一到 lechang（首版 demo 仅乐昌完整）。"""
+    code = (area_code or "").strip()
+    if code in _LECHANG_ALIASES:
+        return "lechang"
+    # 兜底：任何非空输入也先给 lechang，后续可扩展真实多区域支持
+    return "lechang" if code else "lechang"
+
+
 def get_county_overview(area_code: str = "lechang") -> dict[str, Any]:
     """返回未来 Agent 和前端都可直接消费的县域总览结构。"""
 
     catalog = load_catalog()
-    if area_code != catalog["area"]["code"]:
+    normalized = _normalize_area_code(area_code)
+    if normalized != catalog["area"]["code"]:
+        msg = f"当前基础能力仅支持 {catalog['area']['name']}"
         return {
             "status": "error",
+            "message": msg,
             "error": {
                 "code": "UNSUPPORTED_AREA",
-                "message": f"当前基础能力仅支持 {catalog['area']['name']}",
+                "message": msg,
             },
         }
 

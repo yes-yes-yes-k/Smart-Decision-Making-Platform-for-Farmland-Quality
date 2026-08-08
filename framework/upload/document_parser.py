@@ -95,11 +95,80 @@ def _parse_pdf(file_path: str) -> str:
         if total_pages == 0:
             raise ValueError("PDF 无任何页面")
         if empty_pages == total_pages:
-            raise ValueError(
-                f"PDF 共 {total_pages} 页均未提取到文本，"
-                "可能是扫描件/图片型 PDF（需 OCR）、或中文字体编码问题、或 PDF 内容为空"
-            )
+            print(f"[Parser] PDF 共 {total_pages} 页均未提取到文本，触发 OCR 识别", flush=True)
+            try:
+                ocr_text = _parse_pdf_ocr(file_path)
+                if ocr_text:
+                    return ocr_text
+            except Exception as e:
+                print(f"[Parser] OCR 识别失败：{e}", flush=True)
+                raise ValueError(
+                    f"PDF 共 {total_pages} 页均未提取到文本，且 OCR 识别失败。"
+                    f"可能是中文字体编码问题、或 PDF 内容为空。OCR 错误：{e}"
+                )
 
+    return text
+
+
+def _parse_pdf_ocr(file_path: str) -> str:
+    """使用 OCR 识别扫描件/图片型 PDF 中的文字。"""
+    print(f"[Parser] 开始 OCR 识别：{file_path}", flush=True)
+
+    try:
+        from pdf2image import convert_from_path
+    except ImportError as e:
+        raise ImportError(
+            f"pdf2image 未安装，无法进行 OCR 识别。"
+            f"请执行: pip install pdf2image  错误: {e}"
+        )
+
+    try:
+        import pytesseract
+    except ImportError as e:
+        raise ImportError(
+            f"pytesseract 未安装，无法进行 OCR 识别。"
+            f"请执行: pip install pytesseract  错误: {e}"
+        )
+
+    # 探测 Tesseract 可执行文件
+    try:
+        pytesseract.get_tesseract_version()
+    except Exception as e:
+        raise RuntimeError(
+            f"未找到 Tesseract OCR 引擎。"
+            f"请先安装 Tesseract：https://github.com/tesseract-ocr/tesseract  错误: {e}"
+        )
+
+    try:
+        from PIL import Image
+    except ImportError as e:
+        raise ImportError(
+            f"Pillow 未安装，无法进行 OCR 识别。"
+            f"请执行: pip install Pillow  错误: {e}"
+        )
+
+    # 将 PDF 转为图片
+    print("[Parser] 正在将 PDF 转换为图片...", flush=True)
+    try:
+        images = convert_from_path(file_path)
+    except Exception as e:
+        raise RuntimeError(f"PDF 转图片失败（可能需要安装 poppler）：{e}")
+
+    total_pages = len(images)
+    print(f"[Parser] PDF 共 {total_pages} 页，开始 OCR 识别...", flush=True)
+
+    text_parts = []
+    for i, image in enumerate(images):
+        try:
+            print(f"[Parser] OCR 识别第 {i+1}/{total_pages} 页...", flush=True)
+            page_text = pytesseract.image_to_string(image, lang='chi_sim+eng')
+            text_parts.append(page_text.strip())
+        except Exception as e:
+            print(f"[Parser] OCR 第 {i+1}/{total_pages} 页识别失败：{e}", flush=True)
+            text_parts.append("")
+
+    text = "\n".join(text_parts).strip()
+    print(f"[Parser] OCR 识别完成，提取到 {len(text)} 个字符", flush=True)
     return text
 
 def _parse_docx(file_path: str) -> str:
