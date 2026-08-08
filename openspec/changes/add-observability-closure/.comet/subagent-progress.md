@@ -15,9 +15,17 @@
 - 每任务 reviewer: 已派发（standard 风险触发），Approved
 - Minor 记录: nodes.py 顶部未使用导入；observe.py question_type 解包未用；缺文件尾换行；routing_log 可变全局状态可考虑 fixture 复位
 
+## 已完成: Task 2: 混淆矩阵与追溯链
+- openspec task: 2.1/2.2 已勾选
+- 阶段: done
+- 实现提交: 32e7f01
+- RED/GREEN: 有
+- 风险信号: 无命中
+- 每任务 reviewer: 未派发（standard 非风险任务放行）
+
 ## 当前任务
-- plan task: Task 2: 混淆矩阵与追溯链
-- openspec task: 2.1/2.2
+- plan task: Task 3: 路由回归自动化
+- openspec task: 3.1/3.2/3.3
 - 阶段: implementing
 - 实现提交: (待)
 - RED/GREEN 证据: (待)

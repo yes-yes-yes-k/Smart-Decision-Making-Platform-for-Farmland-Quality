@@ -442,7 +442,7 @@ git commit -m "feat(observability): 本地路由调用 JSON 日志与观测封�
 
 **模式：TDD**
 
-- [ ] **Step 1: 写失败测试**
+- [x] **Step 1: 写失败测试**
 
 在 `tests/test_routing_observability.py` 末尾追加：
 
@@ -497,7 +497,7 @@ class TestTraceability:
 Run: `python -m pytest tests/test_routing_observability.py::TestConfusionMetrics tests/test_routing_observability.py::TestTraceability -v`
 Expected: FAIL（`ModuleNotFoundError: framework.observability.metrics` 等）
 
-- [ ] **Step 3: 实现 `framework/observability/metrics.py`**
+- [x] **Step 3: 实现 `framework/observability/metrics.py`**
 
 ```python
 """路由混淆矩阵计算（纯函数，无第三方依赖）。"""
@@ -573,7 +573,7 @@ def trace_result(trace_id: str, log_dir: Optional[str] = None) -> Optional[Dict[
 Run: `python -m pytest tests/test_routing_observability.py::TestConfusionMetrics tests/test_routing_observability.py::TestTraceability -v`
 Expected: PASS（4 passed）
 
-- [ ] **Step 6: 提交**
+- [x] **Step 6: 提交**
 
 ```bash
 git add framework/observability/metrics.py framework/observability/traceability.py tests/test_routing_observability.py

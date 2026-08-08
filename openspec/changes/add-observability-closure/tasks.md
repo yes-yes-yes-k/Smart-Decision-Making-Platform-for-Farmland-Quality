@@ -7,8 +7,8 @@
 
 ## 2. 混淆矩阵与追溯链
 
-- [ ] 2.1 实现 `framework/observability/metrics.py`：`confusion_metrics()` 计算 TP/FP/FN/TN、accuracy、confusion_rate
-- [ ] 2.2 实现 `framework/observability/traceability.py`：按 trace_id 追溯数据版本、Agent 版本、参数、调用时间
+- [x] 2.1 实现 `framework/observability/metrics.py`：`confusion_metrics()` 计算 TP/FP/FN/TN、accuracy、confusion_rate
+- [x] 2.2 实现 `framework/observability/traceability.py`：按 trace_id 追溯数据版本、Agent 版本、参数、调用时间
 
 ## 3. 路由回归自动化
 
