@@ -1,7 +1,7 @@
 # routing-observability Specification
 
 ## Purpose
-TBD - created by archiving change add-observability-closure. Update Purpose after archive.
+为五维路由系统补齐本地可观测性闭环：本地路由/调用日志、混淆矩阵、路由回归自动化、路由看板与结果追溯链，量化「正确路由率、重叠 Agent 混淆率、漏调用率」，支持对不调用或错调用进行精准定位与自动回归。
 ## Requirements
 ### Requirement: 本地路由调用日志落库
 
