@@ -283,7 +283,7 @@ import pytest
 from framework.observability.observe import observe_routing
 ```
 
-- [ ] **Step 7: 运行测试确认失败**
+- [x] **Step 7: 运行测试确认失败**
 
 Run: `python -m pytest tests/test_routing_observability.py::TestObserve tests/test_routing_observability.py::TestNodeInjection -v`
 Expected: FAIL（`ModuleNotFoundError: framework.observability.observe` 或 `cannot import name 'observe_routing'`）
@@ -413,7 +413,7 @@ def identify_question_node(state: MultiAgentState) -> MultiAgentState:
 
 > 说明：`observe_routing` 内部 `from framework.agents.exclusive_rules import apply_exclusive_rules` 在函数外部导入，monkeypatch `_er.apply_exclusive_rules` 会同时替换 `_observe` 模块命名空间中的引用（因 `from ... import apply_exclusive_rules` 绑定的是模块属性）。
 
-- [ ] **Step 11: 运行测试确认通过**
+- [x] **Step 11: 运行测试确认通过**
 
 Run: `python -m pytest tests/test_routing_observability.py -v`
 Expected: PASS（TestRoutingLog 3 + TestObserve 2 + TestNodeInjection 1 = 6 passed）
@@ -492,7 +492,7 @@ class TestTraceability:
             assert trace_result("nope", log_dir=tmp) is None
 ```
 
-- [ ] **Step 2: 运行测试确认失败**
+- [x] **Step 2: 运行测试确认失败**
 
 Run: `python -m pytest tests/test_routing_observability.py::TestConfusionMetrics tests/test_routing_observability.py::TestTraceability -v`
 Expected: FAIL（`ModuleNotFoundError: framework.observability.metrics` 等）
@@ -541,7 +541,7 @@ def confusion_metrics(
     }
 ```
 
-- [ ] **Step 4: 实现 `framework/observability/traceability.py`**
+- [x] **Step 4: 实现 `framework/observability/traceability.py`**
 
 ```python
 """结果追溯链：按 trace_id 追溯数据版本、Agent 版本、参数、调用时间。"""
@@ -568,7 +568,7 @@ def trace_result(trace_id: str, log_dir: Optional[str] = None) -> Optional[Dict[
     return None
 ```
 
-- [ ] **Step 5: 运行测试确认通过**
+- [x] **Step 5: 运行测试确认通过**
 
 Run: `python -m pytest tests/test_routing_observability.py::TestConfusionMetrics tests/test_routing_observability.py::TestTraceability -v`
 Expected: PASS（4 passed）
