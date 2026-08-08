@@ -35,9 +35,9 @@ def test_execute_models_passes_fertilizer_type(monkeypatch):
     assert captured["context"].get("land_type") == "paddy"
 
 
-def test_question_type_2_routes_to_model_4():
-    """回归：question_type=2 仍路由到 model-4（AcidificationRemediationAgent）。"""
+def test_question_type_2_routes_to_model_2():
+    """回归：question_type=2 仍路由到 model-2（AcidificationRemediationAgent）。"""
     from framework.agents.router import QuestionTypeRouter
 
     router = QuestionTypeRouter()
-    assert "model-4" in router.get_agents_for_type(2)
+    assert "model-2" in router.get_agents_for_type(2)

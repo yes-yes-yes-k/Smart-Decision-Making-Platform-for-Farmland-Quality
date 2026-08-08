@@ -7,11 +7,11 @@ from framework.agents.manager import AgentManager
 from framework.agents.router import TYPE_AGENTS
 
 
-def test_professional_capability_catalog_has_seven_unique_entries():
-    assert len(PROFESSIONAL_CAPABILITIES) == 7
-    assert len({item.agent_id for item in PROFESSIONAL_CAPABILITIES}) == 7
-    assert len({item.model_id for item in PROFESSIONAL_CAPABILITIES}) == 7
-    assert set(CAPABILITY_BY_QUESTION_TYPE) == {1, 2, 3, 4, 5, 6, 7}
+def test_professional_capability_catalog_has_five_unique_entries():
+    assert len(PROFESSIONAL_CAPABILITIES) == 5
+    assert len({item.agent_id for item in PROFESSIONAL_CAPABILITIES}) == 5
+    assert len({item.model_id for item in PROFESSIONAL_CAPABILITIES}) == 5
+    assert set(CAPABILITY_BY_QUESTION_TYPE) == {1, 2, 3, 4, 5}
 
 
 def test_agent_manager_and_router_read_the_capability_catalog():
@@ -25,10 +25,10 @@ def test_agent_manager_and_router_read_the_capability_catalog():
 def test_formal_model_api_returns_agent_capability_descriptor():
     from ai_culti_demo import run_thematic_model
 
-    result = run_thematic_model({"model_id": "fertility-soc-dose-prediction"})
+    result = run_thematic_model({"model_id": "quality-grade-evaluation"})
     assert result["status"] == "ok"
-    assert result["capability"]["agent_id"] == "model-6"
-    assert result["capability"]["model_id"] == "fertility-soc-dose-prediction"
+    assert result["capability"]["agent_id"] == "model-5"
+    assert result["capability"]["model_id"] == "quality-grade-evaluation"
     assert "reliability" in result
     assert "fallback" in result
 

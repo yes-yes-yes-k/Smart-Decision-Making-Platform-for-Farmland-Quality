@@ -66,7 +66,7 @@ TBD - created by archiving change add-routing-exclusive-rules. Update Purpose af
 
 ### Requirement: 模型边界待确认降级状态
 
-当排他规则无法消解模型重叠（如未由专业团队确认 model-3 与 model-7 的评价维度分工）时，系统 SHALL 返回「模型边界待确认」显式降级状态，SHALL NOT 自行选择任一 Agent。路由结果 SHALL 携带 `routing_status: "boundary_pending"` 信号，并在 API 响应中体现。
+当排他规则无法消解模型重叠（如未由专业团队确认 model-1 与 model-5 的评价维度分工）时，系统 SHALL 返回「模型边界待确认」显式降级状态，SHALL NOT 自行选择任一 Agent。路由结果 SHALL 携带 `routing_status: "boundary_pending"` 信号，并在 API 响应中体现。
 
 #### Scenario: 无法消解的重叠问题
 - **WHEN** 用户问题同时命中排他规则冲突或多模型重叠且无明确判别条件

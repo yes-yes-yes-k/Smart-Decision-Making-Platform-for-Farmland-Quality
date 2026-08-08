@@ -80,19 +80,19 @@ The system SHALL ensure that the `/api/v1/chat/` response only includes model re
 两个字段均为可选：未传时 agents SHALL 维持现有 mock 数据 + `need_input` 提示行为，不报错。
 
 #### Scenario: 传递 parcel_id 触发 DB 真实查询
-- **WHEN** request 包含 `parcel_id: "1"` 且问题路由到 model-1（StabilityRiskAgent）
+- **WHEN** request 包含 `parcel_id: "1"` 且问题路由到 model-4（StabilityRiskAgent）
 - **THEN** `execute_models` SHALL 将 `parcel_id` 透传到 context
-- **AND** model-1 SHALL 用 `parcel_id="1"` 查询 stability_db 返回真实稳定性记录（非 mock pH=5.5）
+- **AND** model-4 SHALL 用 `parcel_id="1"` 查询 stability_db 返回真实稳定性记录（非 mock pH=5.5）
 
 #### Scenario: 传递 parcel_code 触发 fortran exe 真实计算
-- **WHEN** request 包含 `parcel_code: "A0001"` 且问题路由到 model-7（FarmlandGradeAgent）
+- **WHEN** request 包含 `parcel_code: "A0001"` 且问题路由到 model-5（FarmlandGradeAgent）
 - **THEN** `execute_models` SHALL 将 `parcel_code` 透传到 context
-- **AND** model-7 SHALL 用 `parcel_code="A0001"` 调用 fortran exe 返回真实质量等级评价（非 mock）
+- **AND** model-5 SHALL 用 `parcel_code="A0001"` 调用 fortran exe 返回真实质量等级评价（非 mock）
 
 #### Scenario: 双 ID 并存
 - **WHEN** request 同时包含 `parcel_id: "1"` 和 `parcel_code: "A0001"`
 - **THEN** context SHALL 同时携带两个字段
-- **AND** model-1/3/4 SHALL 读 `parcel_id` 查 DB，model-7 SHALL 读 `parcel_code` 调 exe，互不干扰
+- **AND** model-1/3/4 SHALL 读 `parcel_id` 查 DB，model-5 SHALL 读 `parcel_code` 调 exe，互不干扰
 
 #### Scenario: 未传地块标识符时降级
 - **WHEN** request 不含 `parcel_id` 和 `parcel_code`
@@ -100,27 +100,27 @@ The system SHALL ensure that the `/api/v1/chat/` response only includes model re
 - **AND** SHALL NOT 抛出异常
 
 ### Requirement: Type 5 质量等级评价问题库
-系统 SHALL 在 `REFERENCE_QUESTIONS` 字典中维护 key `5`，包含至少 3 个质量等级评价问题（如「我的田耕地质量等级是多少」「查询地块的综合指数和障碍度排序」「这块地的耕地质量等级评价结果」），使验证脚本能覆盖 model-7。
+系统 SHALL 在 `REFERENCE_QUESTIONS` 字典中维护 key `5`，包含至少 3 个质量等级评价问题（如「我的田耕地质量等级是多少」「查询地块的综合指数和障碍度排序」「这块地的耕地质量等级评价结果」），使验证脚本能覆盖 model-5。
 
 `_identify_question_type_keyword` 函数 SHALL 维护 type 5 分支，当问题命中 `QUESTION_TYPE_5_KEYWORDS`（"质量等级"、"等级评价"、"综合指数"、"指标隶属度"、"障碍度排序"、"耕地质量等级"、"质量评价"、"等级评定"、"指标权重"）时返回 `(5, relevance)`。
 
-`TYPE_AGENTS` 映射表 SHALL 将 question_type=5 严格映射到 `["model-7"]`（1:1 映射），SHALL NOT 包含 model-4/5/6。type 5 问题的路由 SHALL NOT 依赖用户角色识别（role-based 路由已移除）。
+`TYPE_AGENTS` 映射表 SHALL 将 question_type=5 严格映射到 `["model-5"]`（1:1 映射），SHALL NOT 包含 model-1/2/3/4。type 5 问题的路由 SHALL NOT 依赖用户角色识别（role-based 路由已移除）。
 
 #### Scenario: 识别质量等级问题为 type 5
 - **WHEN** 用户询问「我的田耕地质量等级是多少」
 - **THEN** `identify_question_type` SHALL 返回 `question_type=5`
 
-#### Scenario: type 5 问题仅路由到 model-7
+#### Scenario: type 5 问题仅路由到 model-5
 - **WHEN** 问题被识别为 type 5
-- **THEN** `QuestionTypeRouter.get_agents_for_type(5)` SHALL 返回 `["model-7"]`
-- **AND** `AgentManager.process` SHALL 仅调用 model-7（FarmlandGradeAgent）
-- **AND** SHALL NOT 调用 model-4/5/6
-- **AND** model-7 SHALL 被执行（status ≠ `skipped`），无需 `_should_execute_agent` 二次过滤
+- **THEN** `QuestionTypeRouter.get_agents_for_type(5)` SHALL 返回 `["model-5"]`
+- **AND** `AgentManager.process` SHALL 仅调用 model-5（FarmlandGradeAgent）
+- **AND** SHALL NOT 调用 model-1/2/3/4
+- **AND** model-5 SHALL 被执行（status ≠ `skipped`），无需 `_should_execute_agent` 二次过滤
 
-#### Scenario: 非 type 5 问题不调用 model-7
-- **WHEN** 问题被识别为 type 1/2/3/4（如「我的田肥力怎么样」识别为 type 4）
-- **THEN** `AgentManager.process` SHALL NOT 调用 model-7
-- **AND** SHALL NOT 在 `details` 中出现 model-7 的 `skipped` 条目（因路由未包含 model-7）
+#### Scenario: 非 type 5 问题不调用 model-5
+- **WHEN** 问题被识别为 type 1/2/3/4（如「我的田稳定性怎么样」识别为 type 4）
+- **THEN** `AgentManager.process` SHALL NOT 调用 model-5
+- **AND** SHALL NOT 在 `details` 中出现 model-5 的 `skipped` 条目（因路由未包含 model-5）
 
 ### Requirement: 生产 API 接受地块标识符
 系统 SHALL 在 `POST /api/v1/chat/` 请求体中支持可选的 `parcel_id`（string，数字格式）和 `parcel_code`（string，字母数字格式）字段，并透传到 `multi_agent_orchestrator.run(request)`。
@@ -133,7 +133,7 @@ The system SHALL ensure that the `/api/v1/chat/` response only includes model re
 #### Scenario: API 请求携带 parcel_code
 - **WHEN** 客户端 POST `/api/v1/chat/` 且 body 含 `parcel_code: "A0001"`
 - **THEN** 系统 SHALL 将 `parcel_code` 透传到 orchestrator request
-- **AND** orchestrator SHALL 将其加入 context 供 model-7 读取
+- **AND** orchestrator SHALL 将其加入 context 供 model-5 读取
 
 #### Scenario: API 请求不携带地块标识符
 - **WHEN** 客户端 POST `/api/v1/chat/` 且 body 不含 `parcel_id` 和 `parcel_code`

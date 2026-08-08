@@ -52,7 +52,7 @@
 
 #### Scenario: 调用酸化改良专业模型
 - **WHEN** 调用方以 `model_id=acidification-remediation` 和满足前提的输入发起调用
-- **THEN** 系统 MUST 调用 `model-4` 的结构化分析
+- **THEN** 系统 MUST 调用 `model-2` 的结构化分析
 - **AND** 返回与聊天链路同源的酸化判断、改良建议和可靠性状态
 
 #### Scenario: 调用不具备 Agent 对应关系的辅助能力
@@ -72,5 +72,5 @@
 #### Scenario: 使用协同提升模型标识
 - **WHEN** 调用方使用 `multi-factor-collaborative-improvement`
 - **THEN** 系统 MUST 将其标示为实验性能力
-- **AND** SHALL NOT 映射到 `model-6` 或其他正式专业 Agent
+- **AND** SHALL NOT 映射到任一正式专业 Agent
 

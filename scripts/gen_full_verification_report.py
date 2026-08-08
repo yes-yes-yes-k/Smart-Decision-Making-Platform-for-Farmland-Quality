@@ -353,33 +353,6 @@ def build_markdown(report: Dict[str, Any]) -> str:
         md.append("---")
         md.append("")
 
-    # 三、model-6 真实 ML 计算
-    md.append("## 三、model-6 真实 ML 计算能力验证")
-    md.append("")
-    m6 = report["model6"]
-    md.append(f"- **输入特征**：`{m6['input_features']}`")
-    md.append(f"- **execute_status**：`{m6['execute_status']}`")
-    md.append(f"- **SOC 预测值**：{m6['soc_prediction']} g/kg（置信度 {m6['soc_confidence']}）")
-    md.append(f"- **Dose 预测值**：{m6['dose_prediction']} t/ha（置信度 {m6['dose_confidence']}）")
-    md.append(f"- **dose_warning**：{m6['dose_warning']}")
-    md.append(f"- **imputation_applied**：{m6['imputation_applied']}, imputed_features: `{m6['imputed_features']}`")
-    md.append(f"- **fallback_reason**：{m6['fallback_reason']}")
-    md.append(f"- **model_version**：`{m6['model_version']}`")
-    md.append(f"- **是否真实计算**：{'✓ 是' if m6['is_real_computation'] else '✗ 否（fallback）'}")
-    md.append("")
-    md.append("**【SOC 自然语言回答】**")
-    md.append("```text")
-    md.append(m6["answer_soc_preview"])
-    md.append("```")
-    md.append("")
-    md.append("**【Dose 自然语言回答】**")
-    md.append("```text")
-    md.append(m6["answer_dose_preview"])
-    md.append("```")
-    md.append("")
-    md.append("---")
-    md.append("")
-
     # 四、汇总
     md.append("## 四、汇总结论")
     md.append("")
@@ -388,7 +361,6 @@ def build_markdown(report: Dict[str, Any]) -> str:
     md.append(f"- 占位桩 agent：`{report['summary']['stub_agents'] or '无'}`")
     md.append(f"- 问题库回答率：**{report['questions']['answered']}/{report['questions']['total']}**")
     md.append(f"- 问题类型识别准确率：**{report['questions']['type_match']}/{report['questions']['total']}**")
-    md.append(f"- model-6 真实计算：{'✓ 通过' if m6['is_real_computation'] else '✗ 未通过'}")
     md.append("")
 
     md.append("### 关键观察")
@@ -458,7 +430,6 @@ def main() -> int:
     try:
         from scripts.verify_agent_capabilities import (
             inspect_agent_load_status,
-            verify_model6_real_computation,
         )
     except ImportError:
         # 退路：直接 import 内部函数
@@ -469,7 +440,6 @@ def main() -> int:
             mod = importlib.util.module_from_spec(spec)
             spec.loader.exec_module(mod)
             inspect_agent_load_status = mod.inspect_agent_load_status
-            verify_model6_real_computation = mod.verify_model6_real_computation
         else:
             raise
 
@@ -531,11 +501,6 @@ def main() -> int:
         "details": details,
     }
 
-    # 三、model-6 真实计算
-    print("\n[3/3] 验证 model-6 真实 ML 计算...")
-    m6 = verify_model6_real_computation()
-    report["model6"] = m6
-
     # 汇总
     real_agents = [mid for mid, e in report["agents"].items()
                    if not e["is_stub"] and e.get("resource_ready")]
@@ -575,7 +540,6 @@ def main() -> int:
     print(f"占位桩 agent: {stub_agents or '无'}")
     print(f"问题库回答率: {answered}/{total}")
     print(f"问题类型识别准确率: {type_match}/{total}")
-    print(f"model-6 真实计算: {'✓ 通过' if m6['is_real_computation'] else '✗ 未通过'}")
     print(f"\n完整报告: {REPORT_FILE}")
     print(f"原始 JSON: {RAW_JSON_FILE}")
 

@@ -36,7 +36,7 @@ def _stub_process_return():
         "status": "ok",
         "data": {
             "question_type": 5,
-            "agents_invoked": ["model-7"],
+            "agents_invoked": ["model-5"],
             "summary": "",
             "details": {},
             "recommendations": [],
@@ -98,7 +98,7 @@ def test_execute_models_no_parcel_when_absent():
 
 
 def test_execute_models_passes_only_parcel_id():
-    """request 仅含 parcel_id 时 context 仅含 parcel_id（model-7 走 mock 回退）。"""
+    """request 仅含 parcel_id 时 context 仅含 parcel_id（model-5 走 mock 回退）。"""
     from framework.agents.manager import agent_manager
 
     captured = {}
