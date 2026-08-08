@@ -82,10 +82,11 @@ def initialize_state(state: MultiAgentState) -> MultiAgentState:
     }
 
 def identify_question_node(state: MultiAgentState) -> MultiAgentState:
+    from framework.observability.observe import observe_routing
+
     question = state["request"].get("question", "")
     context = _extract_five_dim_context(state)
-    question_type, relevance = identify_question_type(question, context)
-    final_type, routing_status = apply_exclusive_rules(question, question_type, context)
+    question_type, relevance, final_type, routing_status = observe_routing(question, context)
     return {
         **state,
         "question_type": final_type,

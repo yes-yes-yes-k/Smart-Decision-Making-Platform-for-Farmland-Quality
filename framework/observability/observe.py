@@ -1,0 +1,73 @@
+"""路由观测封装：在 nodes.identify_question_node 内包装两次路由调用，记录观测数据。
+
+observe_routing() 不改变路由判定结果，仅额外写入 JSON 行式日志。
+返回 (question_type, relevance, final_type, routing_status)，字段与现状完全一致。
+"""
+from __future__ import annotations
+import time
+import uuid
+from typing import Any, Dict, Optional, Tuple
+
+from framework.agents.exclusive_rules import (
+    EXCLUSIVE_RULES,
+    _rule_matches,
+    apply_exclusive_rules,
+)
+from framework.agents.router import QuestionTypeRouter
+from framework.agents.routing import identify_question_type
+from .routing_log import write_routing_log
+
+# 结果版本：路由算法判定签名版本，随判定演进递增
+ROUTING_RESULT_VERSION = "v1.1"
+
+_router = QuestionTypeRouter()
+
+
+def _matched_rules(question: str, context: Optional[dict]) -> list[str]:
+    """返回命中的排他规则 target（只读，不改变路由行为）。"""
+    return [r.target for r in EXCLUSIVE_RULES if _rule_matches(r, question, context)]
+
+
+def observe_routing(
+    question: str,
+    context: Optional[dict] = None,
+    *,
+    trace_id: Optional[str] = None,
+    data_version: Optional[str] = None,
+    agent_version: Optional[str] = None,
+    params: Optional[dict] = None,
+) -> Tuple[int, float, int, str]:
+    """执行并观测一次完整路由判定。
+
+    与 nodes.identify_question_node 现状一致地调用 identify_question_type（内部已应用
+    排他规则）后，再次调用 apply_exclusive_rules，返回 (question_type, relevance,
+    final_type, routing_status)。内部异常时写入 failure_reason 后重新抛出。
+    """
+    tid = trace_id or uuid.uuid4().hex
+    entry: Dict[str, Any] = {
+        "trace_id": tid,
+        "question": question,
+        "timestamp": time.strftime("%Y-%m-%d %H:%M:%S"),
+        "data_version": data_version,
+        "agent_version": agent_version,
+        "params": params or {},
+        "result_version": ROUTING_RESULT_VERSION,
+        "failure_reason": None,
+    }
+    t0 = time.perf_counter()
+    try:
+        question_type, relevance = identify_question_type(question, context)
+        entry["candidate_agents"] = _router.get_agents_for_type(question_type)
+        entry["hit_exclusive_rules"] = _matched_rules(question, context)
+        final_type, routing_status = apply_exclusive_rules(question, question_type, context)
+        entry["question_type"] = final_type
+        entry["routing_status"] = routing_status
+        entry["degradation"] = routing_status
+        entry["duration_ms"] = round((time.perf_counter() - t0) * 1000, 2)
+        write_routing_log(entry)
+        return question_type, relevance, final_type, routing_status
+    except Exception as exc:
+        entry["failure_reason"] = str(exc)
+        entry["duration_ms"] = round((time.perf_counter() - t0) * 1000, 2)
+        write_routing_log(entry)
+        raise
