@@ -109,3 +109,48 @@ class TestNodeInjection:
                 assert entry["question_type"] == 5
         finally:
             _routing.EMBEDDING_AVAILABLE = real
+
+
+class TestConfusionMetrics:
+    def test_confusion_metrics_values(self):
+        from framework.observability.metrics import confusion_metrics
+        y_true = ["model-1", "model-1", "model-5", "model-5", "model-5"]
+        y_pred = ["model-1", "model-5", "model-1", "model-5", "model-5"]
+        m = confusion_metrics(y_true, y_pred, "model-1")
+        assert m["tp"] == 1
+        assert m["fn"] == 1
+        assert m["fp"] == 1
+        assert m["tn"] == 2
+        assert m["total"] == 5
+        assert m["confusion_rate"] == 0.4
+        assert m["accuracy"] == 0.6
+
+    def test_perfect_prediction(self):
+        from framework.observability.metrics import confusion_metrics
+        y_true = ["model-2", "model-2", "model-3", "model-3"]
+        y_pred = ["model-2", "model-2", "model-3", "model-3"]
+        m = confusion_metrics(y_true, y_pred, "model-2")
+        assert m["confusion_rate"] == 0.0
+        assert m["accuracy"] == 1.0
+
+
+class TestTraceability:
+    def test_trace_result_roundtrip(self):
+        from framework.observability.traceability import trace_result
+        with tempfile.TemporaryDirectory() as tmp:
+            set_log_path(os.path.join(tmp, "routing_calls_test.jsonl"))
+            write_routing_log({
+                "trace_id": "t1", "timestamp": "2026-08-08 10:00:00",
+                "data_version": "v1", "agent_version": "a1", "params": {"p": 1},
+            })
+            info = trace_result("t1", log_dir=tmp)
+            assert info is not None
+            assert info["data_version"] == "v1"
+            assert info["agent_version"] == "a1"
+            assert info["params"] == {"p": 1}
+            assert info["call_time"] == "2026-08-08 10:00:00"
+
+    def test_trace_result_not_found(self):
+        from framework.observability.traceability import trace_result
+        with tempfile.TemporaryDirectory() as tmp:
+            assert trace_result("nope", log_dir=tmp) is None
