@@ -392,6 +392,14 @@ def test_all_confusing_pair_batches_size_ge_20():
     assert len(_expand(MODEL3_STEMS, PREFIXES, SUFFIXES)) >= 20
 
 
+def test_confusing_pair_positive_and_negative_batches_ge_20():
+    """两组易混淆对的正例与反例批量均 ≥20（反例与正例同源句干联动）。"""
+    for name, stems in (("model-1", MODEL1_STEMS), ("model-5", MODEL5_STEMS),
+                        ("model-2", MODEL2_STEMS), ("model-3", MODEL3_STEMS)):
+        batch = _expand(stems, PREFIXES, SUFFIXES)
+        assert len(batch) >= 20, f"{name} 正例/反例批量应 ≥20，实际 {len(batch)}"
+
+
 def test_extract_business_task_keywords():
     """_extract_five_dim_context 应从问题文本提取 business_task 标签"""
     from framework.agents.nodes import _extract_five_dim_context, BUSINESS_TASK_KEYWORDS
@@ -527,4 +535,5 @@ if __name__ == "__main__":
     test_five_dim_does_not_break_existing_1to1_routing()
     test_normal_questions_not_degraded()
     test_all_confusing_pair_batches_size_ge_20()
+    test_confusing_pair_positive_and_negative_batches_ge_20()
     print("\n全部问题类型关键词测试通过！")
