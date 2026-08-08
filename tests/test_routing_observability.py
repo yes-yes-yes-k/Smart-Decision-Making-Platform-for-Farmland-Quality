@@ -154,3 +154,57 @@ class TestTraceability:
         from framework.observability.traceability import trace_result
         with tempfile.TemporaryDirectory() as tmp:
             assert trace_result("nope", log_dir=tmp) is None
+
+
+class TestObserveLogFailureIsolation:
+    """观测日志写入失败不得泄漏到路由主流程（I1/M3）。"""
+
+    def test_success_log_write_failure_does_not_break_routing(self, monkeypatch):
+        import framework.observability.observe as _observe
+        from framework.agents import routing as _routing
+        real = _routing.EMBEDDING_AVAILABLE
+        try:
+            _routing.EMBEDDING_AVAILABLE = False  # 确定性关键词路径
+            def _boom(*a, **k):
+                raise OSError("disk full")
+            monkeypatch.setattr(_observe, "write_routing_log", _boom)
+            # 成功路径：日志写入失败不应改变路由结果，也不应抛异常
+            qtype, rel, final_type, status = _observe.observe_routing(
+                "我的田耕地质量等级是多少", {"scale": "地块"},
+            )
+            assert final_type == 5
+            assert status == "normal"
+            assert qtype is not None
+        finally:
+            _routing.EMBEDDING_AVAILABLE = real
+
+    def test_failure_log_write_failure_preserves_original_error(self, monkeypatch):
+        import framework.observability.observe as _observe
+        def _boom_route(*a, **k):
+            raise RuntimeError("route-boom")
+        def _boom_log(*a, **k):
+            raise OSError("disk full")
+        # 路由异常 + 日志写入异常同时发生：必须抛出原始路由异常，而非日志异常
+        monkeypatch.setattr(_observe, "apply_exclusive_rules", _boom_route)
+        monkeypatch.setattr(_observe, "write_routing_log", _boom_log)
+        with pytest.raises(RuntimeError, match="route-boom"):
+            _observe.observe_routing("我的田耕地质量等级是多少", {"scale": "地块"})
+
+
+class TestConfusionMetricsLengthCheck:
+    def test_mismatched_length_raises_value_error(self):
+        from framework.observability.metrics import confusion_metrics
+        with pytest.raises(ValueError):
+            confusion_metrics(["a", "b"], ["a"], "a")
+
+
+class TestRoutingLogReadRobustness:
+    def test_bad_line_skipped_without_interrupting_read(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            good = os.path.join(tmp, "routing_calls_ok.jsonl")
+            with open(good, "w", encoding="utf-8") as f:
+                f.write('{"trace_id": "a"}\n')
+                f.write('this is not valid json\n')
+                f.write('{"trace_id": "b"}\n')
+            entries = read_routing_logs(tmp)
+            assert [e["trace_id"] for e in entries] == ["a", "b"]

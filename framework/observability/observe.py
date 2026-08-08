@@ -4,6 +4,7 @@ observe_routing() 不改变路由判定结果，仅额外写入 JSON 行式日�
 返回 (question_type, relevance, final_type, routing_status)，字段与现状完全一致。
 """
 from __future__ import annotations
+import warnings
 import time
 import uuid
 from typing import Any, Dict, Optional, Tuple
@@ -26,6 +27,18 @@ _router = QuestionTypeRouter()
 def _matched_rules(question: str, context: Optional[dict]) -> list[str]:
     """返回命中的排他规则 target（只读，不改变路由行为）。"""
     return [r.target for r in EXCLUSIVE_RULES if _rule_matches(r, question, context)]
+
+
+def _safe_write_log(entry: Dict[str, Any]) -> None:
+    """安全写入观测日志：失败仅告警，绝不传播异常/掩盖路由结果。
+
+    观测写入属非功能性副作用，日志系统故障（盘满、目录不可写等）不得
+    影响路由主流程，也不得替换已发生的原始路由异常。
+    """
+    try:
+        write_routing_log(entry)
+    except Exception as exc:  # noqa: BLE001 - 观测副作用必须全面隔离
+        warnings.warn(f"[observability] 路由日志写入失败，已忽略: {exc}")
 
 
 def observe_routing(
@@ -64,10 +77,10 @@ def observe_routing(
         entry["routing_status"] = routing_status
         entry["degradation"] = routing_status
         entry["duration_ms"] = round((time.perf_counter() - t0) * 1000, 2)
-        write_routing_log(entry)
+        _safe_write_log(entry)
         return question_type, relevance, final_type, routing_status
     except Exception as exc:
         entry["failure_reason"] = str(exc)
         entry["duration_ms"] = round((time.perf_counter() - t0) * 1000, 2)
-        write_routing_log(entry)
+        _safe_write_log(entry)
         raise

@@ -13,7 +13,8 @@ def confusion_metrics(
     positive_label 为关注的正类（配对中的目标模型）。
     返回包含 tp/fp/fn/tn/total/accuracy/confusion_rate 的字典。
     """
-    assert len(y_true) == len(y_pred), "y_true 与 y_pred 长度必须一致"
+    if len(y_true) != len(y_pred):
+        raise ValueError("y_true 与 y_pred 长度必须一致")
     tp = fp = fn = tn = 0
     for true, pred in zip(y_true, y_pred):
         if true == positive_label:

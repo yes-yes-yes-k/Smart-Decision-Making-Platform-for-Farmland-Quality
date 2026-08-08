@@ -7,6 +7,7 @@
 from __future__ import annotations
 import os
 import json
+import warnings
 from datetime import datetime
 from typing import Any, Dict, Optional
 
@@ -64,6 +65,11 @@ def read_routing_logs(log_dir: Optional[str] = None) -> list[Dict[str, Any]]:
             with open(os.path.join(base_dir, name), "r", encoding="utf-8") as f:
                 for line in f:
                     line = line.strip()
-                    if line:
+                    if not line:
+                        continue
+                    try:
                         entries.append(json.loads(line))
+                    except json.JSONDecodeError as exc:
+                        # 单行损坏不中断整体读取（看板/追溯健壮性）
+                        warnings.warn(f"[observability] 跳过损坏的路由日志行: {exc}")
     return entries
