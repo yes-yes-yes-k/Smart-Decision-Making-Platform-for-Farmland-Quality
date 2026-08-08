@@ -23,9 +23,17 @@
 - 风险信号: 无命中
 - 每任务 reviewer: 未派发（standard 非风险任务放行）
 
+## 已完成: Task 3: 路由回归自动化
+- openspec task: 3.1/3.2/3.3 已勾选
+- 阶段: done
+- 实现提交: ea28e52
+- RED/GREEN: 有（回归脚本混淆率 0.00%，目标达成，退出码 0；52 passed）
+- 风险信号: 无命中
+- 每任务 reviewer: 未派发（standard 非风险任务放行）
+
 ## 当前任务
-- plan task: Task 3: 路由回归自动化
-- openspec task: 3.1/3.2/3.3
+- plan task: Task 4: 路由看板
+- openspec task: 4.1/4.2
 - 阶段: implementing
 - 实现提交: (待)
 - RED/GREEN 证据: (待)

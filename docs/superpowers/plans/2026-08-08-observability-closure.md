@@ -595,7 +595,7 @@ git commit -m "feat(observability): 混淆矩阵计算与 trace_id 追溯链"
 
 **模式：TDD + direct（脚本为 direct，测试为 TDD）**
 
-- [ ] **Step 1: 扩充 `tests/test_question_type_keywords.py` 的规模断言**
+- [x] **Step 1: 扩充 `tests/test_question_type_keywords.py` 的规模断言**
 
 在文件末尾、`if __name__ == "__main__":` 之前追加：
 
@@ -614,12 +614,12 @@ def test_confusing_pair_positive_and_negative_batches_ge_20():
     test_confusing_pair_positive_and_negative_batches_ge_20()
 ```
 
-- [ ] **Step 2: 运行测试确认通过**
+- [x] **Step 2: 运行测试确认通过**
 
 Run: `python -m pytest tests/test_question_type_keywords.py -v`
 Expected: PASS（新增 1 项 + 原有全部通过）
 
-- [ ] **Step 3: 实现 `scripts/run_routing_regression.py`**
+- [x] **Step 3: 实现 `scripts/run_routing_regression.py`**
 
 ```python
 """路由回归自动化。
@@ -713,12 +713,12 @@ if __name__ == "__main__":
     sys.exit(main())
 ```
 
-- [ ] **Step 4: 运行回归脚本**
+- [x] **Step 4: 运行回归脚本**
 
 Run: `python scripts/run_routing_regression.py`
 Expected: 输出两组混淆矩阵，`目标达成`，退出码 `0`（若因关键词重叠致混淆率 > 3%，则按实际情况评估是否需要调整报表口径，但**不得修改排他规则逻辑**）
 
-- [ ] **Step 5: 提交**
+- [x] **Step 5: 提交**
 
 ```bash
 git add tests/test_question_type_keywords.py scripts/run_routing_regression.py

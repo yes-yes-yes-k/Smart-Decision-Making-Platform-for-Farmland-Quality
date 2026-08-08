@@ -12,9 +12,9 @@
 
 ## 3. 路由回归自动化
 
-- [ ] 3.1 扩充 `tests/test_question_type_keywords.py`：model-1/5、model-2/3 各 ≥20 条正反例
-- [ ] 3.2 新增 `tests/test_routing_observability.py` 测试混淆矩阵与追溯链
-- [ ] 3.3 新增 `scripts/run_routing_regression.py`：自动运行回归并输出混淆矩阵，退出码反映目标达成
+- [x] 3.1 扩充 `tests/test_question_type_keywords.py`：model-1/5、model-2/3 各 ≥20 条正反例
+- [x] 3.2 新增 `tests/test_routing_observability.py` 测试混淆矩阵与追溯链
+- [x] 3.3 新增 `scripts/run_routing_regression.py`：自动运行回归并输出混淆矩阵，退出码反映目标达成
 
 ## 4. 路由看板
 
