@@ -18,8 +18,8 @@
 
 ## 4. 路由看板
 
-- [ ] 4.1 实现 `framework/observability/dashboard.py` 与 `__main__.py`：CLI 文本看板（正确率、混淆率、漏调用率、参数完整率）
-- [ ] 4.2 看板支持导出 Markdown 报告
+- [x] 4.1 实现 `framework/observability/dashboard.py` 与 `__main__.py`：CLI 文本看板（正确率、混淆率、漏调用率、参数完整率）
+- [x] 4.2 看板支持导出 Markdown 报告
 
 ## 5. 验证与文档
 

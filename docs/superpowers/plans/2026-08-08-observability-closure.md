@@ -743,7 +743,7 @@ git commit -m "feat(observability): 路由回归自动化脚本与规模断言"
 
 **模式：direct**（薄 CLI，指标逻辑已在 Task 2/3 覆盖测试）
 
-- [ ] **Step 1: 实现 `framework/observability/dashboard.py`**
+- [x] **Step 1: 实现 `framework/observability/dashboard.py`**
 
 ```python
 """路由看板：读取本地日志与混淆矩阵，输出文本看板，支持导出 Markdown。
@@ -846,7 +846,7 @@ if __name__ == "__main__":
     sys.exit(main())
 ```
 
-- [ ] **Step 2: 实现 `framework/observability/__main__.py`**
+- [x] **Step 2: 实现 `framework/observability/__main__.py`**
 
 ```python
 """python -m framework.observability 入口（委托给 dashboard.main）。"""
@@ -857,7 +857,7 @@ if __name__ == "__main__":
     sys.exit(main())
 ```
 
-- [ ] **Step 3: 更新 `framework/observability/__init__.py` 导出看板**
+- [x] **Step 3: 更新 `framework/observability/__init__.py` 导出看板**
 
 将 `__init__.py` 内容替换为：
 
@@ -874,14 +874,14 @@ __all__ = ["routing_log"]
 
 > 说明：`dashboard`/`metrics`/`traceability`/`observe` 通过 `from framework.observability.X import ...` 显式导入，不在此处穷举导出，避免循环导入。
 
-- [ ] **Step 4: 冒烟验证看板命令**
+- [x] **Step 4: 冒烟验证看板命令**
 
 Run: `python scripts/run_routing_regression.py --output logs/confusion_matrix.json`（先生成矩阵，若 logs/ 无路由日志则矩阵部分有值、日志部分为 0）
 Run: `python -m framework.observability.dashboard --matrix logs/confusion_matrix.json`
 Run: `python -m framework.observability.dashboard --matrix logs/confusion_matrix.json --markdown --output logs/dashboard.md`
 Expected: 输出文本/生成 Markdown 看板，包含正确率、混淆率、漏调用率、参数完整率
 
-- [ ] **Step 5: 提交**
+- [x] **Step 5: 提交**
 
 ```bash
 git add framework/observability/dashboard.py framework/observability/__main__.py framework/observability/__init__.py

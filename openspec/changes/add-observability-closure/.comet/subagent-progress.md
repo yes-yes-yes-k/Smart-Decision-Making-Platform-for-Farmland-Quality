@@ -31,9 +31,17 @@
 - 风险信号: 无命中
 - 每任务 reviewer: 未派发（standard 非风险任务放行）
 
+## 已完成: Task 4: 路由看板
+- openspec task: 4.1/4.2 已勾选
+- 阶段: done
+- 实现提交: 18906a9
+- RED/GREEN: 有（文本看板 + Markdown 导出冒烟通过，四类指标齐全）
+- 风险信号: 无命中
+- 每任务 reviewer: 未派发（standard 非风险任务放行）
+
 ## 当前任务
-- plan task: Task 4: 路由看板
-- openspec task: 4.1/4.2
+- plan task: Task 5: 验证与文档
+- openspec task: 5.1/5.2/5.3
 - 阶段: implementing
 - 实现提交: (待)
 - RED/GREEN 证据: (待)
