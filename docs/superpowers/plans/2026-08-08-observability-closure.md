@@ -66,7 +66,7 @@ base-ref: b50b01715b1615f64f8d46e3ad8f9a9ee6aeb543
 
 **模式：TDD**（先写路由日志与观测的失败测试，再实现。）
 
-- [ ] **Step 1: 创建包初始化文件 `framework/observability/__init__.py`**
+- [x] **Step 1: 创建包初始化文件 `framework/observability/__init__.py`**
 
 ```python
 """framework.observability：本地路由可观测性（日志/指标/追溯/看板）。
@@ -79,7 +79,7 @@ from . import routing_log
 __all__ = ["routing_log"]
 ```
 
-- [ ] **Step 2: 写失败测试（`tests/test_routing_observability.py` 的日志部分）**
+- [x] **Step 2: 写失败测试（`tests/test_routing_observability.py` 的日志部分）**
 
 ```python
 """测试路由可观测性：JSON 行式日志、观测封装、混淆矩阵、追溯链。"""
@@ -124,12 +124,12 @@ class TestRoutingLog:
             assert not os.path.exists(path)
 ```
 
-- [ ] **Step 3: 运行测试确认失败**
+- [x] **Step 3: 运行测试确认失败**
 
 Run: `python -m pytest tests/test_routing_observability.py -v`
 Expected: FAIL（`ModuleNotFoundError: framework.observability` 或 `cannot import name 'set_log_path'`）
 
-- [ ] **Step 4: 实现 `framework/observability/routing_log.py`**
+- [x] **Step 4: 实现 `framework/observability/routing_log.py`**
 
 ```python
 """本地路由/调用观测日志：JSON 行式落盘。
@@ -203,12 +203,12 @@ def read_routing_logs(log_dir: Optional[str] = None) -> list[Dict[str, Any]]:
     return entries
 ```
 
-- [ ] **Step 5: 运行测试确认通过**
+- [x] **Step 5: 运行测试确认通过**
 
 Run: `python -m pytest tests/test_routing_observability.py::TestRoutingLog -v`
 Expected: PASS（3 passed）
 
-- [ ] **Step 6: 写失败测试（观测封装 + 节点注入）**
+- [x] **Step 6: 写失败测试（观测封装 + 节点注入）**
 
 在 `tests/test_routing_observability.py` 末尾追加：
 
@@ -288,7 +288,7 @@ from framework.observability.observe import observe_routing
 Run: `python -m pytest tests/test_routing_observability.py::TestObserve tests/test_routing_observability.py::TestNodeInjection -v`
 Expected: FAIL（`ModuleNotFoundError: framework.observability.observe` 或 `cannot import name 'observe_routing'`）
 
-- [ ] **Step 8: 实现 `framework/observability/observe.py`**
+- [x] **Step 8: 实现 `framework/observability/observe.py`**
 
 ```python
 """路由观测封装：在 nodes.identify_question_node 内包装两次路由调用，记录观测数据。
@@ -366,7 +366,7 @@ def observe_routing(
         raise
 ```
 
-- [ ] **Step 9: 在 `framework/agents/nodes.py` 注入观测点**
+- [x] **Step 9: 在 `framework/agents/nodes.py` 注入观测点**
 
 将 `identify_question_node` 函数体改造为通过 `observe_routing()` 执行两次路由调用（返回值逐字段不变）：
 
@@ -388,7 +388,7 @@ def identify_question_node(state: MultiAgentState) -> MultiAgentState:
 
 > 说明：`observe_routing` 在函数体内延迟导入，避免模块导入期产生循环依赖；`question_type/relevance/final_type/routing_status/error` 返回值与改造前一致。
 
-- [ ] **Step 10: 修正失败路径测试为 monkeypatch 形式**
+- [x] **Step 10: 修正失败路径测试为 monkeypatch 形式**
 
 将 Step 6 中 `test_observe_routing_failure_logs_reason` 替换为以下可稳定触发的版本：
 
@@ -418,7 +418,7 @@ def identify_question_node(state: MultiAgentState) -> MultiAgentState:
 Run: `python -m pytest tests/test_routing_observability.py -v`
 Expected: PASS（TestRoutingLog 3 + TestObserve 2 + TestNodeInjection 1 = 6 passed）
 
-- [ ] **Step 12: 提交**
+- [x] **Step 12: 提交**
 
 ```bash
 git add framework/observability/__init__.py framework/observability/routing_log.py framework/observability/observe.py framework/agents/nodes.py tests/test_routing_observability.py

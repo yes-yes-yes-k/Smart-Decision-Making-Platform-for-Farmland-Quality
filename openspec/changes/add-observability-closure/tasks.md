@@ -1,9 +1,9 @@
 ## 1. 本地路由调用日志模块
 
-- [ ] 1.1 新建 `framework/observability/__init__.py`
-- [ ] 1.2 实现 `framework/observability/routing_log.py`：JSON 行式日志写入（含 trace_id、question、question_type、候选 Agent、命中排他规则、降级状态、耗时、失败原因、结果版本）
-- [ ] 1.3 实现 `framework/observability/observe.py`：`observe_routing()` 观测封装，包装 router/exclusive_rules 调用链
-- [ ] 1.4 实现本地日志路径与开关配置（默认 `logs/`，按天文件，可关闭）
+- [x] 1.1 新建 `framework/observability/__init__.py`
+- [x] 1.2 实现 `framework/observability/routing_log.py`：JSON 行式日志写入（含 trace_id、question、question_type、候选 Agent、命中排他规则、降级状态、耗时、失败原因、结果版本）
+- [x] 1.3 实现 `framework/observability/observe.py`：`observe_routing()` 观测封装，包装 router/exclusive_rules 调用链
+- [x] 1.4 实现本地日志路径与开关配置（默认 `logs/`，按天文件，可关闭）
 
 ## 2. 混淆矩阵与追溯链
 
