@@ -18,7 +18,7 @@ verification_report: docs/superpowers/reports/2026-08-08-add-observability-closu
 branch_status: handled
 created_at: 2026-08-08
 verified_at: 2026-08-08
-archived: false
+archived: true
 direct_override: null
 handoff_context: openspec/changes/add-observability-closure/.comet/handoff/design-context.json
 handoff_hash: 368fa173141bf589b8ed2adde2444cf421d15da1cc5429e594be180d1edcf2af

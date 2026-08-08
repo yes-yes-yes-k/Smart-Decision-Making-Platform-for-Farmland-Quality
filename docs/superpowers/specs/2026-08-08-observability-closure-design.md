@@ -2,6 +2,8 @@
 comet_change: add-observability-closure
 role: technical-design
 canonical_spec: openspec
+archived-with: 2026-08-08-add-observability-closure
+status: final
 ---
 
 # P9 本地可观测性闭环 技术设计

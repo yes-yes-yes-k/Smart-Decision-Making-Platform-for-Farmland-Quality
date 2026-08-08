@@ -2,6 +2,7 @@
 change: add-observability-closure
 design-doc: docs/superpowers/specs/2026-08-08-observability-closure-design.md
 base-ref: b50b01715b1615f64f8d46e3ad8f9a9ee6aeb543
+archived-with: 2026-08-08-add-observability-closure
 ---
 
 # P9 可观测性闭环 Implementation Plan
@@ -25,6 +26,7 @@ base-ref: b50b01715b1615f64f8d46e3ad8f9a9ee6aeb543
 - **日志默认配置**：默认目录 `logs/`，按天文件 `logs/routing_calls_YYYYMMDD.jsonl`，可关闭（`set_log_enabled(False)`）。
 - 复用 `audit_logger` 的 `set_log_path` 覆盖范式以便测试。
 
+archived-with: 2026-08-08-add-observability-closure
 ---
 
 ## 文件结构
@@ -46,6 +48,7 @@ base-ref: b50b01715b1615f64f8d46e3ad8f9a9ee6aeb543
 - `openspec/specs/langsmith-monitoring/spec.md` — 同步「本地持久化调用日志」主 spec
 - `.gitignore` — 加入 `logs/`
 
+archived-with: 2026-08-08-add-observability-closure
 ---
 
 ### Task 1: 本地路由调用日志模块
@@ -425,6 +428,7 @@ git add framework/observability/__init__.py framework/observability/routing_log.
 git commit -m "feat(observability): 本地路由调用 JSON 日志与观测封装"
 ```
 
+archived-with: 2026-08-08-add-observability-closure
 ---
 
 ### Task 2: 混淆矩阵与追溯链
@@ -580,6 +584,7 @@ git add framework/observability/metrics.py framework/observability/traceability.
 git commit -m "feat(observability): 混淆矩阵计算与 trace_id 追溯链"
 ```
 
+archived-with: 2026-08-08-add-observability-closure
 ---
 
 ### Task 3: 路由回归自动化
@@ -725,6 +730,7 @@ git add tests/test_question_type_keywords.py scripts/run_routing_regression.py
 git commit -m "feat(observability): 路由回归自动化脚本与规模断言"
 ```
 
+archived-with: 2026-08-08-add-observability-closure
 ---
 
 ### Task 4: 路由看板
@@ -888,6 +894,7 @@ git add framework/observability/dashboard.py framework/observability/__main__.py
 git commit -m "feat(observability): 路由文本看板与 Markdown 导出"
 ```
 
+archived-with: 2026-08-08-add-observability-closure
 ---
 
 ### Task 5: 验证与文档
@@ -959,6 +966,7 @@ git add openspec/specs/langsmith-monitoring/spec.md .gitignore
 git commit -m "docs(observability): 同步 langsmith-monitoring 主 spec 与日志忽略规则"
 ```
 
+archived-with: 2026-08-08-add-observability-closure
 ---
 
 ## Self-Review
