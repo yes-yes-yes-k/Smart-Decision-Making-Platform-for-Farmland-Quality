@@ -74,9 +74,12 @@ def chat():
     history = [{"role": m.role, "content": m.content} for m in conversation.messages if m.id != user_message.id]
 
     orchestrator_request = {"question": message, **context}
-    # top-level parcel_id/parcel_code 优先（覆盖 context 内同名字段）
-    # parcel_id（数字字符串）给 model-1/3/4 查 DB，parcel_code（字母数字）给 model-7 调 fortran exe
-    for k in ("parcel_id", "parcel_code", "land_type", "fertilizer_type"):
+    # 顶层模型输入优先，覆盖 context 内同名字段。
+    # parcel_code、xqmc_code 与 scenario 由模型2用于真实质量等级或潜力计算。
+    for k in (
+        "parcel_id", "parcel_code", "xqmc_code", "scenario", "csv_path",
+        "land_type", "fertilizer_type",
+    ):
         if data.get(k) is not None:
             orchestrator_request[k] = data[k]
     result = multi_agent_orchestrator.run(orchestrator_request, conversation_history=history)
@@ -112,8 +115,10 @@ def chat():
         response_data["agents_invoked"] = agents_invoked
     if recommendations:
         response_data["recommendations"] = recommendations
+    if isinstance(model_results, dict) and model_results.get("status") == "error":
+        response_data["error"] = agent_data.get("error")
 
     return jsonify({
-        "status": "ok",
+        "status": "error" if isinstance(model_results, dict) and model_results.get("status") == "error" else "ok",
         "data": response_data,
     })

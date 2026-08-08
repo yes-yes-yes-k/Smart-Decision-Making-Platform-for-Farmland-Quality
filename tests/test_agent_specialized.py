@@ -39,38 +39,61 @@ def test_stability_risk_agent_answer_question_risk():
     print("✓ StabilityRiskAgent.answer_question 识别退化风险区域")
 
 
-def test_potential_agent_execute():
+def test_potential_agent_executes_real_grade_evaluation_for_type5():
     from framework.agents.specialized.potential_agent import PotentialAssessmentAgent
     agent = PotentialAssessmentAgent()
     assert agent.model_id == "model-2"
     assert agent.dependencies == []
-    result = agent.execute({"area_code": "lechang"})
+    result = agent.execute({"question_type": 5, "parcel_code": "A0001"})
     assert result["status"] == "ok"
-    assert result["metadata"]["simulated"] is True
-    indicators = result["result"]["indicators"]
-    assert isinstance(indicators, list) and len(indicators) == 11
-    first = indicators[0]
-    assert "name" in first and "current" in first and "potential" in first and "obstacle_degree" in first
-    print("✓ PotentialAssessmentAgent.execute 返回 11 评价指标")
+    assert result["metadata"]["simulated"] is False
+    assert result["result"]["quality_grade"] == "10等"
+    assert abs(result["result"]["composite_index"] - 0.6728) < 0.01
+    assert result["result"]["obstacle_degree"]
+    print("✓ PotentialAssessmentAgent type 5 返回真实质量等级评价")
 
 
-def test_potential_agent_answer_question():
+def test_potential_agent_executes_real_single_parcel_potential_for_type6():
     from framework.agents.specialized.potential_agent import PotentialAssessmentAgent
     agent = PotentialAssessmentAgent()
-    out = agent.answer_question("耕地质量提升潜力如何？", {})
-    assert out["simulated"] is True
-    assert "潜力" in out["answer"] or "障碍" in out["answer"]
-    assert 0.0 <= out["confidence"] <= 1.0
-    print("✓ PotentialAssessmentAgent.answer_question 返回潜力评估")
+    result = agent.execute({"question_type": 6, "parcel_code": "A0001"})
+    assert result["status"] == "ok"
+    assert result["metadata"]["simulated"] is False
+    assert result["result"]["parcel_code"] == "A0001"
+    assert "full_potential" in result["result"]
+    assert result["result"]["items"]
+    print("✓ PotentialAssessmentAgent type 6 返回真实单地块潜力")
 
 
-def test_potential_agent_target_ph_in_context():
-    """answer_question 应将 target_ph 写入 evidence 供下游使用"""
+def test_potential_agent_executes_real_county_potential_for_type6():
     from framework.agents.specialized.potential_agent import PotentialAssessmentAgent
     agent = PotentialAssessmentAgent()
-    out = agent.answer_question("如何提升耕地质量？", {"current_ph": 5.0})
-    assert any("target_ph" in str(e) for e in out["evidence"])
-    print("✓ PotentialAssessmentAgent 在 evidence 中暴露 target_ph")
+    result = agent.execute({"question_type": 6, "xqmc_code": 8, "scenario": 1})
+    assert result["status"] == "ok"
+    assert result["metadata"]["simulated"] is False
+    assert result["result"]["county_code"] == 8
+    assert result["result"]["scenario"] == 1
+    print("✓ PotentialAssessmentAgent type 6 返回真实县域潜力")
+
+
+def test_potential_agent_requires_parcel_code_when_no_county_input():
+    from framework.agents.specialized.potential_agent import PotentialAssessmentAgent
+    result = PotentialAssessmentAgent().execute({"question_type": 5})
+    assert result["status"] == "error"
+    assert result["error"]["code"] == "MISSING_PARCEL_CODE"
+    assert result["metadata"]["simulated"] is False
+
+
+def test_potential_agent_reports_csv_deployment_error():
+    from framework.agents.specialized.potential_agent import PotentialAssessmentAgent
+    result = PotentialAssessmentAgent().execute({
+        "question_type": 5,
+        "parcel_code": "A0001",
+        "csv_path": "bin/farmland_quality_eval/missing.csv",
+    })
+    assert result["status"] == "error"
+    assert result["error"]["code"] == "DEPLOYMENT_ERROR"
+    assert result["metadata"]["simulated"] is False
 
 
 def test_problem_agent_execute():

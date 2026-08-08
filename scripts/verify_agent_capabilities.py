@@ -1,7 +1,7 @@
 """智能体能力验证脚本
 
 不启动 Flask HTTP，直接调用 Python API 验证：
-1. 7 个 agent 的加载状态（real/stub + 模型可用性）
+1. 6 个 agent 的加载状态（real/stub + 模型可用性）
 2. REFERENCE_QUESTIONS 问题库 18 个问题的回答能力
 3. model-6 (FertilityMLAgent) 集成的真实 ML 计算能力
 
@@ -23,6 +23,9 @@ os.environ.setdefault("PYTHONPATH", str(PROJECT_ROOT / "src"))
 
 # 避免加载 .env 时引发副作用，仅设置最小环境变量
 os.environ.setdefault("FLASK_CONFIG", "default")
+
+if hasattr(sys.stdout, "reconfigure"):
+    sys.stdout.reconfigure(errors="backslashreplace")
 
 # Excel 标准模型映射（单一事实源在 gen_full_verification_report，此处引入共享同一份）
 # MODEL_TO_STD: model_id -> (std_id, std_name)；未对应 Excel 标准的 model 返回 None
@@ -48,7 +51,7 @@ def hr() -> None:
 # ---------------------------------------------------------------------------
 
 def inspect_agent_load_status() -> dict:
-    """检查 7 个 agent 的加载状态及依赖模型文件/数据库是否就绪。"""
+    """检查 6 个 agent 的加载状态及依赖模型文件/数据库是否就绪。"""
     from framework.agents.manager import AgentManager
 
     manager = AgentManager()
@@ -92,7 +95,7 @@ def inspect_agent_load_status() -> dict:
             "domain": getattr(agent, "domain", ""),
             "dependencies": getattr(agent, "dependencies", []) or [],
             "model_id_registered": getattr(agent, "model_id", ""),
-            # Excel 标准模型对应关系（model-2/model-5 未对应 Excel 标准 → None）
+            # Excel 标准模型对应关系（未对应时为 None）。
             "std_id": std[0] if std else None,
             "std_name": std[1] if std else None,
         }
@@ -128,12 +131,12 @@ def inspect_agent_load_status() -> dict:
                 "真实 ML 计算" if entry["resource_ready"]
                 else "fallback 训练集均值（缺 .joblib）"
             )
-        elif model_id == "model-7":
-            entry["real_model"] = "Python implementation"
+        elif model_id == "model-2":
+            entry["real_model"] = "farmland_grade_eval Python implementation"
             entry["resource_ready"] = resource_status["grade_csv_exists"]
             entry["expected_behavior"] = (
                 "真实计算" if entry["resource_ready"]
-                else "回退模拟数据（需部署 CSV 到 bin/farmland_quality_eval/）"
+                else "返回 DEPLOYMENT_ERROR（需部署 CSV 到 bin/farmland_quality_eval/）"
             )
         else:
             entry["real_model"] = None
@@ -150,7 +153,7 @@ def inspect_agent_load_status() -> dict:
 # ---------------------------------------------------------------------------
 
 def run_reference_questions() -> dict:
-    """对 REFERENCE_QUESTIONS 18 个问题逐个调用 orchestrator，记录结果。"""
+    """对 REFERENCE_QUESTIONS 问题逐个调用 orchestrator，记录结果。"""
     from framework.agents.nodes import REFERENCE_QUESTIONS
     from framework.agents.orchestrator import multi_agent_orchestrator
 
@@ -163,8 +166,14 @@ def run_reference_questions() -> dict:
         for q in questions:
             total += 1
             try:
+                request = {"question": q}
+                if q_type == 5:
+                    request["parcel_code"] = "A0001"
+                elif q_type == 6:
+                    request["xqmc_code"] = 8
+                    request["scenario"] = 1
                 output = multi_agent_orchestrator.run(
-                    {"question": q}, conversation_history=[]
+                    request, conversation_history=[]
                 )
             except Exception as exc:
                 results.append({
@@ -299,10 +308,10 @@ def main() -> int:
     load_report = inspect_agent_load_status()
     print("\n[资源就绪状态]")
     for k, v in load_report["resources"].items():
-        flag = "✓" if v else "✗"
+        flag = "OK" if v else "MISSING"
         print(f"  {flag} {k}: {v}")
 
-    print("\n[7 个 Agent 加载状态]（含 Excel 标准模型对应关系）")
+    print("\n[6 个 Agent 加载状态]（含 Excel 标准模型对应关系）")
     print(f"{'Excel标准':<10}{'model_id':<10}{'class':<32}{'stub':<6}{'real_model':<28}{'expected_behavior'}")
     hr()
     for mid, entry in load_report["agents"].items():
@@ -312,10 +321,10 @@ def main() -> int:
               f"{(entry['real_model'] or '-'):<28}"
               f"{entry['expected_behavior']}")
     print("\n  注：Excel 标准模型6（耕地综合地力改良提升模型）尚未实现，项目中无对应 agent；"
-          "model-2 / model-5 为项目历史占位桩，未对应 Excel 标准。")
+          "模型2已接入真实耕地质量等级与提升潜力引擎；未对应 Excel 标准的模型会标注为空。")
 
     # 第二部分
-    section("二、问题库回答验证（REFERENCE_QUESTIONS 18 题）")
+    section("二、问题库回答验证（REFERENCE_QUESTIONS）")
     q_report = run_reference_questions()
     print(f"\n总计 {q_report['total_questions']} 题")
     print(f"  返回非空 answer: {q_report['answered']}/{q_report['total_questions']}")
@@ -327,7 +336,7 @@ def main() -> int:
         if "error" in r:
             print(f"{i:<3}{r['expected_type']:<4}{'-':<4}{'-':<6}{'-':<10}{'-':<28}{r['error']}")
             continue
-        match_flag = "✓" if r["type_match"] else "✗"
+        match_flag = "OK" if r["type_match"] else "MISMATCH"
         agents_str = ",".join(r["agents_invoked"]) if r["agents_invoked"] else "-"
         preview = (r["answer_preview"] or "").replace("\n", " ")
         print(f"{i:<3}{r['expected_type']:<4}{r['identified_type']:<4}{match_flag:<6}"
@@ -336,7 +345,7 @@ def main() -> int:
             sim_str = ", ".join(
                 f"{k}:{'sim' if v else 'real'}" for k, v in r["agent_simulated"].items()
             )
-            print(f"     ↳ agent_simulated: {sim_str}")
+            print(f"     agent_simulated: {sim_str}")
 
     # 第三部分
     section("三、model-6 真实 ML 计算能力验证")
@@ -349,7 +358,7 @@ def main() -> int:
     print(f"imputation_applied: {m6['imputation_applied']}, imputed_features: {m6['imputed_features']}")
     print(f"fallback_reason: {m6['fallback_reason']}")
     print(f"model_version: {m6['model_version']}")
-    print(f"\n[是否真实计算] {'✓ 是' if m6['is_real_computation'] else '✗ 否（fallback）'}")
+    print(f"\n[是否真实计算] {'OK' if m6['is_real_computation'] else 'MISSING（fallback）'}")
     print(f"\n[SOC 回答预览] {m6['answer_soc_preview']}")
     print(f"  simulated={m6['answer_soc_simulated']}")
     print(f"\n[Dose 回答预览] {m6['answer_dose_preview']}")
@@ -367,7 +376,7 @@ def main() -> int:
     print(f"占位桩 agent: {stub_agents or '无'}")
     print(f"问题库回答率: {q_report['answered']}/{q_report['total_questions']}")
     print(f"问题类型识别准确率: {q_report['type_match']}/{q_report['total_questions']}")
-    print(f"model-6 真实计算: {'✓ 通过' if m6['is_real_computation'] else '✗ 未通过'}")
+    print(f"model-6 真实计算: {'OK' if m6['is_real_computation'] else 'MISSING'}")
 
     return 0
 

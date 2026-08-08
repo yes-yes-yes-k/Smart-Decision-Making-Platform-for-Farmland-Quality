@@ -37,7 +37,7 @@ class AgentManager:
         self._register_agents()
 
     def _register_agents(self) -> None:
-        """注册所有 7 个专业智能体；若专业实现尚未就绪，回退到桩智能体。"""
+        """注册所有 6 个专业智能体；若专业实现尚未就绪，回退到桩智能体。"""
         real_agents = self._load_real_agents()
         for capability in PROFESSIONAL_CAPABILITIES:
             if capability.agent_id in real_agents:
@@ -59,7 +59,6 @@ class AgentManager:
         self.agents["model-4"].dependencies = []
         self.agents["model-5"].dependencies = []
         self.agents["model-6"].dependencies = []
-        self.agents["model-7"].dependencies = []
 
     def _load_real_agents(self) -> Dict[str, BaseAgent]:
         """尝试加载专业智能体实现，失败时返回空字典。"""
@@ -100,11 +99,6 @@ class AgentManager:
             real["model-6"] = FertilityMLAgent()
         except ImportError:
             pass
-        try:
-            from .specialized.grade_agent import FarmlandGradeAgent
-            real["model-7"] = FarmlandGradeAgent()
-        except ImportError:
-            pass
         return real
 
     def process(self, question: str, context: Dict[str, Any]) -> Dict[str, Any]:
@@ -126,9 +120,10 @@ class AgentManager:
             }
 
         results = self._execute_with_dependencies(agent_ids, question, context)
+        summary = self._summarize(question_type, agent_ids, results)
         return {
-            "status": "ok",
-            "data": self._summarize(question_type, agent_ids, results),
+            "status": summary.get("status", "ok"),
+            "data": summary,
         }
 
     def _execute_with_dependencies(
@@ -166,7 +161,7 @@ class AgentManager:
             payload.update(context["data"])
             payload["indicators"] = context["data"]
         for key, value in context.items():
-            if key not in {"data", "question_type"} and not key.startswith("model-"):
+            if key != "data" and not key.startswith("model-"):
                 payload[key] = value
         return payload
 
@@ -246,13 +241,24 @@ class AgentManager:
                     seen.add(text)
                     recommendations.append(text)
 
-        return {
+        errors = {
+            aid: results[aid]["error"]
+            for aid in ordered_invoked
+            if isinstance(results.get(aid), dict) and results[aid].get("error")
+        }
+        response = {
             "question_type": question_type,
             "agents_invoked": ordered_invoked,
             "summary": summary,
             "details": details,
             "recommendations": recommendations,
         }
+        if errors:
+            response["status"] = "error"
+            response["error"] = next(iter(errors.values()))
+        else:
+            response["status"] = "ok"
+        return response
 
 
 # 模块级单例

@@ -36,7 +36,7 @@ def _stub_process_return():
         "status": "ok",
         "data": {
             "question_type": 5,
-            "agents_invoked": ["model-7"],
+            "agents_invoked": ["model-2"],
             "summary": "",
             "details": {},
             "recommendations": [],
@@ -98,7 +98,7 @@ def test_execute_models_no_parcel_when_absent():
 
 
 def test_execute_models_passes_only_parcel_id():
-    """request 仅含 parcel_id 时 context 仅含 parcel_id（model-7 走 mock 回退）。"""
+    """request 仅含 parcel_id 时 context 仅含 parcel_id。"""
     from framework.agents.manager import agent_manager
 
     captured = {}
@@ -119,6 +119,33 @@ def test_execute_models_passes_only_parcel_id():
     assert ctx.get("parcel_id") == "10"
     assert "parcel_code" not in ctx
     print("✓ request 仅含 parcel_id 时 context 仅含 parcel_id")
+
+
+def test_execute_models_passes_county_potential_parameters_to_context():
+    """县域潜力参数必须透传给模型2。"""
+    from framework.agents.manager import agent_manager
+
+    captured = {}
+
+    def fake_process(question, context):
+        captured["context"] = context
+        return _stub_process_return()
+
+    real_process = agent_manager.process
+    agent_manager.process = fake_process
+    try:
+        state = _make_state(
+            "县域提升潜力如何",
+            {"xqmc_code": 8, "scenario": 1, "csv_path": "custom.csv"},
+        )
+        state["question_type"] = 6
+        execute_models(state)
+    finally:
+        agent_manager.process = real_process
+
+    assert captured["context"]["xqmc_code"] == 8
+    assert captured["context"]["scenario"] == 1
+    assert captured["context"]["csv_path"] == "custom.csv"
 
 
 if __name__ == "__main__":

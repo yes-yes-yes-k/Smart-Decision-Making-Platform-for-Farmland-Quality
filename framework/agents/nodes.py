@@ -54,7 +54,7 @@ QUESTION_TYPE_4_KEYWORDS = [
     "肥力", "施多少肥", "氮肥",
 ]
 QUESTION_TYPE_5_KEYWORDS = [
-    # exe 质量等级评价关键词
+    # 质量等级评价关键词
     "质量等级", "等级评价", "综合指数", "指标隶属度", "障碍度排序",
     "耕地质量等级", "质量评价", "等级评定", "指标权重",
 ]
@@ -323,8 +323,8 @@ def execute_models(state: MultiAgentState) -> MultiAgentState:
             "area_code": state["request"].get("area_code", "lechang"),
             "data": state.get("data", {}),
         }
-        # 透传地块标识符到 context top-level（模型优先从 top-level 读取）
-        for key in ("parcel_id", "parcel_code"):
+        # 透传模型2的地块与县域真实计算参数到 context top-level。
+        for key in ("parcel_id", "parcel_code", "xqmc_code", "scenario", "csv_path"):
             if key in state["request"]:
                 context[key] = state["request"][key]
         # 透传 question_type 到 context（agent 可能需要）

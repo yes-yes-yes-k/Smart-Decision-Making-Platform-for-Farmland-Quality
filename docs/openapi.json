@@ -233,7 +233,7 @@
       "post": {
         "tags": ["聊天"],
         "summary": "智能问答（多智能体协作）",
-        "description": "统一智能路由入口，根据问题类型（question_type 0-7）自动路由到 RAG 链或单一专业智能体：1→model-1 稳定性、2→model-4 酸化改良、3→model-3 障碍诊断、4→model-6 SOC/Dose 预测、5→model-7 质量等级、6→model-2 提升潜力、7→model-5 有机质培肥；知识性问题（type 0）走 RAG 链路。",
+        "description": "统一智能路由入口，根据问题类型（question_type 0-7）自动路由到 RAG 链或单一专业智能体：1→model-1 稳定性、2→model-4 酸化改良、3→model-3 障碍诊断、4→model-6 SOC/Dose 预测、5→model-2 质量等级/障碍度、6→model-2 提升潜力、7→model-5 有机质培肥；知识性问题（type 0）走 RAG 链路。",
         "security": [
           {
             "BearerAuth": []
@@ -269,8 +269,23 @@
                   },
                   "parcel_code": {
                     "type": "string",
-                    "description": "地块代码（字母数字，给 model-7 调 Python 模型），type 5 质量等级评价必需",
+                    "description": "地块代码（字母数字，给 model-2 调用真实 Python 评价或单地块潜力模型）；type 5 必需",
                     "example": "A0001"
+                  },
+                  "xqmc_code": {
+                    "type": "integer",
+                    "description": "县域代码；type 6 县域潜力情景使用",
+                    "example": 8
+                  },
+                  "scenario": {
+                    "type": "integer",
+                    "enum": [1, 2],
+                    "description": "县域潜力情景：1 为理想潜力，2 为最佳潜力",
+                    "example": 1
+                  },
+                  "csv_path": {
+                    "type": "string",
+                    "description": "可选耕地质量评价 CSV 路径；未提供时使用部署默认路径"
                   },
                   "land_type": {
                     "type": "string",
@@ -623,7 +638,7 @@
       "post": {
         "tags": ["模型"],
         "summary": "执行专题模型",
-        "description": "执行指定正式专业模型，支持7项：stability-risk-evaluation、improvement-potential-assessment、obstacle-diagnosis、acidification-remediation、organic-matter-improvement、fertility-soc-dose-prediction、quality-grade-evaluation。辅助空间/指标能力和实验性协同提升能力可独立调用，但不参与聊天路由。",
+        "description": "执行指定正式专业模型，支持6项：stability-risk-evaluation、improvement-potential-assessment、obstacle-diagnosis、acidification-remediation、organic-matter-improvement、fertility-soc-dose-prediction。模型2通过真实 Python 引擎提供质量等级、障碍度和提升潜力能力。辅助空间/指标能力和实验性协同提升能力可独立调用，但不参与聊天路由。",
         "security": [
           {
             "BearerAuth": []
@@ -668,7 +683,25 @@
                   },
                   "parcel_code": {
                     "type": "string",
-                    "description": "质量等级评价的地块编码"
+                    "description": "模型2质量等级评价或单地块潜力的地块编码"
+                  },
+                  "question_type": {
+                    "type": "integer",
+                    "enum": [5, 6],
+                    "description": "模型2调用类型：5 为质量等级/障碍度，6 为提升潜力"
+                  },
+                  "xqmc_code": {
+                    "type": "integer",
+                    "description": "模型2县域潜力情景的县域代码"
+                  },
+                  "scenario": {
+                    "type": "integer",
+                    "enum": [1, 2],
+                    "description": "模型2县域潜力情景：1 为理想潜力，2 为最佳潜力"
+                  },
+                  "csv_path": {
+                    "type": "string",
+                    "description": "可选耕地质量评价 CSV 路径"
                   }
                 },
                 "required": ["model_id"]
@@ -682,15 +715,11 @@
                   }
                 },
                 "improvement_potential_assessment": {
-                  "summary": "耕地质量提升潜力评估",
+                  "summary": "耕地质量等级评价（模型2真实引擎）",
                   "value": {
                     "model_id": "improvement-potential-assessment",
-                    "area_code": "lechang",
-                    "indicators": {
-                      "ph": 5.2,
-                      "organic_matter": 18.5,
-                      "available_nitrogen": 92
-                    }
+                    "question_type": 5,
+                    "parcel_code": "A0001"
                   }
                 },
                 "obstacle_diagnosis": {
@@ -728,13 +757,6 @@
                       "organic_matter": 18.5,
                       "ph": 5.2
                     }
-                  }
-                },
-                "quality_grade_evaluation": {
-                  "summary": "耕地质量等级评价",
-                  "value": {
-                    "model_id": "quality-grade-evaluation",
-                    "parcel_code": "A0001"
                   }
                 }
               }

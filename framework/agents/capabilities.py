@@ -20,6 +20,7 @@ class ProfessionalCapability:
     question_type: int
     minimum_inputs: tuple[str, ...] = ()
     runtime_requirement: str = "无需额外运行时前置条件"
+    question_type_aliases: tuple[int, ...] = ()
 
 
 PROFESSIONAL_CAPABILITIES: tuple[ProfessionalCapability, ...] = (
@@ -30,8 +31,10 @@ PROFESSIONAL_CAPABILITIES: tuple[ProfessionalCapability, ...] = (
     ),
     ProfessionalCapability(
         "model-2", "improvement-potential-assessment", "耕地质量提升潜力评估",
-        "评估耕地质量提升空间、目标指标和潜在障碍度。", "potential", 6,
-        ("indicators",), "可使用结构化土壤指标；缺失字段将按 Agent 既有规则处理。",
+        "基于真实地块数据完成质量等级、障碍度和提升潜力评估。", "potential", 6,
+        ("parcel_code 或 xqmc_code + scenario",),
+        "单地块评估需提供 parcel_code；县域情景需提供 xqmc_code 和 scenario，并部署耕地质量评价 CSV 数据。",
+        question_type_aliases=(5,),
     ),
     ProfessionalCapability(
         "model-3", "obstacle-diagnosis", "耕地质量主要问题与障碍诊断",
@@ -53,11 +56,6 @@ PROFESSIONAL_CAPABILITIES: tuple[ProfessionalCapability, ...] = (
         "使用 ML 模型预测土壤有机碳和施肥量。", "fertility_ml", 4,
         ("indicators",), "需提供模型特征；模型文件不可用时返回训练集均值降级结果。",
     ),
-    ProfessionalCapability(
-        "model-7", "quality-grade-evaluation", "耕地质量等级评价",
-        "通过质量等级评价程序输出综合指数、等级和障碍度。", "grade", 5,
-        ("parcel_code",), "真实评价需部署 exe/dat 文件并提供 parcel_code。",
-    ),
 )
 
 CAPABILITY_BY_AGENT_ID: Dict[str, ProfessionalCapability] = {
@@ -67,7 +65,9 @@ CAPABILITY_BY_MODEL_ID: Dict[str, ProfessionalCapability] = {
     item.model_id: item for item in PROFESSIONAL_CAPABILITIES
 }
 CAPABILITY_BY_QUESTION_TYPE: Dict[int, ProfessionalCapability] = {
-    item.question_type: item for item in PROFESSIONAL_CAPABILITIES
+    question_type: item
+    for item in PROFESSIONAL_CAPABILITIES
+    for question_type in (item.question_type, *item.question_type_aliases)
 }
 
 # 保留无歧义的历史公开模型标识，响应会返回规范 model_id 和弃用信息。
@@ -99,6 +99,7 @@ def public_capability_descriptor(capability: ProfessionalCapability) -> dict:
         "purpose": capability.description,
         "minimum_inputs": list(capability.minimum_inputs),
         "question_type": capability.question_type,
+        "question_types": [capability.question_type, *capability.question_type_aliases],
         "category": "professional",
         "chat_routable": True,
         "runtime_requirement": capability.runtime_requirement,

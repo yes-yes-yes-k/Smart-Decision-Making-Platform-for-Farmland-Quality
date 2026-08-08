@@ -215,37 +215,30 @@ class TestCoreEngineDispatch:
         assert out["status"] == "ok"
         assert out["reliability"]["level"] == "real_model"
 
-    def test_dispatch_grade_with_parcel_code(self):
-        """quality-grade-evaluation + parcel_code 调用实际 Python 模型（analyze 包络 real_model）"""
+    def test_dispatch_model2_grade_with_parcel_code(self):
+        """模型2通过单接口调用实际 Python 质量等级模型。"""
         from ai_culti_demo.thematic_models import run_thematic_model
 
-        mock_exe_result = {
-            "status": "ok",
-            "quality_grade": "3",
-            "composite_index": 78.5,
-            "indicators": [{"name": "pH", "raw_value": 6.5, "membership": 0.95, "weight": 0.1}],
-            "obstacle_degree": [{"rank": 1, "indicator": "有效磷", "degree": 0.15}],
-        }
-        with patch("framework.agents.specialized.grade_agent.run_grade_evaluation", return_value=mock_exe_result):
-            out = run_thematic_model({
-                "model_id": "quality-grade-evaluation",
-                "parcel_code": "110105001",
-            })
+        out = run_thematic_model({
+            "model_id": "improvement-potential-assessment",
+            "question_type": 5,
+            "parcel_code": "A0001",
+        })
 
         assert out["status"] == "ok"
         assert out["reliability"]["level"] == "real_model"
-        assert out["analysis"]["quality_grade"] == "3"
+        assert out["analysis"]["quality_grade"] == "10等"
 
-    def test_dispatch_grade_missing_parcel_code_falls_back_to_demo(self):
-        """quality-grade-evaluation 无 parcel_code 时回退到 demo"""
+    def test_dispatch_removed_grade_model_returns_invalid_model_id(self):
+        """旧质量等级模型标识被彻底删除，不再回退或迁移。"""
         from ai_culti_demo.thematic_models import run_thematic_model
 
         out = run_thematic_model({
             "model_id": "quality-grade-evaluation",
-            "area_code": "lechang",
         })
 
-        assert out["status"] == "ok"
+        assert out["status"] == "error"
+        assert out["error"]["code"] == "INVALID_MODEL_ID"
 
     def test_dispatch_invalid_model_id_returns_error(self):
         """无效 model_id 返回 INVALID_MODEL_ID 并列出支持的模型"""
@@ -255,7 +248,7 @@ class TestCoreEngineDispatch:
         assert out["status"] == "error"
         assert out["error"]["code"] == "INVALID_MODEL_ID"
         assert "stability-risk-evaluation" in out["supported_model_ids"]
-        assert "quality-grade-evaluation" in out["supported_model_ids"]
+        assert "quality-grade-evaluation" not in out["supported_model_ids"]
 
 
 # ---------------------------------------------------------------------------
@@ -284,39 +277,31 @@ class TestResponseContract:
         assert not missing, f"缺少字段: {missing}"
         assert "analysis" in out
 
-    def test_grade_response_has_required_fields(self):
-        """质量等级模型响应包含统一字段 + analysis（analyze 包络）"""
+    def test_model2_grade_response_has_required_fields(self):
+        """模型2质量等级响应包含统一字段与真实分析结果。"""
         from ai_culti_demo.thematic_models import run_thematic_model
 
-        mock_result = {
-            "status": "ok",
-            "quality_grade": "3",
-            "composite_index": 78.5,
-            "indicators": [],
-            "obstacle_degree": [],
-        }
-        with patch("framework.agents.specialized.grade_agent.run_grade_evaluation", return_value=mock_result):
-            out = run_thematic_model({
-                "model_id": "quality-grade-evaluation",
-                "parcel_code": "110105001",
-            })
+        out = run_thematic_model({
+            "model_id": "improvement-potential-assessment",
+            "question_type": 5,
+            "parcel_code": "A0001",
+        })
 
         missing = self.REQUIRED_FIELDS - set(out.keys())
         assert not missing, f"缺少字段: {missing}"
         assert "analysis" in out
 
-    def test_demo_response_has_required_fields(self):
-        """demo 回退响应也包含统一字段 + fallback"""
+    def test_model2_missing_parcel_code_returns_error(self):
+        """模型2缺少地块编码时不返回模拟结果。"""
         from ai_culti_demo.thematic_models import run_thematic_model
 
         out = run_thematic_model({
-            "model_id": "quality-grade-evaluation",
-            "area_code": "lechang",
+            "model_id": "improvement-potential-assessment",
+            "question_type": 5,
         })
 
-        missing = self.REQUIRED_FIELDS - set(out.keys())
-        assert not missing, f"缺少字段: {missing}"
-        assert "fallback" in out
+        assert out["status"] == "error"
+        assert out["error"]["code"] == "MISSING_PARCEL_CODE"
 
 
 # ---------------------------------------------------------------------------
@@ -334,13 +319,16 @@ class TestAgentRouting:
         assert "稳定" in out["answer"]
         assert out["simulated"] is True
 
-    def test_grade_agent_handles_quality_grade_question(self):
-        """9.2 FarmlandGradeAgent 处理质量等级问题"""
-        from framework.agents.specialized.grade_agent import FarmlandGradeAgent
+    def test_model2_agent_handles_quality_grade_question(self):
+        """模型2处理质量等级问题。"""
+        from framework.agents.specialized.potential_agent import PotentialAssessmentAgent
 
-        out = FarmlandGradeAgent().answer_question("耕地质量等级评价结果如何？", {})
-        assert "answer" in out
+        out = PotentialAssessmentAgent().answer_question(
+            "耕地质量等级评价结果如何？",
+            {"question_type": 5, "parcel_code": "A0001"},
+        )
         assert "质量等级" in out["answer"]
+        assert out["simulated"] is False
 
     def test_problem_agent_handles_diagnosis_question(self):
         """9.3 ProblemIdentificationAgent 处理障碍诊断问题"""
@@ -359,15 +347,14 @@ class TestAgentRouting:
         assert "answer" in out
         assert "亿土康" in out["answer"] or "木本泥炭" in out["answer"]
 
-    def test_grade_agent_hint_when_parcel_code_missing(self):
-        """10.7 实际模型可用但缺少地块代码时附加提示"""
-        from framework.agents.specialized.grade_agent import FarmlandGradeAgent, GRADE_EVAL_AVAILABLE
+    def test_model2_agent_requires_parcel_code(self):
+        """模型2缺少地块编码时返回结构化错误。"""
+        from framework.agents.specialized.potential_agent import PotentialAssessmentAgent
 
-        if not GRADE_EVAL_AVAILABLE:
-            pytest.skip("GRADE_EVAL_AVAILABLE 为 False，跳过提示测试")
-
-        out = FarmlandGradeAgent().answer_question("耕地质量等级评价结果如何？", {})
-        assert "hint" in out or "need_input" in out
+        out = PotentialAssessmentAgent().answer_question(
+            "耕地质量等级评价结果如何？", {"question_type": 5}
+        )
+        assert out["error"]["code"] == "MISSING_PARCEL_CODE"
 
     def test_problem_agent_hint_when_parcel_id_missing(self):
         """10.7 ProblemIdentificationAgent 缺少 parcel_id 时附加提示"""
@@ -448,30 +435,18 @@ class TestEndToEndIntegration:
         assert len(out["findings"]) >= 1
         assert "analysis" in out
 
-    def test_e2e_grade_full_pipeline(self):
-        """端到端：质量等级模型从调度到响应结构（analyze 包络）"""
+    def test_e2e_model2_grade_full_pipeline(self):
+        """端到端：模型2质量等级能力从调度到响应结构。"""
         from ai_culti_demo.thematic_models import run_thematic_model
 
-        mock_exe_result = {
-            "status": "ok",
-            "quality_grade": "4",
-            "composite_index": 82.3,
-            "indicators": [
-                {"name": "pH", "raw_value": 6.5, "membership": 0.95, "weight": 0.1},
-                {"name": "有机质", "raw_value": 25.0, "membership": 0.85, "weight": 0.15},
-            ],
-            "obstacle_degree": [
-                {"rank": 1, "indicator": "有效磷", "degree": 0.15},
-            ],
-        }
-        with patch("framework.agents.specialized.grade_agent.run_grade_evaluation", return_value=mock_exe_result):
-            out = run_thematic_model({
-                "model_id": "quality-grade-evaluation",
-                "parcel_code": "E2E002",
-            })
+        out = run_thematic_model({
+            "model_id": "improvement-potential-assessment",
+            "question_type": 5,
+            "parcel_code": "A0001",
+        })
 
         assert out["status"] == "ok"
-        assert out["model"]["model_id"] == "quality-grade-evaluation"
+        assert out["model"]["model_id"] == "improvement-potential-assessment"
         assert out["reliability"]["level"] == "real_model"
-        assert out["analysis"]["quality_grade"] == "4"
+        assert out["analysis"]["quality_grade"] == "10等"
         assert len(out["findings"]) >= 1

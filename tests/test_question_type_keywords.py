@@ -223,7 +223,7 @@ def test_all_xlsx_classic_questions_routed():
 
 
 def test_type5_grade_quality_question():
-    """质量等级评价 → TYPE_5（model-7）"""
+    """质量等级评价 → TYPE_5（model-2）"""
     qt, _ = _identify("我的田耕地质量等级是多少？")
     assert qt == 5, f"期望 TYPE_5，实际 {qt}"
 

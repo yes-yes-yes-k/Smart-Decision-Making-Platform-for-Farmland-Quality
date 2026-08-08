@@ -18,15 +18,15 @@ TBD - created by archiving change multi-agent-model-framework. Update Purpose af
 
 ### Requirement: AgentManager 中心化编排器
 
-系统 SHALL 由统一专业能力目录注册 7 个正式 Agent，而不是在 `AgentManager` 内重复定义名称、模型标识和路由相关元数据。
+系统 SHALL 由统一专业能力目录注册 6 个正式 Agent，而不是在 `AgentManager` 内重复定义名称、模型标识和路由相关元数据。`model-2` 同时承接 type 5 和 type 6。
 
 #### Scenario: 初始化 AgentManager
 - **WHEN** 系统初始化 `AgentManager`
-- **THEN** 系统 SHALL 注册统一目录中定义的 7 个正式 Agent
+- **THEN** 系统 SHALL 注册统一目录中定义的 6 个正式 Agent
 - **AND** 每个 Agent SHALL 保持与公开专业模型相同的能力标识
 
 ### Requirement: 模拟数据层
-系统 SHALL 为每个智能体提供模拟数据层，包括模拟输入数据、模拟计算逻辑和模拟输出结果。
+系统 SHALL 为尚未接入真实算法的智能体提供模拟数据层，包括模拟输入数据、模拟计算逻辑和模拟输出结果；已接入真实算法的智能体不得用模拟成功结果替代真实计算。
 
 #### Scenario: 模拟数据加载
 - **WHEN** 智能体初始化时
@@ -35,4 +35,3 @@ TBD - created by archiving change multi-agent-model-framework. Update Purpose af
 #### Scenario: 模拟计算执行
 - **WHEN** 智能体执行计算任务
 - **THEN** 智能体 SHALL 基于阈值规则对模拟数据进行计算，并返回带有 `simulated` 标记的结果
-

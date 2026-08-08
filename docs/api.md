@@ -252,8 +252,8 @@
 - **question_type=2** → model-4 酸化改良（酸化程度/调理剂/改良方案）
 - **question_type=3** → model-3 障碍诊断（障碍因素/主要问题/障碍组合）
 - **question_type=4** → model-6 肥力 ML 预测（SOC/Dose/预测置信度）
-- **question_type=5** → model-7 耕地质量等级评价（综合指数/质量等级/障碍度排序）
-- **question_type=6** → model-2 提升潜力评估（提升潜力/增产潜力/改良片区）
+- **question_type=5** → model-2 耕地质量等级评价（综合指数/质量等级/障碍度排序）
+- **question_type=6** → model-2 提升潜力评估（单地块潜力/县域情景潜力）
 - **question_type=7** → model-5 有机质培肥（有机肥/秸秆还田/培肥方案）
 
 > 路由采用 1:1 映射：每个 question_type 仅调用对应的单一专业智能体，不再按用户角色固定调用多个模型组合。
@@ -284,7 +284,10 @@
 | `conversation_id` | int | 否 | 对话 ID，不传则创建新对话 |
 | `area_code` | string | 否 | 区域代码（默认 "lechang"，model-1/3/4 按 area_code 查 DB） |
 | `parcel_id` | string | 否 | 地块 ID（数字字符串，给 model-1/3/4 查 DB），农户端问题或 type 5 问题建议携带 |
-| `parcel_code` | string | 否 | 地块代码（字母数字，给 model-7 调 Python 模型），type 5 质量等级评价必需 |
+| `parcel_code` | string | 否 | 地块代码（字母数字，给 model-2 调用真实 Python 评价/单地块潜力模型）；type 5 必需 |
+| `xqmc_code` | int | 否 | 县域代码；type 6 县域潜力情景使用 |
+| `scenario` | int | 否 | 县域潜力情景（1 为理想潜力，2 为最佳潜力）；与 `xqmc_code` 同时提供 |
+| `csv_path` | string | 否 | 可选耕地质量评价 CSV 路径；未提供时使用部署默认路径 |
 | `land_type` | string | 否 | 土地利用类型（`upland` 旱地 / `paddy` 水田，默认 `upland`，酸化改良 model-4 使用，与 `fertilizer_type` 组合选择 4 子模型） |
 | `fertilizer_type` | string | 否 | 肥料类型（`compound` 复合肥 / `urea` 尿素，默认 `compound`，酸化改良 model-4 使用，与 `land_type` 组合选择 4 子模型） |
 | `context` | object | 否 | 专业模型参数 |
@@ -312,10 +315,10 @@ context 参数说明：
             "status": "ok",
             "data": {
                 "question_type": 5,
-                "agents_invoked": ["model-7"],
-                "summary": "[model-7] 质量等级 10等, 综合指数 0.6728",
+                "agents_invoked": ["model-2"],
+                "summary": "[model-2] 质量等级 10等, 综合指数 0.6728",
                 "details": {
-                    "model-7": {
+                    "model-2": {
                         "answer": "耕地质量等级：10等，综合指数：0.6728",
                         "evidence": [],
                         "confidence": 0.95
@@ -324,7 +327,7 @@ context 参数说明：
                 "recommendations": ["质地构型障碍度最高，建议优先改良"]
             }
         },
-        "agents_invoked": ["model-7"],
+        "agents_invoked": ["model-2"],
         "recommendations": ["质地构型障碍度最高，建议优先改良"],
         "message_id": 3
     }
@@ -486,17 +489,16 @@ context 参数说明：
     "status": "ok",
     "data": [
         {"name": "stability-risk-evaluation", "description": "基于3期历史数据，通过九模块综合评价耕地质量稳定性和退化风险（model-1）。"},
-        {"name": "improvement-potential-assessment", "description": "耕地质量提升潜力评估（model-2）。"},
+        {"name": "improvement-potential-assessment", "description": "通过真实 Python 引擎完成耕地质量等级、障碍度、单地块提升潜力和县域潜力情景评估（model-2）。"},
         {"name": "obstacle-diagnosis", "description": "主要问题与障碍诊断（model-3）。"},
         {"name": "acidification-remediation", "description": "基于过程模型（4 子模型：水田/旱地 × 尿素/复合肥）计算酸化改良剂需求，输出亿土康（YTK）与木本泥炭（MBNT）施用量（model-4）。"},
         {"name": "organic-matter-improvement", "description": "有机质培肥提升（model-5）。"},
-        {"name": "fertility-soc-dose-prediction", "description": "肥力 SOC/Dose 预测（model-6）。"},
-        {"name": "quality-grade-evaluation", "description": "通过 Python 模型进行耕地质量等级评价，输出12指标原始值/隶属度、综合指数、质量等级和障碍度排序（model-7）。"}
+        {"name": "fertility-soc-dose-prediction", "description": "肥力 SOC/Dose 预测（model-6）。"}
     ]
 }
 ```
 
-> 注：默认列表仅返回 7 个正式专业模型，均与一个专业智能体一一对应。传入 `include_non_professional=true` 可查看辅助空间能力、辅助指标能力和实验性协同提升能力；它们不参与聊天路由。
+> 注：默认列表仅返回 6 个正式专业模型，均与一个专业智能体一一对应。传入 `include_non_professional=true` 可查看辅助空间能力、辅助指标能力和实验性协同提升能力；它们不参与聊天路由。
 
 > `obstacle-factor-identification` 与 `acidification-governance` 为旧模型标识，仍可调用但响应会返回规范模型 ID 和弃用提示。`spatial-structure-analysis`、`soil-indicator-analysis` 为辅助能力，`multi-factor-collaborative-improvement` 为实验性能力。
 

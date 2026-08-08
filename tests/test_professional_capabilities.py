@@ -7,18 +7,22 @@ from framework.agents.manager import AgentManager
 from framework.agents.router import TYPE_AGENTS
 
 
-def test_professional_capability_catalog_has_seven_unique_entries():
-    assert len(PROFESSIONAL_CAPABILITIES) == 7
-    assert len({item.agent_id for item in PROFESSIONAL_CAPABILITIES}) == 7
-    assert len({item.model_id for item in PROFESSIONAL_CAPABILITIES}) == 7
+def test_professional_capability_catalog_has_six_unique_entries():
+    assert len(PROFESSIONAL_CAPABILITIES) == 6
+    assert len({item.agent_id for item in PROFESSIONAL_CAPABILITIES}) == 6
+    assert len({item.model_id for item in PROFESSIONAL_CAPABILITIES}) == 6
     assert set(CAPABILITY_BY_QUESTION_TYPE) == {1, 2, 3, 4, 5, 6, 7}
+    assert CAPABILITY_BY_QUESTION_TYPE[5].agent_id == "model-2"
+    assert CAPABILITY_BY_QUESTION_TYPE[6].agent_id == "model-2"
 
 
 def test_agent_manager_and_router_read_the_capability_catalog():
     manager = AgentManager()
     assert set(manager.agents) == {item.agent_id for item in PROFESSIONAL_CAPABILITIES}
     assert TYPE_AGENTS == {
-        item.question_type: [item.agent_id] for item in PROFESSIONAL_CAPABILITIES
+        question_type: [item.agent_id]
+        for item in PROFESSIONAL_CAPABILITIES
+        for question_type in (item.question_type, *item.question_type_aliases)
     }
 
 

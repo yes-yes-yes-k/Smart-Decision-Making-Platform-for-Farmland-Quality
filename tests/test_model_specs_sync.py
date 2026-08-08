@@ -12,7 +12,7 @@ def _read(path: Path) -> str:
     return path.read_text(encoding="utf-8")
 
 
-def test_formal_spec_defines_seven_professional_capabilities():
+def test_formal_spec_defines_six_professional_capabilities():
     content = _read(PROFESSIONAL_SPEC)
     for agent_id, model_id in [
         ("model-1", "stability-risk-evaluation"),
@@ -21,7 +21,6 @@ def test_formal_spec_defines_seven_professional_capabilities():
         ("model-4", "acidification-remediation"),
         ("model-5", "organic-matter-improvement"),
         ("model-6", "fertility-soc-dose-prediction"),
-        ("model-7", "quality-grade-evaluation"),
     ]:
         assert agent_id in content
         assert model_id in content
@@ -34,11 +33,11 @@ def test_formal_spec_requires_structured_agent_analysis():
     assert "fallback" in content
 
 
-def test_routing_spec_defines_all_seven_professional_types():
+def test_routing_spec_defines_all_professional_types():
     content = _read(ROUTING_SPEC)
     for question_type, agent_id in [
         (1, "model-1"), (2, "model-4"), (3, "model-3"),
-        (4, "model-6"), (5, "model-7"), (6, "model-2"),
+        (4, "model-6"), (5, "model-2"), (6, "model-2"),
         (7, "model-5"),
     ]:
         assert f"{question_type}→`{agent_id}`" in content

@@ -45,28 +45,33 @@ def test_stability_attention_list():
 def test_potential_overall_uplift():
     from framework.agents.specialized.potential_agent import PotentialAssessmentAgent
     out = PotentialAssessmentAgent().answer_question(
-        "辖区耕地质量提升的总体潜力有多大？可增产多少粮食？", {})
-    assert out["simulated"] is True
-    assert "潜力" in out["answer"] or "障碍" in out["answer"]
+        "辖区耕地质量提升的总体潜力有多大？可增产多少粮食？",
+        {"question_type": 6, "xqmc_code": 8, "scenario": 1},
+    )
+    assert out["simulated"] is False
+    assert "县域" in out["answer"]
 
 
 def test_potential_county_distribution():
     """县域端：优先改良片区潜力分布"""
     from framework.agents.specialized.potential_agent import PotentialAssessmentAgent
     out = PotentialAssessmentAgent().answer_question(
-        "我们县划定的优先改良片区具体在哪几个村？每块潜力多大？", {})
-    assert out["simulated"] is True
-    # 收紧：必须命中「县域潜力分布分支」专属产出，旧 else 分支不含此字符串
-    assert "县域优先改良片区" in out["answer"]
+        "我们县划定的优先改良片区具体在哪几个村？每块潜力多大？",
+        {"question_type": 6, "xqmc_code": 8, "scenario": 1},
+    )
+    assert out["simulated"] is False
+    assert "县域" in out["answer"]
 
 
-def test_potential_farmer_plot_diagnosis():
-    """农户端：地块诊断"毛病\""""
+def test_potential_farmer_plot_assessment():
+    """农户端：单地块真实提升潜力评估。"""
     from framework.agents.specialized.potential_agent import PotentialAssessmentAgent
-    out = PotentialAssessmentAgent().answer_question("我这块地到底有啥毛病？", {})
-    assert out["simulated"] is True
-    # 收紧：必须命中「农户地块诊断分支」专属产出
-    assert "地块诊断结论" in out["answer"]
+    out = PotentialAssessmentAgent().answer_question(
+        "我这块地的提升潜力如何？",
+        {"question_type": 6, "parcel_code": "A0001"},
+    )
+    assert out["simulated"] is False
+    assert "单地块" in out["answer"]
 
 
 def test_problem_overall_factors():
@@ -231,21 +236,19 @@ def test_fertility_ml_dose_query(monkeypatch):
     assert "t/ha" in out["answer"]
 
 
-def test_all_six_agents_simulated_flag():
-    """纯模拟 agent 对代表性经典问题均返回 simulated=True 且 answer 非空
+def test_simulated_agents_mark_their_representative_answers():
+    """仍为模拟的 Agent 对代表性经典问题返回 simulated=True 且 answer 非空。
 
     注：AcidificationRemediationAgent 已改为过程模型（success→simulated=False），
     FertilityMLAgent 调用真实 ML 模型，两者均不再始终 simulated=True，
     故不在此列表中（各有独立测试覆盖）。
     """
     from framework.agents.specialized.stability_risk_agent import StabilityRiskAgent
-    from framework.agents.specialized.potential_agent import PotentialAssessmentAgent
     from framework.agents.specialized.problem_agent import ProblemIdentificationAgent
     from framework.agents.specialized.organic_matter_agent import OrganicMatterAgent
 
     cases = [
         (StabilityRiskAgent(), "查询区域内耕地质量等级整体稳定吗？"),
-        (PotentialAssessmentAgent(), "辖区耕地质量提升的总体潜力有多大？"),
         (ProblemIdentificationAgent(), "全省耕地质量存在哪些问题？"),
         (OrganicMatterAgent(), "全省耕地土壤有机质含量如何？"),
     ]

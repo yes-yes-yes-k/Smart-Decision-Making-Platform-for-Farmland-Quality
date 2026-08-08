@@ -32,7 +32,7 @@ RAW_JSON_FILE = PROJECT_ROOT / "verification_raw_outputs.json"
 # - agent_class: 对应 Agent 类名（占位符为 None）
 STANDARD_MODEL_MAPPING = [
     {"std_id": 1, "std_name": "耕地质量等级稳定性与退化风险识别模型", "model_id": "model-1", "agent_class": "StabilityRiskAgent"},
-    {"std_id": 2, "std_name": "耕地质量提升潜力评估模型", "model_id": "model-7", "agent_class": "FarmlandGradeAgent"},
+    {"std_id": 2, "std_name": "耕地质量提升潜力评估模型", "model_id": "model-2", "agent_class": "PotentialAssessmentAgent"},
     {"std_id": 3, "std_name": "耕地质量主要问题精准识别模型", "model_id": "model-3", "agent_class": "ProblemIdentificationAgent"},
     {"std_id": 4, "std_name": "耕地土壤酸化改良模型", "model_id": "model-4", "agent_class": "AcidificationRemediationAgent"},
     {"std_id": 5, "std_name": "耕地土壤有机质培肥提升模型", "model_id": "model-6", "agent_class": "FertilityMLAgent"},
@@ -48,7 +48,8 @@ TYPE_TO_STD = {
     2: (4, "耕地土壤酸化改良模型", "model-4"),
     3: (3, "耕地质量主要问题精准识别模型", "model-3"),
     4: (5, "耕地土壤有机质培肥提升模型", "model-6"),
-    5: (2, "耕地质量提升潜力评估模型", "model-7"),
+    5: (2, "耕地质量提升潜力评估模型", "model-2"),
+    6: (2, "耕地质量提升潜力评估模型", "model-2"),
 }
 
 # 问题类型语义（用于路由表展示）
@@ -58,6 +59,7 @@ TYPE_SEMANTICS = {
     3: "障碍诊断",
     4: "肥力/SOC/Dose",
     5: "耕地质量等级评价",
+    6: "耕地质量提升潜力",
 }
 
 
@@ -82,7 +84,9 @@ def _short(v: Any, n: int = 800) -> str:
 
 def run_one_question(q_type: int, q: str,
                      parcel_id: str | None = None,
-                     parcel_code: str | None = None) -> Dict[str, Any]:
+                     parcel_code: str | None = None,
+                     xqmc_code: int | None = None,
+                     scenario: int | None = None) -> Dict[str, Any]:
     from framework.agents.orchestrator import multi_agent_orchestrator
 
     t0 = time.time()
@@ -92,6 +96,10 @@ def run_one_question(q_type: int, q: str,
             request["parcel_id"] = parcel_id
         if parcel_code:
             request["parcel_code"] = parcel_code
+        if xqmc_code is not None:
+            request["xqmc_code"] = xqmc_code
+        if scenario is not None:
+            request["scenario"] = scenario
         output = multi_agent_orchestrator.run(request, conversation_history=[])
     except Exception as exc:
         return {
@@ -148,6 +156,8 @@ def run_one_question(q_type: int, q: str,
         "elapsed": elapsed,
         "parcel_id": parcel_id,
         "parcel_code": parcel_code,
+        "xqmc_code": xqmc_code,
+        "scenario": scenario,
         # 保留原始 output 供 dump（去除可能过大的字段后再序列化）
         "_raw_output": output,
     }
@@ -165,24 +175,18 @@ def build_markdown(report: Dict[str, Any]) -> str:
     md.append(f"- 参考日志：`verify_output.log`（仅作历史对照）")
     md.append(f"- 原始 JSON：`verification_raw_outputs.json`")
     md.append("")
-    md.append("> 说明：占位模型 model-2（PotentialAssessmentAgent）与 model-5（OrganicMatterAgent）"
-              "无真实模型绑定，本报告对其调用细节仅做记录，不做能力评估。")
+    md.append("> 模型2通过 `farmland_grade_eval` 的 Python 引擎提供真实质量等级、障碍度、单地块潜力和县域潜力情景计算。")
     md.append("")
-    md.append("### 架构变更记录（model-7 Python 化）")
+    md.append("### 模型2真实计算资产")
     md.append("")
     md.append("- **变更对象**：`src/ai_culti_demo/farmland_grade_eval/`（耕地质量等级评价）")
-    md.append("- **变更内容**：model-7 从 Fortran exe + `.dat` 二进制数据库替换为纯 Python 实现，"
-              "数据源从 `.dat` 改为 CSV（`bin/farmland_quality_eval/Farmland_quality_Level_Database.csv`）。"
-              "完整移植核心评价、潜力分析、县域统计、调理剂计算四个子模块，"
-              "调理剂计算仅作为内部库函数不暴露 API。`run_grade_evaluation` 签名保持向后兼容"
-              "（`dat_path` 语义改为 CSV 路径，`exe_path` 忽略）。")
-    md.append("- **验证结果**：Python 实现与原 Fortran exe 输出一致（parcel_code=`A0001`）：")
+    md.append("- **运行入口**：`model-2/PotentialAssessmentAgent` 调用纯 Python 评价和潜力函数，数据源为 CSV（`bin/farmland_quality_eval/Farmland_quality_Level_Database.csv`）。")
+    md.append("- **验证结果**：`parcel_code=A0001` 的真实评价结果：")
     md.append("  - `quality_grade` = `10等` ✓")
-    md.append("  - `composite_index` = `0.6728330580097418` ✓（与 exe 的 0.6728 一致，精度更高）")
+    md.append("  - `composite_index` = `0.6728330580097418` ✓")
     md.append("  - `indicators` = 12 条 ✓")
     md.append("  - `obstacle_degree` = 12 条 ✓")
-    md.append("- **影响范围**：`farmland_grade_eval/` 包整体替换；HTTP 数据导入从 `.dat` 改为 CSV；"
-              "`verify_agent_capabilities.py` 资源检查从 exe/.dat 改为 CSV。")
+    md.append("- **错误契约**：缺少 `parcel_code` 返回 `MISSING_PARCEL_CODE`；CSV 缺失返回 `DEPLOYMENT_ERROR`；不生成模拟成功结果。")
     md.append("")
     md.append("---")
     md.append("")
@@ -192,8 +196,7 @@ def build_markdown(report: Dict[str, Any]) -> str:
     md.append("")
     md.append("> 按 Excel 标准表格「数据字段标准化」（`D:\\destkop\\模型\\数据字段标准化 (1).xlsx`）"
               "定义的 6 个标准模型顺序展示，使用标准命名。"
-              "**模型6（耕地综合地力改良提升模型）项目尚未实现，以占位符行标注**。"
-              "项目内部 model-2 / model-5 未对应 Excel 标准，列于表末仅作记录。")
+              "**模型6（耕地综合地力改良提升模型）项目尚未实现，以占位符行标注**。")
     md.append("")
     md.append("| Excel 标准模型 | 项目 model_id | class | 占位桩 | 真实模型 | 资源就绪 | 期望行为 |")
     md.append("|---|---|---|---|---|---|---|")
@@ -211,8 +214,8 @@ def build_markdown(report: Dict[str, Any]) -> str:
             f"{'是' if e.get('is_stub') else '否'} | {e.get('real_model') or '-'} | "
             f"{'✓' if e.get('resource_ready') else '✗'} | {e.get('expected_behavior', '-')} |"
         )
-    # 末尾附加：项目内部 model-2 / model-5 未对应 Excel 标准的占位桩
-    for extra_mid in ("model-2", "model-5"):
+    # 末尾附加：未对应 Excel 标准的项目模型。
+    for extra_mid in ("model-5",):
         e = agents_by_mid.get(extra_mid, {})
         if not e:
             continue
@@ -222,10 +225,9 @@ def build_markdown(report: Dict[str, Any]) -> str:
             f"{'✓' if e.get('resource_ready') else '✗'} | {e.get('expected_behavior', '-')} |"
         )
     md.append("")
-    md.append("> **Excel 标准 ↔ 项目 model 对应关系**：模型1→model-1；模型2→model-7；"
+    md.append("> **Excel 标准 ↔ 项目 model 对应关系**：模型1→model-1；模型2→model-2；"
               "模型3→model-3；模型4→model-4；模型5→model-6；模型6→未实现（占位符）。"
-              "model-2（PotentialAssessmentAgent）与 model-5（OrganicMatterAgent）为项目历史占位桩，"
-              "无真实模型绑定，未对应 Excel 标准。")
+              "model-5（OrganicMatterAgent）未对应 Excel 标准。")
     md.append("")
     md.append("**资源就绪状态：**")
     md.append("")
@@ -393,51 +395,10 @@ def build_markdown(report: Dict[str, Any]) -> str:
 
     md.append("### 关键观察")
     md.append("")
-    md.append("1. **LLM 可用性**：本次运行 LLM 服务初始化成功（`deepseek-ai/DeepSeek-V4-Flash`），"
-              "所有 22 题（19 题 type 1-4 + 3 题 type 5）均通过 LLM 生成自然语言 `answer`，"
-              "未出现「抱歉，AI服务暂时不可用」降级。LLM 偶有不可用属于运行时波动，"
-              "降级时 `answer` 字段为空或为降级提示，最终回答回退取自 AgentManager 的 "
-              "`summary`（模板拼接）；若 LLM 超时降级，行为同上。")
-    md.append("2. **真实计算 agent**：model-1（stability_db）、model-3/4（diagnosis_db）、"
-              "model-6（sklearn ETR .joblib）、model-7（Python 实现 + CSV）资源均已部署并返回真实计算结果。"
-              "本次 model-7 在 Q20/Q21/Q22（type 5）均返回真实结果："
-              "质量等级 `10等`、综合指数 `0.6728330580097418`、12 个指标、12 个障碍度因子。"
-              "model-6 真实 ML 计算通过（SOC=20.09 g/kg，Dose=189.53 t/ha）。"
-              "QuestionTypeRouter 采用 1:1 映射，每题只调用 1 个对应 agent，精准匹配问题类型。")
-    md.append("3. **资源就绪状态**：本章「资源就绪状态」中所有资源均为 ✓："
-              "`stability_db`、`diagnosis_db`、`soc_joblib`、`dose_joblib`、`grade_csv` 均存在。"
-              "model-7 的数据源已从 Fortran exe/.dat 替换为 CSV "
-              "（`bin/farmland_quality_eval/Farmland_quality_Level_Database.csv`），"
-              "`verify_agent_capabilities.py` 检查 `grade_csv_exists=True`。"
-              "model-6 的 `.joblib` 文件已部署，真实 ML 计算通过。")
-    md.append("4. **路由细节**：`type 1` → model-1；`type 2` → model-4；`type 3` → model-3；"
-              "`type 4` → model-6；`type 5` → model-7。"
-              "QuestionTypeRouter 采用 1:1 映射，每个 question_type 仅对应一个 agent，"
-              "不再有 role-based 的多 agent 组合或 `_should_execute_agent` 关键词过滤。"
-              "问题类型由 `identify_question_type` 通过关键词匹配（优先）和向量匹配（降级）判定，"
-              "知识性问题（含「什么是」「是什么意思」等模式）经 `_is_knowledge_question` 预检返回 type 0 走 RAG。")
-    md.append("5. **知识性问题路由**：`_is_knowledge_question` 在 `identify_question_type` 最前端预检，"
-              "命中「什么是」「何为」「解释」开头或「是什么意思」「什么意思」「定义」「概念」「含义」包含模式时"
-              "返回 (0, 1.0)，直接走 RAG 知识库，不进入专业模型路由。"
-              "诊断性问题（如「我的田耕地质量等级是多少」「我的田酸化严重吗」）不受影响，仍路由到对应专业模型。")
-    md.append("6. **simulated 标志解读**：AgentManager 通过 `MockDataLoader.mark_simulated(payload)` "
-              "在结果顶层强制写入 `simulated=True`，即使 model-6 这种真实计算 agent 也显示 sim。"
-              "**因此 `simulated=True` 不能作为真实/模拟的判据**。是否真实计算应以：")
-    md.append("   - `fallback_reason is None` + `execute_status==success`（model-6 直接 execute 验证）")
-    md.append("   - 或 agent 真实调用了底层模型（如 model-1 读 stability_db、model-7 调 Python 评价模型）")
-    md.append("   为准。本次 model-7 在 type 5 问题中 `simulated=False`，是因为 `FarmlandGradeAgent` "
-              "在拿到真实结果时未调用 `mark_simulated`。model-4 在 type 2 问题中 `simulated=False`，"
-              "真实调用过程模型计算 YTK/MBNT。")
-    md.append("7. **parcel 标识符透传**：本次验证脚本为 type 5 问题预设 `parcel_id=\"1\"` "
-              "+ `parcel_code=\"A0001\"`。管道已接通 `execute_models → context → agents`，"
-              "model-7 返回真实 Python 质量等级评价（本次 Q20/Q21/Q22 已验证）。"
-              "**预存在数据缺口**：`diagnosis_results` 表 0 条记录，model-3 仍返回 mock，"
-              "数据填充后管道自动生效（非本次引入）。")
-    md.append("8. **model-7 Python 实现验证**：model-7 已从 Fortran exe 迁移到纯 Python 实现"
-              "（`src/ai_culti_demo/farmland_grade_eval/`），数据源从 `.dat` 改为 CSV。"
-              "本次 Q20/Q21/Q22 的 orchestrator 链路验证 Python 实现输出正确："
-              "质量等级 `10等`、综合指数 `0.6728330580097418`、12 个指标、12 个障碍度因子，"
-              "与原 Fortran exe 输出一致。`run_grade_evaluation` 签名保持向后兼容。")
+    md.append("1. **模型2真实计算**：type 5 与 type 6 均路由到 model-2。type 5 使用 `parcel_code` 返回质量等级、综合指数和障碍度；type 6 使用 `parcel_code` 返回单地块潜力，或使用 `xqmc_code` 与 `scenario` 返回县域潜力情景。")
+    md.append("2. **资源状态**：模型2依赖 `grade_csv`；资源缺失时返回 `DEPLOYMENT_ERROR`，不回退为模拟结果。")
+    md.append("3. **路由细节**：每个 question_type 只调用一个正式模型，其中 `type 5` 和 `type 6` 均为 model-2；知识性问题仍走 RAG。")
+    md.append("4. **结果标志**：模型2真实计算的 `metadata.simulated` 为 `false`；输入不足和引擎错误保留机器可读错误码。")
     md.append("")
 
     return "\n".join(md)
@@ -498,18 +459,30 @@ def main() -> int:
         for q in questions:
             total += 1
             # 按问题类型预设 parcel 标识符：
-            # - type 5（质量等级评价，调 model-7 Fortran exe）全部预设 parcel_code
+            # - type 5（质量等级评价）全部预设 parcel_code
             # - 农户端问题（含「我的田/地」等）预设 parcel_id + parcel_code
             # - county/province 问题不预设（model-1/3 按 area_code 查询）
             parcel_id = None
             parcel_code = None
+            xqmc_code = None
+            scenario = None
             if q_type == 5 or _is_farmer_question(q):
                 parcel_id = "1"
                 parcel_code = "A0001"
+            if q_type == 6 and not parcel_code:
+                xqmc_code = 8
+                scenario = 1
             print(f"  [{total}/{total_count}] type={q_type} -> {q[:40]}..."
                   f" (parcel_id={parcel_id or '-'}, parcel_code={parcel_code or '-'})",
                   flush=True)
-            r = run_one_question(q_type, q, parcel_id=parcel_id, parcel_code=parcel_code)
+            r = run_one_question(
+                q_type,
+                q,
+                parcel_id=parcel_id,
+                parcel_code=parcel_code,
+                xqmc_code=xqmc_code,
+                scenario=scenario,
+            )
             if r.get("answer_full"):
                 answered += 1
             if r.get("type_match"):

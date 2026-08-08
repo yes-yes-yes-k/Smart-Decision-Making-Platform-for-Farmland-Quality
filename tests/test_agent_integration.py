@@ -251,7 +251,7 @@ def test_chat_api_passes_top_level_parcel_id_and_code():
             "model_results": {
                 "data": {
                     "question_type": 5,
-                    "agents_invoked": ["model-7"],
+                    "agents_invoked": ["model-2"],
                     "summary": "",
                     "details": {},
                     "recommendations": [],
@@ -387,8 +387,8 @@ def test_chat_api_no_parcel_when_absent():
     print("✓ body 无 parcel 标识符时 orchestrator request 不含")
 
 
-def test_chat_api_type5_routes_to_model7_only():
-    """Task 6.2: type 5 问题经 API 路由后 agents_invoked 仅含 model-7，无 role 字段"""
+def test_chat_api_type5_routes_to_model2_only():
+    """type 5 问题经 API 路由后 agents_invoked 仅含 model-2，无 role 字段。"""
     from framework.api.app import create_app
 
     app = create_app("sqlite")
@@ -423,12 +423,12 @@ def test_chat_api_type5_routes_to_model7_only():
     data = payload["data"]
     # spec 验证：无 role 字段
     assert "role" not in data, f"响应不应含 role 字段: {data}"
-    # type 5 路由到 model-7（1:1 映射）
+    # type 5 路由到 model-2（1:1 映射）
     qt = data.get("question_type")
     agents_invoked = data.get("agents_invoked", [])
     assert qt == 5, f"质量等级问题期望 type 5，实际 type {qt}"
-    assert agents_invoked == ["model-7"], f"type 5 应仅调 model-7: {agents_invoked}"
-    print(f"✓ Task 6.2: type 5 API 路由正确 (type={qt}, agents={agents_invoked}, 无 role)")
+    assert agents_invoked == ["model-2"], f"type 5 应仅调 model-2: {agents_invoked}"
+    print(f"✓ type 5 API 路由正确 (type={qt}, agents={agents_invoked}, 无 role)")
 
 
 def test_chat_api_knowledge_question_routes_to_rag():
@@ -518,7 +518,7 @@ if __name__ == "__main__":
     test_chat_api_passes_top_level_parcel_id_and_code()
     test_chat_api_top_level_parcel_overrides_context()
     test_chat_api_no_parcel_when_absent()
-    test_chat_api_type5_routes_to_model7_only()
+    test_chat_api_type5_routes_to_model2_only()
     test_chat_api_knowledge_question_routes_to_rag()
     test_chat_api_knowledge_question_概念_pattern()
     print("\n所有端到端验证与集成测试通过！")

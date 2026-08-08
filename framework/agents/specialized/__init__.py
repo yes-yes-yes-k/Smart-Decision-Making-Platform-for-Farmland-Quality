@@ -5,7 +5,6 @@ from .acidification_agent import AcidificationRemediationAgent
 from .organic_matter_agent import OrganicMatterAgent
 from .fertility_ml_agent import FertilityMLAgent
 from .stability_agent import StabilityRiskAgent as Model1StabilityAgent
-from .grade_agent import FarmlandGradeAgent
 
 __all__ = [
     "StabilityRiskAgent",
@@ -15,5 +14,4 @@ __all__ = [
     "OrganicMatterAgent",
     "FertilityMLAgent",
     "Model1StabilityAgent",
-    "FarmlandGradeAgent",
 ]

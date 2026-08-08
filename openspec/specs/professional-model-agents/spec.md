@@ -5,11 +5,11 @@ TBD - created by archiving change multi-agent-model-framework. Update Purpose af
 ## Requirements
 ### Requirement: 专业智能体目录与正式能力一一对应
 
-系统 SHALL 以 7 个已注册专业智能体作为正式专业能力的唯一来源。每个 Agent SHALL 有一个稳定内部 `agent_id`、一个规范公开 `model_id`、明确中文名称、业务边界、最小输入、数据前提、可靠性状态和降级方式。正式能力为：`model-1/stability-risk-evaluation`、`model-2/improvement-potential-assessment`、`model-3/obstacle-diagnosis`、`model-4/acidification-remediation`、`model-5/organic-matter-improvement`、`model-6/fertility-soc-dose-prediction`、`model-7/quality-grade-evaluation`。
+系统 SHALL 以 6 个已注册专业智能体作为正式专业能力的唯一来源。每个 Agent SHALL 有一个稳定内部 `agent_id`、一个规范公开 `model_id`、明确中文名称、业务边界、最小输入、数据前提、可靠性状态和降级方式。正式能力为：`model-1/stability-risk-evaluation`、`model-2/improvement-potential-assessment`、`model-3/obstacle-diagnosis`、`model-4/acidification-remediation`、`model-5/organic-matter-improvement`、`model-6/fertility-soc-dose-prediction`。
 
 #### Scenario: 读取正式专业能力目录
 - **WHEN** 系统初始化专业能力目录
-- **THEN** 目录 SHALL 包含且仅包含 7 项正式专业能力
+- **THEN** 目录 SHALL 包含且仅包含 6 项正式专业能力
 - **AND** 每一项 SHALL 同时给出 Agent ID、公开模型 ID、名称和运行前提
 
 #### Scenario: Agent 注册引用正式能力定义
@@ -156,20 +156,20 @@ TBD - created by archiving change multi-agent-model-framework. Update Purpose af
 - **WHEN** `FertilityMLAgent.execute` 收到包含越界特征值的输入，`model_6_execution` 返回 `status: "rejected"`
 - **THEN** Agent SHALL 在回答中明文标注越界特征和合法范围，不返回预测值
 
-### Requirement: FarmlandGradeObstacleAgent 智能体
-系统 SHALL 实现 `FarmlandGradeObstacleAgent` 智能体，对应耕地质量等级和障碍度评价模型（纯 Python 实现），通过调用 `run_grade_evaluation` 获取地块评价结果，返回基于 GB/T 33469-2016 标准的真实质量等级和障碍度诊断，不再依赖 Fortran exe 或 subprocess。
+### Requirement: PotentialAssessmentAgent 真实质量与潜力评估
+系统 SHALL 由 `model-2/PotentialAssessmentAgent` 调用 `farmland_grade_eval` 的纯 Python 引擎，统一提供质量等级、综合指数、障碍度、单地块提升潜力和县域潜力情景。该 Agent 不得使用固定模拟指标作为成功结果。
 
 #### Scenario: 质量等级查询
-- **WHEN** 用户询问某地块的耕地质量等级，且提供了合法的地块统一代码
-- **THEN** 智能体 SHALL 调用 `run_grade_evaluation`（Python 实现），返回质量等级（1-10等）、综合指数和 12 项指标的原始值
+- **WHEN** 用户以 type 5 询问某地块的耕地质量等级，且提供了合法的 `parcel_code`
+- **THEN** `PotentialAssessmentAgent` SHALL 调用 `run_grade_evaluation`，返回质量等级、综合指数和 12 项指标的原始值
 
-#### Scenario: 障碍度诊断
-- **WHEN** 用户询问某地块的主要障碍因素，且提供了合法的地块统一代码
-- **THEN** 智能体 SHALL 调用 `run_grade_evaluation`（Python 实现），返回障碍度因子排序表（从大到小），识别主要限制因子
+#### Scenario: 单地块与县域潜力评估
+- **WHEN** 用户以 type 6 提供 `parcel_code`，或提供 `xqmc_code` 与 `scenario`
+- **THEN** `PotentialAssessmentAgent` SHALL 分别调用 `run_potential_analysis` 或 `run_county_potential`，返回真实潜力结果
 
 #### Scenario: 评价调用失败
-- **WHEN** Python 评价调用失败（CSV 数据缺失、地块代码无效、编码字段越界）
-- **THEN** 智能体 SHALL 返回明确的错误信息（如"CSV 数据文件缺失"、"未找到地块代码"），`confidence` 字段降低，不返回模拟数据
+- **WHEN** 缺少 `parcel_code`，或 Python 评价调用失败（CSV 数据缺失、地块代码无效、编码字段越界）
+- **THEN** Agent SHALL 返回明确的机器可读错误（包括 `MISSING_PARCEL_CODE`、`DEPLOYMENT_ERROR` 或底层错误），且 `metadata.simulated` SHALL 为 `false`
 
 ### Requirement: ObstacleDiagnosisAgent 智能体
 系统 SHALL 实现 `ObstacleDiagnosisAgent` 智能体，对应模型3「耕地质量主要问题精准识别模型」，通过调用模型3 的在线查询接口获取障碍诊断结果，返回真实的障碍类型、主要/次要障碍因素和障碍组合类型。

@@ -73,54 +73,53 @@ The system SHALL ensure that the `/api/v1/chat/` response only includes model re
 - **AND** SHALL NOT contain the raw `data` or `details` fields from AgentManager
 
 ### Requirement: 地块标识符上下文透传
-系统 SHALL 在 `execute_models` 节点从 `state["request"]` 提取 `parcel_id`（数字字符串，用于 stability_db/diagnosis_db 查询）和 `parcel_code`（字母数字字符串，用于 fortran exe 调用）并加入 `context`，使 AgentManager 内的 agents 能通过 `context.get("parcel_id")` 或 `context.get("parcel_code")` 获取地块标识符执行真实查询。
+系统 SHALL 在 `execute_models` 节点从 `state["request"]` 提取 `parcel_id`（数字字符串，用于 stability_db/diagnosis_db 查询）、`parcel_code`（字母数字字符串，用于模型2真实质量等级或单地块潜力计算）、`xqmc_code`、`scenario` 和可选 `csv_path` 并加入 `context`，使 AgentManager 内的 agents 能执行真实查询。
 
-`parcel_id` 与 `parcel_code` 是两套无映射关系的 ID 空间：`parcel_id` 对应 stability_db/diagnosis_db 的数字 ID（如 "1"），`parcel_code` 对应 fortran exe 数据库的字母数字代码（如 "A0001"）。系统 SHALL NOT 尝试在两套 ID 之间做转换。
+`parcel_id` 与 `parcel_code` 是两套无映射关系的 ID 空间：`parcel_id` 对应 stability_db/diagnosis_db 的数字 ID（如 "1"），`parcel_code` 对应耕地质量评价 CSV 的字母数字代码（如 "A0001"）。系统 SHALL NOT 尝试在两套 ID 之间做转换。
 
-两个字段均为可选：未传时 agents SHALL 维持现有 mock 数据 + `need_input` 提示行为，不报错。
+两个字段均为可选；但模型2的 type 5 与单地块 type 6 缺少 `parcel_code` 时 SHALL 返回 `MISSING_PARCEL_CODE`，县域 type 6 缺少 `scenario` 时 SHALL 返回 `MISSING_SCENARIO`，不得返回模拟成功结果。
 
 #### Scenario: 传递 parcel_id 触发 DB 真实查询
 - **WHEN** request 包含 `parcel_id: "1"` 且问题路由到 model-1（StabilityRiskAgent）
 - **THEN** `execute_models` SHALL 将 `parcel_id` 透传到 context
 - **AND** model-1 SHALL 用 `parcel_id="1"` 查询 stability_db 返回真实稳定性记录（非 mock pH=5.5）
 
-#### Scenario: 传递 parcel_code 触发 fortran exe 真实计算
-- **WHEN** request 包含 `parcel_code: "A0001"` 且问题路由到 model-7（FarmlandGradeAgent）
+#### Scenario: 传递 parcel_code 触发模型2真实计算
+- **WHEN** request 包含 `parcel_code: "A0001"` 且问题路由到 type 5 或 type 6 的 model-2
 - **THEN** `execute_models` SHALL 将 `parcel_code` 透传到 context
-- **AND** model-7 SHALL 用 `parcel_code="A0001"` 调用 fortran exe 返回真实质量等级评价（非 mock）
+- **AND** model-2 SHALL 用 `parcel_code="A0001"` 调用 Python 引擎返回真实质量等级或单地块潜力（非 mock）
 
 #### Scenario: 双 ID 并存
 - **WHEN** request 同时包含 `parcel_id: "1"` 和 `parcel_code: "A0001"`
 - **THEN** context SHALL 同时携带两个字段
-- **AND** model-1/3/4 SHALL 读 `parcel_id` 查 DB，model-7 SHALL 读 `parcel_code` 调 exe，互不干扰
+- **AND** model-1/3/4 SHALL 读 `parcel_id` 查 DB，model-2 SHALL 读 `parcel_code` 调 Python 引擎，互不干扰
 
-#### Scenario: 未传地块标识符时降级
+#### Scenario: 未传地块标识符时保留错误契约
 - **WHEN** request 不含 `parcel_id` 和 `parcel_code`
-- **THEN** agents SHALL 返回 mock 数据并附加 `need_input` 提示（现有行为不变）
-- **AND** SHALL NOT 抛出异常
+- **THEN** 需要模型2真实计算的 type 5/type 6 请求 SHALL 返回对应机器可读错误
 
 ### Requirement: Type 5 质量等级评价问题库
-系统 SHALL 在 `REFERENCE_QUESTIONS` 字典中维护 key `5`，包含至少 3 个质量等级评价问题（如「我的田耕地质量等级是多少」「查询地块的综合指数和障碍度排序」「这块地的耕地质量等级评价结果」），使验证脚本能覆盖 model-7。
+系统 SHALL 在 `REFERENCE_QUESTIONS` 字典中维护 key `5`，包含至少 3 个质量等级评价问题（如「我的田耕地质量等级是多少」「查询地块的综合指数和障碍度排序」「这块地的耕地质量等级评价结果」），使验证脚本能覆盖模型2的真实质量等级分支。
 
 `_identify_question_type_keyword` 函数 SHALL 维护 type 5 分支，当问题命中 `QUESTION_TYPE_5_KEYWORDS`（"质量等级"、"等级评价"、"综合指数"、"指标隶属度"、"障碍度排序"、"耕地质量等级"、"质量评价"、"等级评定"、"指标权重"）时返回 `(5, relevance)`。
 
-`TYPE_AGENTS` 映射表 SHALL 将 question_type=5 严格映射到 `["model-7"]`（1:1 映射），SHALL NOT 包含 model-4/5/6。type 5 问题的路由 SHALL NOT 依赖用户角色识别（role-based 路由已移除）。
+`TYPE_AGENTS` 映射表 SHALL 将 question_type=5 和 question_type=6 均严格映射到 `["model-2"]`（1:1 映射）。type 5/type 6 问题的路由 SHALL NOT 依赖用户角色识别（role-based 路由已移除）。
 
 #### Scenario: 识别质量等级问题为 type 5
 - **WHEN** 用户询问「我的田耕地质量等级是多少」
 - **THEN** `identify_question_type` SHALL 返回 `question_type=5`
 
-#### Scenario: type 5 问题仅路由到 model-7
+#### Scenario: type 5 问题仅路由到 model-2
 - **WHEN** 问题被识别为 type 5
-- **THEN** `QuestionTypeRouter.get_agents_for_type(5)` SHALL 返回 `["model-7"]`
-- **AND** `AgentManager.process` SHALL 仅调用 model-7（FarmlandGradeAgent）
+- **THEN** `QuestionTypeRouter.get_agents_for_type(5)` SHALL 返回 `["model-2"]`
+- **AND** `AgentManager.process` SHALL 仅调用 model-2（PotentialAssessmentAgent）
 - **AND** SHALL NOT 调用 model-4/5/6
-- **AND** model-7 SHALL 被执行（status ≠ `skipped`），无需 `_should_execute_agent` 二次过滤
+- **AND** model-2 SHALL 被执行（status ≠ `skipped`），无需 `_should_execute_agent` 二次过滤
 
-#### Scenario: 非 type 5 问题不调用 model-7
+#### Scenario: 非 type 5/type 6 问题不调用 model-2
 - **WHEN** 问题被识别为 type 1/2/3/4（如「我的田肥力怎么样」识别为 type 4）
-- **THEN** `AgentManager.process` SHALL NOT 调用 model-7
-- **AND** SHALL NOT 在 `details` 中出现 model-7 的 `skipped` 条目（因路由未包含 model-7）
+- **THEN** `AgentManager.process` SHALL NOT 调用 model-2
+- **AND** SHALL NOT 在 `details` 中出现 model-2 的 `skipped` 条目（因路由未包含 model-2）
 
 ### Requirement: 生产 API 接受地块标识符
 系统 SHALL 在 `POST /api/v1/chat/` 请求体中支持可选的 `parcel_id`（string，数字格式）和 `parcel_code`（string，字母数字格式）字段，并透传到 `multi_agent_orchestrator.run(request)`。
@@ -133,11 +132,11 @@ The system SHALL ensure that the `/api/v1/chat/` response only includes model re
 #### Scenario: API 请求携带 parcel_code
 - **WHEN** 客户端 POST `/api/v1/chat/` 且 body 含 `parcel_code: "A0001"`
 - **THEN** 系统 SHALL 将 `parcel_code` 透传到 orchestrator request
-- **AND** orchestrator SHALL 将其加入 context 供 model-7 读取
+- **AND** orchestrator SHALL 将其加入 context 供 model-2 读取
 
 #### Scenario: API 请求不携带地块标识符
 - **WHEN** 客户端 POST `/api/v1/chat/` 且 body 不含 `parcel_id` 和 `parcel_code`
-- **THEN** 系统 SHALL 正常处理（现有行为不变），agents 返回 mock + `need_input` 提示
+- **THEN** 系统 SHALL 正常处理；若问题路由到模型2真实分支，响应 SHALL 保留相应输入错误码
 
 ### Requirement: 多智能体统一 LLM 总结
 
