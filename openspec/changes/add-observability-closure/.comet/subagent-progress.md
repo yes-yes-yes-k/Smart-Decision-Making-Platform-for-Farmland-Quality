@@ -48,6 +48,9 @@
 - 每任务 reviewer: 未派发（standard 非风险任务放行）
 
 ## 当前阶段
-- 阶段: final-review（所有 5 个 plan task 已勾选，进入最终轻量代码审查）
-- 审查轮次: standard 最终轻量 1 轮
+- 阶段: done（最终轻量审查 APPROVED，修复轮 1 完成）
+- 最终提交: d6d18db（全部 5 task）+ d980f39（审查修复）
+- 最终审查: APPROVED（I1 Important + M1/M3/M4 Minor 已修复并通过复查）
+- M2（⚠️ 需协调者核对）接受理由：`data_version/agent_version/params` 为预留字段，供上游数据管线（P2 统一数据对象，本 change Non-Goal 排除）接入后填充；在未接入上游前，看板「参数完整率」在生产路径恒为 0% 属预期设计，非缺陷。已记录接受，不阻塞归档。
+- 审查轮次: standard 最终轻量 1 轮 + 修复 1 轮（COMPLETE）
 
