@@ -36,7 +36,7 @@ base-ref: 0ceac011526a9027e3a2d69f643a110f9a9ac72c
 - Consumes: `ProfessionalCapability` 与现有 `CAPABILITY_BY_QUESTION_TYPE`。
 - Produces: type 5/type 6 均映射到 `model-2` 的 `TYPE_AGENTS`，且正式能力目录只有 6 项。
 
-- [ ] **Step 1: 写入失败测试，固定六模型和共享路由契约**
+- [x] **Step 1: 写入失败测试，固定六模型和共享路由契约**
 
 ```python
 assert len(PROFESSIONAL_CAPABILITIES) == 6
@@ -46,7 +46,7 @@ assert TYPE_AGENTS[6] == ["model-2"]
 assert get_capability_by_model_id("quality-grade-evaluation") is None
 ```
 
-- [ ] **Step 2: 运行定向路由测试，确认当前实现失败**
+- [x] **Step 2: 运行定向路由测试，确认当前实现失败**
 
 Run:
 
@@ -56,7 +56,7 @@ Run:
 
 Expected: 现有 model-7 注册和 type 5 路由断言导致失败。
 
-- [ ] **Step 3: 扩展能力数据结构并删除 model-7 能力**
+- [x] **Step 3: 扩展能力数据结构并删除 model-7 能力**
 
 在 `ProfessionalCapability` 中添加不可变的 `question_type_aliases: tuple[int, ...] = ()`，将模型2的规范 `question_type` 保持为 6、别名设为 `(5,)`；从 `PROFESSIONAL_CAPABILITIES` 删除 model-7；由规范类型加别名构造 `CAPABILITY_BY_QUESTION_TYPE`；在 `public_capability_descriptor()` 暴露 `question_types`。
 
@@ -69,7 +69,7 @@ def _question_type_map() -> Dict[int, ProfessionalCapability]:
     return mapping
 ```
 
-- [ ] **Step 4: 运行定向路由测试，确认通过**
+- [x] **Step 4: 运行定向路由测试，确认通过**
 
 Run:
 
@@ -91,7 +91,7 @@ Expected: PASS，type 5/type 6 均只路由到 model-2。
 - Consumes: `run_grade_evaluation(parcel_code, exe_path=None, dat_path=None)`、`run_potential_analysis(parcel_code, csv_path=None)`、`run_county_potential(xqmc_code, scenario, csv_path=None)`。
 - Produces: 模型2的 `execute(payload)` 返回 `{status, result|error, metadata: {simulated: False}}`。
 
-- [ ] **Step 1: 写入真实模型2失败测试**
+- [x] **Step 1: 写入真实模型2失败测试**
 
 ```python
 agent = PotentialAssessmentAgent()
@@ -108,7 +108,7 @@ missing = agent.execute({"question_type": 5})
 assert missing["error"]["code"] == "MISSING_PARCEL_CODE"
 ```
 
-- [ ] **Step 2: 运行专题模型测试，确认固定模拟实现失败**
+- [x] **Step 2: 运行专题模型测试，确认固定模拟实现失败**
 
 Run:
 
@@ -118,7 +118,7 @@ Run:
 
 Expected: 真实等级、潜力字段和缺少地块编码错误断言失败。
 
-- [ ] **Step 3: 用真实引擎重写 PotentialAssessmentAgent.execute()**
+- [x] **Step 3: 用真实引擎重写 PotentialAssessmentAgent.execute()**
 
 导入真实函数，按 `question_type` 分派，保留底层错误码：
 
@@ -133,11 +133,11 @@ elif question_type == 6:
 
 所有成功和失败返回均写入 `metadata={"simulated": False}`；缺少必要参数时构造 `MISSING_PARCEL_CODE` 或对应县域参数错误。删除 `MOCK_INDICATORS`、`POTENTIAL_RULES` 和模拟阈值逻辑；将聊天摘要基于 `analysis` 真实结果生成。
 
-- [ ] **Step 4: 删除独立等级 Agent 并替换导入引用**
+- [x] **Step 4: 删除独立等级 Agent 并替换导入引用**
 
 删除 `grade_agent.py`，确保没有生产代码、测试或文档仍导入 `FarmlandGradeAgent`。`farmland_grade_eval` 包不删除。
 
-- [ ] **Step 5: 运行模型2与底层回归测试**
+- [x] **Step 5: 运行模型2与底层回归测试**
 
 Run:
 
@@ -161,7 +161,7 @@ Expected: PASS，A0001 综合指数约 `0.6728`、质量等级 `10等`，且模�
 - Consumes: 6 项能力目录与模型2真实 `execute()`。
 - Produces: 只注册 6 个 Agent，type 5/type 6 的 `agents_invoked == ["model-2"]`。
 
-- [ ] **Step 1: 写入失败测试，断言注册表和编排结果不存在 model-7**
+- [x] **Step 1: 写入失败测试，断言注册表和编排结果不存在 model-7**
 
 ```python
 manager = AgentManager()
@@ -169,15 +169,15 @@ assert set(manager.agents) == {"model-1", "model-2", "model-3", "model-4", "mode
 assert manager.process("A0001 的质量等级", {"question_type": 5, "parcel_code": "A0001"})["data"]["agents_invoked"] == ["model-2"]
 ```
 
-- [ ] **Step 2: 删除 model-7 注册、依赖和加载逻辑**
+- [x] **Step 2: 删除 model-7 注册、依赖和加载逻辑**
 
 从 `_register_agents()` 删除 `self.agents["model-7"]` 依赖声明，从 `_load_real_agents()` 删除 `FarmlandGradeAgent` 导入和赋值；更新注释为“6 个专业智能体”。
 
-- [ ] **Step 3: 保证编排上下文完整透传**
+- [x] **Step 3: 保证编排上下文完整透传**
 
 在 `execute_models` 与 API chat 路由的说明和测试中，将 `parcel_code` 的归属由 model-7 改为 model-2，并确保 `question_type`、`parcel_code`、`xqmc_code`、`scenario` 和 `csv_path` 进入 `AgentManager._analysis_payload()`。
 
-- [ ] **Step 4: 运行 AgentManager 和聊天链路测试**
+- [x] **Step 4: 运行 AgentManager 和聊天链路测试**
 
 Run:
 
@@ -202,7 +202,7 @@ Expected: PASS，type 5/type 6 均仅调用 model-2；缺少 `parcel_code` 返�
 - Consumes: 6 模型能力目录、type 5/type 6 到模型2路由。
 - Produces: 文档和验证报告不再列出 model-7 或 `quality-grade-evaluation`。
 
-- [ ] **Step 1: 搜索并分类 model-7/quality-grade-evaluation 残留**
+- [x] **Step 1: 搜索并分类 model-7/quality-grade-evaluation 残留**
 
 Run:
 
@@ -212,15 +212,15 @@ rg -n -S "model-7|quality-grade-evaluation|FarmlandGradeAgent" README.md docs fr
 
 Expected: 将生产代码、用户文档、验证脚本、活跃测试与历史归档区分；仅修改非归档的当前资产。
 
-- [ ] **Step 2: 更新公开能力和路由文档**
+- [x] **Step 2: 更新公开能力和路由文档**
 
 将所有“7 个专题模型”改为“6 个专题模型”；将 type 5/type 6 均说明为模型2真实能力；删除模型7接口和能力列表示例；明确 `parcel_code` 是模型2真实评价/潜力的必填输入。
 
-- [ ] **Step 3: 更新验证报告映射**
+- [x] **Step 3: 更新验证报告映射**
 
 将标准“耕地质量提升潜力评估模型”绑定到 `model-2`，移除追加的 model-2/model-5 历史占位桩说明中与模型2相关的行，删除 model-7 资源就绪与统计分支。
 
-- [ ] **Step 4: 运行文档/验证脚本和残留扫描**
+- [x] **Step 4: 运行文档/验证脚本和残留扫描**
 
 Run:
 
@@ -241,7 +241,7 @@ Expected: 验证输出只列出 6 个正式模型；当前非历史资产无 mod
 - Consumes: 完成后的六模型运行时、文档和 OpenSpec 规格。
 - Produces: 通过严格校验、完整测试和可追溯的任务完成状态。
 
-- [ ] **Step 1: 运行 OpenSpec 严格校验**
+- [x] **Step 1: 运行 OpenSpec 严格校验**
 
 Run:
 
@@ -251,7 +251,7 @@ comet classic openspec -- validate "unify-model2-real-integration" --strict
 
 Expected: `Change 'unify-model2-real-integration' is valid`。
 
-- [ ] **Step 2: 运行完整 Python 测试套件**
+- [x] **Step 2: 运行完整 Python 测试套件**
 
 Run:
 
@@ -261,7 +261,7 @@ Run:
 
 Expected: 所有测试通过；若失败，先按失败类型修复能力目录、模型2错误契约或残留 model-7 断言。
 
-- [ ] **Step 3: 更新 OpenSpec 任务状态并复查差异**
+- [x] **Step 3: 更新 OpenSpec 任务状态并复查差异**
 
 将已完成条目改为 `- [x]`，然后运行：
 
