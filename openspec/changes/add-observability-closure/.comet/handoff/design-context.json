@@ -1,0 +1,15 @@
+{
+  "change": "add-observability-closure",
+  "phase": "design",
+  "mode": "compact",
+  "canonical_spec": "openspec",
+  "generated_by": "comet-handoff.sh",
+  "context_hash": "368fa173141bf589b8ed2adde2444cf421d15da1cc5429e594be180d1edcf2af",
+  "files": [
+    { "path": "openspec/changes/add-observability-closure/proposal.md", "sha256": "ab1ab75182f204094736962fa6715fca32394637f35f9e63965c45184ba118ae" },
+    { "path": "openspec/changes/add-observability-closure/design.md", "sha256": "06a47b6c440a628bbf816b390265dd7e8def6a384912a37142b2759d8165c81c" },
+    { "path": "openspec/changes/add-observability-closure/tasks.md", "sha256": "2911d557a941c0a33b7894b3951c7eb8a88c7e9f01f9f1681ccbdc086e607ed2" },
+    { "path": "openspec/changes/add-observability-closure/specs/langsmith-monitoring/spec.md", "sha256": "63a20676d195f92c582574051570bc5d3b79b535c8cb30005f51e91ab625173e" },
+    { "path": "openspec/changes/add-observability-closure/specs/routing-observability/spec.md", "sha256": "32aaebbc0cea6bdacc793064add36539403267753264cfe94fa32f5613a04b98" }
+  ]
+}
