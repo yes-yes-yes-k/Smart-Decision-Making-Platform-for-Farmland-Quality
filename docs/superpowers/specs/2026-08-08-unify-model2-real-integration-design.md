@@ -2,6 +2,8 @@
 comet_change: unify-model2-real-integration
 role: technical-design
 canonical_spec: openspec
+archived-with: 2026-08-09-unify-model2-real-integration
+status: final
 ---
 
 # 模型2真实能力归并设计
@@ -136,4 +138,3 @@ API/chat request
 - **风险：** 县域潜力请求缺少情景参数。**处理：** 返回明确输入错误，不默认选择情景。
 - **风险：** 真实 CSV 的内容版本与外部源目录不同。**处理：** 本 change 不自动覆盖 CSV；使用当前项目已部署数据，数据同步另行处理。
 - **回滚：** 回滚代码提交和对应 change 即可恢复旧注册表；不删除底层 `farmland_grade_eval` 包或 CSV。
-

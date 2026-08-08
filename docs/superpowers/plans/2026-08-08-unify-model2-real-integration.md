@@ -2,6 +2,7 @@
 change: unify-model2-real-integration
 design-doc: docs/superpowers/specs/2026-08-08-unify-model2-real-integration-design.md
 base-ref: 0ceac011526a9027e3a2d69f643a110f9a9ac72c
+archived-with: 2026-08-09-unify-model2-real-integration
 ---
 
 # 模型2真实能力归并 Implementation Plan
