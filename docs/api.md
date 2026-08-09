@@ -247,6 +247,9 @@
 **POST** `/api/v1/chat/`
 
 统一智能路由入口，根据问题类型（question_type）自动路由：
+
+关键词识别、优先级、冲突处理和模型2分支详见：[聊天关键词与专题模型路由说明](chat-routing-keywords.md)。
+
 - **question_type=0** → RAG 链（知识性问题，如「什么是土壤酸化」「耕地质量等级是什么意思」）
 - **question_type=1** → model-1 稳定性风险识别（等级稳定性/退化风险）
 - **question_type=2** → model-4 酸化改良（酸化程度/调理剂/改良方案）
