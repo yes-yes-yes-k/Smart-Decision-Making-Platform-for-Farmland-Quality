@@ -4,19 +4,19 @@ from ai_culti_demo import list_thematic_models, run_thematic_model
 
 
 class ThematicModelTests(unittest.TestCase):
-    def test_list_thematic_models_returns_seven_professional_models(self):
+    def test_list_thematic_models_returns_five_professional_models(self):
         result = list_thematic_models()
 
         self.assertEqual(result["status"], "ok")
-        self.assertEqual(len(result["models"]), 7)
+        self.assertEqual(len(result["models"]), 5)
         self.assertEqual(
             result["models"][0]["model_id"],
-            "stability-risk-evaluation",
+            "obstacle-diagnosis",
         )
 
     def test_list_thematic_models_can_include_non_professional_capabilities(self):
         result = list_thematic_models(include_non_professional=True)
-        self.assertEqual(len(result["models"]), 10)
+        self.assertEqual(len(result["models"]), 8)
         categories = {model["model_id"]: model.get("category") for model in result["models"]}
         self.assertEqual(categories["spatial-structure-analysis"], "auxiliary")
         self.assertEqual(categories["multi-factor-collaborative-improvement"], "experimental")

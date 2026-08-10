@@ -7,15 +7,13 @@ from framework.agents.router import QuestionTypeRouter, TYPE_AGENTS
 
 
 def test_type_agents_mapping_is_one_to_one():
-    """TYPE_AGENTS 必须覆盖 7 项正式能力，且每类仅路由一个 Agent。"""
+    """TYPE_AGENTS 必须覆盖 5 项正式能力，且每类仅路由一个 Agent。"""
     assert TYPE_AGENTS == {
         1: ["model-1"],
-        2: ["model-4"],
+        2: ["model-2"],
         3: ["model-3"],
-        4: ["model-6"],
-        5: ["model-7"],
-        6: ["model-2"],
-        7: ["model-5"],
+        4: ["model-4"],
+        5: ["model-5"],
     }, f"TYPE_AGENTS 映射不符: {TYPE_AGENTS}"
     # 每个 type 仅映射到单一 agent
     for q_type, agents in TYPE_AGENTS.items():
@@ -24,16 +22,14 @@ def test_type_agents_mapping_is_one_to_one():
 
 
 def test_get_agents_for_type_known_types():
-    """已知 type 1-7 各返回对应单一 agent ID 列表"""
+    """已知 type 1-5 各返回对应单一 agent ID 列表"""
     router = QuestionTypeRouter()
     assert router.get_agents_for_type(1) == ["model-1"]
-    assert router.get_agents_for_type(2) == ["model-4"]
+    assert router.get_agents_for_type(2) == ["model-2"]
     assert router.get_agents_for_type(3) == ["model-3"]
-    assert router.get_agents_for_type(4) == ["model-6"]
-    assert router.get_agents_for_type(5) == ["model-7"]
-    assert router.get_agents_for_type(6) == ["model-2"]
-    assert router.get_agents_for_type(7) == ["model-5"]
-    print("✓ get_agents_for_type 对 type 1-7 返回正确映射")
+    assert router.get_agents_for_type(4) == ["model-4"]
+    assert router.get_agents_for_type(5) == ["model-5"]
+    print("✓ get_agents_for_type 对 type 1-5 返回正确映射")
 
 
 def test_get_agents_for_type_returns_copy():

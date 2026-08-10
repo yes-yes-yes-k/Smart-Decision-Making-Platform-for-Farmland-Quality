@@ -1,0 +1,9 @@
+{
+  "openspec_proposal": "openspec/changes/five-dim-routing-logic/proposal.md",
+  "openspec_design": "openspec/changes/five-dim-routing-logic/design.md",
+  "openspec_tasks": "openspec/changes/five-dim-routing-logic/tasks.md",
+  "openspec_delta_spec": "openspec/changes/five-dim-routing-logic/specs/routing-exclusive-rules/spec.md",
+  "handoff_context": "openspec/changes/five-dim-routing-logic/.comet/handoff/design-context.json",
+  "handoff_markdown": "openspec/changes/five-dim-routing-logic/.comet/handoff/design-context.md",
+  "archive_directory": "openspec/changes/archive/2026-08-07-five-dim-routing-logic"
+}

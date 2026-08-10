@@ -1,0 +1,15 @@
+{
+  "change": "add-routing-exclusive-rules",
+  "phase": "design",
+  "mode": "compact",
+  "canonical_spec": "openspec",
+  "generated_by": "comet-handoff.sh",
+  "context_hash": "52c21eeb65d7e5fe4afb6bfd856930f9716bb114972e16a79b4a95bbf0654d6d",
+  "files": [
+    { "path": "openspec/changes/add-routing-exclusive-rules/proposal.md", "sha256": "bce2c0b5a52fb5b1093fa676c0d08444b4e8414471ab0a6feacf8aa4de4c2df0" },
+    { "path": "openspec/changes/add-routing-exclusive-rules/design.md", "sha256": "891fe2e9fdce7af377db2d2f63848f86ba9fcfa1adfe32a7e2171f142e5c3a2f" },
+    { "path": "openspec/changes/add-routing-exclusive-rules/tasks.md", "sha256": "a7cf37ae4bd588d96b323f6953d91d69fe8261623b48e47897a252b9ac70953b" },
+    { "path": "openspec/changes/add-routing-exclusive-rules/specs/role-based-routing/spec.md", "sha256": "d27503722d84ff002df03eba1dd0380b857d376fabfba64c9f4ab208aeee449c" },
+    { "path": "openspec/changes/add-routing-exclusive-rules/specs/routing-exclusive-rules/spec.md", "sha256": "690e05385156c497b1b8923b9e4002f38502ce808ee95c597038cf8c21898922" }
+  ]
+}
