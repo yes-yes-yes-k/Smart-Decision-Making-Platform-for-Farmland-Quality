@@ -46,6 +46,9 @@ bin/farmland_quality_eval/*
 # Superpowers 技能运行时目录
 .superpowers/
 
+# Comet 工作流本地状态与配置
+.comet/
+
 # Git worktrees
 .worktrees/
 worktrees/
