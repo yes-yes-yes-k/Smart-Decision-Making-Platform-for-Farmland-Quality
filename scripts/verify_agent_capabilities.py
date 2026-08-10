@@ -1,9 +1,8 @@
 """智能体能力验证脚本
 
 不启动 Flask HTTP，直接调用 Python API 验证：
-1. 6 个 agent 的加载状态（real/stub + 模型可用性）
+1. 5 个 agent 的加载状态（real/stub + 模型可用性）
 2. REFERENCE_QUESTIONS 问题库 18 个问题的回答能力
-3. model-6 (FertilityMLAgent) 集成的真实 ML 计算能力
 
 用法：
     python scripts/verify_agent_capabilities.py
@@ -23,9 +22,6 @@ os.environ.setdefault("PYTHONPATH", str(PROJECT_ROOT / "src"))
 
 # 避免加载 .env 时引发副作用，仅设置最小环境变量
 os.environ.setdefault("FLASK_CONFIG", "default")
-
-if hasattr(sys.stdout, "reconfigure"):
-    sys.stdout.reconfigure(errors="backslashreplace")
 
 # Excel 标准模型映射（单一事实源在 gen_full_verification_report，此处引入共享同一份）
 # MODEL_TO_STD: model_id -> (std_id, std_name)；未对应 Excel 标准的 model 返回 None
@@ -51,7 +47,7 @@ def hr() -> None:
 # ---------------------------------------------------------------------------
 
 def inspect_agent_load_status() -> dict:
-    """检查 6 个 agent 的加载状态及依赖模型文件/数据库是否就绪。"""
+    """检查 5 个 agent 的加载状态及依赖模型文件/数据库是否就绪。"""
     from framework.agents.manager import AgentManager
 
     manager = AgentManager()
@@ -95,48 +91,43 @@ def inspect_agent_load_status() -> dict:
             "domain": getattr(agent, "domain", ""),
             "dependencies": getattr(agent, "dependencies", []) or [],
             "model_id_registered": getattr(agent, "model_id", ""),
-            # Excel 标准模型对应关系（未对应时为 None）。
+            # Excel 标准模型对应关系（model-2/model-5 未对应 Excel 标准 → None）
             "std_id": std[0] if std else None,
             "std_name": std[1] if std else None,
         }
 
         # 附加具体模型可用性
         if model_id == "model-1":
-            entry["real_model"] = "farmland_stability"
-            entry["resource_ready"] = resource_status["stability_db_exists"]
-            entry["expected_behavior"] = (
-                "真实计算" if resource_status["stability_db_exists"]
-                else "回退模拟数据（需 data/farmland_stability/stability_results.db）"
-            )
-        elif model_id == "model-3":
             entry["real_model"] = "farmland_diagnosis"
             entry["resource_ready"] = resource_status["diagnosis_db_exists"]
             entry["expected_behavior"] = (
                 "真实计算" if resource_status["diagnosis_db_exists"]
                 else "回退模拟数据（需 data/farmland_diagnosis/farmland_diagnosis.db）"
             )
-        elif model_id == "model-4":
+        elif model_id == "model-2":
             entry["real_model"] = "farmland_acidification"
             entry["resource_ready"] = resource_status["diagnosis_db_exists"]
             entry["expected_behavior"] = (
                 "真实计算" if resource_status["diagnosis_db_exists"]
-                else "回退模拟数据（与 model-3 共用 farmland_diagnosis.db）"
+                else "回退模拟数据（与 model-1 共用 farmland_diagnosis.db）"
             )
-        elif model_id == "model-6":
-            entry["real_model"] = "sklearn ETR (soc_etr + dose_etr)"
-            entry["resource_ready"] = (
-                resource_status["soc_joblib_exists"] and resource_status["dose_joblib_exists"]
-            )
+        elif model_id == "model-3":
+            entry["real_model"] = None
+            entry["resource_ready"] = None
+            entry["expected_behavior"] = "占位桩（无真实模型绑定）"
+        elif model_id == "model-4":
+            entry["real_model"] = "farmland_stability"
+            entry["resource_ready"] = resource_status["stability_db_exists"]
             entry["expected_behavior"] = (
-                "真实 ML 计算" if entry["resource_ready"]
-                else "fallback 训练集均值（缺 .joblib）"
+                "真实计算" if resource_status["stability_db_exists"]
+                else "回退模拟数据（需 data/farmland_stability/stability_results.db）"
             )
-        elif model_id == "model-2":
-            entry["real_model"] = "farmland_grade_eval Python implementation"
+        elif model_id == "model-5":
+            entry["real_model"] = "Python implementation"
             entry["resource_ready"] = resource_status["grade_csv_exists"]
             entry["expected_behavior"] = (
                 "真实计算" if entry["resource_ready"]
-                else "返回 DEPLOYMENT_ERROR（需部署 CSV 到 bin/farmland_quality_eval/）"
+                else "回退模拟数据（需部署 CSV 到 bin/farmland_quality_eval/）"
             )
         else:
             entry["real_model"] = None
@@ -153,7 +144,7 @@ def inspect_agent_load_status() -> dict:
 # ---------------------------------------------------------------------------
 
 def run_reference_questions() -> dict:
-    """对 REFERENCE_QUESTIONS 问题逐个调用 orchestrator，记录结果。"""
+    """对 REFERENCE_QUESTIONS 18 个问题逐个调用 orchestrator，记录结果。"""
     from framework.agents.nodes import REFERENCE_QUESTIONS
     from framework.agents.orchestrator import multi_agent_orchestrator
 
@@ -166,14 +157,8 @@ def run_reference_questions() -> dict:
         for q in questions:
             total += 1
             try:
-                request = {"question": q}
-                if q_type == 5:
-                    request["parcel_code"] = "A0001"
-                elif q_type == 6:
-                    request["xqmc_code"] = 8
-                    request["scenario"] = 1
                 output = multi_agent_orchestrator.run(
-                    request, conversation_history=[]
+                    {"question": q}, conversation_history=[]
                 )
             except Exception as exc:
                 results.append({
@@ -232,70 +217,6 @@ def run_reference_questions() -> dict:
 
 
 # ---------------------------------------------------------------------------
-# 第三部分：model-6 真实 ML 计算能力验证
-# ---------------------------------------------------------------------------
-
-def verify_model6_real_computation() -> dict:
-    """直接给 FertilityMLAgent 喂测试特征，验证真实 ML 预测。"""
-    from framework.agents.specialized.fertility_ml_agent import FertilityMLAgent
-
-    agent = FertilityMLAgent()
-
-    # 测试特征（在合法范围内，避免 rejected）
-    test_features = {
-        "pH": 6.5,
-        "SOCbe": 15.0,
-        "TN": 1.2,
-        "TP": 0.8,
-        "TK": 20.0,
-        "AP": 25.0,
-        "AK": 180.0,
-        "Gap": 5.0,
-        "Dose": 300.0,
-        "Fertilizer type": 1,
-    }
-
-    # 直接调用 execute（绕过 answer_question 的格式化层，看原始结果）
-    exec_result = agent.execute(test_features)
-    status = exec_result.get("status")
-    result = exec_result.get("result", {}) or {}
-    metadata = exec_result.get("metadata", {}) or {}
-
-    # 判定真实计算 vs fallback
-    # model_6_execution 成功时 status="success"；fallback 时 status="fallback"；
-    # 越界时 status="rejected"。FertilityMLAgent.execute 用 MockDataLoader.mark_simulated
-    # 强制在顶层加 simulated=True（设计如此），所以 simulated 标志不能作为真实/模拟的判据。
-    is_real = (
-        status == "success"
-        and metadata.get("fallback_reason") is None
-        and result.get("soc_prediction") is not None
-        and result.get("dose_prediction") is not None
-    )
-
-    # 同时调用 answer_question 看自然语言回答
-    answer_soc = agent.answer_question("我的田土壤有机碳含量大概多少", {"data": test_features})
-    answer_dose = agent.answer_question("我这块地大概需要施多少有机肥", {"data": test_features})
-
-    return {
-        "input_features": test_features,
-        "execute_status": status,
-        "soc_prediction": result.get("soc_prediction"),
-        "soc_confidence": result.get("soc_confidence"),
-        "dose_prediction": result.get("dose_prediction"),
-        "dose_confidence": result.get("dose_confidence"),
-        "dose_warning": result.get("dose_warning"),
-        "imputation_applied": result.get("imputation_applied"),
-        "imputed_features": result.get("imputed_features"),
-        "fallback_reason": metadata.get("fallback_reason"),
-        "model_version": metadata.get("model_version"),
-        "is_real_computation": is_real,
-        "answer_soc_preview": (answer_soc.get("answer") or "")[:200],
-        "answer_dose_preview": (answer_dose.get("answer") or "")[:200],
-        "answer_soc_simulated": answer_soc.get("simulated"),
-    }
-
-
-# ---------------------------------------------------------------------------
 # 主流程
 # ---------------------------------------------------------------------------
 
@@ -308,10 +229,10 @@ def main() -> int:
     load_report = inspect_agent_load_status()
     print("\n[资源就绪状态]")
     for k, v in load_report["resources"].items():
-        flag = "OK" if v else "MISSING"
+        flag = "✓" if v else "✗"
         print(f"  {flag} {k}: {v}")
 
-    print("\n[6 个 Agent 加载状态]（含 Excel 标准模型对应关系）")
+    print("\n[5 个 Agent 加载状态]（含 Excel 标准模型对应关系）")
     print(f"{'Excel标准':<10}{'model_id':<10}{'class':<32}{'stub':<6}{'real_model':<28}{'expected_behavior'}")
     hr()
     for mid, entry in load_report["agents"].items():
@@ -321,10 +242,10 @@ def main() -> int:
               f"{(entry['real_model'] or '-'):<28}"
               f"{entry['expected_behavior']}")
     print("\n  注：Excel 标准模型6（耕地综合地力改良提升模型）尚未实现，项目中无对应 agent；"
-          "模型2已接入真实耕地质量等级与提升潜力引擎；未对应 Excel 标准的模型会标注为空。")
+          "model-2 / model-5 为项目历史占位桩，未对应 Excel 标准。")
 
     # 第二部分
-    section("二、问题库回答验证（REFERENCE_QUESTIONS）")
+    section("二、问题库回答验证（REFERENCE_QUESTIONS 18 题）")
     q_report = run_reference_questions()
     print(f"\n总计 {q_report['total_questions']} 题")
     print(f"  返回非空 answer: {q_report['answered']}/{q_report['total_questions']}")
@@ -336,7 +257,7 @@ def main() -> int:
         if "error" in r:
             print(f"{i:<3}{r['expected_type']:<4}{'-':<4}{'-':<6}{'-':<10}{'-':<28}{r['error']}")
             continue
-        match_flag = "OK" if r["type_match"] else "MISMATCH"
+        match_flag = "✓" if r["type_match"] else "✗"
         agents_str = ",".join(r["agents_invoked"]) if r["agents_invoked"] else "-"
         preview = (r["answer_preview"] or "").replace("\n", " ")
         print(f"{i:<3}{r['expected_type']:<4}{r['identified_type']:<4}{match_flag:<6}"
@@ -345,23 +266,9 @@ def main() -> int:
             sim_str = ", ".join(
                 f"{k}:{'sim' if v else 'real'}" for k, v in r["agent_simulated"].items()
             )
-            print(f"     agent_simulated: {sim_str}")
+            print(f"     ↳ agent_simulated: {sim_str}")
 
-    # 第三部分
-    section("三、model-6 真实 ML 计算能力验证")
-    m6 = verify_model6_real_computation()
-    print(f"\n输入特征: {m6['input_features']}")
-    print(f"execute_status: {m6['execute_status']}")
-    print(f"SOC 预测值: {m6['soc_prediction']} g/kg (置信度 {m6['soc_confidence']})")
-    print(f"Dose 预测值: {m6['dose_prediction']} t/ha (置信度 {m6['dose_confidence']})")
-    print(f"dose_warning: {m6['dose_warning']}")
-    print(f"imputation_applied: {m6['imputation_applied']}, imputed_features: {m6['imputed_features']}")
-    print(f"fallback_reason: {m6['fallback_reason']}")
-    print(f"model_version: {m6['model_version']}")
-    print(f"\n[是否真实计算] {'OK' if m6['is_real_computation'] else 'MISSING（fallback）'}")
-    print(f"\n[SOC 回答预览] {m6['answer_soc_preview']}")
-    print(f"  simulated={m6['answer_soc_simulated']}")
-    print(f"\n[Dose 回答预览] {m6['answer_dose_preview']}")
+    # 第三部分（原 model-6 真实 ML 计算能力验证已移除，model-6 占位模块已删除）
 
     # 汇总
     section("汇总")
@@ -376,7 +283,6 @@ def main() -> int:
     print(f"占位桩 agent: {stub_agents or '无'}")
     print(f"问题库回答率: {q_report['answered']}/{q_report['total_questions']}")
     print(f"问题类型识别准确率: {q_report['type_match']}/{q_report['total_questions']}")
-    print(f"model-6 真实计算: {'OK' if m6['is_real_computation'] else 'MISSING'}")
 
     return 0
 

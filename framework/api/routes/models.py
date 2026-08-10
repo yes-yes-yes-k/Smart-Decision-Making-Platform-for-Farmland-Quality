@@ -37,10 +37,7 @@ def run_model():
         payload['indicators'] = data['indicators']
     if 'context' in data:
         payload['context'] = data['context']
-    for key in (
-        'parcel_id', 'parcel_code', 'question_type', 'xqmc_code', 'scenario',
-        'csv_path', 'target_ph', 'exe_path', 'dat_path',
-    ):
+    for key in ('parcel_id', 'parcel_code', 'target_ph', 'exe_path', 'dat_path'):
         if key in data:
             payload[key] = data[key]
 

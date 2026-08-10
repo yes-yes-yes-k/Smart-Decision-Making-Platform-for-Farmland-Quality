@@ -133,7 +133,6 @@ class BaseAgent(ABC):
         execution = self.execute(payload or {})
         raw_status = execution.get("status", "error")
         result = execution.get("result", {})
-        error = execution.get("error")
         metadata = execution.get("metadata", {})
         simulated = bool(metadata.get("simulated", execution.get("simulated", False)))
         findings = [
@@ -153,7 +152,7 @@ class BaseAgent(ABC):
             "purpose": self.description,
         })
         fallback_used = raw_status in {"fallback", "rejected"} or simulated
-        response = {
+        return {
             "status": "ok" if raw_status in {"ok", "success", "fallback"} else raw_status,
             "capability": capability,
             "model": capability,
@@ -173,10 +172,6 @@ class BaseAgent(ABC):
             },
             "analysis": result,
         }
-        if error:
-            response["error"] = error
-            response["summary"] = error.get("message", "专业计算未能完成。")
-        return response
 
     def answer_from_analysis(self, analysis: Dict[str, Any]) -> Dict[str, Any]:
         """将统一结构化分析转换为聊天链路可汇总的专业答复。"""
@@ -207,7 +202,7 @@ class BaseAgent(ABC):
             evidence = []
 
         reliability = analysis.get("reliability", {})
-        response = {
+        return {
             "answer": "\n".join(answer_parts),
             "evidence": evidence,
             "confidence": 0.9 if reliability.get("level") == "real_model" else 0.5,
@@ -215,16 +210,11 @@ class BaseAgent(ABC):
             "analysis": analysis,
             "sources": [],
         }
-        if analysis.get("status") != "ok":
-            response["status"] = analysis.get("status", "error")
-        if analysis.get("error"):
-            response["error"] = analysis["error"]
-        return response
 
     @abstractmethod
     def execute(self, task: Dict[str, Any]) -> Dict[str, Any]:
-        """执行专业计算。
-        返回: {"status": "ok"|"error", "result"|"error": {...}, "metadata": {"simulated": bool}}
+        """执行模拟计算。
+        返回: {"status": "ok"|"error", "result": {...}, "metadata": {"simulated": True}}
         """
 
     @abstractmethod

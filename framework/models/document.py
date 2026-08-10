@@ -25,6 +25,7 @@ class Document(db.Model):
             'file_type': self.file_type,
             'file_size': self.file_size,
             'chunk_count': self.chunk_count,
+            'row_count': self.chunk_count,
             'status': self.status,
             'category': self.category,
             'treatment_type': self.treatment_type,

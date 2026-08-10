@@ -31,13 +31,14 @@ class Config:
     JWT_SECRET_KEY = os.environ.get('JWT_SECRET_KEY') or SECRET_KEY
     JWT_ACCESS_TOKEN_EXPIRES = 24 * 60 * 60
 
-    SILICONFLOW_API_KEY = os.environ.get('SILICONFLOW_API_KEY') or ''
-    SILICONFLOW_CHAT_MODEL = os.environ.get('SILICONFLOW_CHAT_MODEL') or 'deepseek-ai/DeepSeek-V4-Flash'
+    SILICONFLOW_API_KEY = os.environ.get('SILICONFLOW_API_KEY') or 'sk-truhokzloepabjhdeepqtrzifzwaoyffocmaodsyqfepzwfy'
+    SILICONFLOW_CHAT_MODEL = os.environ.get('SILICONFLOW_CHAT_MODEL') or 'deepseek-ai/DeepSeek-V3'
     SILICONFLOW_EMBED_MODEL = os.environ.get('SILICONFLOW_EMBED_MODEL') or 'BAAI/bge-m3'
     SILICONFLOW_BASE_URL = os.environ.get('SILICONFLOW_BASE_URL') or 'https://api.siliconflow.cn/v1'
-    # 聊天接口的整体时延由单次最终总结调用控制，避免多次重试放大等待时间。
-    SILICONFLOW_LLM_TIMEOUT = float(os.environ.get('SILICONFLOW_LLM_TIMEOUT') or 20)
-    SILICONFLOW_LLM_MAX_RETRIES = int(os.environ.get('SILICONFLOW_LLM_MAX_RETRIES') or 0)
+    # 聊天接口的整体时延由单次最终总结调用控制。DeepSeek-V4-Flash 公测期响应较慢，
+    # 20s 会频繁触发超时降级导致"对话无法使用"；放宽到 90s 并允许 1 次重试。
+    SILICONFLOW_LLM_TIMEOUT = float(os.environ.get('SILICONFLOW_LLM_TIMEOUT') or 90)
+    SILICONFLOW_LLM_MAX_RETRIES = int(os.environ.get('SILICONFLOW_LLM_MAX_RETRIES') or 1)
 
     CHROMA_PERSIST_DIR = os.environ.get('CHROMA_PERSIST_DIR') or './chroma_db'
     CHROMA_COLLECTION_NAME = os.environ.get('CHROMA_COLLECTION_NAME') or 'enterprise_kb'

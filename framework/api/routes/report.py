@@ -8,8 +8,11 @@ report_bp = Blueprint('report', __name__)
 @jwt_required()
 def get_report_summary():
     data = request.get_json()
-    if not data or data.get('status') != 'ok':
-        return jsonify({"status": "error", "error": {"code": "MISSING_DIAGNOSIS", "message": "需要传入成功的诊断结果"}}), 400
+    if not data:
+        return jsonify({"status": "error", "error": {"code": "MISSING_DIAGNOSIS", "message": "需要传入诊断结果或报告类型"}}), 400
+
+    if data.get('status') != 'ok' and not data.get('report_type'):
+        return jsonify({"status": "error", "error": {"code": "MISSING_DIAGNOSIS", "message": "需要传入成功的诊断结果或报告类型"}}), 400
 
     result = core_engine.build_report_summary(data)
     if result.get('status') == 'ok':

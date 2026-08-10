@@ -59,16 +59,16 @@ def _make_state(question: str, question_type: int = 1) -> MultiAgentState:
 
 
 def test_execute_models_invokes_agent_manager_type4():
-    """execute_models 应通过 AgentManager 路由到 type 4 智能体（model-6）"""
-    state = _make_state("我的田施氮肥施多少？", question_type=4)
+    """execute_models 应通过 AgentManager 路由到 type 4 智能体（model-4）"""
+    state = _make_state("我的田质量等级稳定吗？", question_type=4)
     result = execute_models(state)
     assert result["status"] == "model_completed"
     mr = result["model_results"]
     assert mr.get("status") == "ok"
     data = mr.get("data", {})
     assert data.get("question_type") == 4
-    assert data.get("agents_invoked") == ["model-6"]
-    print("✓ execute_models 通过 AgentManager 路由到 type 4 (model-6)")
+    assert data.get("agents_invoked") == ["model-4"]
+    print("✓ execute_models 通过 AgentManager 路由到 type 4 (model-4)")
 
 
 def test_execute_models_invokes_agent_manager_type1():
@@ -119,7 +119,8 @@ def test_chat_api_returns_structured_multi_agent_result():
     with app.app_context():
         resp = client.post(
             "/api/v1/chat/",
-            json={"message": "我的田施氮肥施多少？"},
+            json={"message": "我的田耕地质量等级是多少",
+                  "parcel_id": "1", "parcel_code": "A0001"},
             headers={"Authorization": f"Bearer {access_token}"},
         )
     assert resp.status_code == 200
@@ -162,29 +163,29 @@ def test_e2e_type1_county_stability_routing():
     print("✓ type=1 县域稳定性路由正确（model-1，1:1 映射）")
 
 
-def test_e2e_type4_fertility_routing():
-    """type=4 肥力问题应路由到 model-6（1:1 映射，model-6 ML 预测）"""
-    state = _make_state("我的田施肥施多少？施石灰多少？", question_type=4)
+def test_e2e_type4_stability_routing():
+    """type=4 稳定性问题应路由到 model-4（1:1 映射）"""
+    state = _make_state("我的田质量等级稳定吗？", question_type=4)
     result = execute_models(state)
     data = result["model_results"]["data"]
     assert data["question_type"] == 4
-    assert data["agents_invoked"] == ["model-6"]
-    # model-6 为独立 ML 预测，evidence 含 ML 预测 metric
-    m6_evidence = str(data["details"]["model-6"]["evidence"])
-    assert "dose_prediction" in m6_evidence or "soc_prediction" in m6_evidence
-    print("✓ type=4 肥力路由正确（model-6 ML 预测生效）")
+    assert data["agents_invoked"] == ["model-4"]
+    # model-4 为稳定性风险（非 ML），details 应含 model-4 且 simulated=True
+    assert "model-4" in data["details"]
+    assert data["details"]["model-4"]["simulated"] is True
+    print("✓ type=4 稳定性路由正确（model-4）")
 
 
 def test_e2e_recommendations_aggregated():
     """汇总的 recommendations 应来自智能体 evidence 中的 recommendation/source。
 
-    1:1 路由后，type 4 仅调 model-6（ML 预测），其 evidence 为 metric/value 格式，
+    1:1 路由后，type 4 仅调 model-4（稳定性风险），其 evidence 为 metric/value 格式，
     不含 recommendation/source。使用 mock 验证：当 agent evidence 含
     recommendation/source 时，_summarize 能正确聚合并去重；metric/value 不混入。
     """
     from framework.agents.manager import agent_manager
 
-    real_agent = agent_manager.agents["model-6"]
+    real_agent = agent_manager.agents["model-4"]
 
     class _FakeAgent:
         dependencies: list = []
@@ -205,8 +206,8 @@ def test_e2e_recommendations_aggregated():
             }
 
     try:
-        agent_manager.agents["model-6"] = _FakeAgent()
-        state = _make_state("我的田施有机肥多少？", question_type=4)
+        agent_manager.agents["model-4"] = _FakeAgent()
+        state = _make_state("我的田质量等级稳定吗？", question_type=4)
         result = execute_models(state)
         data = result["model_results"]["data"]
         assert isinstance(data["recommendations"], list)
@@ -217,7 +218,7 @@ def test_e2e_recommendations_aggregated():
         # metric/value 格式的 evidence 不应出现在 recommendations
         assert "soc_prediction" not in data["recommendations"]
     finally:
-        agent_manager.agents["model-6"] = real_agent
+        agent_manager.agents["model-4"] = real_agent
     print("✓ recommendations 字段已聚合智能体建议（mock 验证）")
 
 
@@ -251,7 +252,7 @@ def test_chat_api_passes_top_level_parcel_id_and_code():
             "model_results": {
                 "data": {
                     "question_type": 5,
-                    "agents_invoked": ["model-2"],
+                    "agents_invoked": ["model-5"],
                     "summary": "",
                     "details": {},
                     "recommendations": [],
@@ -387,8 +388,8 @@ def test_chat_api_no_parcel_when_absent():
     print("✓ body 无 parcel 标识符时 orchestrator request 不含")
 
 
-def test_chat_api_type5_routes_to_model2_only():
-    """type 5 问题经 API 路由后 agents_invoked 仅含 model-2，无 role 字段。"""
+def test_chat_api_type5_routes_to_model5_only():
+    """Task 6.2: type 5 问题经 API 路由后 agents_invoked 仅含 model-5，无 role 字段"""
     from framework.api.app import create_app
 
     app = create_app("sqlite")
@@ -423,12 +424,12 @@ def test_chat_api_type5_routes_to_model2_only():
     data = payload["data"]
     # spec 验证：无 role 字段
     assert "role" not in data, f"响应不应含 role 字段: {data}"
-    # type 5 路由到 model-2（1:1 映射）
+    # type 5 路由到 model-5（1:1 映射）
     qt = data.get("question_type")
     agents_invoked = data.get("agents_invoked", [])
     assert qt == 5, f"质量等级问题期望 type 5，实际 type {qt}"
-    assert agents_invoked == ["model-2"], f"type 5 应仅调 model-2: {agents_invoked}"
-    print(f"✓ type 5 API 路由正确 (type={qt}, agents={agents_invoked}, 无 role)")
+    assert agents_invoked == ["model-5"], f"type 5 应仅调 model-5: {agents_invoked}"
+    print(f"✓ Task 6.2: type 5 API 路由正确 (type={qt}, agents={agents_invoked}, 无 role)")
 
 
 def test_chat_api_knowledge_question_routes_to_rag():
@@ -513,12 +514,12 @@ if __name__ == "__main__":
     test_chat_api_returns_structured_multi_agent_result()
     test_e2e_type1_stability_routing()
     test_e2e_type1_county_stability_routing()
-    test_e2e_type4_fertility_routing()
+    test_e2e_type4_stability_routing()
     test_e2e_recommendations_aggregated()
     test_chat_api_passes_top_level_parcel_id_and_code()
     test_chat_api_top_level_parcel_overrides_context()
     test_chat_api_no_parcel_when_absent()
-    test_chat_api_type5_routes_to_model2_only()
+    test_chat_api_type5_routes_to_model5_only()
     test_chat_api_knowledge_question_routes_to_rag()
     test_chat_api_knowledge_question_概念_pattern()
     print("\n所有端到端验证与集成测试通过！")

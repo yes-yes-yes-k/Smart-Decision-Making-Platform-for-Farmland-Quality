@@ -25,6 +25,6 @@ TBD - created by archiving change align-verification-report-model-naming. Update
 验证报告 SHALL 在标准模型表格后，标注当前项目中未对应 Excel 标准模型的占位桩 agent。
 
 #### Scenario: 占位桩标注
-- **WHEN** 项目中存在 model-2 (PotentialAssessmentAgent) 和 model-5 (OrganicMatterAgent) 等未对应 Excel 标准的 agent 时
+- **WHEN** 项目中存在未对应 Excel 标准模型（如潜力评估、综合地力改良）的 agent 或 model 时
 - **THEN** 报告 SHALL 在表格末尾附加说明"未对应 Excel 标准的占位桩"
 

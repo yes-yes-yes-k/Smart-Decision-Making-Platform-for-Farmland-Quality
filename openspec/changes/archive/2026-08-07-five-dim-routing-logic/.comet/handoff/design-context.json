@@ -1,0 +1,14 @@
+{
+  "change": "five-dim-routing-logic",
+  "phase": "design",
+  "mode": "compact",
+  "canonical_spec": "openspec",
+  "generated_by": "comet-handoff.sh",
+  "context_hash": "8f8103e9aa1b44df465ce6096834cb37b22213d46e0a8524c8513558dfa52c70",
+  "files": [
+    { "path": "openspec/changes/five-dim-routing-logic/proposal.md", "sha256": "3761e6c574aa974f99122b09a564e6b6994a273290b52618e124b19c885f6a97" },
+    { "path": "openspec/changes/five-dim-routing-logic/design.md", "sha256": "dfe814bc8d47e3ab38f112a57079e19bf6cf164edc6f0e395be4cfd2585b2ac7" },
+    { "path": "openspec/changes/five-dim-routing-logic/tasks.md", "sha256": "582214b7f7b462861e5ec4cffa78ed6a8a33eb0fa3e91b6287d5c3b0097689a1" },
+    { "path": "openspec/changes/five-dim-routing-logic/specs/routing-exclusive-rules/spec.md", "sha256": "9149fe6199fa424285e57c87a23a25ccf486b81de6fc0fd7fa4a7b00f332563f" }
+  ]
+}

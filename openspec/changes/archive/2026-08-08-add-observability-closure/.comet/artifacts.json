@@ -1,0 +1,9 @@
+{
+  "openspec_proposal": "openspec/changes/add-observability-closure/proposal.md",
+  "openspec_design": "openspec/changes/add-observability-closure/design.md",
+  "openspec_tasks": "openspec/changes/add-observability-closure/tasks.md",
+  "openspec_delta_spec": "openspec/changes/add-observability-closure/specs/langsmith-monitoring/spec.md",
+  "handoff_context": "openspec/changes/add-observability-closure/.comet/handoff/design-context.json",
+  "handoff_markdown": "openspec/changes/add-observability-closure/.comet/handoff/design-context.md",
+  "archive_directory": "openspec/changes/archive/2026-08-08-add-observability-closure"
+}

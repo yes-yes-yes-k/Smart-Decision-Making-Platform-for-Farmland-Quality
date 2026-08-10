@@ -127,7 +127,7 @@ TBD - created by archiving change add-model-6-fertility-ml. Update Purpose after
 - **WHEN** 韶关区域 Dose 预测被触发，但 `land_type` 参数未传
 - **THEN** 系统 SHALL 默认使用 "upland" 子模型，并在 `dose_warning` 中追加 "未指定 land_type，默认使用旱地模型" 提示
 
-#### Scenario: FertilityMLAgent 传递区域与土地类型
-- **WHEN** `FertilityMLAgent.execute(task)` 被调用，且 task/context 中包含 `area_code` 和 `land_type`
-- **THEN** 系统 SHALL 将 `area_code` 和 `land_type` 透传给 `model_6_execution`，确保区域路由和子模型选择正确执行
+#### Scenario: 传递区域与土地类型
+- **WHEN** 调用 `model_6_execution` 时 `input_data` 中包含 `area_code` 和 `land_type`
+- **THEN** 系统 SHALL 消费 `area_code` 和 `land_type`，确保区域路由和子模型选择正确执行
 

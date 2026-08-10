@@ -3,7 +3,7 @@ from __future__ import annotations
 from hashlib import sha1
 from typing import Any
 
-from .overview import get_county_overview
+from .overview import _normalize_area_code, get_county_overview
 
 
 TOPIC_RULES: dict[str, dict[str, Any]] = {
@@ -55,13 +55,22 @@ def _diagnosis_id(payload: dict[str, Any]) -> str:
 
 
 def diagnose_county(payload: dict[str, Any]) -> dict[str, Any]:
-    """执行县域结构化诊断，首版使用可替换的规则结果。"""
+    """执行县域结构化诊断，首版使用可替换的规则结果。
+
+    返回同时兼容两类消费方：
+    - 旧契约：summary / evidence / recommendations / key_areas 等
+    - 前端 DiagnosisView：problems / measures / regions
+    """
 
     topic = payload.get("topic", "quality")
-    area_code = payload.get("area_code", "lechang")
+    raw_area_code = payload.get("area_code", "lechang")
+    area_code = _normalize_area_code(raw_area_code)
+    # 把归一化后的写回 payload，避免后续 SHA 计算仍含原始中文名
+    payload = {**payload, "area_code": area_code}
     if topic not in TOPIC_RULES:
         return {
             "status": "error",
+            "message": "topic 仅支持 acidification、quality、improvement",
             "error": {
                 "code": "INVALID_TOPIC",
                 "message": "topic 仅支持 acidification、quality、improvement",
@@ -71,6 +80,9 @@ def diagnose_county(payload: dict[str, Any]) -> dict[str, Any]:
 
     overview = get_county_overview(area_code)
     if overview.get("status") != "ok":
+        # 保证顶层有 message，便于前端拦截器直接提示
+        err = overview.get("error") or {}
+        overview.setdefault("message", err.get("message", "区域暂不支持"))
         return overview
 
     rule = TOPIC_RULES[topic]
@@ -78,6 +90,176 @@ def diagnose_county(payload: dict[str, Any]) -> dict[str, Any]:
     fallback_fields = []
     if missing_location:
         fallback_fields.extend(["longitude", "latitude"])
+
+    # 前端 DiagnosisView 需要的 problems / measures / regions
+    # 先给一套与前端默认值结构一致的规则数据，便于接口联调
+    problems = [
+        {
+            "name": "土壤有机质偏低",
+            "percent": 38.6,
+            "color": "#f5222d",
+        },
+        {
+            "name": "耕层浅薄",
+            "percent": 24.1,
+            "color": "#fa8c16",
+        },
+        {
+            "name": "酸化风险",
+            "percent": 17.2,
+            "color": "#fadb14",
+        },
+        {
+            "name": "灌溉条件不足",
+            "percent": 12.8,
+            "color": "#52c41a",
+        },
+        {
+            "name": "障碍因子叠加",
+            "percent": 7.3,
+            "color": "#40a9ff",
+        },
+    ]
+
+    measures = [
+        {
+            "name": "增施有机肥与秸秆还田",
+            "apply": "有机质偏低区域",
+            "icon": "TrendCharts",
+            "icon_bg": "#f6ffed",
+            "icon_color": "#52c41a",
+            "cost": 120,
+            "improve": 0.25,
+            "period": "1-2年",
+        },
+        {
+            "name": "改良酸化土壤",
+            "apply": "酸化风险区域",
+            "icon": "DataLine",
+            "icon_bg": "#e6f7ff",
+            "icon_color": "#1890ff",
+            "cost": 150,
+            "improve": 0.20,
+            "period": "1-2年",
+        },
+        {
+            "name": "完善灌溉排水",
+            "apply": "灌溉条件不足区域",
+            "icon": "Location",
+            "icon_bg": "#e6f7ff",
+            "icon_color": "#13c2c2",
+            "cost": 450,
+            "improve": 0.30,
+            "period": "2-3年",
+        },
+        {
+            "name": "深松松旋与耕层改良",
+            "apply": "耕层浅薄区域",
+            "icon": "Warning",
+            "icon_bg": "#fff7e6",
+            "icon_color": "#fa8c16",
+            "cost": 180,
+            "improve": 0.25,
+            "period": "1-2年",
+        },
+    ]
+
+    regions = [
+        {
+            "region": "韶关市曲江区",
+            "problem": "有机质偏低、耕层浅薄",
+            "measure": "增施有机肥+深松改良",
+            "weight": 850,
+            "effect": 0.36,
+        },
+        {
+            "region": "清远市英德市",
+            "problem": "有机质偏低、灌溉不足",
+            "measure": "增施有机肥+完善灌溉",
+            "weight": 780,
+            "effect": 0.33,
+        },
+        {
+            "region": "梅州市梅县区",
+            "problem": "酸化风险、有机质偏低",
+            "measure": "改良酸化+有机肥还田",
+            "weight": 720,
+            "effect": 0.31,
+        },
+        {
+            "region": "河源市连平县",
+            "problem": "耕层浅薄、灌溉不足",
+            "measure": "深松改良+完善灌溉",
+            "weight": 680,
+            "effect": 0.30,
+        },
+        {
+            "region": "茂名市高州市",
+            "problem": "有机质偏低",
+            "measure": "增施有机肥",
+            "weight": 620,
+            "effect": 0.27,
+        },
+    ]
+
+    # 根据主题轻微调整 problems，避免不同 topic 返回完全一致的数据
+    if topic == "acidification":
+        problems = [
+            {
+                "name": "酸化风险",
+                "percent": 45.2,
+                "color": "#f5222d",
+            },
+            {
+                "name": "土壤有机质偏低",
+                "percent": 26.8,
+                "color": "#fa8c16",
+            },
+            {
+                "name": "耕层浅薄",
+                "percent": 12.4,
+                "color": "#fadb14",
+            },
+            {
+                "name": "铝毒风险",
+                "percent": 9.3,
+                "color": "#52c41a",
+            },
+            {
+                "name": "盐基离子淋失",
+                "percent": 6.3,
+                "color": "#40a9ff",
+            },
+        ]
+        measures = [m for m in measures if "酸化" in m["name"] or m["name"].startswith("增施")]
+    elif topic == "improvement":
+        problems = [
+            {
+                "name": "治理综合得分偏低",
+                "percent": 34.0,
+                "color": "#f5222d",
+            },
+            {
+                "name": "措施协同不足",
+                "percent": 25.0,
+                "color": "#fa8c16",
+            },
+            {
+                "name": "投资强度不均",
+                "percent": 20.0,
+                "color": "#fadb14",
+            },
+            {
+                "name": "见效周期不匹配",
+                "percent": 12.0,
+                "color": "#52c41a",
+            },
+            {
+                "name": "长效机制待建立",
+                "percent": 9.0,
+                "color": "#40a9ff",
+            },
+        ]
 
     result = {
         "status": "ok",
@@ -95,6 +277,13 @@ def diagnose_county(payload: dict[str, Any]) -> dict[str, Any]:
         ],
         "recommended_layers": rule["recommended_layers"],
         "recommendations": rule["recommendations"],
+        # 前端 DiagnosisView 需要的结构化字段
+        "problems": problems,
+        "problem_distribution": problems,
+        "measures": measures,
+        "treatments": measures,
+        "regions": regions,
+        "base_data": regions,
         "fallback": {
             "used": bool(fallback_fields),
             "fields": fallback_fields,

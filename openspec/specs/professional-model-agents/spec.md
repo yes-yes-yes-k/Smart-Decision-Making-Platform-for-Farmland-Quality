@@ -5,35 +5,17 @@ TBD - created by archiving change multi-agent-model-framework. Update Purpose af
 ## Requirements
 ### Requirement: 专业智能体目录与正式能力一一对应
 
-系统 SHALL 以 6 个已注册专业智能体作为正式专业能力的唯一来源。每个 Agent SHALL 有一个稳定内部 `agent_id`、一个规范公开 `model_id`、明确中文名称、业务边界、最小输入、数据前提、可靠性状态和降级方式。正式能力为：`model-1/stability-risk-evaluation`、`model-2/improvement-potential-assessment`、`model-3/obstacle-diagnosis`、`model-4/acidification-remediation`、`model-5/organic-matter-improvement`、`model-6/fertility-soc-dose-prediction`。`model-2` SHALL 提供耕地质量综合指数、质量等级、障碍度、单地块提升潜力和县域潜力情景的真实计算能力；`model-7/quality-grade-evaluation` SHALL NOT 再作为独立正式能力出现。
+系统 SHALL 以 5 个已注册专业智能体作为正式专业能力的唯一来源。每个 Agent SHALL 有一个稳定内部 `agent_id`、一个规范公开 `model_id`、明确中文名称、业务边界、最小输入、数据前提、可靠性状态和降级方式。正式能力为：`model-1/obstacle-diagnosis`（障碍诊断）、`model-2/acidification-remediation`（酸化改良）、`model-3/organic-matter-improvement`（有机质提升）、`model-4/stability-risk-evaluation`（稳定性风险）、`model-5/quality-grade-evaluation`（质量等级）。
 
 #### Scenario: 读取正式专业能力目录
 - **WHEN** 系统初始化专业能力目录
-- **THEN** 目录 SHALL 包含且仅包含 6 项正式专业能力
+- **THEN** 目录 SHALL 包含且仅包含 5 项正式专业能力
 - **AND** 每一项 SHALL 同时给出 Agent ID、公开模型 ID、名称和运行前提
-- **AND** 目录 SHALL NOT 包含独立的 `model-7` 或 `quality-grade-evaluation` 项
 
 #### Scenario: Agent 注册引用正式能力定义
 - **WHEN** `AgentManager` 注册专业智能体
 - **THEN** 每个已注册 Agent SHALL 引用统一能力定义
 - **AND** SHALL NOT 在 Manager 内重复维护与能力目录冲突的名称或模型标识
-- **AND** 注册表 SHALL 仅包含 6 个正式 Agent
-
-#### Scenario: 模型2使用真实地块数据完成评价和潜力计算
-- **WHEN** 调用 `model-2` 并提供已部署数据中的 `parcel_code`
-- **THEN** 系统 SHALL 返回基于该地块实际指标计算的质量等级、综合指数和障碍度
-- **AND** 当请求为潜力评估时 SHALL 返回逐项改良与全改良后的潜力结果
-- **AND** 结果 SHALL 标记真实数据来源与 `simulated: false`
-
-#### Scenario: 模型2缺少真实计算所需输入
-- **WHEN** 调用 `model-2` 但未提供可识别的 `parcel_code` 或完整结构化指标
-- **THEN** 系统 SHALL 返回 `status: "error"` 和 `error.code: "MISSING_PARCEL_CODE"`
-- **AND** SHALL NOT 将固定演示指标作为真实地块计算结果返回
-
-#### Scenario: 旧 model-7 标识被彻底移除
-- **WHEN** 调用方使用历史 `model-7` 或 `quality-grade-evaluation` 标识请求能力目录或单模型接口
-- **THEN** 系统 SHALL NOT 将其解析、映射或迁移到 `model-2`
-- **AND** 系统 SHALL 返回未知模型或不支持模型的结构化结果
 
 ### Requirement: 专业 Agent 提供可复用的结构化分析
 
@@ -49,21 +31,8 @@ TBD - created by archiving change multi-agent-model-framework. Update Purpose af
 - **THEN** Agent 的专业答复 SHALL 基于同一次 `analyze(payload)` 结果生成
 - **AND** SHALL NOT 另行产生与单模型接口冲突的专业计算结论
 
-### Requirement: 肥力预测与有机质培肥边界明确
-
-系统 SHALL 将 `model-6` 限定为 SOC/Dose 等肥力预测能力，将 `model-5` 限定为有机肥、秸秆还田和培肥措施等治理建议能力。两项能力 SHALL 在名称、输入、输出、路由关键词和可靠性说明上可区分。
-
-#### Scenario: 查询 SOC 或 Dose 预测
-- **WHEN** 用户请求 SOC、有机碳、Dose、施肥量预测或预测置信度
-- **THEN** 系统 SHALL 使用 `model-6/fertility-soc-dose-prediction`
-- **AND** 返回预测值、模型可用性和置信度/降级说明
-
-#### Scenario: 农户地块诊断
-- **WHEN** 农户询问"我这块地到底有啥毛病？"
-- **THEN** 智能体 SHALL 给出地块耕地质量等级和诊断结论，重点标出地块的主要障碍因子，同时配上示意图
-
 ### Requirement: ProblemIdentificationAgent 智能体
-系统 SHALL 实现 `ProblemIdentificationAgent` 智能体，对应模型3「耕地质量主要问题精准识别模型」，负责识别主要/次要障碍因素和障碍组合。
+系统 SHALL 实现 `ObstacleDiagnosisAgent` 智能体，对应模型1「耕地质量主要问题精准识别模型」，负责识别主要/次要障碍因素和障碍组合。
 
 **模型输入**（来源：xlsx 总览表）：
 - 一级农业区、二级农业区、土壤pH、有机质、pH、有效磷、速效钾、容重、耕层质地、灌溉能力、排水能力、地形部位、质地构型、有效土层、地块唯一编码、地块经纬度、地块边界、行政区划边界、农田类型（水田/旱地）
@@ -88,7 +57,7 @@ TBD - created by archiving change multi-agent-model-framework. Update Purpose af
 - **THEN** 智能体 SHALL 用简单语言说明耕地质量等级、列举低等级的指标
 
 ### Requirement: AcidificationRemediationAgent 智能体
-系统 SHALL 实现 `AcidificationRemediationAgent` 智能体，对应模型4「耕地土壤酸化改良模型」，负责判定酸化程度并计算调理剂施用量。
+系统 SHALL 实现 `AcidificationRemediationAgent` 智能体，对应模型2「耕地土壤酸化改良模型」，负责判定酸化程度并计算调理剂施用量。
 
 **模型输入**（来源：xlsx 总览表）：
 - 土壤pH、有机质、阳离子交换量、土壤黏粒、总氮、游离铁、总铁、交换性氢离子、交换性铝离子、全氮、全磷、全钾、游离氧化铁、年降雨量、年降雨pH年均值、施肥类型及施肥量、作物类型及产量、农田类型（水田/旱地）、目标pH（或pH增加值）
@@ -113,7 +82,7 @@ TBD - created by archiving change multi-agent-model-framework. Update Purpose af
 - **THEN** 智能体 SHALL 输出该地块土壤酸化等级
 
 ### Requirement: OrganicMatterAgent 智能体
-系统 SHALL 实现 `OrganicMatterAgent` 智能体，对应模型5「耕地土壤有机质培肥提升模型」，负责有机质提升评估和有机肥施用量计算。
+系统 SHALL 实现 `OrganicMatterAgent` 智能体，对应模型3「耕地土壤有机质培肥提升模型」，负责有机质提升评估和有机肥施用量计算。
 
 **模型输入**（来源：xlsx 总览表）：
 - 土壤pH、有机质、有效磷、速效钾、总氮、阳离子交换量、土壤黏粒、交换性氢离子、交换性铝离子、游离铁、总铁、全氮、全磷、全钾、游离氧化铁、土壤容重、年降雨量、年降雨pH年均值、施肥类型及施肥量、作物类型及产量、农田类型（水田/旱地）、目标土壤有机质
@@ -137,57 +106,20 @@ TBD - created by archiving change multi-agent-model-framework. Update Purpose af
 - **WHEN** 用户询问"耕地有机质含量低的原因是什么？"
 - **THEN** 智能体 SHALL 从土壤类型、气候、地形、耕作制度、秸秆还田和施肥管理等方面解释差异，指出低有机质区域及后续培肥重点
 
-### Requirement: FertilityMLAgent 智能体
-系统 SHALL 实现 `FertilityMLAgent` 智能体，对应模型6「耕地综合地力改良提升模型」，负责综合多个模型结果形成分区分类的综合提升建议。该智能体内部使用预训练的 ExtraTreesRegressor 模型对 SOC 和 Dose 进行 ML 预测作为综合地力评估的计算单元，并通过 `framework/agents/manager.py` 注册为 `model-6`。
-
-**模型输入**（来源：xlsx 总览表，xlsx 未填写，保留现有实现）：
-- 综合上述模型1-5的输入指标，包括土壤理化指标、农田类型、目标有机质等
-
-**模型输出**（来源：xlsx 总览表，xlsx 未填写，保留现有实现）：
-- 综合提升建议（基于 SOC 预测和 Dose 预测的综合地力评估）
-
-#### Scenario: 农户综合诊断
-- **WHEN** 农户询问"我的田肥力怎么样？"
-- **THEN** 智能体 SHALL 同时返回 SOC 和 Dose 两个预测值，并提供综合诊断说明（如"SOC 预测 X g/kg，建议施肥量约 Y kg/亩"）
-
-#### Scenario: 农户 SOC 预测查询
-- **WHEN** 农户询问"我的田土壤有机碳含量大概多少？"
-- **THEN** 智能体 SHALL 调用 `model_6_execution` 返回 `soc_prediction`（g/kg）、`soc_confidence`（0.91）等结构化结果
-
-#### Scenario: 农户 Dose 施用量预测查询
-- **WHEN** 农户询问"我这块地大概需要施多少有机肥？"
-- **THEN** 智能体 SHALL 调用 `model_6_execution` 返回 `dose_prediction`（kg/亩）、`dose_confidence`（0.47）、`dose_warning` 字段，并在回答中标注"预测结果仅供参考"
-
-#### Scenario: 模型降级时的回退响应
-- **WHEN** `model_6_execution` 返回 `status: "fallback"`（模型文件缺失或 sklearn 未安装）
-- **THEN** 智能体 SHALL 在回答中标注"基于训练集均值的估算"而非"基于 ML 模型预测"，confidence 降为 0.3
-
-#### Scenario: Agent 独立执行无依赖
-- **WHEN** `AgentManager.process` 调用 farmer 角色对应的智能体集合
-- **THEN** `model-6`（FertilityMLAgent）的 `dependencies` SHALL 为空列表 `[]`，可与其他模型并行执行
-
-#### Scenario: 非肥力相关问题跳过 model-6
-- **WHEN** 农户角色提出的问题不包含肥力相关关键词（如"我的田 pH 如何"），且 `AgentManager` 路由到 model-6
-- **THEN** `AgentManager._should_execute_agent` SHALL 返回 False，model-6 不被执行
-
-#### Scenario: 输入越界时返回拒绝响应
-- **WHEN** `FertilityMLAgent.execute` 收到包含越界特征值的输入，`model_6_execution` 返回 `status: "rejected"`
-- **THEN** Agent SHALL 在回答中明文标注越界特征和合法范围，不返回预测值
-
-### Requirement: PotentialAssessmentAgent 真实质量与潜力评估
-系统 SHALL 由 `model-2/PotentialAssessmentAgent` 调用 `farmland_grade_eval` 的纯 Python 引擎，统一提供质量等级、综合指数、障碍度、单地块提升潜力和县域潜力情景。该 Agent 不得使用固定模拟指标作为成功结果。
+### Requirement: FarmlandGradeObstacleAgent 智能体
+系统 SHALL 实现 `FarmlandGradeObstacleAgent` 智能体，对应模型5「耕地质量等级评价模型」（纯 Python 实现），通过调用 `run_grade_evaluation` 获取地块评价结果，返回基于 GB/T 33469-2016 标准的真实质量等级和障碍度诊断。
 
 #### Scenario: 质量等级查询
-- **WHEN** 用户以 type 5 询问某地块的耕地质量等级，且提供了合法的 `parcel_code`
-- **THEN** `PotentialAssessmentAgent` SHALL 调用 `run_grade_evaluation`，返回质量等级、综合指数和 12 项指标的原始值
+- **WHEN** 用户询问某地块的耕地质量等级，且提供了合法的地块统一代码
+- **THEN** 智能体 SHALL 调用 `run_grade_evaluation`（Python 实现），返回质量等级（1-10等）、综合指数和 12 项指标的原始值
 
-#### Scenario: 单地块与县域潜力评估
-- **WHEN** 用户以 type 6 提供 `parcel_code`，或提供 `xqmc_code` 与 `scenario`
-- **THEN** `PotentialAssessmentAgent` SHALL 分别调用 `run_potential_analysis` 或 `run_county_potential`，返回真实潜力结果
+#### Scenario: 障碍度诊断
+- **WHEN** 用户询问某地块的主要障碍因素，且提供了合法的地块统一代码
+- **THEN** 智能体 SHALL 调用 `run_grade_evaluation`（Python 实现），返回障碍度因子排序表（从大到小），识别主要限制因子
 
 #### Scenario: 评价调用失败
-- **WHEN** 缺少 `parcel_code`，或 Python 评价调用失败（CSV 数据缺失、地块代码无效、编码字段越界）
-- **THEN** Agent SHALL 返回明确的机器可读错误（包括 `MISSING_PARCEL_CODE`、`DEPLOYMENT_ERROR` 或底层错误），且 `metadata.simulated` SHALL 为 `false`
+- **WHEN** Python 评价调用失败（CSV 数据缺失、地块代码无效、编码字段越界）
+- **THEN** 智能体 SHALL 返回明确的错误信息（如"CSV 数据文件缺失"、"未找到地块代码"），`confidence` 字段降低，不返回模拟数据
 
 ### Requirement: ObstacleDiagnosisAgent 智能体
 系统 SHALL 实现 `ObstacleDiagnosisAgent` 智能体，对应模型3「耕地质量主要问题精准识别模型」，通过调用模型3 的在线查询接口获取障碍诊断结果，返回真实的障碍类型、主要/次要障碍因素和障碍组合类型。
@@ -219,10 +151,18 @@ TBD - created by archiving change multi-agent-model-framework. Update Purpose af
 - **WHEN** 用户询问某地块的酸化改良方案，但该地块为轻度酸化或无明显酸化
 - **THEN** 智能体 SHALL 返回"无需特殊改良"的提示，建议常规监测和维护
 
-### Requirement: 模型3 与模型1 整合诊断
-系统 SHALL 在 agent 层实现模型3（障碍诊断）与模型1（退化风险）的整合，当用户请求综合诊断时，同时调用两个模型并整合结果。
+### Requirement: StabilityRiskAgent 智能体
+系统 SHALL 实现 `StabilityRiskAgent` 智能体，对应模型4「耕地质量稳定性与退化风险评价模型」，基于预计算结果识别稳定性、历史变化和退化风险。
 
-#### Scenario: 综合诊断查询
-- **WHEN** 用户询问某地块的综合诊断结果（同时涉及稳定性和障碍诊断），且两个模型的数据均已就绪
-- **THEN** 系统 SHALL 同时调用 StabilityRiskAgent 和 ObstacleDiagnosisAgent，整合退化风险和障碍诊断结果，返回综合诊断报告
+#### Scenario: 稳定性评价查询
+- **WHEN** 用户询问某地块的稳定性评价结果，且预计算数据已就绪
+- **THEN** 智能体 SHALL 返回九模块综合评价结果，包括等级边界安全度、指标支撑均衡度等
+
+#### Scenario: 退化风险评估
+- **WHEN** 用户询问某地块的退化风险
+- **THEN** 智能体 SHALL 返回掉级风险、关键因子退化风险等评估结果
+
+#### Scenario: 预计算数据未就绪
+- **WHEN** 用户询问稳定性相关问题，但预计算数据未就绪
+- **THEN** 智能体 SHALL 返回"数据未就绪"提示，不返回模拟数据
 

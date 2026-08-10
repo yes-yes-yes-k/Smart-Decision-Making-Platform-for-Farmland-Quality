@@ -1,6 +1,6 @@
 """耕地质量等级评价 Python 调用层。
 
-纯 Python 实现，通过直接调用 evaluation/obstacle 模块完成评价。
+纯 Python 实现，替代原 Fortran exe + subprocess 调用。
 通过直接调用 evaluation/obstacle 模块完成评价，数据源从 CSV 加载。
 """
 import os
@@ -42,7 +42,7 @@ _CONCEPT_MAP = [
 class FarmlandGradeRunner:
     """耕地质量等级评价 Python 模型调用包装器。
 
-    `dat_path` 参数在内部表示 CSV 数据路径；`exe_path` 保留为未使用的调用参数。
+    签名向后兼容：exe_path 被忽略，dat_path 语义改为 csv_path。
     """
 
     _parcels_cache = None
@@ -50,7 +50,7 @@ class FarmlandGradeRunner:
     _csv_mtime_cached = None
 
     def __init__(self, exe_path: str = None, dat_path: str = None, timeout: int = 30):
-        # dat_path 语义为 CSV 路径；exe_path 和 timeout 保留为未使用的调用参数。
+        # dat_path 语义改为 csv_path；exe_path 忽略；timeout 保留但不使用
         self.csv_path = dat_path or DEFAULT_CSV_PATH
         self.exe_path = exe_path  # 忽略，仅保留属性
         self.timeout = timeout    # 保留，不再用于 subprocess
@@ -168,7 +168,7 @@ class FarmlandGradeRunner:
 def run_grade_evaluation(parcel_code: str, exe_path: str = None, dat_path: str = None) -> Dict[str, Any]:
     """便捷函数：调用 Python 模型进行质量等级评价。
 
-    `dat_path` 参数表示 CSV 数据路径。
+    签名向后兼容：exe_path 被忽略，dat_path 语义改为 CSV 路径。
     """
     runner = FarmlandGradeRunner(exe_path, dat_path)
     return runner.run(parcel_code)

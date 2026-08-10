@@ -1,0 +1,17 @@
+{
+  "change": "renumber-models-to-thematic",
+  "phase": "design",
+  "mode": "compact",
+  "canonical_spec": "openspec",
+  "generated_by": "comet-handoff.sh",
+  "context_hash": "67b9b8f81c6027c03332981faadf007d4d8e0631e5b3edfe3aa95418681901cd",
+  "files": [
+    { "path": "openspec/changes/renumber-models-to-thematic/proposal.md", "sha256": "b4b975bf4bc535e509e4ff27f1dbb8d2f9bcb2dac4b9a08df06ef22fd022415d" },
+    { "path": "openspec/changes/renumber-models-to-thematic/design.md", "sha256": "7f3c0967b095a6ed49ac5380780e330940ad7e6622def86dc55ae8ed4bb85950" },
+    { "path": "openspec/changes/renumber-models-to-thematic/tasks.md", "sha256": "aaca2a7b2c5c578b4a24d02405c9088505670859858b2d29122ef06be505eec2" },
+    { "path": "openspec/changes/renumber-models-to-thematic/specs/callable-thematic-model-stubs/spec.md", "sha256": "c4246fa2875664683a1494fdfae87ce29202472f354980ce8509633b340f3da0" },
+    { "path": "openspec/changes/renumber-models-to-thematic/specs/professional-model-agents/spec.md", "sha256": "e84c516d380da27ff0af58648a9690dfec462aec28b5ac424a89c3d409d7355f" },
+    { "path": "openspec/changes/renumber-models-to-thematic/specs/role-based-routing/spec.md", "sha256": "c64431152fef9fc03e0dd62c9f1ef9d038b23361e22e7629f59b4242a67a81ea" },
+    { "path": "openspec/changes/renumber-models-to-thematic/specs/routing-exclusive-rules/spec.md", "sha256": "a1d368ccd03bf095235a688dd0b5e6280c4b02a1d30f48ba71bb16533d0aaaf5" }
+  ]
+}

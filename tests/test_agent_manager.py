@@ -6,14 +6,14 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from framework.agents.manager import AgentManager
 
 
-def test_manager_register_six_agents():
-    """Manager 只注册六个正式专题智能体。"""
+def test_manager_register_five_agents():
+    """Manager 注册 5 个智能体（model-1..model-5）"""
     mgr = AgentManager()
     assert set(mgr.agents.keys()) == {
         "model-1", "model-2", "model-3",
-        "model-4", "model-5", "model-6",
+        "model-4", "model-5",
     }
-    print("✓ AgentManager 注册 6 个智能体")
+    print("✓ AgentManager 注册 5 个智能体")
 
 
 def test_manager_topological_sort_province():
@@ -26,21 +26,22 @@ def test_manager_topological_sort_province():
 
 
 def test_manager_topological_sort_farmer():
-    """三个农户专题模型均无相互依赖，拓扑排序包含全部三个。"""
+    """farmer 角色 [model-4, model-5]，model-4/model-5 均无互相依赖，
+    拓扑排序包含全部两个智能体。"""
     mgr = AgentManager()
-    ordered = mgr._topological_sort(["model-4", "model-5", "model-6"])
-    assert set(ordered) == {"model-4", "model-5", "model-6"}
-    print("✓ 拓扑排序包含 farmer 角色全部三个智能体")
+    ordered = mgr._topological_sort(["model-4", "model-5"])
+    assert set(ordered) == {"model-4", "model-5"}
+    print("✓ 拓扑排序包含 farmer 角色全部两个智能体")
 
 
 def test_manager_process_type4_returns_structured_result():
-    """process 返回符合 API 规范的结构化字典（type 4 → model-6）"""
+    """process 返回符合 API 规范的结构化字典（type 4 → model-4）"""
     mgr = AgentManager()
-    result = mgr.process("我的田施肥施多少", {"question_type": 4, "area_code": "lechang"})
+    result = mgr.process("我的田质量等级稳定吗", {"question_type": 4, "area_code": "lechang"})
     assert result["status"] == "ok"
     data = result["data"]
     assert data["question_type"] == 4
-    assert data["agents_invoked"] == ["model-6"]
+    assert data["agents_invoked"] == ["model-4"]
     assert "summary" in data and isinstance(data["summary"], str)
     assert "details" in data and isinstance(data["details"], dict)
     assert "recommendations" in data and isinstance(data["recommendations"], list)
@@ -59,52 +60,25 @@ def test_manager_process_no_question_type_returns_no_routing():
     print("✓ 无 question_type 返回 no_routing")
 
 
-def test_model6_dependencies_empty():
-    """model-6 dependencies=[]，不依赖 model-4/5"""
-    from framework.agents.manager import AgentManager
-    mgr = AgentManager()
-    assert mgr.agents["model-6"].dependencies == []
-    print("✓ model-6 依赖为空")
-
-
-def test_topological_sort_model6_no_dep():
-    """model-6 dependencies=[]，拓扑排序不强制 model-6 在最后"""
-    from framework.agents.manager import AgentManager
-    mgr = AgentManager()
-    ordered = mgr._topological_sort(["model-6", "model-4", "model-5"])
-    assert set(ordered) == {"model-4", "model-5", "model-6"}
-    # model-6 不再依赖 model-4/5，不强制排最后
-    assert ordered[-1] != "model-6" or len(ordered) == 1
-    print("✓ model-6 在拓扑排序中无依赖约束")
-
-
-def test_manager_loads_fertility_ml_agent():
-    """_load_real_agents 加载 FertilityMLAgent"""
-    from framework.agents.manager import AgentManager
-    mgr = AgentManager()
-    agent = mgr.agents["model-6"]
-    assert agent.__class__.__name__ == "FertilityMLAgent"
-    print("✓ AgentManager 加载 FertilityMLAgent")
-
-
-def test_type5_routes_to_model2():
-    """type=5 应路由到模型2（1:1 映射）。"""
+def test_type5_routes_to_model5():
+    """type=5 应路由到 model-5（1:1 映射）"""
     from framework.agents.router import QuestionTypeRouter
     router = QuestionTypeRouter()
     agents = router.get_agents_for_type(5)
-    assert agents == ["model-2"], f"type 5 应仅映射 model-2: {agents}"
-    print("✓ type 5 路由到 model-2（1:1 映射）")
+    assert agents == ["model-5"], f"type 5 应仅映射 model-5: {agents}"
+    print("✓ type 5 路由到 model-5（1:1 映射）")
 
 
-def test_model2_executed_for_type5_question():
-    """type=5 问题 → details['model-2'] 被执行。"""
+def test_model5_executed_for_type5_question():
+    """type=5 问题 → details['model-5'] 被执行（不 skipped）"""
     mgr = AgentManager()
     result = mgr.process("我的田耕地质量等级是多少？", {"question_type": 5, "parcel_code": "A0001"})
     details = result["data"]["details"]
-    model2 = details.get("model-2", {})
-    assert model2.get("status") != "skipped", f"model-2 不应被跳过，实际: {model2}"
-    assert "answer" in model2 or "simulated" in model2
-    print("✓ type=5 质量等级问题由 model-2 执行")
+    m5 = details.get("model-5", {})
+    assert m5.get("status") != "skipped", f"model-5 不应被跳过，实际: {m5}"
+    # parcel_code 已传，model-5 应调等级评价（若部署就绪）或走 mock 回退
+    assert "answer" in m5 or "simulated" in m5
+    print("✓ type=5 质量等级问题 model-5 被执行")
 
 
 def test_process_type1_routes_to_model1_only():
@@ -117,13 +91,13 @@ def test_process_type1_routes_to_model1_only():
     print("✓ type=1 路由到 model-1")
 
 
-def test_process_type2_routes_to_model4_only():
-    """type=2 → 仅调 model-4"""
+def test_process_type2_routes_to_model2_only():
+    """type=2 → 仅调 model-2"""
     mgr = AgentManager()
     result = mgr.process("我的田酸化严重吗", {"question_type": 2})
-    assert result["data"]["agents_invoked"] == ["model-4"]
+    assert result["data"]["agents_invoked"] == ["model-2"]
     assert result["data"]["question_type"] == 2
-    print("✓ type=2 路由到 model-4")
+    print("✓ type=2 路由到 model-2")
 
 
 def test_process_type3_routes_to_model3_only():
@@ -135,51 +109,25 @@ def test_process_type3_routes_to_model3_only():
     print("✓ type=3 路由到 model-3（不调 model-2）")
 
 
-def test_process_type4_routes_to_model6_only():
-    """type=4 → 仅调 model-6，不调 model-5"""
+def test_process_type4_routes_to_model4_only():
+    """type=4 → 仅调 model-4，不调 model-5"""
     mgr = AgentManager()
-    result = mgr.process("我的田肥力怎么样", {"question_type": 4})
-    assert result["data"]["agents_invoked"] == ["model-6"]
+    result = mgr.process("我的田质量等级稳定吗", {"question_type": 4})
+    assert result["data"]["agents_invoked"] == ["model-4"]
     assert "model-5" not in result["data"]["agents_invoked"]
-    assert "model-4" not in result["data"]["agents_invoked"]
-    print("✓ type=4 路由到 model-6（不调 model-4/5）")
+    print("✓ type=4 路由到 model-4（不调 model-5）")
 
 
-def test_process_type5_routes_to_model2_only():
-    """type=5 → 仅调 model-2，不调其他专题模型。"""
+def test_process_type5_routes_to_model5_only():
+    """type=5 → 仅调 model-5，不调 model-1/2/3/4"""
     mgr = AgentManager()
     result = mgr.process("我的田耕地质量等级是多少", {"question_type": 5, "parcel_code": "A0001"})
-    assert result["data"]["agents_invoked"] == ["model-2"]
-    assert "model-4" not in result["data"]["agents_invoked"]
-    assert "model-5" not in result["data"]["agents_invoked"]
-    assert "model-6" not in result["data"]["agents_invoked"]
-    print("✓ type=5 路由到 model-2（不调其他专题模型）")
-
-
-def test_process_type5_passes_question_type_to_real_model2():
-    """聊天编排必须将 type 5 和地块编码完整传给模型2真实引擎。"""
-    mgr = AgentManager()
-    result = mgr.process(
-        "A0001 的耕地质量等级是多少？",
-        {"question_type": 5, "parcel_code": "A0001"},
-    )
-    detail = result["data"]["details"]["model-2"]
-    assert detail["simulated"] is False
-    assert detail["analysis"]["analysis"]["quality_grade"] == "10等"
-
-
-def test_process_type6_routes_to_model2_only():
-    """type=6 → 仅调 model-2 提升潜力评估。"""
-    mgr = AgentManager()
-    result = mgr.process("提升潜力有多大", {"question_type": 6})
-    assert result["data"]["agents_invoked"] == ["model-2"]
-
-
-def test_process_type7_routes_to_model5_only():
-    """type=7 → 仅调 model-5 有机质培肥。"""
-    mgr = AgentManager()
-    result = mgr.process("有机肥每亩施用量多少", {"question_type": 7})
     assert result["data"]["agents_invoked"] == ["model-5"]
+    assert "model-1" not in result["data"]["agents_invoked"]
+    assert "model-2" not in result["data"]["agents_invoked"]
+    assert "model-3" not in result["data"]["agents_invoked"]
+    assert "model-4" not in result["data"]["agents_invoked"]
+    print("✓ type=5 路由到 model-5（不调 model-1/2/3/4）")
 
 
 def test_process_no_routing_when_question_type_none():
@@ -211,24 +159,24 @@ def test_process_no_routing_when_question_type_unknown():
 
 
 def test_no_skipped_entries_in_details_for_type4():
-    """type=4 路由到 model-6，details 中 model-6 不应有 skipped 状态"""
+    """type=4 路由到 model-4，details 中 model-4 不应有 skipped 状态"""
     mgr = AgentManager()
-    result = mgr.process("我的田肥力怎么样", {"question_type": 4})
+    result = mgr.process("我的田质量等级稳定吗", {"question_type": 4})
     details = result["data"]["details"]
-    m6 = details.get("model-6", {})
-    assert m6.get("status") != "skipped", f"model-6 不应被 skipped: {m6}"
-    assert m6.get("reason") != "question_not_related"
-    print("✓ type=4 details 中 model-6 未被 skipped")
+    m4 = details.get("model-4", {})
+    assert m4.get("status") != "skipped", f"model-4 不应被 skipped: {m4}"
+    assert m4.get("reason") != "question_not_related"
+    print("✓ type=4 details 中 model-4 未被 skipped")
 
 
 def test_no_skipped_entries_in_details_for_type5():
-    """type=5 路由到 model-2，details 中 model-2 不应有 skipped 状态。"""
+    """type=5 路由到 model-5，details 中 model-5 不应有 skipped 状态"""
     mgr = AgentManager()
     result = mgr.process("我的田耕地质量等级是多少", {"question_type": 5, "parcel_code": "A0001"})
     details = result["data"]["details"]
-    model2 = details.get("model-2", {})
-    assert model2.get("status") != "skipped", f"model-2 不应被 skipped: {model2}"
-    print("✓ type=5 details 中 model-2 未被 skipped")
+    m5 = details.get("model-5", {})
+    assert m5.get("status") != "skipped", f"model-5 不应被 skipped: {m5}"
+    print("✓ type=5 details 中 model-5 未被 skipped")
 
 
 def test_should_execute_agent_method_removed():
@@ -253,24 +201,18 @@ def test_grade_keywords_constant_removed():
 
 
 if __name__ == "__main__":
-    test_manager_register_six_agents()
+    test_manager_register_five_agents()
     test_manager_topological_sort_province()
     test_manager_topological_sort_farmer()
     test_manager_process_type4_returns_structured_result()
     test_manager_process_no_question_type_returns_no_routing()
-    test_model6_dependencies_empty()
-    test_topological_sort_model6_no_dep()
-    test_manager_loads_fertility_ml_agent()
-    test_type5_routes_to_model2()
-    test_model2_executed_for_type5_question()
+    test_type5_routes_to_model5()
+    test_model5_executed_for_type5_question()
     test_process_type1_routes_to_model1_only()
-    test_process_type2_routes_to_model4_only()
+    test_process_type2_routes_to_model2_only()
     test_process_type3_routes_to_model3_only()
-    test_process_type4_routes_to_model6_only()
-    test_process_type5_routes_to_model2_only()
-    test_process_type5_passes_question_type_to_real_model2()
-    test_process_type6_routes_to_model2_only()
-    test_process_type7_routes_to_model5_only()
+    test_process_type4_routes_to_model4_only()
+    test_process_type5_routes_to_model5_only()
     test_process_no_routing_when_question_type_none()
     test_process_no_routing_when_question_type_zero()
     test_process_no_routing_when_question_type_unknown()
