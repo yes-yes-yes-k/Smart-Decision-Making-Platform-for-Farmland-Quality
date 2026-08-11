@@ -88,6 +88,71 @@ class TestObserve:
             assert entry["failure_reason"] == "boom"
 
 
+class TestObserveLLMFields:
+    """observe_routing 必须写入 router_method/llm_reason/llm_duration_ms 且版本升至 v1.2。"""
+
+    def test_keyword_mode_logs_router_method_keyword(self, monkeypatch):
+        from framework.agents import routing as _routing
+        from framework.config import Config
+        real = _routing.EMBEDDING_AVAILABLE
+        try:
+            _routing.EMBEDDING_AVAILABLE = False
+            monkeypatch.setattr(Config, "ROUTING_MODE", "keyword")
+            with tempfile.TemporaryDirectory() as tmp:
+                set_log_path(os.path.join(tmp, "routing_calls_test.jsonl"))
+                observe_routing("我的田耕地质量等级是多少", {"scale": "地块"})
+                with open(os.path.join(tmp, "routing_calls_test.jsonl"), encoding="utf-8") as f:
+                    entry = json.loads(f.readline())
+                assert entry["router_method"] == "keyword"
+                assert entry["llm_reason"] is None
+                assert entry["llm_duration_ms"] is None
+                assert entry["result_version"] == "v1.2"
+        finally:
+            _routing.EMBEDDING_AVAILABLE = real
+
+    def test_llm_mode_logs_router_method_llm(self, monkeypatch):
+        from framework.agents import routing as _routing
+        from framework.llm.service import llm_service
+        from framework.config import Config
+
+        def _fake_generate(prompt, **kwargs):
+            return {
+                "success": True,
+                "content": '{"question_type": 2, "relevance": 0.9, "reason": "等级评价"}',
+                "model": "mock",
+                "type": "llm",
+            }
+
+        monkeypatch.setattr(_routing, "LLM_AVAILABLE", True)
+        monkeypatch.setattr(llm_service, "is_available", lambda: True)
+        monkeypatch.setattr(llm_service, "generate", _fake_generate)
+        monkeypatch.setattr(_routing, "EMBEDDING_AVAILABLE", False)
+        monkeypatch.setattr(Config, "ROUTING_MODE", "llm")
+
+        with tempfile.TemporaryDirectory() as tmp:
+            set_log_path(os.path.join(tmp, "routing_calls_test.jsonl"))
+            observe_routing("我的田耕地质量等级是多少", {"scale": "地块"})
+            with open(os.path.join(tmp, "routing_calls_test.jsonl"), encoding="utf-8") as f:
+                entry = json.loads(f.readline())
+            assert entry["router_method"] == "llm"
+            assert entry["llm_reason"] == "等级评价"
+            assert isinstance(entry["llm_duration_ms"], float)
+            assert entry["llm_duration_ms"] >= 0.0
+            assert entry["result_version"] == "v1.2"
+
+    def test_knowledge_question_logs_router_method_knowledge(self, monkeypatch):
+        from framework.agents import routing as _routing
+        from framework.config import Config
+        monkeypatch.setattr(Config, "ROUTING_MODE", "llm")
+        monkeypatch.setattr(_routing, "EMBEDDING_AVAILABLE", False)
+        with tempfile.TemporaryDirectory() as tmp:
+            set_log_path(os.path.join(tmp, "routing_calls_test.jsonl"))
+            observe_routing("什么是耕地质量等级？", None)
+            with open(os.path.join(tmp, "routing_calls_test.jsonl"), encoding="utf-8") as f:
+                entry = json.loads(f.readline())
+            assert entry["router_method"] == "knowledge"
+
+
 class TestNodeInjection:
     def test_identify_question_node_preserves_return_and_logs(self):
         from framework.agents.nodes import identify_question_node

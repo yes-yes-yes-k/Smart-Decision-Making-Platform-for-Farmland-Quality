@@ -19,7 +19,7 @@ from framework.agents.routing import identify_question_type
 from .routing_log import write_routing_log
 
 # 结果版本：路由算法判定签名版本，随判定演进递增
-ROUTING_RESULT_VERSION = "v1.1"
+ROUTING_RESULT_VERSION = "v1.2"
 
 _router = QuestionTypeRouter()
 
@@ -39,6 +39,20 @@ def _safe_write_log(entry: Dict[str, Any]) -> None:
         write_routing_log(entry)
     except Exception as exc:  # noqa: BLE001 - 观测副作用必须全面隔离
         warnings.warn(f"[observability] 路由日志写入失败，已忽略: {exc}")
+
+
+def _attach_llm_routing_state(entry: Dict[str, Any]) -> None:
+    """从 routing 模块读取 LLM 路由观测状态并附加到日志 entry。"""
+    try:
+        from framework.agents import routing as _routing
+        entry["router_method"] = _routing._last_router_method
+        entry["llm_reason"] = _routing._last_llm_reason
+        entry["llm_duration_ms"] = _routing._last_llm_duration_ms
+    except Exception:
+        # routing 模块未就绪时仍保留字段（默认值）
+        entry.setdefault("router_method", "keyword")
+        entry.setdefault("llm_reason", None)
+        entry.setdefault("llm_duration_ms", None)
 
 
 def observe_routing(
@@ -76,11 +90,13 @@ def observe_routing(
         entry["question_type"] = final_type
         entry["routing_status"] = routing_status
         entry["degradation"] = routing_status
+        _attach_llm_routing_state(entry)
         entry["duration_ms"] = round((time.perf_counter() - t0) * 1000, 2)
         _safe_write_log(entry)
         return question_type, relevance, final_type, routing_status
     except Exception as exc:
         entry["failure_reason"] = str(exc)
+        _attach_llm_routing_state(entry)
         entry["duration_ms"] = round((time.perf_counter() - t0) * 1000, 2)
         _safe_write_log(entry)
         raise
