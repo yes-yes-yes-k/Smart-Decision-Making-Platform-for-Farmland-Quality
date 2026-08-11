@@ -19,6 +19,7 @@ from .routing import (
     QUESTION_TYPE_3_KEYWORDS,
     QUESTION_TYPE_4_KEYWORDS,
     QUESTION_TYPE_5_KEYWORDS,
+    QUESTION_TYPE_6_KEYWORDS,
     REFERENCE_QUESTIONS,
 )
 
@@ -244,7 +245,7 @@ def llm_generate(state: MultiAgentState) -> MultiAgentState:
     question = state["request"].get("question", "")
     question_type = state.get("question_type", 1)
 
-    if not question or question_type not in [1, 2, 3, 4, 5]:
+    if not question or question_type not in [1, 2, 3, 4, 5, 6]:
         return {**state, "llm_response": {}, "error": None}
 
     try:

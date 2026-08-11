@@ -8,15 +8,15 @@ class ThematicModelTests(unittest.TestCase):
         result = list_thematic_models()
 
         self.assertEqual(result["status"], "ok")
-        self.assertEqual(len(result["models"]), 5)
+        self.assertEqual(len(result["models"]), 6)
         self.assertEqual(
             result["models"][0]["model_id"],
-            "obstacle-diagnosis",
+            "stability-risk-evaluation",
         )
 
     def test_list_thematic_models_can_include_non_professional_capabilities(self):
         result = list_thematic_models(include_non_professional=True)
-        self.assertEqual(len(result["models"]), 8)
+        self.assertEqual(len(result["models"]), 9)
         categories = {model["model_id"]: model.get("category") for model in result["models"]}
         self.assertEqual(categories["spatial-structure-analysis"], "auxiliary")
         self.assertEqual(categories["multi-factor-collaborative-improvement"], "experimental")

@@ -15,11 +15,11 @@ def _read(path: Path) -> str:
 def test_formal_spec_defines_five_professional_capabilities():
     content = _read(PROFESSIONAL_SPEC)
     for agent_id, model_id in [
-        ("model-1", "obstacle-diagnosis"),
-        ("model-2", "acidification-remediation"),
-        ("model-3", "organic-matter-improvement"),
-        ("model-4", "stability-risk-evaluation"),
-        ("model-5", "quality-grade-evaluation"),
+        ("model-1", "stability-risk-evaluation"),
+        ("model-2", "quality-grade-evaluation"),
+        ("model-3", "obstacle-diagnosis"),
+        ("model-4", "acidification-remediation"),
+        ("model-5", "organic-matter-improvement"),
     ]:
         assert agent_id in content
         assert model_id in content

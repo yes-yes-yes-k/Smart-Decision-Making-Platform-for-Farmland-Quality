@@ -185,4 +185,4 @@ if __name__ == "__main__":
     test_organic_county_average()
     test_organic_low_value_reason()
     test_all_agents_simulated_flag()
-    print("\nmodel-1/2/3/4/5 经典 Q&A 测试通过！")
+    print("\nmodel-1/2/3/4/5/6 经典 Q&A 测试通过！")

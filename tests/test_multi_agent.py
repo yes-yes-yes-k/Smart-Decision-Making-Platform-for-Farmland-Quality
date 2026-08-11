@@ -113,7 +113,7 @@ def test_aggregate_results_model():
         "conversation_history": [],
         "status": "running",
         "error": None,
-        "question_type": 1,
+        "question_type": 3,
         "relevance": 0.9,
     }
     result = aggregate_results(state)
@@ -121,8 +121,8 @@ def test_aggregate_results_model():
     assert result["model_results"]["answer"] == "酸化评估结果"
     print("✓ 专业模型结果聚合成功")
 
-def test_type5_routes_to_model5_end_to_end():
-    """type=5 的问题通过 execute_models 路由后，agents_invoked 仅含 model-5"""
+def test_type2_routes_to_model2_end_to_end():
+    """type=2 的问题通过 execute_models 路由后，agents_invoked 仅含 model-2"""
     from framework.agents.manager import agent_manager
     captured = {}
 
@@ -145,7 +145,7 @@ def test_type5_routes_to_model5_end_to_end():
             "conversation_history": [],
             "status": "running",
             "error": None,
-            "question_type": 5,
+            "question_type": 2,
             "relevance": 0.9,
         }
         execute_models(state)
@@ -153,11 +153,11 @@ def test_type5_routes_to_model5_end_to_end():
         agent_manager.process = real_process
 
     # question_type 应已透传到 context
-    assert captured["context"].get("question_type") == 5
-    # agents_invoked 应仅含 model-5
+    assert captured["context"].get("question_type") == 2
+    # agents_invoked 应仅含 model-2
     agents_invoked = captured["real_result"]["data"]["agents_invoked"]
-    assert agents_invoked == ["model-5"], f"type 5 应仅调 model-5: {agents_invoked}"
-    print("✓ type=5 端到端路由到 model-5")
+    assert agents_invoked == ["model-2"], f"type 2 应仅调 model-2: {agents_invoked}"
+    print("✓ type=2 端到端路由到 model-2")
 
 
 if __name__ == "__main__":
@@ -167,5 +167,5 @@ if __name__ == "__main__":
     test_rag_chat_node()
     test_aggregate_results_rag()
     test_aggregate_results_model()
-    test_type5_routes_to_model5_end_to_end()
+    test_type2_routes_to_model2_end_to_end()
     print("\n所有多智能体并发工作流测试通过！")

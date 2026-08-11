@@ -52,18 +52,18 @@ class TestObserve:
                 set_log_path(os.path.join(tmp, "routing_calls_test.jsonl"))
                 qtype, rel, final_type, status = observe_routing(
                     "我的田耕地质量等级是多少", {"scale": "地块"},
-                    data_version="v2024.1", agent_version="model-5@1.0",
+                    data_version="v2024.1", agent_version="model-2@1.0",
                     params={"scale": "地块"},
                 )
-                assert final_type == 5
+                assert final_type == 2
                 assert status == "normal"
                 with open(os.path.join(tmp, "routing_calls_test.jsonl"), encoding="utf-8") as f:
                     entry = json.loads(f.readline())
                 assert entry["question"] == "我的田耕地质量等级是多少"
-                assert entry["question_type"] == 5
+                assert entry["question_type"] == 2
                 assert entry["routing_status"] == "normal"
                 assert entry["data_version"] == "v2024.1"
-                assert entry["agent_version"] == "model-5@1.0"
+                assert entry["agent_version"] == "model-2@1.0"
                 assert entry["params"] == {"scale": "地块"}
                 assert {"trace_id", "candidate_agents", "hit_exclusive_rules",
                         "duration_ms", "result_version", "failure_reason"}.issubset(entry.keys())
@@ -99,14 +99,14 @@ class TestNodeInjection:
                 set_log_path(os.path.join(tmp, "routing_calls_test.jsonl"))
                 state = {"request": {"question": "我的田耕地质量等级是多少"}}
                 result = identify_question_node(state)
-                assert result["question_type"] == 5
+                assert result["question_type"] == 2
                 assert result["relevance"] is not None
                 assert result["routing_status"] == "normal"
                 assert result["error"] is None
                 with open(os.path.join(tmp, "routing_calls_test.jsonl"), encoding="utf-8") as f:
                     entry = json.loads(f.readline())
                 assert entry["question"] == "我的田耕地质量等级是多少"
-                assert entry["question_type"] == 5
+                assert entry["question_type"] == 2
         finally:
             _routing.EMBEDDING_AVAILABLE = real
 
@@ -114,9 +114,9 @@ class TestNodeInjection:
 class TestConfusionMetrics:
     def test_confusion_metrics_values(self):
         from framework.observability.metrics import confusion_metrics
-        y_true = ["model-1", "model-1", "model-5", "model-5", "model-5"]
-        y_pred = ["model-1", "model-5", "model-1", "model-5", "model-5"]
-        m = confusion_metrics(y_true, y_pred, "model-1")
+        y_true = ["model-3", "model-3", "model-2", "model-2", "model-2"]
+        y_pred = ["model-3", "model-2", "model-3", "model-2", "model-2"]
+        m = confusion_metrics(y_true, y_pred, "model-3")
         assert m["tp"] == 1
         assert m["fn"] == 1
         assert m["fp"] == 1
@@ -127,9 +127,9 @@ class TestConfusionMetrics:
 
     def test_perfect_prediction(self):
         from framework.observability.metrics import confusion_metrics
-        y_true = ["model-2", "model-2", "model-3", "model-3"]
-        y_pred = ["model-2", "model-2", "model-3", "model-3"]
-        m = confusion_metrics(y_true, y_pred, "model-2")
+        y_true = ["model-4", "model-4", "model-5", "model-5"]
+        y_pred = ["model-4", "model-4", "model-5", "model-5"]
+        m = confusion_metrics(y_true, y_pred, "model-4")
         assert m["confusion_rate"] == 0.0
         assert m["accuracy"] == 1.0
 
@@ -172,7 +172,7 @@ class TestObserveLogFailureIsolation:
             qtype, rel, final_type, status = _observe.observe_routing(
                 "我的田耕地质量等级是多少", {"scale": "地块"},
             )
-            assert final_type == 5
+            assert final_type == 2
             assert status == "normal"
             assert qtype is not None
         finally:

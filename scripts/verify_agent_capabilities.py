@@ -47,7 +47,7 @@ def hr() -> None:
 # ---------------------------------------------------------------------------
 
 def inspect_agent_load_status() -> dict:
-    """检查 5 个 agent 的加载状态及依赖模型文件/数据库是否就绪。"""
+    """检查 6 个 agent 的加载状态及依赖模型文件/数据库是否就绪。"""
     from framework.agents.manager import AgentManager
 
     manager = AgentManager()
@@ -242,7 +242,7 @@ def main() -> int:
               f"{(entry['real_model'] or '-'):<28}"
               f"{entry['expected_behavior']}")
     print("\n  注：Excel 标准模型6（耕地综合地力改良提升模型）尚未实现，项目中无对应 agent；"
-          "model-2 / model-5 为项目历史占位桩，未对应 Excel 标准。")
+          "model-2 / model-4 为项目历史占位桩，未对应 Excel 标准。")
 
     # 第二部分
     section("二、问题库回答验证（REFERENCE_QUESTIONS 18 题）")
@@ -268,7 +268,7 @@ def main() -> int:
             )
             print(f"     ↳ agent_simulated: {sim_str}")
 
-    # 第三部分（原 model-6 真实 ML 计算能力验证已移除，model-6 占位模块已删除）
+    # 第三部分（model-6 为新增占位符，无真实 ML 计算能力验证）
 
     # 汇总
     section("汇总")

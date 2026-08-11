@@ -1,6 +1,6 @@
 """数据驱动的排他规则配置与判定。
 
-用于消除 model-1/5、model-2/3 两组易混淆对的误选。
+用于消除 model-3/2、model-4/5 两组易混淆对的误选。
 排他规则无法消解重叠（优先级冲突）时返回「模型边界待确认」显式降级，
 不自行选择任一易混淆专业 Agent。
 """
@@ -45,46 +45,46 @@ EXCLUSIVE_CONDITION_KEYWORDS: Dict[str, Tuple[str, ...]] = {
 
 EXCLUSIVE_RULES: Tuple[ExclusiveRule, ...] = (
     # ===== v1 纯关键词规则（向后兼容，dimension_conditions 为空）=====
-    # model-1 vs model-5：现状评价 → model-1（障碍诊断）
-    ExclusiveRule(frozenset({"model-1", "model-5"}), "业务任务", "现状评价", "model-1"),
-    # model-2 vs model-3：酸化调理剂 → model-2（酸化改良）
-    ExclusiveRule(frozenset({"model-2", "model-3"}), "业务任务", "酸化调理剂", "model-2"),
-    # model-4：稳定性风险 → model-4
-    ExclusiveRule(frozenset({"model-4"}), "业务任务", "稳定性风险", "model-4"),
-    # model-5：质量等级评价 → model-5
-    ExclusiveRule(frozenset({"model-5"}), "预期输出", "质量等级评价", "model-5"),
+    # model-3 vs model-2：现状评价 → model-3（障碍诊断）
+    ExclusiveRule(frozenset({"model-3", "model-2"}), "业务任务", "现状评价", "model-3"),
+    # model-4 vs model-5：酸化调理剂 → model-4（酸化改良）
+    ExclusiveRule(frozenset({"model-4", "model-5"}), "业务任务", "酸化调理剂", "model-4"),
+    # model-1：稳定性风险 → model-1
+    ExclusiveRule(frozenset({"model-1"}), "业务任务", "稳定性风险", "model-1"),
+    # model-2：质量等级评价 → model-2
+    ExclusiveRule(frozenset({"model-2"}), "预期输出", "质量等级评价", "model-2"),
 
     # ===== v1.1 维度驱动规则（condition=None，仅依赖 dimension_conditions）=====
-    # model-1/5：地块级质量等级评价 → model-5（五维全量参与：scale+data_type+business_task+expected_output）
+    # model-3/2：地块级质量等级评价 → model-2（五维全量参与：scale+data_type+business_task+expected_output）
     ExclusiveRule(
-        frozenset({"model-1", "model-5"}),
+        frozenset({"model-3", "model-2"}),
         "分析尺度+数据类型+业务任务+预期输出",
         None,
-        "model-5",
+        "model-2",
         dimension_conditions={"scale": "地块", "data_type": "评价结果", "business_task": "质量等级评价", "expected_output": "评价结果"},
     ),
-    # model-1/5：地块级障碍诊断 → model-1（加 expected_output 收敛，避免裸词跨域误触）
+    # model-3/2：地块级障碍诊断 → model-3（加 expected_output 收敛，避免裸词跨域误触）
     ExclusiveRule(
-        frozenset({"model-1", "model-5"}),
+        frozenset({"model-3", "model-2"}),
         "分析尺度+业务任务+预期输出",
         None,
-        "model-1",
+        "model-3",
         dimension_conditions={"scale": "地块", "business_task": "障碍诊断", "expected_output": "诊断报告"},
     ),
-    # model-2/3：酸化调理剂用量 → model-2
+    # model-4/5：酸化调理剂用量 → model-4
     ExclusiveRule(
-        frozenset({"model-2", "model-3"}),
+        frozenset({"model-4", "model-5"}),
         "数据类型+业务任务",
         None,
-        "model-2",
+        "model-4",
         dimension_conditions={"data_type": "处方用量", "business_task": "酸化改良"},
     ),
-    # model-2/3：有机肥施用量 → model-3
+    # model-4/5：有机肥施用量 → model-5
     ExclusiveRule(
-        frozenset({"model-2", "model-3"}),
+        frozenset({"model-4", "model-5"}),
         "数据类型+业务任务",
         None,
-        "model-3",
+        "model-5",
         dimension_conditions={"data_type": "处方用量", "business_task": "有机质培肥"},
     ),
 )

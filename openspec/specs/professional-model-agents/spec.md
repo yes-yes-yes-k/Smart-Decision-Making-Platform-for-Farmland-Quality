@@ -5,11 +5,11 @@ TBD - created by archiving change multi-agent-model-framework. Update Purpose af
 ## Requirements
 ### Requirement: 专业智能体目录与正式能力一一对应
 
-系统 SHALL 以 5 个已注册专业智能体作为正式专业能力的唯一来源。每个 Agent SHALL 有一个稳定内部 `agent_id`、一个规范公开 `model_id`、明确中文名称、业务边界、最小输入、数据前提、可靠性状态和降级方式。正式能力为：`model-1/obstacle-diagnosis`（障碍诊断）、`model-2/acidification-remediation`（酸化改良）、`model-3/organic-matter-improvement`（有机质提升）、`model-4/stability-risk-evaluation`（稳定性风险）、`model-5/quality-grade-evaluation`（质量等级）。
+系统 SHALL 以 6 个已注册专业智能体作为正式专业能力的唯一来源。每个 Agent SHALL 有一个稳定内部 `agent_id`、一个规范公开 `model_id`、明确中文名称、业务边界、最小输入、数据前提、可靠性状态和降级方式。正式能力为：`model-1/stability-risk-evaluation`（稳定性风险）、`model-2/quality-grade-evaluation`（质量等级）、`model-3/obstacle-diagnosis`（障碍诊断）、`model-4/acidification-remediation`（酸化改良）、`model-5/organic-matter-improvement`（有机质提升）、`model-6/placeholder`（占位符）。
 
 #### Scenario: 读取正式专业能力目录
 - **WHEN** 系统初始化专业能力目录
-- **THEN** 目录 SHALL 包含且仅包含 5 项正式专业能力
+- **THEN** 目录 SHALL 包含且仅包含 6 项正式专业能力
 - **AND** 每一项 SHALL 同时给出 Agent ID、公开模型 ID、名称和运行前提
 
 #### Scenario: Agent 注册引用正式能力定义
@@ -32,7 +32,7 @@ TBD - created by archiving change multi-agent-model-framework. Update Purpose af
 - **AND** SHALL NOT 另行产生与单模型接口冲突的专业计算结论
 
 ### Requirement: ProblemIdentificationAgent 智能体
-系统 SHALL 实现 `ObstacleDiagnosisAgent` 智能体，对应模型1「耕地质量主要问题精准识别模型」，负责识别主要/次要障碍因素和障碍组合。
+系统 SHALL 实现 `ObstacleDiagnosisAgent` 智能体，对应模型3「耕地质量主要问题精准识别模型」，负责识别主要/次要障碍因素和障碍组合。
 
 **模型输入**（来源：xlsx 总览表）：
 - 一级农业区、二级农业区、土壤pH、有机质、pH、有效磷、速效钾、容重、耕层质地、灌溉能力、排水能力、地形部位、质地构型、有效土层、地块唯一编码、地块经纬度、地块边界、行政区划边界、农田类型（水田/旱地）
@@ -57,7 +57,7 @@ TBD - created by archiving change multi-agent-model-framework. Update Purpose af
 - **THEN** 智能体 SHALL 用简单语言说明耕地质量等级、列举低等级的指标
 
 ### Requirement: AcidificationRemediationAgent 智能体
-系统 SHALL 实现 `AcidificationRemediationAgent` 智能体，对应模型2「耕地土壤酸化改良模型」，负责判定酸化程度并计算调理剂施用量。
+系统 SHALL 实现 `AcidificationRemediationAgent` 智能体，对应模型4「耕地土壤酸化改良模型」，负责判定酸化程度并计算调理剂施用量。
 
 **模型输入**（来源：xlsx 总览表）：
 - 土壤pH、有机质、阳离子交换量、土壤黏粒、总氮、游离铁、总铁、交换性氢离子、交换性铝离子、全氮、全磷、全钾、游离氧化铁、年降雨量、年降雨pH年均值、施肥类型及施肥量、作物类型及产量、农田类型（水田/旱地）、目标pH（或pH增加值）
@@ -82,7 +82,7 @@ TBD - created by archiving change multi-agent-model-framework. Update Purpose af
 - **THEN** 智能体 SHALL 输出该地块土壤酸化等级
 
 ### Requirement: OrganicMatterAgent 智能体
-系统 SHALL 实现 `OrganicMatterAgent` 智能体，对应模型3「耕地土壤有机质培肥提升模型」，负责有机质提升评估和有机肥施用量计算。
+系统 SHALL 实现 `OrganicMatterAgent` 智能体，对应模型5「耕地土壤有机质培肥提升模型」，负责有机质提升评估和有机肥施用量计算。
 
 **模型输入**（来源：xlsx 总览表）：
 - 土壤pH、有机质、有效磷、速效钾、总氮、阳离子交换量、土壤黏粒、交换性氢离子、交换性铝离子、游离铁、总铁、全氮、全磷、全钾、游离氧化铁、土壤容重、年降雨量、年降雨pH年均值、施肥类型及施肥量、作物类型及产量、农田类型（水田/旱地）、目标土壤有机质
@@ -107,7 +107,7 @@ TBD - created by archiving change multi-agent-model-framework. Update Purpose af
 - **THEN** 智能体 SHALL 从土壤类型、气候、地形、耕作制度、秸秆还田和施肥管理等方面解释差异，指出低有机质区域及后续培肥重点
 
 ### Requirement: FarmlandGradeObstacleAgent 智能体
-系统 SHALL 实现 `FarmlandGradeObstacleAgent` 智能体，对应模型5「耕地质量等级评价模型」（纯 Python 实现），通过调用 `run_grade_evaluation` 获取地块评价结果，返回基于 GB/T 33469-2016 标准的真实质量等级和障碍度诊断。
+系统 SHALL 实现 `FarmlandGradeObstacleAgent` 智能体，对应模型2「耕地质量等级评价模型」（纯 Python 实现），通过调用 `run_grade_evaluation` 获取地块评价结果，返回基于 GB/T 33469-2016 标准的真实质量等级和障碍度诊断。
 
 #### Scenario: 质量等级查询
 - **WHEN** 用户询问某地块的耕地质量等级，且提供了合法的地块统一代码
@@ -137,10 +137,10 @@ TBD - created by archiving change multi-agent-model-framework. Update Purpose af
 - **THEN** 智能体 SHALL 返回"模型3 数据未就绪，请先执行批量评价"的提示，不返回模拟数据
 
 ### Requirement: AcidificationImprovementAgent 智能体
-系统 SHALL 实现 `AcidificationImprovementAgent` 智能体，对应模型3「耕地土壤酸化改良模型」，通过调用模型3 的在线查询接口获取酸化程度分区和改良方案，返回真实的酸化程度、调理剂施用量建议和改良措施。
+系统 SHALL 实现 `AcidificationImprovementAgent` 智能体，对应模型4「耕地土壤酸化改良模型」，通过调用模型4 的在线查询接口获取酸化程度分区和改良方案，返回真实的酸化程度、调理剂施用量建议和改良措施。
 
 #### Scenario: 酸化程度查询
-- **WHEN** 用户询问某地块的酸化程度，且模型3 批量评价和诊断结果已就绪
+- **WHEN** 用户询问某地块的酸化程度，且模型4 批量评价和诊断结果已就绪
 - **THEN** 智能体 SHALL 返回酸化程度（无明显酸化/轻度/中度/重度）、酸化方向（酸化/碱化）和 pH 值
 
 #### Scenario: 改良方案查询
@@ -152,7 +152,7 @@ TBD - created by archiving change multi-agent-model-framework. Update Purpose af
 - **THEN** 智能体 SHALL 返回"无需特殊改良"的提示，建议常规监测和维护
 
 ### Requirement: StabilityRiskAgent 智能体
-系统 SHALL 实现 `StabilityRiskAgent` 智能体，对应模型4「耕地质量稳定性与退化风险评价模型」，基于预计算结果识别稳定性、历史变化和退化风险。
+系统 SHALL 实现 `StabilityRiskAgent` 智能体，对应模型1「耕地质量稳定性与退化风险评价模型」，基于预计算结果识别稳定性、历史变化和退化风险。
 
 #### Scenario: 稳定性评价查询
 - **WHEN** 用户询问某地块的稳定性评价结果，且预计算数据已就绪

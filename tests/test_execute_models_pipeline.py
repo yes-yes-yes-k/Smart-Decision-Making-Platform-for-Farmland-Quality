@@ -25,7 +25,7 @@ def _make_state(question: str, request_extra: dict | None = None) -> MultiAgentS
         "conversation_history": [],
         "status": "running",
         "error": None,
-        "question_type": 1,
+        "question_type": 3,
         "relevance": 0.8,
     }
 
@@ -69,7 +69,7 @@ def test_execute_models_passes_parcel_id_and_parcel_code_to_context():
     # area_code 仍应存在（现有行为不变）
     assert ctx.get("area_code") == "lechang"
     # question_type 应从 state 透传到 context
-    assert ctx.get("question_type") == 1, f"question_type 未透传到 context: {ctx}"
+    assert ctx.get("question_type") == 3, f"question_type 未透传到 context: {ctx}"
     print("✓ execute_models 透传 parcel_id/parcel_code 到 context top-level")
 
 
