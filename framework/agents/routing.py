@@ -113,6 +113,11 @@ def _cosine_similarity(vec1: List[float], vec2: List[float]) -> float:
 
 _precompute_reference_vectors()
 
+# LLM 路由观测状态：每次 identify_question_type 调用前重置
+_last_router_method: str = "keyword"
+_last_llm_reason: Optional[str] = None
+_last_llm_duration_ms: Optional[float] = None
+
 def check_relevance(question: str) -> float:
     if not question:
         return 0.0
@@ -187,6 +192,36 @@ def _identify_question_type_vector(question: str) -> tuple[int, float]:
             return 2, keyword_relevance
         return 0, max_similarity
     return best_type, max_similarity
+
+def _safe_parse_llm_result(content: str) -> Optional[tuple[int, float, str]]:
+    """解析 LLM 返回内容为 (question_type, relevance, reason)；任何异常返回 None。
+
+    - content 必须为合法 JSON
+    - question_type 必须为 int 且在 0..6 范围
+    - relevance 缺失默认 0.0；reason 缺失默认空串
+    - 不向调用方抛出任何异常
+    """
+    import json
+    try:
+        data = json.loads(content)
+        if not isinstance(data, dict):
+            return None
+        if "question_type" not in data:
+            return None
+        qt = data["question_type"]
+        if not isinstance(qt, int) or isinstance(qt, bool):
+            return None
+        if qt < 0 or qt > 6:
+            return None
+        relevance = data.get("relevance", 0.0)
+        if not isinstance(relevance, (int, float)) or isinstance(relevance, bool):
+            relevance = 0.0
+        reason = data.get("reason", "")
+        if not isinstance(reason, str):
+            reason = str(reason)
+        return qt, float(relevance), reason
+    except Exception:
+        return None
 
 def _identify_question_type_keyword(question: str) -> tuple[int, float]:
     relevance = _check_relevance_keyword(question)
