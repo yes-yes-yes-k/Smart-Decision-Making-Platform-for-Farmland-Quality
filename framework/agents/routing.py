@@ -167,15 +167,44 @@ def identify_question_type(question: str, context: Optional[dict] = None) -> tup
     """识别问题类型（向后兼容：context 为 None 时与旧版完全一致）。
 
     返回 (question_type, relevance)。question_type ∈ 1..6 与 0=RAG。
-    context 提供时，在既有判定之上叠加五维排他规则精化。
+    ROUTING_MODE=llm 时优先 LLM 初判，失败回退关键词/向量；排他规则仍作为最终兜底。
+    每次调用重置模块级 _last_router_method/_last_llm_reason/_last_llm_duration_ms。
     """
+    global _last_router_method, _last_llm_reason, _last_llm_duration_ms
+    # 每次调用重置观测状态
+    _last_router_method = "keyword"
+    _last_llm_reason = None
+    _last_llm_duration_ms = None
+
+    # 知识性问题：type 0，不调 LLM
     if _is_knowledge_question(question):
+        _last_router_method = "knowledge"
         return 0, 1.0
+
     base_type, base_rel = _identify_question_type_keyword(question)
-    if base_type == 0:
-        if EMBEDDING_AVAILABLE and embedding_service.is_available():
-            base_type, base_rel = _identify_question_type_vector(question)
-        # 关键词与向量均未命中时 base_type 保持 0
+
+    # ROUTING_MODE=llm 且 LLM 可用：优先 LLM 初判
+    if Config.ROUTING_MODE == "llm" and LLM_AVAILABLE and llm_service.is_available():
+        llm_result = _identify_question_type_llm(question, context)
+        if llm_result is not None:
+            base_type, base_rel = llm_result[0], llm_result[1]
+            _last_router_method = "llm"
+        else:
+            # LLM 失败：回退关键词/向量，router_method 保持 keyword
+            _last_router_method = "keyword"
+            if base_type == 0 and EMBEDDING_AVAILABLE and embedding_service.is_available():
+                base_type, base_rel = _identify_question_type_vector(question)
+                if base_type != 0:
+                    _last_router_method = "vector"
+    else:
+        # ROUTING_MODE=keyword 或 LLM 不可用：走现有路径
+        if base_type == 0:
+            if EMBEDDING_AVAILABLE and embedding_service.is_available():
+                base_type, base_rel = _identify_question_type_vector(question)
+                if base_type != 0:
+                    _last_router_method = "vector"
+        # 关键词命中时 router_method 保持 keyword
+
     if context is not None:
         refined_type, _status = apply_exclusive_rules(question, base_type, context)
         return refined_type, base_rel
