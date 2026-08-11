@@ -83,3 +83,138 @@ class TestSafeParseLLMResult:
         from framework.agents.routing import _safe_parse_llm_result
         result = _safe_parse_llm_result('{"question_type": 2, "reason": "x"}')
         assert result == (2, 0.0, "x")
+
+
+class TestIdentifyQuestionTypeLLM:
+    """_identify_question_type_llm 行为：mock llm_service，覆盖可用/不可用/解析失败。"""
+
+    def test_llm_unavailable_returns_none(self, monkeypatch):
+        from framework.agents import routing
+        from framework.llm.service import llm_service
+        monkeypatch.setattr(llm_service, "is_available", lambda: False)
+        result = routing._identify_question_type_llm("我的田酸化严重吗？", None)
+        assert result is None
+
+    def test_llm_returns_valid_json(self, monkeypatch):
+        from framework.agents import routing
+        from framework.llm.service import llm_service
+
+        def _fake_generate(prompt, **kwargs):
+            return {
+                "success": True,
+                "content": '{"question_type": 4, "relevance": 0.95, "reason": "酸化改良"}',
+                "model": "mock",
+                "type": "llm",
+            }
+
+        monkeypatch.setattr(llm_service, "is_available", lambda: True)
+        monkeypatch.setattr(llm_service, "generate", _fake_generate)
+        result = routing._identify_question_type_llm("我的田酸化严重吗？", None)
+        assert result == (4, 0.95, "酸化改良")
+
+    def test_llm_returns_invalid_json_returns_none(self, monkeypatch):
+        from framework.agents import routing
+        from framework.llm.service import llm_service
+
+        def _fake_generate(prompt, **kwargs):
+            return {"success": True, "content": "not json", "model": "mock", "type": "llm"}
+
+        monkeypatch.setattr(llm_service, "is_available", lambda: True)
+        monkeypatch.setattr(llm_service, "generate", _fake_generate)
+        result = routing._identify_question_type_llm("我的田酸化严重吗？", None)
+        assert result is None
+
+    def test_llm_returns_out_of_range_returns_none(self, monkeypatch):
+        from framework.agents import routing
+        from framework.llm.service import llm_service
+
+        def _fake_generate(prompt, **kwargs):
+            return {
+                "success": True,
+                "content": '{"question_type": 99, "relevance": 0.9}',
+                "model": "mock",
+                "type": "llm",
+            }
+
+        monkeypatch.setattr(llm_service, "is_available", lambda: True)
+        monkeypatch.setattr(llm_service, "generate", _fake_generate)
+        result = routing._identify_question_type_llm("我的田酸化严重吗？", None)
+        assert result is None
+
+    def test_llm_generate_raises_returns_none(self, monkeypatch):
+        from framework.agents import routing
+        from framework.llm.service import llm_service
+
+        def _boom(prompt, **kwargs):
+            raise RuntimeError("network down")
+
+        monkeypatch.setattr(llm_service, "is_available", lambda: True)
+        monkeypatch.setattr(llm_service, "generate", _boom)
+        result = routing._identify_question_type_llm("我的田酸化严重吗？", None)
+        assert result is None
+
+    def test_llm_call_uses_temperature_zero(self, monkeypatch):
+        """LLM 调用必须传 temperature=0.0 以保证确定性。"""
+        from framework.agents import routing
+        from framework.llm.service import llm_service
+
+        captured = {}
+
+        def _fake_generate(prompt, **kwargs):
+            captured["kwargs"] = kwargs
+            return {
+                "success": True,
+                "content": '{"question_type": 4, "relevance": 0.9, "reason": "x"}',
+                "model": "mock",
+                "type": "llm",
+            }
+
+        monkeypatch.setattr(llm_service, "is_available", lambda: True)
+        monkeypatch.setattr(llm_service, "generate", _fake_generate)
+        routing._identify_question_type_llm("我的田酸化严重吗？", None)
+        assert captured["kwargs"].get("temperature") == 0.0
+
+    def test_llm_prompt_contains_all_capabilities(self, monkeypatch):
+        """prompt 必须包含全部 6 个能力的名称与描述。"""
+        from framework.agents import routing
+        from framework.agents.capabilities import PROFESSIONAL_CAPABILITIES
+        from framework.llm.service import llm_service
+
+        captured = {}
+
+        def _fake_generate(prompt, **kwargs):
+            captured["prompt"] = prompt
+            return {
+                "success": True,
+                "content": '{"question_type": 1, "relevance": 0.9, "reason": "x"}',
+                "model": "mock",
+                "type": "llm",
+            }
+
+        monkeypatch.setattr(llm_service, "is_available", lambda: True)
+        monkeypatch.setattr(llm_service, "generate", _fake_generate)
+        routing._identify_question_type_llm("我的田酸化严重吗？", None)
+        prompt_text = captured["prompt"]
+        for cap in PROFESSIONAL_CAPABILITIES:
+            assert cap.name in prompt_text, f"prompt 缺少能力名称：{cap.name}"
+            assert cap.description in prompt_text, f"prompt 缺少能力描述：{cap.description}"
+
+    def test_llm_duration_recorded(self, monkeypatch):
+        """成功调用后 _last_llm_duration_ms 应为非负 float。"""
+        from framework.agents import routing
+        from framework.llm.service import llm_service
+
+        def _fake_generate(prompt, **kwargs):
+            return {
+                "success": True,
+                "content": '{"question_type": 4, "relevance": 0.9, "reason": "x"}',
+                "model": "mock",
+                "type": "llm",
+            }
+
+        monkeypatch.setattr(llm_service, "is_available", lambda: True)
+        monkeypatch.setattr(llm_service, "generate", _fake_generate)
+        routing._identify_question_type_llm("我的田酸化严重吗？", None)
+        assert routing._last_llm_duration_ms is not None
+        assert routing._last_llm_duration_ms >= 0.0
+        assert routing._last_llm_reason == "x"

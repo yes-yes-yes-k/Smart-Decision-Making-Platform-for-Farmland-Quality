@@ -15,6 +15,15 @@ except ImportError:
 
 from .exclusive_rules import apply_exclusive_rules
 
+from framework.config import Config
+from framework.agents.capabilities import PROFESSIONAL_CAPABILITIES
+
+try:
+    from framework.llm.service import llm_service
+    LLM_AVAILABLE = True
+except ImportError:
+    LLM_AVAILABLE = False
+
 QUESTION_TYPE_1_KEYWORDS = [
     "等级稳定", "稳定性", "稳不稳", "稳定吗", "稳定性较弱", "退化风险",
     "关注清单", "重点关注", "临界状态", "风险类型", "等级整体", "掉级",
@@ -222,6 +231,77 @@ def _safe_parse_llm_result(content: str) -> Optional[tuple[int, float, str]]:
         return qt, float(relevance), reason
     except Exception:
         return None
+
+
+def _identify_question_type_llm(
+    question: str, context: Optional[dict]
+) -> Optional[tuple[int, float, str]]:
+    """LLM 初判问题类型。
+
+    - LLM 不可用或调用异常：返回 None（调用方回退关键词）
+    - 解析失败/越界：返回 None
+    - 成功：返回 (question_type, relevance, reason)，并已写入模块级状态
+    """
+    global _last_llm_reason, _last_llm_duration_ms
+    if not LLM_AVAILABLE or not llm_service.is_available():
+        return None
+
+    # 动态构造 prompt：6 个能力 + 用户问题 + 五维上下文 + JSON 输出格式
+    capability_lines = []
+    for cap in PROFESSIONAL_CAPABILITIES:
+        capability_lines.append(
+            f"- 类型 {cap.question_type}：{cap.name}（{cap.description}）"
+        )
+    capabilities_text = "\n".join(capability_lines)
+
+    context_lines = []
+    if context:
+        for key in ("scale", "data_type", "business_task", "expected_output"):
+            val = context.get(key)
+            if val:
+                context_lines.append(f"- {key}: {val}")
+    context_text = "\n".join(context_lines) if context_lines else "（未提供）"
+
+    prompt = (
+        "你是耕地质量与土壤改良领域的问题分类助手。请根据用户问题，判定它属于以下哪一类问题类型。\n\n"
+        "问题类型清单：\n"
+        f"{capabilities_text}\n\n"
+        "用户问题：\n"
+        f"{question}\n\n"
+        "五维上下文：\n"
+        f"{context_text}\n\n"
+        "请仅输出严格 JSON，不要任何额外说明或 markdown 代码块：\n"
+        '{"question_type": int(0..6, 0=知识性/RAG), '
+        '"relevance": float(0..1), "reason": str(简短理由)}'
+    )
+
+    import time as _time
+    t0 = _time.perf_counter()
+    try:
+        response = llm_service.generate(prompt, temperature=0.0)
+    except Exception:
+        _last_llm_reason = None
+        _last_llm_duration_ms = round((_time.perf_counter() - t0) * 1000, 2)
+        return None
+
+    _last_llm_duration_ms = round((_time.perf_counter() - t0) * 1000, 2)
+
+    if not isinstance(response, dict) or not response.get("success"):
+        _last_llm_reason = None
+        return None
+
+    content = response.get("content", "")
+    if not isinstance(content, str):
+        _last_llm_reason = None
+        return None
+
+    parsed = _safe_parse_llm_result(content)
+    if parsed is None:
+        _last_llm_reason = None
+        return None
+
+    _last_llm_reason = parsed[2]
+    return parsed
 
 def _identify_question_type_keyword(question: str) -> tuple[int, float]:
     relevance = _check_relevance_keyword(question)
