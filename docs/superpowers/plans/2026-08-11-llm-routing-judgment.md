@@ -51,7 +51,7 @@ base-ref: ad19d4bbb056999c2252a58e86a41f3327bdae43
 - Consumes: 无
 - Produces: `Config.ROUTING_MODE: str`（`"llm"` 或 `"keyword"`，默认 `"llm"`）
 
-- [ ] **Step 1: 创建测试文件并写失败测试**
+- [x]**Step 1: 创建测试文件并写失败测试**
 
 新建 `tests/test_llm_routing.py`：
 
@@ -87,12 +87,12 @@ def test_routing_mode_reads_env(monkeypatch):
     importlib.reload(_cfg)
 ```
 
-- [ ] **Step 2: 运行测试验证失败**
+- [x]**Step 2: 运行测试验证失败**
 
 Run: `python -m pytest tests/test_llm_routing.py::test_routing_mode_default_is_llm -v`
 Expected: FAIL with `AttributeError: type object 'Config' has no attribute 'ROUTING_MODE'`
 
-- [ ] **Step 3: 在 Config 类中新增 ROUTING_MODE**
+- [x]**Step 3: 在 Config 类中新增 ROUTING_MODE**
 
 修改 `framework/config.py`，在 `MAX_CONCURRENT_MODELS = ...` 这一行之前插入：
 
@@ -101,12 +101,12 @@ Expected: FAIL with `AttributeError: type object 'Config' has no attribute 'ROUT
     ROUTING_MODE = os.environ.get("ROUTING_MODE", "llm")
 ```
 
-- [ ] **Step 4: 运行测试验证通过**
+- [x]**Step 4: 运行测试验证通过**
 
 Run: `python -m pytest tests/test_llm_routing.py -v`
 Expected: 2 passed
 
-- [ ] **Step 5: 提交**
+- [x]**Step 5: 提交**
 
 ```bash
 git add framework/config.py tests/test_llm_routing.py
@@ -127,7 +127,7 @@ git commit -m "feat(config): 新增 ROUTING_MODE 开关，默认 llm 模式"
   - `_safe_parse_llm_result(content: str) -> Optional[tuple[int, float, str]]`：成功返回 `(question_type, relevance, reason)`；任何异常或越界返回 `None`。
   - 模块级状态：`_last_router_method: str`、`_last_llm_reason: Optional[str]`、`_last_llm_duration_ms: Optional[float]`。
 
-- [ ] **Step 1: 追加失败测试**
+- [x]**Step 1: 追加失败测试**
 
 在 `tests/test_llm_routing.py` 末尾追加：
 
@@ -188,12 +188,12 @@ class TestSafeParseLLMResult:
         assert result == (2, 0.0, "x")
 ```
 
-- [ ] **Step 2: 运行测试验证失败**
+- [x]**Step 2: 运行测试验证失败**
 
 Run: `python -m pytest tests/test_llm_routing.py::TestSafeParseLLMResult -v`
 Expected: FAIL with `ImportError: cannot import name '_safe_parse_llm_result'`
 
-- [ ] **Step 3: 在 routing.py 顶部添加模块级状态，并实现解析函数**
+- [x]**Step 3: 在 routing.py 顶部添加模块级状态，并实现解析函数**
 
 修改 `framework/agents/routing.py`：
 
@@ -240,12 +240,12 @@ def _safe_parse_llm_result(content: str) -> Optional[tuple[int, float, str]]:
         return None
 ```
 
-- [ ] **Step 4: 运行测试验证通过**
+- [x]**Step 4: 运行测试验证通过**
 
 Run: `python -m pytest tests/test_llm_routing.py::TestSafeParseLLMResult -v`
 Expected: 9 passed
 
-- [ ] **Step 5: 提交**
+- [x]**Step 5: 提交**
 
 ```bash
 git add framework/agents/routing.py tests/test_llm_routing.py
@@ -270,7 +270,7 @@ git commit -m "feat(routing): 新增 _safe_parse_llm_result 解析与模块级�
     - LLM 不可用 / 调用异常 / 解析失败 → 返回 `None`（调用方回退关键词）
     - 成功 → 返回 `(question_type, relevance, reason)`，并已写入 `_last_llm_reason`、`_last_llm_duration_ms`
 
-- [ ] **Step 1: 追加失败测试**
+- [x]**Step 1: 追加失败测试**
 
 在 `tests/test_llm_routing.py` 末尾追加：
 
@@ -410,12 +410,12 @@ class TestIdentifyQuestionTypeLLM:
         assert routing._last_llm_reason == "x"
 ```
 
-- [ ] **Step 2: 运行测试验证失败**
+- [x]**Step 2: 运行测试验证失败**
 
 Run: `python -m pytest tests/test_llm_routing.py::TestIdentifyQuestionTypeLLM -v`
 Expected: FAIL with `AttributeError: module 'framework.agents.routing' has no attribute '_identify_question_type_llm'`
 
-- [ ] **Step 3: 在 routing.py 添加 import 与 _identify_question_type_llm 实现**
+- [x]**Step 3: 在 routing.py 添加 import 与 _identify_question_type_llm 实现**
 
 修改 `framework/agents/routing.py`：
 
@@ -506,12 +506,12 @@ def _identify_question_type_llm(
     return parsed
 ```
 
-- [ ] **Step 4: 运行测试验证通过**
+- [x]**Step 4: 运行测试验证通过**
 
 Run: `python -m pytest tests/test_llm_routing.py::TestIdentifyQuestionTypeLLM -v`
 Expected: 8 passed
 
-- [ ] **Step 5: 提交**
+- [x]**Step 5: 提交**
 
 ```bash
 git add framework/agents/routing.py tests/test_llm_routing.py
@@ -530,7 +530,7 @@ git commit -m "feat(routing): 新增 _identify_question_type_llm 动态构造 pr
 - Consumes: `Config.ROUTING_MODE`、`_identify_question_type_llm`、`_identify_question_type_keyword`、`_identify_question_type_vector`、`apply_exclusive_rules`、`_is_knowledge_question`
 - Produces: `identify_question_type` 行为变更——`ROUTING_MODE=llm` 时优先 LLM 初判，失败回退；模块级 `_last_router_method` 在每次调用后反映实际使用路径。
 
-- [ ] **Step 1: 追加集成测试**
+- [x]**Step 1: 追加集成测试**
 
 在 `tests/test_llm_routing.py` 末尾追加：
 
@@ -778,12 +778,12 @@ class TestIdentifyQuestionTypeRouting:
             assert qt == expected, f"「{q}」期望 TYPE_{expected}，实际 TYPE_{qt}"
 ```
 
-- [ ] **Step 2: 运行测试验证失败**
+- [x]**Step 2: 运行测试验证失败**
 
 Run: `python -m pytest tests/test_llm_routing.py::TestIdentifyQuestionTypeRouting -v`
 Expected: 多个 FAIL（`_last_router_method` 未被设置，LLM 未被集成进 `identify_question_type`）
 
-- [ ] **Step 3: 重写 identify_question_type 集成 LLM 路径**
+- [x]**Step 3: 重写 identify_question_type 集成 LLM 路径**
 
 修改 `framework/agents/routing.py` 中 `identify_question_type` 函数（原第 152-168 行）为：
 
@@ -836,17 +836,17 @@ def identify_question_type(question: str, context: Optional[dict] = None) -> tup
     return base_type, base_rel
 ```
 
-- [ ] **Step 4: 运行测试验证通过**
+- [x]**Step 4: 运行测试验证通过**
 
 Run: `python -m pytest tests/test_llm_routing.py -v`
 Expected: 全部 passed（含 Task 1-3 的测试）
 
-- [ ] **Step 5: 运行既有测试确保 backward-compat**
+- [x]**Step 5: 运行既有测试确保 backward-compat**
 
 Run: `python -m pytest tests/test_question_type_keywords.py tests/test_routing_observability.py -v`
 Expected: 全部 passed（如有失败，多为 `_last_router_method` 未初始化导致的属性错误，下一任务修复）
 
-- [ ] **Step 6: 提交**
+- [x]**Step 6: 提交**
 
 ```bash
 git add framework/agents/routing.py tests/test_llm_routing.py
@@ -866,7 +866,7 @@ git commit -m "feat(routing): identify_question_type 集成 LLM 初判与自动�
 - Consumes: `framework.agents.routing._last_router_method`、`_last_llm_reason`、`_last_llm_duration_ms`
 - Produces: 观测日志 entry 新增 `router_method`、`llm_reason`、`llm_duration_ms`；`ROUTING_RESULT_VERSION = "v1.2"`
 
-- [ ] **Step 1: 追加失败测试**
+- [x]**Step 1: 追加失败测试**
 
 在 `tests/test_routing_observability.py` 的 `TestObserve` 类中新增：
 
@@ -936,12 +936,12 @@ class TestObserveLLMFields:
             assert entry["router_method"] == "knowledge"
 ```
 
-- [ ] **Step 2: 运行测试验证失败**
+- [x]**Step 2: 运行测试验证失败**
 
 Run: `python -m pytest tests/test_routing_observability.py::TestObserveLLMFields -v`
 Expected: FAIL with `KeyError: 'router_method'` 或 `AssertionError: 'v1.1' != 'v1.2'`
 
-- [ ] **Step 3: 修改 observe.py 升级版本与字段**
+- [x]**Step 3: 修改 observe.py 升级版本与字段**
 
 修改 `framework/observability/observe.py`：
 
@@ -1023,17 +1023,17 @@ def _attach_llm_routing_state(entry: Dict[str, Any]) -> None:
         entry.setdefault("llm_duration_ms", None)
 ```
 
-- [ ] **Step 4: 运行测试验证通过**
+- [x]**Step 4: 运行测试验证通过**
 
 Run: `python -m pytest tests/test_routing_observability.py -v`
 Expected: 全部 passed（含既有测试 + 新增 TestObserveLLMFields）
 
-- [ ] **Step 5: 修复既有测试中对 result_version 的硬编码（如有）**
+- [x]**Step 5: 修复既有测试中对 result_version 的硬编码（如有）**
 
 Run: `python -m pytest tests/test_question_type_keywords.py -v`
 Expected: 全部 passed。若有失败，检查是否对 `result_version` 或 `router_method` 有硬编码断言，按需放宽。
 
-- [ ] **Step 6: 提交**
+- [x]**Step 6: 提交**
 
 ```bash
 git add framework/observability/observe.py tests/test_routing_observability.py
@@ -1051,7 +1051,7 @@ git commit -m "feat(observability): 日志新增 router_method/llm_reason/llm_du
 - Consumes: `observe.observe_routing`
 - Produces: 验证 `identify_question_node` 输出仍含 `question_type/relevance/routing_status`，且观测日志已含新字段
 
-- [ ] **Step 1: 追加端到端测试**
+- [x]**Step 1: 追加端到端测试**
 
 在 `tests/test_routing_observability.py` 的 `TestNodeInjection` 类中新增：
 
@@ -1090,16 +1090,16 @@ def test_identify_question_node_logs_llm_fields_in_llm_mode(self, monkeypatch):
         assert entry["result_version"] == "v1.2"
 ```
 
-- [ ] **Step 2: 运行测试验证通过（无需修改 nodes.py）**
+- [x]**Step 2: 运行测试验证通过（无需修改 nodes.py）**
 
 Run: `python -m pytest tests/test_routing_observability.py::TestNodeInjection -v`
 Expected: 全部 passed（`identify_question_node` 通过 `observe_routing` 间接调用 `identify_question_type`，新字段自动透传）
 
-- [ ] **Step 3: 若 Step 2 失败，按最小改动修复 nodes.py**
+- [x]**Step 3: 若 Step 2 失败，按最小改动修复 nodes.py**
 
 若失败原因为 `LLM_AVAILABLE` 未在 nodes.py 中正确导入或 routing 模块的 `LLM_AVAILABLE` 状态在 nodes 模块加载时被绑定，则在 `nodes.py` 顶部确认 `from framework.llm.service import llm_service` 已存在（现状已存在，第 27-30 行）。不需要修改 nodes.py。
 
-- [ ] **Step 4: 提交（如有 nodes.py 改动）**
+- [x]**Step 4: 提交（如有 nodes.py 改动）**
 
 ```bash
 git add tests/test_routing_observability.py
@@ -1118,7 +1118,7 @@ git commit -m "test(observability): 端到端验证 identify_question_node 透�
 - Consumes: `framework.agents.exclusive_rules.apply_exclusive_rules`、`framework.agents.routing.identify_question_type`
 - Produces: `python scripts/run_routing_regression.py --routing-mode {llm|keyword} [--mock-llm]`
 
-- [ ] **Step 1: 修改回归脚本**
+- [x]**Step 1: 修改回归脚本**
 
 修改 `scripts/run_routing_regression.py`：
 
@@ -1242,17 +1242,17 @@ def main(argv=None) -> int:
     return 1 if failed else 0
 ```
 
-- [ ] **Step 2: 运行 keyword 模式回归（应与历史一致）**
+- [x]**Step 2: 运行 keyword 模式回归（应与历史一致）**
 
 Run: `python scripts/run_routing_regression.py --routing-mode keyword`
 Expected: 退出码 0，混淆率均 ≤ 3%
 
-- [ ] **Step 3: 运行 llm + mock 模式回归**
+- [x]**Step 3: 运行 llm + mock 模式回归**
 
 Run: `python scripts/run_routing_regression.py --routing-mode llm --mock-llm`
 Expected: 退出码 0，混淆率均 ≤ 3%，输出文件 `logs/confusion_matrix.llm.json`
 
-- [ ] **Step 4: 提交**
+- [x]**Step 4: 提交**
 
 ```bash
 git add scripts/run_routing_regression.py
@@ -1272,11 +1272,11 @@ git commit -m "feat(regression): 支持 --routing-mode 与 --mock-llm，验证 L
 
 **说明：** 本任务需要使用 docx 技能（`Skill: docx`）编辑现有 .docx 文件，保留原有格式与样式。
 
-- [ ] **Step 1: 读取现有 docx 内容结构**
+- [x]**Step 1: 读取现有 docx 内容结构**
 
 调用 docx 技能读取 `大模型开发团队下一步工作建议.docx`，记录现有章节标题层级与样式，确认 P1-P9 模型表的当前编号方式（是否已使用 model-1..model-6 还是其他编号）。
 
-- [ ] **Step 2: 新增 P10 章节「LLM 路由判断」**
+- [x]**Step 2: 新增 P10 章节「LLM 路由判断」**
 
 在 P9 章节之后追加 P10，内容包含：
 
@@ -1320,7 +1320,7 @@ git commit -m "feat(regression): 支持 --routing-mode 与 --mock-llm，验证 L
 - 排他规则语义不变
 ```
 
-- [ ] **Step 3: 补充混淆矩阵方法说明与结果表**
+- [x]**Step 3: 补充混淆矩阵方法说明与结果表**
 
 在 P10 章节末尾或独立小节追加：
 
@@ -1350,7 +1350,7 @@ git commit -m "feat(regression): 支持 --routing-mode 与 --mock-llm，验证 L
 
 实际数值由 Task 7 Step 2-3 运行后填入。
 
-- [ ] **Step 4: 同步 P1-P9 模型表为 6 模型编号**
+- [x]**Step 4: 同步 P1-P9 模型表为 6 模型编号**
 
 遍历 docx 中 P1-P9 章节的模型表，将所有模型编号统一为 `model-1`..`model-6`，对应关系：
 
@@ -1365,14 +1365,14 @@ git commit -m "feat(regression): 支持 --routing-mode 与 --mock-llm，验证 L
 
 若 P1-P9 已使用此编号，仅核对一致性；若使用历史编号（如 stability-risk-evaluation 等 agent_id），则在表中追加 `model-N` 列以对齐。
 
-- [ ] **Step 5: 保存 docx 并验证**
+- [x]**Step 5: 保存 docx 并验证**
 
 保存修改至 `大模型开发团队下一步工作建议.docx`。重新打开文件确认：
 - P10 章节标题与正文存在
 - 混淆矩阵方法说明与结果表存在
 - P1-P9 模型表编号统一为 model-1..model-6
 
-- [ ] **Step 6: 提交**
+- [x]**Step 6: 提交**
 
 ```bash
 git add 大模型开发团队下一步工作建议.docx
@@ -1383,22 +1383,22 @@ git commit -m "docs: 新增 P10 LLM 路由判断章节，同步模型表与混�
 
 ## 完成验证
 
-- [ ] **全量测试通过**
+- [x]**全量测试通过**
 
 Run: `python -m pytest tests/ -v`
 Expected: 全部 passed
 
-- [ ] **keyword 模式回归通过**
+- [x]**keyword 模式回归通过**
 
 Run: `python scripts/run_routing_regression.py --routing-mode keyword`
 Expected: 退出码 0
 
-- [ ] **llm + mock 模式回归通过**
+- [x]**llm + mock 模式回归通过**
 
 Run: `python scripts/run_routing_regression.py --routing-mode llm --mock-llm`
 Expected: 退出码 0
 
-- [ ] **最终提交（如有遗漏修复）**
+- [x]**最终提交（如有遗漏修复）**
 
 ```bash
 git add -A
