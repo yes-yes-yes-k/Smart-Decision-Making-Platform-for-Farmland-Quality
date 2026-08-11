@@ -175,6 +175,39 @@ class TestNodeInjection:
         finally:
             _routing.EMBEDDING_AVAILABLE = real
 
+    def test_identify_question_node_logs_llm_fields_in_llm_mode(self, monkeypatch):
+        """identify_question_node 经 observe_routing 写入新字段（LLM 模式）。"""
+        from framework.agents.nodes import identify_question_node
+        from framework.agents import routing as _routing
+        from framework.llm.service import llm_service
+        from framework.config import Config
+
+        def _fake_generate(prompt, **kwargs):
+            return {
+                "success": True,
+                "content": '{"question_type": 2, "relevance": 0.9, "reason": "等级"}',
+                "model": "mock",
+                "type": "llm",
+            }
+
+        monkeypatch.setattr(_routing, "LLM_AVAILABLE", True)
+        monkeypatch.setattr(_routing, "EMBEDDING_AVAILABLE", False)
+        monkeypatch.setattr(llm_service, "is_available", lambda: True)
+        monkeypatch.setattr(llm_service, "generate", _fake_generate)
+        monkeypatch.setattr(Config, "ROUTING_MODE", "llm")
+
+        with tempfile.TemporaryDirectory() as tmp:
+            set_log_path(os.path.join(tmp, "routing_calls_test.jsonl"))
+            state = {"request": {"question": "我的田耕地质量等级是多少"}}
+            result = identify_question_node(state)
+            assert result["question_type"] == 2
+            assert result["routing_status"] == "normal"
+            with open(os.path.join(tmp, "routing_calls_test.jsonl"), encoding="utf-8") as f:
+                entry = json.loads(f.readline())
+            assert entry["router_method"] == "llm"
+            assert entry["llm_reason"] == "等级"
+            assert entry["result_version"] == "v1.2"
+
 
 class TestConfusionMetrics:
     def test_confusion_metrics_values(self):
