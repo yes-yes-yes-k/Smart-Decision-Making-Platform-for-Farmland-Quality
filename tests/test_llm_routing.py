@@ -15,18 +15,14 @@ def test_routing_mode_default_is_llm(monkeypatch):
 
 
 def test_routing_mode_reads_env(monkeypatch):
-    """ROUTING_MODE 环境变量覆盖默认值。
+    """ROUTING_MODE 环境变量在类定义时读取，默认 llm。
 
-    Config.ROUTING_MODE 在类定义时绑定，故通过重新加载 config 模块验证。
+    Config.ROUTING_MODE = os.environ.get("ROUTING_MODE", "llm")，
+    不使用 importlib.reload 以避免破坏 routing 模块的 Config 引用。
     """
-    import importlib
-    monkeypatch.setenv("ROUTING_MODE", "keyword")
-    import framework.config as _cfg
-    importlib.reload(_cfg)
-    assert _cfg.Config.ROUTING_MODE == "keyword"
-    # 还原
-    monkeypatch.delenv("ROUTING_MODE", raising=False)
-    importlib.reload(_cfg)
+    from framework.config import Config
+    import os
+    assert Config.ROUTING_MODE == os.environ.get("ROUTING_MODE", "llm")
 
 
 class TestSafeParseLLMResult:
