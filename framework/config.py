@@ -50,6 +50,9 @@ class Config:
     CHUNK_OVERLAP = 150
     RETRIEVAL_TOP_K = 5
 
+    # 路由判定模式：llm=LLM 全量初判（失败自动回退关键词），keyword=纯关键词/向量
+    ROUTING_MODE = os.environ.get("ROUTING_MODE", "llm")
+
     MAX_CONCURRENT_MODELS = int(os.environ.get('MAX_CONCURRENT_MODELS') or '0')
 
     # 数据导入接口配置
