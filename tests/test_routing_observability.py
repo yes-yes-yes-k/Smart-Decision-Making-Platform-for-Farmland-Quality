@@ -306,3 +306,25 @@ class TestRoutingLogReadRobustness:
                 f.write('{"trace_id": "b"}\n')
             entries = read_routing_logs(tmp)
             assert [e["trace_id"] for e in entries] == ["a", "b"]
+
+
+class TestPackageExports:
+    """观测模块包级导出完整化：API 层统一 from framework.observability import ..."""
+
+    def test_all_submodules_exported(self):
+        from framework.observability import (
+            routing_log, metrics, dashboard, traceability, observe,
+        )
+        assert callable(routing_log.write_routing_log)
+        assert callable(metrics.confusion_metrics)
+        assert callable(dashboard.compute_log_metrics)
+        assert callable(traceability.trace_result)
+        assert callable(observe.observe_routing)
+
+    def test_all_list_complete(self):
+        """__all__ 应显式声明全部子模块（包级导出完整化的可审计契约）。"""
+        import framework.observability as obs
+        assert set(obs.__all__) == {
+            "routing_log", "metrics", "dashboard", "traceability", "observe",
+        }
+

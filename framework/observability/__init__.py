@@ -4,5 +4,9 @@
 与 LangSmith 远端 trace 并行覆盖，共享同一 trace_id。
 """
 from . import routing_log
+from . import metrics
+from . import dashboard
+from . import traceability
+from . import observe
 
-__all__ = ["routing_log"]
+__all__ = ["routing_log", "metrics", "dashboard", "traceability", "observe"]
