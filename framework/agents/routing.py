@@ -234,6 +234,7 @@ def _identify_question_type_vector(question: str) -> tuple[int, float]:
 def _safe_parse_llm_result(content: str) -> Optional[tuple[int, float, str]]:
     """解析 LLM 返回内容为 (question_type, relevance, reason)；任何异常返回 None。
 
+    - 自动剥离 markdown 代码块（```json ... ``` 或 ``` ... ```）
     - content 必须为合法 JSON
     - question_type 必须为 int 且在 0..6 范围
     - relevance 缺失默认 0.0；reason 缺失默认空串
@@ -241,7 +242,18 @@ def _safe_parse_llm_result(content: str) -> Optional[tuple[int, float, str]]:
     """
     import json
     try:
-        data = json.loads(content)
+        # 剥离 markdown 代码块包裹（LLM 常忽略"仅输出 JSON"指令）
+        cleaned = content.strip() if isinstance(content, str) else content
+        if isinstance(cleaned, str) and cleaned.startswith("```"):
+            lines = cleaned.split("\n")
+            # 去掉首行 ```json 或 ```
+            if lines and lines[0].startswith("```"):
+                lines = lines[1:]
+            # 去掉末行 ```
+            if lines and lines[-1].strip().startswith("```"):
+                lines = lines[:-1]
+            cleaned = "\n".join(lines).strip()
+        data = json.loads(cleaned)
         if not isinstance(data, dict):
             return None
         if "question_type" not in data:
@@ -289,7 +301,23 @@ def _identify_question_type_llm(
             val = context.get(key)
             if val:
                 context_lines.append(f"- {key}: {val}")
+        # 显式标注地块选中状态（LLM 路由关键信号）
+        if context.get("parcel_id") or context.get("parcel_code"):
+            context_lines.append("- parcel_selected: true（用户已在地图上选中地块）")
     context_text = "\n".join(context_lines) if context_lines else "（未提供）"
+
+    # context 路由规则：用户已选地块时放宽专业模型进入条件
+    context_rules = ""
+    if context and (context.get("parcel_id") or context.get("parcel_code")):
+        context_rules = (
+            "\n\n【上下文路由规则】\n"
+            "用户已在地图上选中地块（parcel_selected=true），表明需要针对该地块的具体分析，\n"
+            "而非通用知识问答。在此场景下：\n"
+            "1. 「施肥方案/培肥/改良/治理」类模糊请求 → 应路由到对应专业模型（type 3/4/5）\n"
+            "   而非判为知识性问题（type 0）\n"
+            "2. 「这块地怎么样/肥力如何」类查询 → 应路由到质量评价类模型（type 2）\n"
+            "3. 仅当问题完全与农业/土壤无关时才返回 type 0\n"
+        )
 
     prompt = (
         "你是耕地质量与土壤改良领域的问题分类助手。请根据用户问题，判定它属于以下哪一类问题类型。\n\n"
@@ -298,7 +326,8 @@ def _identify_question_type_llm(
         "用户问题：\n"
         f"{question}\n\n"
         "五维上下文：\n"
-        f"{context_text}\n\n"
+        f"{context_text}"
+        f"{context_rules}\n\n"
         "请仅输出严格 JSON，不要任何额外说明或 markdown 代码块：\n"
         '{"question_type": int(0..6, 0=知识性/RAG), '
         '"relevance": float(0..1), "reason": str(简短理由)}'

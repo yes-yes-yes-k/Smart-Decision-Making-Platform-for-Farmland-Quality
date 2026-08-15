@@ -27,7 +27,7 @@ with app.app_context():
             print("[初始化] PostGIS 扩展已就绪")
         except ProgrammingError as e:
             print(f"[错误] PostGIS 扩展初始化失败：{e}", file=sys.stderr)
-            print("[提示] 请在 PostgreSQL 实例侧安装 postgis 包", file=sys.stderr)
+            print("[提示] 请在 PostgreSQL 实例安装 postgis 包", file=sys.stderr)
             print("[提示] 安装后重新运行 python init_db.py", file=sys.stderr)
             db.session.rollback()
             sys.exit(1)

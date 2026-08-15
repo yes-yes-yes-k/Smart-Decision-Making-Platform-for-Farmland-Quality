@@ -1,5 +1,4 @@
 from __future__ import annotations
-import uuid
 from typing import Dict, Optional, Tuple
 from .state import MultiAgentState
 from .exclusive_rules import (
@@ -20,7 +19,6 @@ from .routing import (
     QUESTION_TYPE_3_KEYWORDS,
     QUESTION_TYPE_4_KEYWORDS,
     QUESTION_TYPE_5_KEYWORDS,
-    QUESTION_TYPE_6_KEYWORDS,
     REFERENCE_QUESTIONS,
 )
 
@@ -88,13 +86,9 @@ def identify_question_node(state: MultiAgentState) -> MultiAgentState:
 
     question = state["request"].get("question", "")
     context = _extract_five_dim_context(state)
-    trace_id = uuid.uuid4().hex
-    question_type, relevance, final_type, routing_status = observe_routing(
-        question, context, trace_id=trace_id
-    )
+    question_type, relevance, final_type, routing_status = observe_routing(question, context)
     return {
         **state,
-        "trace_id": trace_id,
         "question_type": final_type,
         "relevance": relevance,
         "routing_status": routing_status,
@@ -102,7 +96,10 @@ def identify_question_node(state: MultiAgentState) -> MultiAgentState:
     }
 
 def _extract_five_dim_context(state: MultiAgentState) -> dict:
-    """从请求提取五维特征上下文（分析尺度/数据类型/业务任务/预期输出）。"""
+    """从请求提取五维特征上下文（分析尺度/数据类型/业务任务/预期输出）。
+
+    同时透传 parcel_id/parcel_code 到 context，供 LLM 路由感知"用户已选地块"场景。
+    """
     request = state.get("request", {})
     context: dict = {}
     scale = request.get("scale")
@@ -133,6 +130,11 @@ def _extract_five_dim_context(state: MultiAgentState) -> dict:
     context["business_task"] = _match_first_keyword(question_text, BUSINESS_TASK_KEYWORDS)
     # 预期输出提取
     context["expected_output"] = _match_first_keyword(question_text, EXPECTED_OUTPUT_KEYWORDS)
+    # 透传地块标识符（LLM 路由可感知"用户已选地块"场景）
+    if request.get("parcel_id"):
+        context["parcel_id"] = request["parcel_id"]
+    if request.get("parcel_code"):
+        context["parcel_code"] = request["parcel_code"]
     return context
 
 def route_models(state: MultiAgentState) -> str:
@@ -250,7 +252,7 @@ def llm_generate(state: MultiAgentState) -> MultiAgentState:
     question = state["request"].get("question", "")
     question_type = state.get("question_type", 1)
 
-    if not question or question_type not in [1, 2, 3, 4, 5, 6]:
+    if not question or question_type not in [1, 2, 3, 4, 5]:
         return {**state, "llm_response": {}, "error": None}
 
     try:

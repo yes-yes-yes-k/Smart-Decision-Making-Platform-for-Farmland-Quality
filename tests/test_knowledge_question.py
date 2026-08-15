@@ -128,14 +128,20 @@ def test_identify_解释有机质_returns_type0():
 
 
 def test_diagnostic_我的田质量等级_仍返回_type2():
-    """「我的田耕地质量等级是多少」仍返回 type 2（诊断性问题不受影响）"""
+    """「我的田耕地质量等级是多少」应返回 type 2（质量等级）。
+
+    question_type 编号对齐后：type=2 → 质量等级 → model-5
+    """
     from framework.agents.nodes import identify_question_type
     qt, _ = identify_question_type("我的田耕地质量等级是多少")
     assert qt == 2, f"诊断性问题期望 type 2，实际 type {qt}"
 
 
 def test_diagnostic_我的田酸化严重吗_仍返回_type4():
-    """「我的田酸化严重吗」仍返回 type 4（诊断性问题不受影响）"""
+    """「我的田酸化严重吗」应返回 type 4（酸化改良）。
+
+    question_type 编号对齐后：type=4 → 酸化改良 → model-2
+    """
     from framework.agents.nodes import identify_question_type
     qt, _ = identify_question_type("我的田酸化严重吗")
     assert qt == 4, f"诊断性问题期望 type 4，实际 type {qt}"
@@ -167,7 +173,7 @@ if __name__ == "__main__":
     test_identify_什么是土壤酸化_returns_type0()
     test_identify_耕地质量等级是什么意思_returns_type0()
     test_identify_解释有机质_returns_type0()
-    test_diagnostic_我的田质量等级_仍返回_type2()
-    test_diagnostic_我的田酸化严重吗_仍返回_type4()
+    test_diagnostic_我的田质量等级_仍返回_type5()
+    test_diagnostic_我的田酸化严重吗_仍返回_type2()
     test_knowledge_question_relevance_is_high()
     print("\n全部知识性问题检测测试通过！")

@@ -50,9 +50,6 @@ class Config:
     CHUNK_OVERLAP = 150
     RETRIEVAL_TOP_K = 5
 
-    # 路由判定模式：llm=LLM 全量初判（失败自动回退关键词），keyword=纯关键词/向量
-    ROUTING_MODE = os.environ.get("ROUTING_MODE", "llm")
-
     MAX_CONCURRENT_MODELS = int(os.environ.get('MAX_CONCURRENT_MODELS') or '0')
 
     # 数据导入接口配置
@@ -65,6 +62,10 @@ class Config:
     }
     BACKUP_RETENTION_COUNT = 3
 
+    # 路由模式开关：llm（默认，LLM 初判+回退）/ keyword（纯关键词+向量）
+    # 受 2026-08-11 llm-routing-judgment 特性引入；test_llm_routing.py 依赖此字段存在
+    ROUTING_MODE = os.environ.get("ROUTING_MODE", "llm")
+
     @classmethod
     def get_max_concurrent(cls) -> int:
         if cls.MAX_CONCURRENT_MODELS > 0:
@@ -74,9 +75,11 @@ class Config:
 
 class DevelopmentConfig(Config):
     DEBUG = True
+    SQLALCHEMY_DATABASE_URI = 'sqlite:///./development.db'
 
 class ProductionConfig(Config):
     DEBUG = False
+    SQLALCHEMY_DATABASE_URI = 'sqlite:///instance/production.db'
 
 class SQLiteConfig(Config):
     DEBUG = True
