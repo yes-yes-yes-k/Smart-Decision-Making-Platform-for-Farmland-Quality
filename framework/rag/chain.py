@@ -72,6 +72,46 @@ class RAGChain:
             "retrieved_count": retrieval_results["count"],
         }
 
+    def chat_stream(self, query: str, conversation_history: Optional[List[Dict]] = None, valid_doc_names: Optional[set] = None):
+        """流式版本的 chat：检索文档后，使用流式 LLM 生成回答，逐 token yield"""
+        retrieval_results = self._retrieve_documents(query, valid_doc_names)
+
+        if retrieval_results["count"] == 0:
+            # 未找到文档，流式调用 LLM 通用知识
+            for chunk in self.llm_service.generate_stream(query, conversation_history):
+                yield {"type": "token", "content": chunk}
+            yield {
+                "type": "meta",
+                "sources": [],
+                "notice": "本地知识库中未找到相关文档，以上回答来自模型通用知识。",
+            }
+            return
+
+        context = self._build_context(retrieval_results["results"])
+        prompt = self._build_prompt(query, context)
+
+        # 收集来源文档信息
+        uuid_names = []
+        for result in retrieval_results["results"]:
+            metadata = result.get("metadata") or {}
+            source = metadata.get("source", "unknown")
+            if source not in uuid_names:
+                uuid_names.append(source)
+        name_mapping = self._query_doc_names(uuid_names)
+
+        sources = []
+        for uuid_name in uuid_names:
+            doc_name = name_mapping.get(uuid_name, uuid_name)
+            if not any(s["doc_name"] == doc_name for s in sources):
+                sources.append({"doc_name": doc_name})
+
+        # 先发送来源元数据，前端可立即展示参考来源
+        yield {"type": "meta", "sources": sources}
+
+        # 流式 LLM 生成
+        for chunk in self.llm_service.generate_stream(prompt, conversation_history):
+            yield {"type": "token", "content": chunk}
+
     def _retrieve_documents(self, query: str, valid_doc_names: Optional[set]) -> Dict[str, Any]:
         filters = None
         if valid_doc_names:

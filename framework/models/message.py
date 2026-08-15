@@ -9,6 +9,8 @@ class Message(db.Model):
     role = db.Column(db.String(20), nullable=False, comment='消息角色: user/assistant')
     content = db.Column(db.Text, nullable=False, comment='消息内容')
     sources = db.Column(db.JSON, default=None, comment='AI回答的引用来源')
+    agents_invoked = db.Column(db.JSON, default=None, comment='本次回答调用的专业模型ID列表')
+    recommendations = db.Column(db.JSON, default=None, comment='综合建议列表')
     create_time = db.Column(db.DateTime, default=db.func.current_timestamp(), comment='发送时间')
 
     def to_dict(self):
@@ -18,5 +20,7 @@ class Message(db.Model):
             'role': self.role,
             'content': self.content,
             'sources': self.sources,
+            'agents_invoked': self.agents_invoked or [],
+            'recommendations': self.recommendations or [],
             'create_time': self.create_time.strftime('%Y-%m-%d %H:%M:%S') if self.create_time else None
         }
