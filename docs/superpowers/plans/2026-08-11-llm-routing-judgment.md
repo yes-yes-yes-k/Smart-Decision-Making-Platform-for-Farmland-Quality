@@ -2,6 +2,7 @@
 change: llm-routing-judgment
 design-doc: docs/superpowers/specs/2026-08-11-llm-routing-judgment-design.md
 base-ref: ad19d4bbb056999c2252a58e86a41f3327bdae43
+archived-with: 2026-08-15-llm-routing-judgment
 ---
 
 # LLM 路由判定 实施计划
