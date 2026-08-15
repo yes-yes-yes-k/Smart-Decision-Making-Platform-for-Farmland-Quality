@@ -71,3 +71,4 @@ AGENTS.md
 
 # 本地路由观测日志（按天生成，不入库）
 logs/
+.codex/
