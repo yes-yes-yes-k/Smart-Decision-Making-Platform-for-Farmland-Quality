@@ -190,7 +190,12 @@ def execute_models(state: MultiAgentState) -> MultiAgentState:
         if "question_type" in state:
             context["question_type"] = state["question_type"]
         # 透传可能的土壤参数与区域/土地类型
-        for key in ("longitude", "latitude", "target_ph", "context", "land_type", "fertilizer_type"):
+        for key in (
+            "longitude", "latitude", "target_ph", "context", "land_type", "fertilizer_type",
+            "db_path", "pH", "SOCbe", "SOMbe", "TN", "TP", "TK", "AP", "AK", "Gap",
+            "Dose", "Fertilizer type", "SJD", "YJZ", "TD", "TL", "TJ", "YXL", "SXJ",
+            "YJZTSZ", "YJFLX",
+        ):
             if key in state["request"]:
                 context[key] = state["request"][key]
 

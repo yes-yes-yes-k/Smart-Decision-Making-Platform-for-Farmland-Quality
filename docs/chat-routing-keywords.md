@@ -1,6 +1,6 @@
 # 聊天关键词与专题模型路由说明
 
-本文说明 `/api/v1/chat/` 如何从用户问题识别 `question_type`，以及不同问题类型最终调用哪个专题模型。当前系统使用 6 个正式专题模型；`model-2` 同时承接质量等级评价和提升潜力评估，旧 `model-7` 不再参与路由。
+本文说明 `/api/v1/chat/` 如何从用户问题识别 `question_type`，以及不同问题类型最终调用哪个专题模型。当前系统使用 6 个正式专题模型；`model-6` 保留为占位能力，外部模型4_v2正式归属 `model-5`。
 
 ## 一、整体流程
 
@@ -34,7 +34,7 @@
 
 ### 2. 专业关键词按固定优先级匹配
 
-非知识性问题按以下顺序检查关键词：`type 1 -> type 2 -> type 3 -> type 4 -> type 5 -> type 6 -> type 7`。命中某一类型后立即停止继续匹配。
+非知识性问题按以下顺序检查关键词：`type 1 -> type 2 -> type 3 -> type 4 -> type 5 -> type 6`。命中某一类型后立即停止继续匹配。
 
 当前实现使用 Python 的字符串包含判断（`keyword in question`）：
 
@@ -53,46 +53,31 @@
 | --- | --- | --- | --- |
 | `0` | 知识性模式：什么是、何为、解释、是什么意思、定义、概念、含义 | RAG | 知识库检索与问答，不调用专题模型 |
 | `1` | 等级稳定、稳定性、稳不稳、稳定吗、退化风险、关注清单、重点关注、临界状态、风险类型、掉级、等级边界安全度、历史变化趋势、持续低质风险等 | `model-1` | 耕地质量稳定性与退化风险评价；通常需要 `parcel_id` 或预计算结果 |
-| `2` | 酸化程度、酸化等级、酸化现状、酸化严重、酸化治理、调理剂、碱性材料、石灰、pH提升、酸化改良、酸化分区、改良方案、土壤酸化等 | `model-4` | 土壤酸化评估、调理剂用量和改良方案计算 |
+| `2` | 质量等级、等级评价、综合指数、障碍度排序、耕地质量等级、质量评价、等级评定、指标权重等 | `model-2` | 耕地质量等级、综合指数和障碍度评价 |
 | `3` | 障碍因素、主要问题、障碍诊断、障碍组合、地块诊断、毛病、障碍等级、哪些问题、有问题、障碍识别、障碍程度、障碍因子等 | `model-3` | 耕地质量主要问题与障碍诊断 |
-| `4` | 肥力预测、SOC预测、有机碳预测、有机碳、SOC、soc、Dose、dose、施肥量预测、预测施肥量、预测置信度、综合肥力、肥力、施多少肥、氮肥等 | `model-6` | 肥力、SOC 和 Dose 预测；部分场景返回预测置信度 |
-| `5` | 质量等级、等级评价、综合指数、指标隶属度、障碍度排序、耕地质量等级、质量评价、等级评定、指标权重 | `model-2` | 真实质量等级、综合指数和障碍度评价；需要 `parcel_code` |
-| `6` | 提升潜力、潜力评估、增产潜力、潜力分布、改良片区、潜力多大、潜力、提升空间、目标等级 | `model-2` | 真实单地块提升潜力或县域潜力情景 |
-| `7` | 有机质、有机肥、秸秆、秸秆还田、培肥、培肥方案、有机肥施用、提升有机质、有机质含量等 | `model-5` | 土壤有机质培肥提升与治理建议 |
+| `4` | 酸化程度、酸化等级、酸化现状、酸化治理、调理剂、石灰、pH提升、酸化改良等 | `model-4` | 土壤酸化评估、调理剂用量和改良方案计算 |
+| `5` | 有机质、有机肥、秸秆、秸秆还田、培肥、培肥方案、有机肥施用、有机质含量等 | `model-5` | 真实/降级的 SOC 与 Dose 有机质培肥预测 |
+| `6` | 当前无默认关键词，供显式 `question_type=6` 调用 | `model-6` | 占位能力，不加载肥力 RF |
 
 当前代码中的完整关键词定义位于 [`framework/agents/nodes.py`](../framework/agents/nodes.py) 的 `QUESTION_TYPE_*_KEYWORDS` 常量。
 
-## 三、模型2的两个真实计算分支
+## 三、model-5 与 model-6 边界
 
-模型2的公开模型 ID 是 `improvement-potential-assessment`，规范问题类型是 `6`，`5` 是同一能力的路由别名。两种类型都只调用模型2，但所需输入和计算分支不同：
+`type=5` 只调用 `model-5/OrganicMatterAgent`。提供 `area_code=lechang`、`land_type` 和土壤特征时，Agent 调用 `model_5_execution`：韶关旱地/水田使用对应 RF，非韶关使用全局 ETR；响应包含 `model_version`、`dose_confidence`、`simulated` 和 `fallback` 元数据。外部字段 `SJD/YJZ/TD/TL/TJ/YXL/SXJ/YJZTSZ/YJFLX` 会先转换为规范字段。
 
-| 触发方式 | 必要输入 | 模型2内部调用 | 返回内容 |
-| --- | --- | --- | --- |
-| `type=5` + 质量等级/综合指数/障碍度关键词 | `parcel_code` | `run_grade_evaluation(parcel_code)` | 质量等级、综合指数、12 项指标、障碍度排序 |
-| `type=6` + 单地块潜力关键词 | `parcel_code` | `run_potential_analysis(parcel_code)` | 各指标改良潜力、原始/潜在等级、全改良结果 |
-| `type=6` + 县域潜力关键词 | `xqmc_code`、`scenario` | `run_county_potential(xqmc_code, scenario)` | 县域潜力情景、等级分布与统计结果 |
-
-模型2真实计算不会使用固定演示指标代替缺失数据。缺少输入或 CSV 未部署时，会返回结构化错误，例如：
-
-- `MISSING_PARCEL_CODE`
-- `MISSING_SCENARIO`
-- `DEPLOYMENT_ERROR`
-- `PARCEL_NOT_FOUND`
-
-成功的模型2真实结果会标记 `metadata.simulated=false`。
+`type=6` 保留 `model-6/placeholder` 占位能力，只用于显式类型调用，不加载或调用任何肥力 RF 引擎。
 
 ## 四、典型问题示例
 
 | 用户问题 | 识别结果 | 需要注意的输入 |
 | --- | --- | --- |
-| 我的田耕地质量等级是多少？ | `type=5` -> `model-2` | 提供 `parcel_code`，例如 `A0001` |
-| 查询这块地的综合指数和障碍度排序 | `type=5` -> `model-2` | 提供 `parcel_code` |
-| 这块地提升潜力有多大？ | `type=6` -> `model-2` | 单地块分析提供 `parcel_code` |
-| 我们县的优先改良片区在哪里？ | `type=6` -> `model-2` | 县域情景提供 `xqmc_code` 和 `scenario` |
-| 我的田酸化严重吗？ | `type=2` -> `model-4` | 酸化评估所需的地块或结构化指标 |
-| 我的田肥力怎么样？ | `type=4` -> `model-6` | 肥力预测所需的输入指标 |
+| 我的田耕地质量等级是多少？ | `type=2` -> `model-2` | 提供 `parcel_code`，例如 `A0001` |
+| 查询这块地的综合指数和障碍度排序 | `type=2` -> `model-2` | 提供 `parcel_code` |
+| 我的田酸化严重吗？ | `type=4` -> `model-4` | 酸化评估所需的地块或结构化指标 |
+| 我的田肥力怎么样？ | `type=5` -> `model-5` | 提供 `area_code`、`land_type` 和土壤特征 |
 | 这块地到底有什么问题？ | `type=3` -> `model-3` | 障碍诊断所需的 `parcel_id` 或数据 |
-| 为了提升有机质，每亩有机肥施多少？ | `type=7` -> `model-5` | 有机质培肥相关指标 |
+| 为了提升有机质，每亩有机肥施多少？ | `type=5` -> `model-5` | 提供规范字段或外部字段后执行真实 RF |
+| 显式调用占位模型 | `type=6` -> `model-6` | 仅返回占位结果，不调用 RF |
 
 ## 五、关键词冲突与提问建议
 
@@ -100,9 +85,9 @@
 
 | 问题 | 可能命中的关键词 | 实际类型 |
 | --- | --- | --- |
-| 我的田质量等级稳不稳？ | `稳不稳`（type 1）和“质量等级”（type 5） | `type=1` -> `model-1` |
-| 这块地酸化改良方案怎么做？ | “酸化”“改良方案” | `type=2` -> `model-4` |
-| 我的田肥力和有机质怎么样？ | “肥力”（type 4）和“有机质”（type 7） | `type=4` -> `model-6` |
+| 我的田质量等级稳不稳？ | `稳不稳`（type 1）和“质量等级”（type 2） | `type=1` -> `model-1` |
+| 这块地酸化改良方案怎么做？ | “酸化”“改良方案” | `type=4` -> `model-4` |
+| 我的田肥力和有机质怎么样？ | “肥力”和“有机质”（均属于 type 5） | `type=5` -> `model-5` |
 
 建议在提问时明确唯一目标：
 
@@ -117,13 +102,25 @@
 
 ```json
 {
-  "model_id": "improvement-potential-assessment",
+  "model_id": "organic-matter-improvement",
   "question_type": 5,
-  "parcel_code": "A0001"
+  "area_code": "lechang",
+  "land_type": "upland",
+  "indicators": {
+    "pH": 6.2,
+    "SOCbe": 22.0,
+    "TN": 1.1,
+    "TP": 0.8,
+    "TK": 18.0,
+    "AP": 25.0,
+    "AK": 80.0,
+    "Gap": 5.0,
+    "Fertilizer type": 1
+  }
 }
 ```
 
-聊天接口仍以用户消息自动识别为主；模型执行接口可以显式传递 `question_type`、`parcel_code`、`xqmc_code`、`scenario` 和 `csv_path`。
+聊天接口仍以用户消息自动识别为主；模型执行接口可以显式传递 `question_type`、`area_code`、`land_type`、规范指标或外部字段。`type=6` 仅保留 model-6 占位路由。
 
 ## 七、相关实现与接口文档
 

@@ -101,8 +101,24 @@ class AgentManager:
         # model-6: 占位符（无真实实现，使用桩智能体）
         return real
 
+    def _refresh_stub_agents(self) -> None:
+        """在循环导入结束后，将初始化阶段的临时桩替换为真实 Agent。"""
+        if not isinstance(self.agents.get("model-5"), _StubAgent):
+            return
+        real_agents = self._load_real_agents()
+        for capability in PROFESSIONAL_CAPABILITIES:
+            agent = real_agents.get(capability.agent_id)
+            if agent is None or not isinstance(self.agents.get(capability.agent_id), _StubAgent):
+                continue
+            agent.capability = public_capability_descriptor(capability)
+            agent.dependencies = []
+            self.agents[capability.agent_id] = agent
+
     def process(self, question: str, context: Dict[str, Any]) -> Dict[str, Any]:
         """处理用户问题，返回综合结果。"""
+        # src.ai_culti_demo 初始化可能与 framework.agents 形成循环导入；
+        # 首次请求时再刷新一次，避免 model-5 永久停留在占位桩。
+        self._refresh_stub_agents()
         question_type = context.get("question_type")
         agent_ids = self.router.get_agents_for_type(question_type)
 

@@ -27,3 +27,11 @@ TBD - created by archiving change add-model-run-apifox-examples. Update Purpose 
 - **WHEN** 调用者查看稳定性风险、质量等级或酸化/有机质施用问题的聊天示例
 - **THEN** 文档 MUST 分别展示 type 1/model-1 与 type 2/model-2、type 4/model-4 与 type 5/model-5 的路由和返回字段差异
 
+### Requirement: model-5 真实 RF 请求示例
+
+模型调用文档 MUST 展示 `organic-matter-improvement`（公开 model-5）的请求示例，包含 `area_code`、`land_type`、规范或外部土壤字段，并说明 `model_version`、`dose_confidence`、`simulated` 与降级状态。model-6 示例 MUST 明确为 `placeholder` 占位能力，不得描述为肥力 RF。
+
+#### Scenario: model-5 示例可执行
+- **WHEN** 调用者按文档提交 model-5 请求
+- **THEN** 请求 SHALL 能触发真实 RF/ETR 结果，或返回明确标注的 fallback
+

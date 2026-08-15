@@ -249,19 +249,18 @@
 统一智能路由入口，根据问题类型（question_type）自动路由：
 - **question_type=0** → RAG 链（知识性问题，如「什么是土壤酸化」「耕地质量等级是什么意思」）
 - **question_type=1** → model-1 稳定性风险识别（等级稳定性/退化风险）
-- **question_type=2** → model-4 酸化改良（酸化程度/调理剂/改良方案）
+- **question_type=2** → model-2 耕地质量等级评价（综合指数/质量等级/障碍度排序）
 - **question_type=3** → model-3 障碍诊断（障碍因素/主要问题/障碍组合）
-- **question_type=4** → model-6 肥力 ML 预测（SOC/Dose/预测置信度）
-- **question_type=5** → model-7 耕地质量等级评价（综合指数/质量等级/障碍度排序）
-- **question_type=6** → model-2 提升潜力评估（提升潜力/增产潜力/改良片区）
-- **question_type=7** → model-5 有机质培肥（有机肥/秸秆还田/培肥方案）
+- **question_type=4** → model-4 酸化改良（酸化程度/调理剂/改良方案）
+- **question_type=5** → model-5 有机质培肥 ML（SOC/Dose/预测置信度）
+- **question_type=6** → model-6 占位能力（不加载肥力 RF）
 
 > 路由采用 1:1 映射：每个 question_type 仅调用对应的单一专业智能体，不再按用户角色固定调用多个模型组合。
 
 请求体：
 ```json
 {
-    "message": "我的田耕地质量等级是多少？",
+    "message": "我的田有机质培肥施用量多少？",
     "conversation_id": 1,
     "area_code": "lechang",
     "parcel_id": "1",
@@ -284,8 +283,8 @@
 | `conversation_id` | int | 否 | 对话 ID，不传则创建新对话 |
 | `area_code` | string | 否 | 区域代码（默认 "lechang"，model-1/3/4 按 area_code 查 DB） |
 | `parcel_id` | string | 否 | 地块 ID（数字字符串，给 model-1/3/4 查 DB），农户端问题或 type 5 问题建议携带 |
-| `parcel_code` | string | 否 | 地块代码（字母数字，给 model-7 调 Python 模型），type 5 质量等级评价必需 |
-| `land_type` | string | 否 | 土地利用类型（`upland` 旱地 / `paddy` 水田，默认 `upland`，酸化改良 model-4 使用，与 `fertilizer_type` 组合选择 4 子模型） |
+| `parcel_code` | string | 否 | 地块代码（字母数字，给 model-2 质量等级评价使用） |
+| `land_type` | string | 否 | 土地利用类型（`upland` 旱地 / `paddy` 水田；model-5 韶关区域按此选择 RF 子模型，默认 `upland`） |
 | `fertilizer_type` | string | 否 | 肥料类型（`compound` 复合肥 / `urea` 尿素，默认 `compound`，酸化改良 model-4 使用，与 `land_type` 组合选择 4 子模型） |
 | `context` | object | 否 | 专业模型参数 |
 
@@ -312,20 +311,21 @@ context 参数说明：
             "status": "ok",
             "data": {
                 "question_type": 5,
-                "agents_invoked": ["model-7"],
-                "summary": "[model-7] 质量等级 10等, 综合指数 0.6728",
+                "agents_invoked": ["model-5"],
+                "summary": "[model-5] 有机质培肥模型已完成结构化分析",
                 "details": {
-                    "model-7": {
-                        "answer": "耕地质量等级：10等，综合指数：0.6728",
-                        "evidence": [],
-                        "confidence": 0.95
+                    "model-5": {
+                        "answer": "SOC约 24.1 g/kg，建议施用量约 312.4 t/ha",
+                        "evidence": [{"metric": "model_version", "value": "SG_RF_v2_20260804"}],
+                        "confidence": 0.96,
+                        "simulated": false
                     }
                 },
-                "recommendations": ["质地构型障碍度最高，建议优先改良"]
+                "recommendations": ["预测结果仅供辅助决策，请结合田间试验复核"]
             }
         },
-        "agents_invoked": ["model-7"],
-        "recommendations": ["质地构型障碍度最高，建议优先改良"],
+        "agents_invoked": ["model-5"],
+        "recommendations": ["预测结果仅供辅助决策，请结合田间试验复核"],
         "message_id": 3
     }
 }
@@ -335,8 +335,8 @@ context 参数说明：
 |------|------|------|
 | `answer` | string | 综合回答内容 |
 | `sources` | array | RAG 引用文档列表（仅 type 0 或 RAG 命中时返回） |
-| `question_type` | int | 问题类型（0-7），见上方路由说明 |
-| `model_results` | object | 多智能体框架返回的结构化结果（type 1-7 时返回） |
+| `question_type` | int | 问题类型（0-6），见上方路由说明 |
+| `model_results` | object | 多智能体框架返回的结构化结果（type 1-6 时返回） |
 | `agents_invoked` | array | 调用的智能体 ID 列表（1:1 映射，仅含单一模型） |
 | `recommendations` | array | 综合建议列表 |
 | `message_id` | int | 本次回答的消息 ID |
@@ -486,19 +486,43 @@ context 参数说明：
     "status": "ok",
     "data": [
         {"name": "stability-risk-evaluation", "description": "基于3期历史数据，通过九模块综合评价耕地质量稳定性和退化风险（model-1）。"},
-        {"name": "improvement-potential-assessment", "description": "耕地质量提升潜力评估（model-2）。"},
+        {"name": "quality-grade-evaluation", "description": "耕地质量等级评价，输出综合指数、等级和障碍度（model-2）。"},
         {"name": "obstacle-diagnosis", "description": "主要问题与障碍诊断（model-3）。"},
         {"name": "acidification-remediation", "description": "基于过程模型（4 子模型：水田/旱地 × 尿素/复合肥）计算酸化改良剂需求，输出亿土康（YTK）与木本泥炭（MBNT）施用量（model-4）。"},
-        {"name": "organic-matter-improvement", "description": "有机质培肥提升（model-5）。"},
-        {"name": "fertility-soc-dose-prediction", "description": "肥力 SOC/Dose 预测（model-6）。"},
-        {"name": "quality-grade-evaluation", "description": "通过 Python 模型进行耕地质量等级评价，输出12指标原始值/隶属度、综合指数、质量等级和障碍度排序（model-7）。"}
+        {"name": "organic-matter-improvement", "description": "有机质培肥 ML：韶关旱地/水田 RF + 全局 ETR，返回 SOC、Dose、版本和降级状态（model-5）。"},
+        {"name": "placeholder", "description": "占位能力，暂不加载肥力 RF（model-6）。"}
     ]
 }
 ```
 
-> 注：默认列表仅返回 7 个正式专业模型，均与一个专业智能体一一对应。传入 `include_non_professional=true` 可查看辅助空间能力、辅助指标能力和实验性协同提升能力；它们不参与聊天路由。
+> 注：默认列表仅返回 6 个正式专业模型，均与一个专业智能体一一对应。传入 `include_non_professional=true` 可查看辅助空间能力、辅助指标能力和实验性协同提升能力；它们不参与聊天路由。
 
 > `obstacle-factor-identification` 与 `acidification-governance` 为旧模型标识，仍可调用但响应会返回规范模型 ID 和弃用提示。`spatial-structure-analysis`、`soil-indicator-analysis` 为辅助能力，`multi-factor-collaborative-improvement` 为实验性能力。
+
+### 有机质培肥 ML（model-5）
+
+**POST** `/api/v1/models/run`
+
+请求 `model_id` 使用公开标识 `organic-matter-improvement`。韶关区域按 `land_type` 选择旱地/水田 RF；规范字段也可以替换为外部模型字段 `SJD/YJZ/TD/TL/TJ/YXL/SXJ/YJZTSZ/YJFLX`。
+
+```json
+{
+    "model_id": "organic-matter-improvement",
+    "area_code": "lechang",
+    "land_type": "upland",
+    "pH": 6.2,
+    "SOCbe": 22.0,
+    "TN": 1.1,
+    "TP": 0.8,
+    "TK": 18.0,
+    "AP": 25.0,
+    "AK": 80.0,
+    "Gap": 5.0,
+    "Fertilizer type": 1
+}
+```
+
+响应中的 `model_id` 为 `model-5`，并包含 `soc_prediction`、`dose_prediction`、`dose_confidence`、`model_version=SG_RF_v2_20260804` 和 `simulated=false`。缺少特征、模型文件或依赖时，响应会明确标记 `fallback`/`simulated` 与 `fallback_reason`，不会伪装为 RF 成功结果。`model_id=placeholder` 对应 model-6 占位能力，不调用该 RF 引擎。
 
 ---
 

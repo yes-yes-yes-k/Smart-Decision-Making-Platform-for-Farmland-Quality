@@ -1,17 +1,17 @@
 # fertility-ml-prediction Specification
 
 ## Purpose
-TBD - created by archiving change add-model-6-fertility-ml. Update Purpose after archive.
+TBD - created by archiving change add-model-5-fertility-ml. Update Purpose after archive.
 ## Requirements
 ### Requirement: SOC（土壤有机碳）ML 预测能力
-系统 SHALL 通过 `framework/domain/other_models/model_6.py` 中的 `model_6_execution` 函数提供 SOC（土壤有机碳）的机器学习预测能力，底层使用预训练的 ExtraTreesRegressor 模型（保存在 `data/fertility/models/soc_etr_model.joblib`），输入 10 个土壤特征（pH、SOCbe、TN、TP、TK、AP、AK、Gap、Dose、Fertilizer type），返回 SOC 预测值（单位 g/kg）与模型质量元信息（R²=0.91、RMSE=2.24）。
+系统 SHALL 通过 `framework/domain/other_models/model_5.py` 中的 `model_5_execution` 函数提供 SOC（土壤有机碳）的机器学习预测能力，底层使用预训练的 ExtraTreesRegressor 模型（保存在 `data/fertility/models/soc_etr_model.joblib`），输入 10 个土壤特征（pH、SOCbe、TN、TP、TK、AP、AK、Gap、Dose、Fertilizer type），返回 SOC 预测值（单位 g/kg）与模型质量元信息（R²=0.91、RMSE=2.24）。
 
 #### Scenario: 完整特征输入的 SOC 预测
-- **WHEN** 调用 `model_6_execution` 时 `input_data` 包含全部 10 个特征字段（pH、SOCbe、TN、TP、TK、AP、AK、Gap、Dose、Fertilizer type）且均为有效数值
+- **WHEN** 调用 `model_5_execution` 时 `input_data` 包含全部 10 个特征字段（pH、SOCbe、TN、TP、TK、AP、AK、Gap、Dose、Fertilizer type）且均为有效数值
 - **THEN** 系统 SHALL 加载 `data/fertility/models/soc_etr_model.joblib` 模型文件，调用 `model.predict()` 返回结构包含：`soc_prediction`（float，单位 g/kg）、`soc_confidence`（值为 0.91）、`model_version`（如 "ETR_v1_20260713"）、`imputed_features`（空列表）、`status`（值为 "success"）
 
 #### Scenario: 部分特征缺失的 SOC 预测
-- **WHEN** 调用 `model_6_execution` 时 `input_data` 仅包含 3 个核心特征（如 pH、SOCbe、TN），其余 7 个特征缺失
+- **WHEN** 调用 `model_5_execution` 时 `input_data` 仅包含 3 个核心特征（如 pH、SOCbe、TN），其余 7 个特征缺失
 - **THEN** 系统 SHALL 使用训练集对应列的均值填充缺失特征，在响应 `imputed_features` 字段中列出被填充的特征名列表（如 ["TP", "TK", "AP", "AK", "Gap", "Dose", "Fertilizer type"]），`soc_prediction` 仍返回有效数值，`soc_confidence` 保持 0.91 但附带 `imputation_applied: true` 标记
 
 #### Scenario: 模型文件缺失时的降级回退
@@ -20,39 +20,39 @@ TBD - created by archiving change add-model-6-fertility-ml. Update Purpose after
 
 #### Scenario: scikit-learn 依赖缺失时的优雅降级
 - **WHEN** 运行时未安装 `scikit-learn` 包导致 `ImportError`
-- **THEN** 系统 SHALL 在模块导入层捕获异常，`model_6_execution` 仍可被调用并返回降级响应（`status: "fallback"`、`fallback_reason: "sklearn_missing"`、`soc_confidence: 0.3`），不影响 `AgentManager` 启动与其他 agent 的注册
+- **THEN** 系统 SHALL 在模块导入层捕获异常，`model_5_execution` 仍可被调用并返回降级响应（`status: "fallback"`、`fallback_reason: "sklearn_missing"`、`soc_confidence: 0.3`），不影响 `AgentManager` 启动与其他 agent 的注册
 
 #### Scenario: 输入特征越界时拒绝预测
-- **WHEN** 调用 `model_6_execution` 时 `input_data` 中任一特征值超出合法范围（如 pH=99、Fertilizer type=3）
+- **WHEN** 调用 `model_5_execution` 时 `input_data` 中任一特征值超出合法范围（如 pH=99、Fertilizer type=3）
 - **THEN** 系统 SHALL 返回 `status` 字段值为 "rejected"，`reason` 字段值为 "input_out_of_range"，`out_of_range_features` 字段为列表（每个元素含 `feature`、`value`、`valid_range` 三个字段），`soc_prediction` 与 `dose_prediction` 为 null，不执行预测。合法范围定义：pH(3-11)、SOCbe(0-100 g/kg)、TN(0-10 g/kg)、TP(0-10 g/kg)、TK(0-100 g/kg)、AP(0-200 mg/kg)、AK(0-500 mg/kg)、Gap(-10 to 50 g/kg)、Dose(0-1000 t/ha)、Fertilizer type(1-2，1=秸秆, 2=有机肥)
 
 ### Requirement: Dose（施用量）ML 预测能力
 
-系统 SHALL 通过 `model_6_execution` 函数提供 Dose（施用量）的机器学习预测能力，支持区域路由：非韶关区域使用预训练的全局 ExtraTreesRegressor 模型（保存在 `data/fertility/models/dose_etr_model.joblib`），韶关区域（`area_code` 命中 `SHAOGUAN_AREA_CODES` 集合）使用 RandomForestRegressor 模型（按 `land_type` 选择旱地或水田子模型）。Dose 模型输入 9 个土壤特征（pH、SOCbe、TN、TP、TK、AP、AK、Gap、Fertilizer type，不含 Dose 自身），返回 Dose 预测值（单位 t/ha）、置信度与质量警告信息。SOC 预测在所有区域均使用全局 ETR SOC 模型，不受区域路由影响。成功响应的 `model_version` 字段 SHALL 反映实际使用的模型版本：韶关区域返回所用 SG RF 模型的版本号（即 `sg_dose_{land_type}_metadata.json` 中的 `model_version`），非韶关区域返回全局 ETR 版本号。
+系统 SHALL 通过 `model_5_execution` 函数提供 Dose（施用量）的机器学习预测能力，支持区域路由：非韶关区域使用预训练的全局 ExtraTreesRegressor 模型（保存在 `data/fertility/models/dose_etr_model.joblib`），韶关区域（`area_code` 命中 `SHAOGUAN_AREA_CODES` 集合）使用 RandomForestRegressor 模型（按 `land_type` 选择旱地或水田子模型）。Dose 模型输入 9 个土壤特征（pH、SOCbe、TN、TP、TK、AP、AK、Gap、Fertilizer type，不含 Dose 自身），返回 Dose 预测值（单位 t/ha）、置信度与质量警告信息。SOC 预测在所有区域均使用全局 ETR SOC 模型，不受区域路由影响。成功响应的 `model_version` 字段 SHALL 反映实际使用的模型版本：韶关区域返回所用 SG RF 模型的版本号（即 `sg_dose_{land_type}_metadata.json` 中的 `model_version`），非韶关区域返回全局 ETR 版本号。
 
 #### Scenario: 非韶关区域完整特征输入的 Dose 预测
 
-- **WHEN** 调用 `model_6_execution` 时 `area_code` 不在 `SHAOGUAN_AREA_CODES` 中，且 `input_data` 包含全部 9 个 Dose 模型所需特征
+- **WHEN** 调用 `model_5_execution` 时 `area_code` 不在 `SHAOGUAN_AREA_CODES` 中，且 `input_data` 包含全部 9 个 Dose 模型所需特征
 - **THEN** 系统 SHALL 加载 `data/fertility/models/dose_etr_model.joblib`，调用 `model.predict()` 返回 `dose_prediction`（float，单位 t/ha）、`dose_confidence`（值为 0.47）、`dose_warning`（值为 "Dose 模型 R²=0.47，预测结果仅供参考，建议结合田间试验校准"）、`model_version`（值为全局 ETR 版本号，如 "ETR_v1_20260713"）
 
 #### Scenario: 韶关区域旱地 Dose 预测
 
-- **WHEN** 调用 `model_6_execution` 时 `area_code` 命中 `SHAOGUAN_AREA_CODES`（如 "lechang"），且 `land_type` 为 "upland" 或未传（默认 "upland"）
+- **WHEN** 调用 `model_5_execution` 时 `area_code` 命中 `SHAOGUAN_AREA_CODES`（如 "lechang"），且 `land_type` 为 "upland" 或未传（默认 "upland"）
 - **THEN** 系统 SHALL 加载 `data/fertility/models/sg_dose_upland_rf_model.joblib`，使用 RandomForestRegressor 预测 Dose，返回 `dose_prediction`、`dose_confidence`（SG 旱地模型测试 R²）、`dose_warning`（含 "韶关旱地 RF 模型" 标识）、`model_version`（值为 `sg_dose_upland_metadata.json` 中的 `model_version`，如 "SG_RF_v2_20260804"），SOC 预测仍使用全局 ETR SOC 模型
 
 #### Scenario: 韶关区域水田 Dose 预测
 
-- **WHEN** 调用 `model_6_execution` 时 `area_code` 命中 `SHAOGUAN_AREA_CODES`，且 `land_type` 为 "paddy"
+- **WHEN** 调用 `model_5_execution` 时 `area_code` 命中 `SHAOGUAN_AREA_CODES`，且 `land_type` 为 "paddy"
 - **THEN** 系统 SHALL 加载 `data/fertility/models/sg_dose_paddy_rf_model.joblib`，使用 RandomForestRegressor 预测 Dose，返回 `dose_prediction`、`dose_confidence`（SG 水田模型测试 R²）、`dose_warning`（含 "韶关水田 RF 模型" 标识）、`model_version`（值为 `sg_dose_paddy_metadata.json` 中的 `model_version`，如 "SG_RF_v2_20260804"）
 
 #### Scenario: 韶关区域 SOC 预测回退全局 ETR
 
-- **WHEN** 调用 `model_6_execution` 时 `area_code` 命中 `SHAOGUAN_AREA_CODES`，无论 `land_type` 取值
+- **WHEN** 调用 `model_5_execution` 时 `area_code` 命中 `SHAOGUAN_AREA_CODES`，无论 `land_type` 取值
 - **THEN** SOC 预测 SHALL 使用全局 `data/fertility/models/soc_etr_model.joblib`（ExtraTreesRegressor），返回 `soc_prediction` 和 `soc_confidence`（值为 0.91），与非韶关区域 SOC 预测行为一致
 
 #### Scenario: SOMbe 输入名称映射
 
-- **WHEN** 调用 `model_6_execution` 时 `input_data` 中有机指标字段名为 `SOMbe`（而非 `SOCbe`）
+- **WHEN** 调用 `model_5_execution` 时 `input_data` 中有机指标字段名为 `SOMbe`（而非 `SOCbe`）
 - **THEN** 系统 SHALL 在输入层将 `SOMbe` 映射为 `SOCbe`，使全局 ETR 和 SG RF 模型均能正确消费该特征，`imputed_features` 中使用统一名 `SOCbe`
 
 #### Scenario: Dose 预测时显式标注低置信度
@@ -62,7 +62,7 @@ TBD - created by archiving change add-model-6-fertility-ml. Update Purpose after
 
 #### Scenario: 部分特征缺失的 Dose 预测
 
-- **WHEN** 调用 `model_6_execution` 时部分 Dose 模型特征缺失
+- **WHEN** 调用 `model_5_execution` 时部分 Dose 模型特征缺失
 - **THEN** 系统 SHALL 使用对应模型（全局 ETR 或 SG RF）的训练集均值填充缺失特征，在 `imputed_features` 中累计列出 SOC 与 Dose 模型各自被填充的特征，附带 `imputation_applied: true`
 
 #### Scenario: Dose 模型文件缺失时的降级回退
@@ -113,14 +113,14 @@ TBD - created by archiving change add-model-6-fertility-ml. Update Purpose after
 - **THEN** 安装 SHALL 成功完成，且 `python -c "import sklearn; import joblib"` 无 ImportError
 
 ### Requirement: 韶关区域路由与 land_type 参数支持
-系统 SHALL 在 `model_6_execution` 中维护 `SHAOGUAN_AREA_CODES` 集合（初始包含 "lechang"，可扩展），根据 `input_data` 中的 `area_code` 字段判断是否使用韶关区域模型路径。韶关区域 Dose 预测 SHALL 接受可选 `land_type` 参数（"upland"/"paddy"），未传时默认 "upland" 并在 `dose_warning` 中标注默认提示。非韶关区域 SHALL 忽略 `land_type`，使用全局 ETR 模型。
+系统 SHALL 在 `model_5_execution` 中维护 `SHAOGUAN_AREA_CODES` 集合（初始包含 "lechang"，可扩展），根据 `input_data` 中的 `area_code` 字段判断是否使用韶关区域模型路径。韶关区域 Dose 预测 SHALL 接受可选 `land_type` 参数（"upland"/"paddy"），未传时默认 "upland" 并在 `dose_warning` 中标注默认提示。非韶关区域 SHALL 忽略 `land_type`，使用全局 ETR 模型。
 
 #### Scenario: area_code 命中韶关集合
-- **WHEN** `model_6_execution` 的 `input_data` 中 `area_code` 值为 "lechang"（在 `SHAOGUAN_AREA_CODES` 中）
+- **WHEN** `model_5_execution` 的 `input_data` 中 `area_code` 值为 "lechang"（在 `SHAOGUAN_AREA_CODES` 中）
 - **THEN** 系统 SHALL 走韶关区域路径：Dose 使用 SG RF 模型，SOC 使用全局 ETR 模型
 
 #### Scenario: area_code 未命中韶关集合
-- **WHEN** `model_6_execution` 的 `input_data` 中 `area_code` 值为 "other" 或未提供
+- **WHEN** `model_5_execution` 的 `input_data` 中 `area_code` 值为 "other" 或未提供
 - **THEN** 系统 SHALL 走全局路径：Dose 和 SOC 均使用全局 ETR 模型，行为与变更前完全一致
 
 #### Scenario: land_type 未传时默认旱地
@@ -128,6 +128,17 @@ TBD - created by archiving change add-model-6-fertility-ml. Update Purpose after
 - **THEN** 系统 SHALL 默认使用 "upland" 子模型，并在 `dose_warning` 中追加 "未指定 land_type，默认使用旱地模型" 提示
 
 #### Scenario: 传递区域与土地类型
-- **WHEN** 调用 `model_6_execution` 时 `input_data` 中包含 `area_code` 和 `land_type`
+- **WHEN** 调用 `model_5_execution` 时 `input_data` 中包含 `area_code` 和 `land_type`
 - **THEN** 系统 SHALL 消费 `area_code` 和 `land_type`，确保区域路由和子模型选择正确执行
 
+### Requirement: 外部源字段适配与冲突校验
+
+系统 SHALL 在 `model_5_execution` 入口将外部字段 `SJD/YJZ/TD/TL/TJ/YXL/SXJ/YJZTSZ/YJFLX` 分别映射为 `pH/SOCbe/TN/TP/TK/AP/AK/Gap/Fertilizer type`，并继续兼容 `SOMbe→SOCbe`。规范字段与源字段同时存在且数值不一致时，系统 SHALL 返回 `status=rejected`、`reason=input_conflict`，不得静默覆盖。
+
+#### Scenario: 外部字段调用
+- **WHEN** 输入包含完整外部字段集合
+- **THEN** 系统 SHALL 先完成字段规范化再执行全局 ETR 或韶关 RF，响应 SHALL 标注 `model_id=model-5` 和实际版本
+
+#### Scenario: 输入越界或模型不可用
+- **WHEN** 字段超出合法范围、模型文件缺失或 scikit-learn/joblib 不可用
+- **THEN** 系统 SHALL 返回机器可读的 `input_out_of_range` 或 `fallback_reason`，不得伪装为 RF 成功结果
