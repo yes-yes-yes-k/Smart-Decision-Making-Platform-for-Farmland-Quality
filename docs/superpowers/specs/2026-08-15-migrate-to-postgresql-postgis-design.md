@@ -2,6 +2,8 @@
 comet_change: migrate-to-postgresql-postgis
 role: technical-design
 canonical_spec: openspec
+archived-with: 2026-08-15-migrate-to-postgresql-postgis
+status: final
 ---
 
 # Design Doc: migrate-to-postgresql-postgis

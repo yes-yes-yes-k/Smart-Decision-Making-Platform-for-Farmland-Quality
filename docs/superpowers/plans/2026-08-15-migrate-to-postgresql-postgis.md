@@ -2,6 +2,7 @@
 change: migrate-to-postgresql-postgis
 design-doc: docs/superpowers/specs/2026-08-15-migrate-to-postgresql-postgis-design.md
 base-ref: 96f9be821a5a91867cc3ca55e30d95c4866f4864
+archived-with: 2026-08-15-migrate-to-postgresql-postgis
 ---
 
 # migrate-to-postgresql-postgis 实施计划
