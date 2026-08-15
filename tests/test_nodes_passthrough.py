@@ -85,3 +85,99 @@ def test_orchestrator_run_attaches_trace_id():
     result = orch.run({"question": "q"})
     assert result["trace_id"] == "tid-1"
     assert result["answer"] == "ok"
+
+
+def test_chat_response_contains_trace_id():
+    """POST /api/v1/chat/ → response data 含 trace_id（取自 orchestrator.run 结果）。"""
+    from framework.api.app import create_app
+    from framework.agents.orchestrator import multi_agent_orchestrator
+
+    app = create_app("sqlite")
+    app.config["TESTING"] = True
+
+    with app.app_context():
+        from framework.models.user import db, User
+        db.create_all()
+        user = User.query.filter_by(username="tester").first()
+        if not user:
+            user = User(username="tester", password="x")
+            db.session.add(user)
+            db.session.commit()
+        user_id = user.id
+        from flask_jwt_extended import create_access_token
+        access_token = create_access_token(identity=str(user_id))
+
+    def fake_run(req, conversation_history=None):
+        return {
+            "answer": "ok",
+            "question_type": 2,
+            "model_results": {"data": {"question_type": 2, "agents_invoked": [], "summary": "", "details": {}, "recommendations": []}},
+            "trace_id": "chat-trace-1",
+        }
+
+    real_run = multi_agent_orchestrator.run
+    multi_agent_orchestrator.run = fake_run
+    client = app.test_client()
+    try:
+        with app.app_context():
+            resp = client.post(
+                "/api/v1/chat/",
+                json={"message": "我的田耕地质量等级是多少"},
+                headers={"Authorization": f"Bearer {access_token}"},
+            )
+    finally:
+        multi_agent_orchestrator.run = real_run
+
+    assert resp.status_code == 200
+    data = resp.get_json()["data"]
+    assert data["trace_id"] == "chat-trace-1"
+
+
+def test_chat_stream_done_contains_trace_id():
+    """POST /api/v1/chat/stream → done 事件 data 含 trace_id。"""
+    from framework.api.app import create_app
+    from framework.agents.orchestrator import multi_agent_orchestrator
+
+    app = create_app("sqlite")
+    app.config["TESTING"] = True
+
+    with app.app_context():
+        from framework.models.user import db, User
+        db.create_all()
+        user = User.query.filter_by(username="tester").first()
+        if not user:
+            user = User(username="tester", password="x")
+            db.session.add(user)
+            db.session.commit()
+        user_id = user.id
+        from flask_jwt_extended import create_access_token
+        access_token = create_access_token(identity=str(user_id))
+
+    def fake_run_stream(req, conversation_history=None):
+        yield {
+            "type": "done",
+            "data": {
+                "answer": "ok",
+                "sources": [],
+                "model_results": {},
+                "question_type": 2,
+                "question": "q",
+                "trace_id": "stream-trace-1",
+            },
+        }
+
+    real_run_stream = multi_agent_orchestrator.run_stream
+    multi_agent_orchestrator.run_stream = fake_run_stream
+    client = app.test_client()
+    try:
+        with app.app_context():
+            resp = client.post(
+                "/api/v1/chat/stream",
+                json={"message": "我的田耕地质量等级是多少"},
+                headers={"Authorization": f"Bearer {access_token}"},
+            )
+    finally:
+        multi_agent_orchestrator.run_stream = real_run_stream
+
+    assert resp.status_code == 200
+    assert "stream-trace-1" in resp.get_data(as_text=True)
