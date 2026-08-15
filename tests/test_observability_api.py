@@ -101,3 +101,37 @@ class TestTraceEndpoint:
     def test_no_jwt_returns_401(self, client):
         resp = client.get("/api/v1/observability/trace/any")
         assert resp.status_code == 401
+
+
+class TestDashboardEndpoint:
+    def test_dashboard_returns_metrics_and_matrices(self, client, tmp_path, monkeypatch):
+        from framework.observability import routing_log
+        monkeypatch.setattr(routing_log, "_LOG_DIR", str(tmp_path))
+        # 两条日志：一条 boundary_pending → missed_call_rate = 0.5
+        _write_log_entry(tmp_path, "a", routing_status="normal")
+        _write_log_entry(tmp_path, "b", routing_status="boundary_pending")
+        # 混淆矩阵文件（含 .llm.json 变体）
+        with open(os.path.join(str(tmp_path), "confusion_matrix.json"), "w", encoding="utf-8") as f:
+            json.dump({"model-2-vs-model-3": {"tp": 1, "fp": 0, "fn": 0, "tn": 3, "accuracy": 1.0, "confusion_rate": 0.0}}, f)
+        with open(os.path.join(str(tmp_path), "confusion_matrix.llm.json"), "w", encoding="utf-8") as f:
+            json.dump({}, f)
+
+        token = _login(client)
+        resp = client.get("/api/v1/observability/dashboard", headers={"Authorization": f"Bearer {token}"})
+        assert resp.status_code == 200
+        data = resp.get_json()["data"]
+        assert data["log_metrics"]["total_calls"] == 2
+        assert data["log_metrics"]["missed_call_rate"] == 0.5
+        assert data["log_metrics"]["param_completeness_rate"] == 1.0
+        assert "confusion_matrix.json" in data["confusion_matrices"]
+        assert "confusion_matrix.llm.json" in data["confusion_matrices"]
+
+    def test_dashboard_missing_data_returns_defaults(self, client, tmp_path, monkeypatch):
+        from framework.observability import routing_log
+        monkeypatch.setattr(routing_log, "_LOG_DIR", str(tmp_path))
+        token = _login(client)
+        resp = client.get("/api/v1/observability/dashboard", headers={"Authorization": f"Bearer {token}"})
+        assert resp.status_code == 200
+        data = resp.get_json()["data"]
+        assert data["log_metrics"] == {"total_calls": 0, "missed_call_rate": 0.0, "param_completeness_rate": 0.0}
+        assert data["confusion_matrices"] == {}
