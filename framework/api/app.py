@@ -10,6 +10,7 @@ from framework.api.routes.docs import docs_bp
 from framework.api.routes.county import county_bp
 from framework.api.routes.report import report_bp
 from framework.api.routes.data_import import data_import_bp
+from framework.api.routes.observability import observability_bp
 
 
 def _ensure_kb_message_columns(app: Flask):
@@ -74,6 +75,7 @@ def create_app(config_name: str = 'default') -> Flask:
     app.register_blueprint(county_bp, url_prefix='/api/v1/county')
     app.register_blueprint(report_bp, url_prefix='/api/v1/report')
     app.register_blueprint(data_import_bp, url_prefix='/api/v1/data')
+    app.register_blueprint(observability_bp, url_prefix='/api/v1/observability')
 
     @app.route('/')
     def index():

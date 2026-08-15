@@ -2,6 +2,8 @@
 comet_change: llm-routing-judgment
 role: technical-design
 canonical_spec: openspec
+archived-with: 2026-08-15-llm-routing-judgment
+status: final
 ---
 
 # Design Doc: LLM 路由判定

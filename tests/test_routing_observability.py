@@ -168,10 +168,14 @@ class TestNodeInjection:
                 assert result["relevance"] is not None
                 assert result["routing_status"] == "normal"
                 assert result["error"] is None
+                assert result["trace_id"]
+                assert isinstance(result["trace_id"], str)
+                assert len(result["trace_id"]) == 32  # uuid4().hex
                 with open(os.path.join(tmp, "routing_calls_test.jsonl"), encoding="utf-8") as f:
                     entry = json.loads(f.readline())
                 assert entry["question"] == "我的田耕地质量等级是多少"
                 assert entry["question_type"] == 2
+                assert entry["trace_id"] == result["trace_id"]
         finally:
             _routing.EMBEDDING_AVAILABLE = real
 
@@ -306,3 +310,25 @@ class TestRoutingLogReadRobustness:
                 f.write('{"trace_id": "b"}\n')
             entries = read_routing_logs(tmp)
             assert [e["trace_id"] for e in entries] == ["a", "b"]
+
+
+class TestPackageExports:
+    """观测模块包级导出完整化：API 层统一 from framework.observability import ..."""
+
+    def test_all_submodules_exported(self):
+        from framework.observability import (
+            routing_log, metrics, dashboard, traceability, observe,
+        )
+        assert callable(routing_log.write_routing_log)
+        assert callable(metrics.confusion_metrics)
+        assert callable(dashboard.compute_log_metrics)
+        assert callable(traceability.trace_result)
+        assert callable(observe.observe_routing)
+
+    def test_all_list_complete(self):
+        """__all__ 应显式声明全部子模块（包级导出完整化的可审计契约）。"""
+        import framework.observability as obs
+        assert set(obs.__all__) == {
+            "routing_log", "metrics", "dashboard", "traceability", "observe",
+        }
+

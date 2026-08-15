@@ -113,6 +113,7 @@ def chat():
         "model_results": model_results,
         "message_id": assistant_message.id,
         "routing_status": routing_status,
+        "trace_id": result.get("trace_id"),
     }
     if agents_invoked:
         response_data["agents_invoked"] = agents_invoked
@@ -209,6 +210,7 @@ def chat_stream():
                         "question_type": question_type,
                         "model_results": model_results,
                         "message_id": msg_id,
+                        "trace_id": data_payload.get("trace_id"),
                     }
                     if agents_invoked:
                         response_data["agents_invoked"] = agents_invoked
