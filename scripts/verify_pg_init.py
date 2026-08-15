@@ -35,8 +35,8 @@ def verify_tables_created():
         'third_survey_topsoils', 'third_survey_profiles',
         'third_survey_site_conditions', 'third_survey_bulk_densities',
         'second_survey_points', 'formula_fertilizations',
-        'agri_chemicalization', 'grain_yields',
-        'users', 'conversations', 'messages', 'documents', 'data_files'
+        'agri_chemicalizations', 'grain_yields',
+        'sys_user', 'kb_conversation', 'kb_message', 'kb_document', 'kb_data_file'
     ]
     result = db.session.execute(text(
         "SELECT table_name FROM information_schema.tables WHERE table_schema='public'"
@@ -63,7 +63,10 @@ def verify_users_exist():
 def verify_idempotency():
     """验证重复运行 init_db.py 幂等性"""
     # 重复运行 init_db.py 逻辑（已在 app_context 内）
-    os.system(f"python {PROJECT_ROOT / 'init_db.py'}")
+    ret = os.system(f"python {PROJECT_ROOT / 'init_db.py'}")
+    if ret != 0:
+        print(f"[FAIL] init_db.py 重复运行失败，退出码 {ret}")
+        return False
     print("[PASS] 重复运行幂等")
     return True
 
