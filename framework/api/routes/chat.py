@@ -100,6 +100,8 @@ def chat():
         role='assistant',
         content=answer or multi_agent_summary,
         sources=sources if sources else None,
+        agents_invoked=agents_invoked if agents_invoked else None,
+        recommendations=recommendations if recommendations else None,
     )
     db.session.add(assistant_message)
     db.session.commit()
@@ -166,6 +168,8 @@ def chat_stream():
                 item_type = item.get("type")
                 if item_type == "token":
                     yield f"data: {json.dumps({'event': 'token', 'content': item['content']})}\n\n"
+                elif item_type == "meta":
+                    yield f"data: {json.dumps({'event': 'meta', 'data': item.get('data', {})})}\n\n"
                 elif item_type == "done":
                     data_payload = item.get("data", {})
                     answer = data_payload.get("answer", "")
@@ -188,6 +192,8 @@ def chat_stream():
                             role='assistant',
                             content=answer or multi_agent_summary,
                             sources=sources if sources else None,
+                            agents_invoked=agents_invoked if agents_invoked else None,
+                            recommendations=recommendations if recommendations else None,
                         )
                         db.session.add(assistant_message)
                         db.session.commit()

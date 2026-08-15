@@ -115,21 +115,29 @@ class MultiAgentOrchestrator:
             state = identify_question_node(state)
 
             route = route_models(state)
-            if route == "rag_chat":
-                state = rag_chat_node(state)
-            else:
-                state = execute_models(state)
-
             question = state["request"].get("question", "")
             question_type = state.get("question_type", 0)
-            model_results = state.get("model_results", {})
-            rag_response = state.get("rag_response", {})
 
-            # 收集 sources（复刻 aggregate_results 的逻辑）
+            full_answer = ""
             sources = []
-            if question_type == 0:
-                sources = rag_response.get("sources", [])
+
+            if route == "rag_chat":
+                # ✅ RAG 路径：使用流式检索 + 流式 LLM 生成，替代原来的阻塞式 rag_chat_node
+                from framework.rag.chain import rag_chain
+                for item in rag_chain.chat_stream(question, conversation_history=conversation_history):
+                    if item["type"] == "token":
+                        full_answer += item["content"]
+                        yield {"type": "token", "content": item["content"]}
+                    elif item["type"] == "meta":
+                        sources = item.get("sources", [])
+                        yield {"type": "meta", "data": {"sources": sources}}
             else:
+                # 模型路径：先执行模型（阻塞），再流式生成
+                state = execute_models(state)
+                model_results = state.get("model_results", {})
+                rag_response = state.get("rag_response", {})
+
+                # 收集 sources（复刻 aggregate_results 的逻辑）
                 agent_data = model_results.get("data", {}) if isinstance(model_results, dict) else {}
                 agent_details = agent_data.get("details", {}) if isinstance(agent_data, dict) else {}
                 if isinstance(agent_details, dict):
@@ -146,30 +154,22 @@ class MultiAgentOrchestrator:
                 if not sources and rag_response.get("sources"):
                     sources = rag_response.get("sources", [])
 
-            # 生成阶段
-            full_answer = ""
-
-            if question_type in [1, 2, 3, 4, 5, 6, 7] and question:
-                # 复刻 llm_generate 节点的 prompt 构造逻辑
-                prompt = (
-                    "你是耕地质量与土壤改良领域的助手。请基于专业智能体结果，"
-                    "整合成一份准确、简洁、可执行的中文答复。不要编造未提供的数据，"
-                    "保留明确的数值、单位和建议。\n"
-                    f"用户问题：{question}\n"
-                    f"专业智能体结果：{model_results}"
-                )
-                from framework.llm.service import llm_service
-                for chunk in llm_service.generate_stream(prompt, messages=conversation_history):
-                    full_answer += chunk
-                    yield {"type": "token", "content": chunk}
-            elif question_type == 0:
-                # 知识性问题：RAG 已给出答案，直接输出
-                full_answer = rag_response.get("answer", "")
-                if full_answer:
-                    yield {"type": "token", "content": full_answer}
+                if question:
+                    # 复刻 llm_generate 节点的 prompt 构造逻辑
+                    prompt = (
+                        "你是耕地质量与土壤改良领域的助手。请基于专业智能体结果，"
+                        "整合成一份准确、简洁、可执行的中文答复。不要编造未提供的数据，"
+                        "保留明确的数值、单位和建议。\n"
+                        f"用户问题：{question}\n"
+                        f"专业智能体结果：{model_results}"
+                    )
+                    from framework.llm.service import llm_service
+                    for chunk in llm_service.generate_stream(prompt, messages=conversation_history):
+                        full_answer += chunk
+                        yield {"type": "token", "content": chunk}
 
             # 最终结果
-            done_model_results = {} if question_type == 0 else model_results
+            done_model_results = {} if question_type == 0 else state.get("model_results", {})
             yield {
                 "type": "done",
                 "data": {
