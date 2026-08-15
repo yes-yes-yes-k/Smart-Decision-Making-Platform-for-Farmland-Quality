@@ -13,3 +13,4 @@ class MultiAgentState(TypedDict):
     question_type: Optional[int]
     relevance: Optional[float]
     routing_status: Optional[str]
+    trace_id: Optional[str]

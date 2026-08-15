@@ -41,3 +41,28 @@ def test_question_type_4_routes_to_model_4():
 
     router = QuestionTypeRouter()
     assert "model-4" in router.get_agents_for_type(4)
+
+
+def test_identify_question_node_writes_trace_id(monkeypatch):
+    """identify_question_node 应生成 trace_id 写入 state，且与观测日志一致。"""
+    import tempfile
+    import os
+    import json
+    from framework.agents import routing as _routing
+    from framework.agents.nodes import identify_question_node
+    from framework.observability.routing_log import set_log_path
+
+    real = _routing.EMBEDDING_AVAILABLE
+    try:
+        _routing.EMBEDDING_AVAILABLE = False  # 确定性关键词路径
+        with tempfile.TemporaryDirectory() as tmp:
+            set_log_path(os.path.join(tmp, "routing_calls_test.jsonl"))
+            state = {"request": {"question": "我的田耕地质量等级是多少"}}
+            result = identify_question_node(state)
+            assert result["trace_id"]
+            assert len(result["trace_id"]) == 32
+            with open(os.path.join(tmp, "routing_calls_test.jsonl"), encoding="utf-8") as f:
+                entry = json.loads(f.readline())
+            assert entry["trace_id"] == result["trace_id"]
+    finally:
+        _routing.EMBEDDING_AVAILABLE = real

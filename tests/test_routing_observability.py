@@ -168,10 +168,14 @@ class TestNodeInjection:
                 assert result["relevance"] is not None
                 assert result["routing_status"] == "normal"
                 assert result["error"] is None
+                assert result["trace_id"]
+                assert isinstance(result["trace_id"], str)
+                assert len(result["trace_id"]) == 32  # uuid4().hex
                 with open(os.path.join(tmp, "routing_calls_test.jsonl"), encoding="utf-8") as f:
                     entry = json.loads(f.readline())
                 assert entry["question"] == "我的田耕地质量等级是多少"
                 assert entry["question_type"] == 2
+                assert entry["trace_id"] == result["trace_id"]
         finally:
             _routing.EMBEDDING_AVAILABLE = real
 
