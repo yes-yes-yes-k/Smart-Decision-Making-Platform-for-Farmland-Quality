@@ -66,3 +66,22 @@ def test_identify_question_node_writes_trace_id(monkeypatch):
             assert entry["trace_id"] == result["trace_id"]
     finally:
         _routing.EMBEDDING_AVAILABLE = real
+
+
+def test_orchestrator_run_attaches_trace_id():
+    """orchestrator.run 返回的 dict 应附加 state 中的 trace_id。"""
+    from framework.agents.orchestrator import MultiAgentOrchestrator
+
+    class FakeApp:
+        def invoke(self, initial_state):
+            return {
+                "status": "completed",
+                "model_results": {"status": "ok", "answer": "ok", "question_type": 2, "sources": []},
+                "trace_id": "tid-1",
+            }
+
+    orch = MultiAgentOrchestrator()
+    orch._app = FakeApp()  # 绕过真实图编译
+    result = orch.run({"question": "q"})
+    assert result["trace_id"] == "tid-1"
+    assert result["answer"] == "ok"

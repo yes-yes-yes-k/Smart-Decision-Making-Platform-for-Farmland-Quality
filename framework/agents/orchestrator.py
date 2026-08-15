@@ -72,12 +72,14 @@ class MultiAgentOrchestrator:
             "question_type": None,
             "relevance": None,
             "routing_status": "normal",
+            "trace_id": None,
         }
 
         result = self._app.invoke(initial_state)
+        trace_id = result.get("trace_id")
 
         if result["status"] == "completed":
-            return result["model_results"]
+            return {**result["model_results"], "trace_id": trace_id}
         else:
             return {
                 "status": "error",
@@ -85,6 +87,7 @@ class MultiAgentOrchestrator:
                     "code": "PROCESS_FAILED",
                     "message": result.get("error", "流程执行失败"),
                 },
+                "trace_id": trace_id,
             }
 
     def run_stream(self, request: Dict[str, Any], conversation_history: list = None):
@@ -104,6 +107,7 @@ class MultiAgentOrchestrator:
                 "error": None,
                 "question_type": None,
                 "relevance": None,
+                "trace_id": None,
             }
 
             # 准备阶段：手动执行节点（跳过 llm_generate 和 finalize）
@@ -174,6 +178,7 @@ class MultiAgentOrchestrator:
                     "model_results": done_model_results,
                     "question_type": question_type,
                     "question": question,
+                    "trace_id": state.get("trace_id"),
                 },
             }
         except Exception as e:
