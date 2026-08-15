@@ -17,10 +17,10 @@ plan: docs/superpowers/plans/2026-08-15-observability-api.md
 verify_result: pass
 verify_failures: 0
 verification_report: docs/superpowers/reports/2026-08-15-observability-api-verify.md
-branch_status: pending
+branch_status: handled
 created_at: 2026-08-15
 verified_at: 2026-08-15
-archive_confirmation: null
-archived: false
+archive_confirmation: confirmed
+archived: true
 handoff_context: openspec/changes/add-observability-api-endpoints/.comet/handoff/design-context.json
 handoff_hash: 6177092595d25d1654f2fa0bf8fb25ec07a9069b677a8462d20f58d43e65fdf8
