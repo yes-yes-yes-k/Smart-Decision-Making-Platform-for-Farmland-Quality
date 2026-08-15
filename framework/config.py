@@ -12,13 +12,13 @@ class Config:
         SECRET_KEY = 'dev-secret-key-change-in-production'
 
     DB_HOST = os.environ.get('DB_HOST') or 'localhost'
-    DB_PORT = int(os.environ.get('DB_PORT') or 3306)
+    DB_PORT = int(os.environ.get('DB_PORT') or 5432)
     DB_USER = os.environ.get('DB_USER') or 'root'
     DB_PASSWORD = os.environ.get('DB_PASSWORD') or ''
     DB_NAME = os.environ.get('DB_NAME') or 'db_enterprise_qa'
 
     SQLALCHEMY_DATABASE_URI = (
-        f"mysql+pymysql://{DB_USER}:{DB_PASSWORD}@{DB_HOST}:{DB_PORT}/{DB_NAME}?charset=utf8mb4"
+        f"postgresql+psycopg2://{DB_USER}:{DB_PASSWORD}@{DB_HOST}:{DB_PORT}/{DB_NAME}"
     )
     SQLALCHEMY_TRACK_MODIFICATIONS = False
     SQLALCHEMY_ENGINE_OPTIONS = {
@@ -74,11 +74,9 @@ class Config:
 
 class DevelopmentConfig(Config):
     DEBUG = True
-    SQLALCHEMY_DATABASE_URI = 'sqlite:///./development.db'
 
 class ProductionConfig(Config):
     DEBUG = False
-    SQLALCHEMY_DATABASE_URI = 'sqlite:///instance/production.db'
 
 class SQLiteConfig(Config):
     DEBUG = True
