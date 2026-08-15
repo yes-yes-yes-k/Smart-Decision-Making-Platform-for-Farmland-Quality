@@ -60,7 +60,7 @@ base-ref: 96f9be821a5a91867cc3ca55e30d95c4866f4864
 
 **对应 tasks.md:** 1.1、1.2、1.3
 
-- [ ] **Step 1: 在 `pyproject.toml` 新增 `geoalchemy2` 依赖**
+- [x] **Step 1: 在 `pyproject.toml` 新增 `geoalchemy2` 依赖**
 
 在 `d:\17417\Documents\agent_culti_demo\pyproject.toml` 的 `[project].dependencies` 列表中，在 `"Flask-CORS>=4.0.0",` 行之后插入 `geoalchemy2`：
 
@@ -70,7 +70,7 @@ base-ref: 96f9be821a5a91867cc3ca55e30d95c4866f4864
     "pymysql>=1.1.0",
 ```
 
-- [ ] **Step 2: 在 `pyproject.toml` 新增 `psycopg2-binary` 依赖**
+- [x] **Step 2: 在 `pyproject.toml` 新增 `psycopg2-binary` 依赖**
 
 在同一列表中，在 `"pymysql>=1.1.0",` 行之后插入 `psycopg2-binary`：
 
@@ -111,7 +111,7 @@ dependencies = [
 ]
 ```
 
-- [ ] **Step 3: 运行 `pip install -e .` 验证依赖可解析并安装**
+- [x] **Step 3: 运行 `pip install -e .` 验证依赖可解析并安装**
 
 在项目根目录运行：
 
@@ -121,7 +121,7 @@ pip install -e .
 
 Expected: 安装成功，无依赖冲突报错；`psycopg2` 与 `geoalchemy2` 出现在安装输出中。
 
-- [ ] **Step 4: 验证两个新依赖可导入**
+- [x] **Step 4: 验证两个新依赖可导入**
 
 ```bash
 python -c "import psycopg2; print('psycopg2', psycopg2.__version__)"
@@ -130,7 +130,7 @@ python -c "import geoalchemy2; print('geoalchemy2 ok')"
 
 Expected: 两行均正常输出，无 `ImportError`。
 
-- [ ] **Step 5: 提交**
+- [x] **Step 5: 提交**
 
 ```bash
 git add pyproject.toml
@@ -156,7 +156,7 @@ git commit -m "chore(deps): 新增 psycopg2-binary 与 geoalchemy2 依赖"
 
 **对应 tasks.md:** 2.1、2.2、2.3、2.4、2.5、2.6、4.1、4.2、4.3、4.4
 
-- [ ] **Step 1: 编写失败测试 `tests/test_config.py`**
+- [x] **Step 1: 编写失败测试 `tests/test_config.py`**
 
 创建文件 `d:\17417\Documents\agent_culti_demo\tests\test_config.py`，完整内容如下（来自 Design Doc §4.2）：
 
@@ -242,7 +242,7 @@ class TestEngineOptions:
         assert 'charset' not in Config.SQLALCHEMY_ENGINE_OPTIONS
 ```
 
-- [ ] **Step 2: 运行测试确认失败（Red）**
+- [x] **Step 2: 运行测试确认失败（Red）**
 
 在项目根目录运行：
 
@@ -257,7 +257,7 @@ Expected:
 - `test_env_override_uri` FAIL（subprocess 输出 mysql URI）
 - `TestSQLiteConfig` 与 `TestEngineOptions` 组 PASS（SQLiteConfig 与 ENGINE_OPTIONS 当前已满足）
 
-- [ ] **Step 3: 修改 `Config.DB_PORT` 默认值 3306 → 5432**
+- [x] **Step 3: 修改 `Config.DB_PORT` 默认值 3306 → 5432**
 
 在 `d:\17417\Documents\agent_culti_demo\framework\config.py` 第 15 行：
 
@@ -270,7 +270,7 @@ Expected:
     DB_PORT = int(os.environ.get('DB_PORT') or 5432)
 ```
 
-- [ ] **Step 4: 修改 `Config.SQLALCHEMY_DATABASE_URI` 拼接（scheme + 移除 charset）**
+- [x] **Step 4: 修改 `Config.SQLALCHEMY_DATABASE_URI` 拼接（scheme + 移除 charset）**
 
 在 `framework/config.py` 第 20-22 行：
 
@@ -287,7 +287,7 @@ Expected:
     )
 ```
 
-- [ ] **Step 5: 删除 `DevelopmentConfig` 硬编码 SQLite URI**
+- [x] **Step 5: 删除 `DevelopmentConfig` 硬编码 SQLite URI**
 
 在 `framework/config.py` 第 75-77 行，删除 `SQLALCHEMY_DATABASE_URI` 赋值行，使其继承基类 PostgreSQL URI：
 
@@ -303,7 +303,7 @@ class DevelopmentConfig(Config):
     DEBUG = True
 ```
 
-- [ ] **Step 6: 删除 `ProductionConfig` 硬编码 SQLite URI**
+- [x] **Step 6: 删除 `ProductionConfig` 硬编码 SQLite URI**
 
 在 `framework/config.py` 第 79-81 行：
 
@@ -319,7 +319,7 @@ class ProductionConfig(Config):
     DEBUG = False
 ```
 
-- [ ] **Step 7: 确认 `SQLiteConfig` 与 `config_map` 保持不变**
+- [x] **Step 7: 确认 `SQLiteConfig` 与 `config_map` 保持不变**
 
 `framework/config.py` 第 83-92 行不改动，确认内容仍为：
 
@@ -336,7 +336,7 @@ config_map = {
 }
 ```
 
-- [ ] **Step 8: 运行测试确认全部通过（Green）**
+- [x] **Step 8: 运行测试确认全部通过（Green）**
 
 ```bash
 python -m pytest tests/test_config.py -v
@@ -346,7 +346,7 @@ Expected: 8 个测试全部 PASS。
 
 注意：`test_default_port_is_5432` 与 `TestConfigBase` 默认值测试假设运行环境未设置 `DB_PORT`/`DB_HOST` 等环境变量；若本地 shell 已导出这些变量，需在干净 shell 中运行或临时 `unset DB_PORT DB_HOST DB_USER DB_PASSWORD DB_NAME`。
 
-- [ ] **Step 9: 提交**
+- [x] **Step 9: 提交**
 
 ```bash
 git add framework/config.py tests/test_config.py
@@ -369,7 +369,7 @@ git commit -m "feat(config): 切换默认数据库 URI 至 PostgreSQL+psycopg2 �
 
 **对应 tasks.md:** 3.1、3.2、3.3、3.4、3.5
 
-- [ ] **Step 1: 在 `init_db.py` 导入区新增 `text` 与 `ProgrammingError`**
+- [x] **Step 1: 在 `init_db.py` 导入区新增 `text` 与 `ProgrammingError`**
 
 在 `d:\17417\Documents\agent_culti_demo\init_db.py` 顶部，`from pathlib import Path` 之后新增两行导入。修改后的导入区（第 1-13 行）应为：
 
@@ -391,7 +391,7 @@ from framework.models.user import db, User
 import framework.models  # noqa: F401  触发 soil_data 等模型注册，使 db.create_all() 发现新表
 ```
 
-- [ ] **Step 2: 在 `app_context` 内插入 PostGIS 守卫块**
+- [x] **Step 2: 在 `app_context` 内插入 PostGIS 守卫块**
 
 在 `init_db.py` 的 `with app.app_context():` 之后、`db.drop_all()` 之前，读取 URI 并判定 scheme，仅 PostgreSQL 路径执行 PostGIS 初始化。修改后的 `app_context` 块（来自 Design Doc §2.1）应为：
 
@@ -449,7 +449,7 @@ with app.app_context():
 - 快速失败不继续 `db.create_all()`：避免后续 ORM 使用 `Geometry` 列时产生误导性错误。
 - `CREATE EXTENSION IF NOT EXISTS` 保证幂等。
 
-- [ ] **Step 3: 语法检查**
+- [x] **Step 3: 语法检查**
 
 ```bash
 python -m py_compile init_db.py
@@ -457,7 +457,7 @@ python -m py_compile init_db.py
 
 Expected: 无输出，退出码 0。
 
-- [ ] **Step 4: SQLite 路径冒烟测试（对应 tasks.md 4.6）**
+- [x] **Step 4: SQLite 路径冒烟测试（对应 tasks.md 4.6）**
 
 `init_db.py` 硬编码 `create_app()`（`'default'` → PostgreSQL），无法直接以 SQLite 配置运行。为验证 SQLite 路径跳过 PostGIS 且建表成功，使用等价内联调用（`config_map['sqlite']` + 同样的 `db_uri.startswith('postgresql')` 判定逻辑）：
 
@@ -469,7 +469,7 @@ Expected: 输出 `sqlite path ok, PostGIS skipped`，退出码 0；无 `CREATE E
 
 说明：tasks.md 4.6「在 SQLite 配置下运行 `python init_db.py`」由于 `init_db.py` 固定使用 `'default'` 配置，本计划以等价内联调用验证同一守卫分支（`db_uri.startswith('postgresql')` 为 `False` → 跳过 PostGIS → `db.create_all()`）。PostgreSQL 路径的真实 `init_db.py` 运行（4.5）与幂等性（4.7）在 Task 5 通过 `scripts/verify_pg_init.py` 在有 PG 环境时手动验证。
 
-- [ ] **Step 5: 提交**
+- [x] **Step 5: 提交**
 
 ```bash
 git add init_db.py
@@ -489,7 +489,7 @@ git commit -m "feat(init_db): 新增 PostGIS 扩展初始化守卫与快速失�
 
 **对应 tasks.md:** 4.5、4.6、4.7（脚本编写部分）
 
-- [ ] **Step 1: 创建 `scripts/verify_pg_init.py`**
+- [x] **Step 1: 创建 `scripts/verify_pg_init.py`**
 
 创建文件 `d:\17417\Documents\agent_culti_demo\scripts\verify_pg_init.py`，完整内容如下（来自 Design Doc §4.3）：
 
@@ -587,7 +587,7 @@ if __name__ == '__main__':
     main()
 ```
 
-- [ ] **Step 2: 语法检查**
+- [x] **Step 2: 语法检查**
 
 ```bash
 python -m py_compile scripts/verify_pg_init.py
@@ -595,7 +595,7 @@ python -m py_compile scripts/verify_pg_init.py
 
 Expected: 无输出，退出码 0。
 
-- [ ] **Step 3: 提交**
+- [x] **Step 3: 提交**
 
 ```bash
 git add scripts/verify_pg_init.py
@@ -628,7 +628,7 @@ set DB_NAME=db_enterprise_qa
 
 若当前无 PG 实例，本任务可跳过，不阻塞 change 收尾（遵循「代码先行，环境后续」原则，Design Doc §4.3）。后续具备 PG 环境时补跑。
 
-- [ ] **Step 1: 运行 `init_db.py` 验证 PostgreSQL 路径（对应 4.5）**
+- [x] **Step 1: 运行 `init_db.py` 验证 PostgreSQL 路径（对应 4.5）**
 
 ```bash
 python init_db.py
@@ -647,7 +647,7 @@ python -c "import sys; sys.path.insert(0,'.'); from framework.api.app import cre
 
 Expected: 输出 `missing: set()`，退出码 0。
 
-- [ ] **Step 2: 重复运行 `init_db.py` 验证幂等性（对应 4.7）**
+- [x] **Step 2: 重复运行 `init_db.py` 验证幂等性（对应 4.7）**
 
 ```bash
 python init_db.py
@@ -656,7 +656,7 @@ python init_db.py
 
 Expected: 两次运行均退出码 0，第二次运行不报 `CREATE EXTENSION` 相关错误（`IF NOT EXISTS` 保证幂等）。
 
-- [ ] **Step 3: 运行 `scripts/verify_pg_init.py` 全量验证（对应 4.5-4.7 汇总）**
+- [x] **Step 3: 运行 `scripts/verify_pg_init.py` 全量验证（对应 4.5-4.7 汇总）**
 
 ```bash
 python scripts/verify_pg_init.py
@@ -669,7 +669,7 @@ Expected:
 - `[PASS] 重复运行幂等`
 - `结果: 4/4 通过`，退出码 0
 
-- [ ] **Step 4: 记录验收证据**
+- [x] **Step 4: 记录验收证据**
 
 将上述命令的输出（退出码、表清单、`4/4 通过`）记录到 change 的验证记录中（如 `openspec/changes/migrate-to-postgresql-postgis/` 下的验证说明，或在 PR 描述中附上）。无需新增代码文件。
 

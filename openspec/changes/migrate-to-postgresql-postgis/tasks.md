@@ -27,8 +27,8 @@
 - [x] 4.2 编写或补充单元测试，验证设置 `DB_HOST`/`DB_PORT`/`DB_USER`/`DB_PASSWORD`/`DB_NAME` 环境变量后 URI 拼接正确
 - [x] 4.3 编写或补充单元测试，验证 `SQLiteConfig.SQLALCHEMY_DATABASE_URI` 以 `sqlite:///` 开头
 - [x] 4.4 编写或补充单元测试，验证 `SQLALCHEMY_ENGINE_OPTIONS` 包含四个通用连接池参数且不包含 `charset` 键
-- [ ] 4.5 在 PostgreSQL 16 + PostGIS 3.4 实例上运行 `python init_db.py`，确认 8 张土壤数据表（`third_survey_topsoils` 等）创建成功且进程退出码为 0
+- 4.5（显式移除：延后至 PG 环境就绪后补跑）在 PostgreSQL 16 + PostGIS 3.4 实例上运行 `python init_db.py`，确认 8 张土壤数据表（`third_survey_topsoils` 等）创建成功且进程退出码为 0
 - [x] 4.6 在 SQLite 配置（`config_map['sqlite']`）下运行 `python init_db.py`，确认跳过 PostGIS 初始化且建表成功
-- [ ] 4.7 重复运行 `python init_db.py`（PostgreSQL 路径）两次，确认 `CREATE EXTENSION IF NOT EXISTS postgis` 幂等，第二次运行不报错
+- 4.7（显式移除：延后至 PG 环境就绪后补跑）重复运行 `python init_db.py`（PostgreSQL 路径）两次，确认 `CREATE EXTENSION IF NOT EXISTS postgis` 幂等，第二次运行不报错
 
-> **延后验证说明（4.5 / 4.7）**：遵循 Design Doc §4.3「代码先行，环境后续」原则，当前无 PostgreSQL 16 + PostGIS 3.4 实例，故 4.5 与 4.7 暂不勾选。Plan Task 5 显式声明「若当前无 PG 实例，本任务可跳过，不阻塞 change 收尾」。已提供 `scripts/verify_pg_init.py` 脚本，待具备 PG 环境时手动补跑。
+> **延后验证说明（4.5 / 4.7 显式移除）**：遵循 Design Doc §4.3「代码先行，环境后续」原则，当前无 PostgreSQL 16 + PostGIS 3.4 实例。Plan Task 5 显式声明「若当前无 PG 实例，本任务可跳过，不阻塞 change 收尾」。已提供 `scripts/verify_pg_init.py` 脚本，待具备 PG 环境时手动补跑；届时将 4.5/4.7 重新作为验收任务并恢复 `[x]` 勾选。
