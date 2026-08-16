@@ -59,6 +59,12 @@ PROFESSIONAL_CAPABILITIES: tuple[ProfessionalCapability, ...] = (
         ("parcel_code",), "真实评价需部署 exe/dat 文件并提供 parcel_code。",
         "地块", "评价结果",   # model-5 质量等级评价：地块级评价结果
     ),
+    ProfessionalCapability(
+        "model-6", "comprehensive-fertility-improvement", "耕地综合地力改良提升模型",
+        "综合耕地地力评价与改良提升（整合酸化改良与有机质培肥建议）。", "fertility", 6,
+        ("parcel_id",), "占位状态：综合地力改良提升业务逻辑尚未实现，本能力暂不可执行；数据库结构（comprehensive_fertility_result 表）已就绪。",
+        "地块", "评价结果",   # model-6 综合地力：地块级评价结果（占位）
+    ),
 )
 
 CAPABILITY_BY_AGENT_ID: Dict[str, ProfessionalCapability] = {
