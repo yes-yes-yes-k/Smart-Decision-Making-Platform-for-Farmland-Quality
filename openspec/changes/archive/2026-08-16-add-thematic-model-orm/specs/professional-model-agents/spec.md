@@ -9,6 +9,11 @@
 - **THEN** 目录 SHALL 包含且仅包含 6 项正式专业能力
 - **AND** 每一项 SHALL 同时给出 Agent ID、公开模型 ID、名称和运行前提
 
+#### Scenario: Agent 注册引用正式能力定义
+- **WHEN** `AgentManager` 注册专业智能体
+- **THEN** 每个已注册 Agent SHALL 引用统一能力定义
+- **AND** SHALL NOT 在 Manager 内重复维护与能力目录冲突的名称或模型标识
+
 #### Scenario: Model-6 元数据升级为综合地力改良提升模型
 - **WHEN** `framework/agents/capabilities.py` 中 Model-6 的 `ProfessionalCapability` 被读取
 - **THEN** Model-6 SHALL 将 `model_id` 从 `placeholder` 升级为 `comprehensive-fertility-improvement`

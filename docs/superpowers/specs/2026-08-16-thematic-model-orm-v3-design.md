@@ -2,6 +2,8 @@
 comet_change: add-thematic-model-orm
 role: technical-design
 canonical_spec: openspec
+archived-with: 2026-08-16-add-thematic-model-orm
+status: final
 ---
 
 # Thematic Model ORM V3.0 — Technical Design

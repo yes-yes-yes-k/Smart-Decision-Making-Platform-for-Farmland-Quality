@@ -2,6 +2,7 @@
 change: add-thematic-model-orm
 design-doc: docs/superpowers/specs/2026-08-16-thematic-model-orm-v3-design.md
 base-ref: 58deb465afe4c1587a8d1c854b9f3d2af22420e3
+archived-with: 2026-08-16-add-thematic-model-orm
 ---
 
 # Thematic Model ORM V3.0 实施计划
