@@ -1,3 +1,4 @@
+import os
 import sys
 from pathlib import Path
 from sqlalchemy import text
@@ -14,7 +15,9 @@ from framework.api.app import create_app
 from framework.models.user import db, User
 import framework.models  # noqa: F401  触发 soil_data 等模型注册，使 db.create_all() 发现新表
 
-app = create_app()
+# 支持通过 FLASK_ENV 选择配置；未设置时使用 'default'（PostgreSQL）
+config_name = os.environ.get('FLASK_ENV') or 'default'
+app = create_app(config_name)
 
 with app.app_context():
     db_uri = app.config['SQLALCHEMY_DATABASE_URI']

@@ -62,39 +62,39 @@ class AgentManager:
     def _load_real_agents(self) -> Dict[str, BaseAgent]:
         """尝试加载专业智能体实现，失败时返回空字典。"""
         real: Dict[str, BaseAgent] = {}
-        # model-1: 障碍诊断
-        try:
-            from .specialized.problem_agent import ProblemIdentificationAgent
-            real["model-1"] = ProblemIdentificationAgent()
-        except ImportError:
-            pass
-        # model-2: 酸化改良
-        try:
-            from .specialized.acidification_agent import AcidificationRemediationAgent
-            real["model-2"] = AcidificationRemediationAgent()
-        except ImportError:
-            pass
-        # model-3: 有机质提升
-        try:
-            from .specialized.organic_matter_agent import OrganicMatterAgent
-            real["model-3"] = OrganicMatterAgent()
-        except ImportError:
-            pass
-        # model-4: 稳定性风险，优先加载带真实模型集成的新版 stability_agent，
+        # model-1: 稳定性风险，优先加载带真实模型集成的新版 stability_agent，
         # 回退到旧版 stability_risk_agent（纯 mock）
         try:
             from .specialized.stability_agent import StabilityRiskAgent
-            real["model-4"] = StabilityRiskAgent()
+            real["model-1"] = StabilityRiskAgent()
         except ImportError:
             try:
                 from .specialized.stability_risk_agent import StabilityRiskAgent
-                real["model-4"] = StabilityRiskAgent()
+                real["model-1"] = StabilityRiskAgent()
             except ImportError:
                 pass
-        # model-5: 质量等级评价
+        # model-2: 质量等级评价
         try:
             from .specialized.grade_agent import FarmlandGradeAgent
-            real["model-5"] = FarmlandGradeAgent()
+            real["model-2"] = FarmlandGradeAgent()
+        except ImportError:
+            pass
+        # model-3: 障碍诊断
+        try:
+            from .specialized.problem_agent import ProblemIdentificationAgent
+            real["model-3"] = ProblemIdentificationAgent()
+        except ImportError:
+            pass
+        # model-4: 酸化改良
+        try:
+            from .specialized.acidification_agent import AcidificationRemediationAgent
+            real["model-4"] = AcidificationRemediationAgent()
+        except ImportError:
+            pass
+        # model-5: 有机质提升
+        try:
+            from .specialized.organic_matter_agent import OrganicMatterAgent
+            real["model-5"] = OrganicMatterAgent()
         except ImportError:
             pass
         return real
@@ -184,19 +184,19 @@ class AgentManager:
         return order
 
     def _synthesize_comprehensive_result(self, results: Dict[str, Dict[str, Any]]) -> Dict[str, Any]:
-        """综合模型4（退化风险）和模型1（障碍诊断）的结果。"""
-        model4_result = results.get("model-4", {})
-        model1_result = results.get("model-1", {})
+        """综合模型1（退化风险）和模型3（障碍诊断）的结果。"""
+        stability_result = results.get("model-1", {})
+        diagnosis_result = results.get("model-3", {})
 
         synthesis = {
             "type": "comprehensive",
-            "model4": model4_result,
-            "model1": model1_result,
+            "stability": stability_result,
+            "diagnosis": diagnosis_result,
         }
 
-        if model4_result.get("status") == "ok" and model1_result.get("status") == "ok":
-            risk_info = model4_result.get("result", {})
-            diagnosis_info = model1_result.get("result", {})
+        if stability_result.get("status") == "ok" and diagnosis_result.get("status") == "ok":
+            risk_info = stability_result.get("result", {})
+            diagnosis_info = diagnosis_result.get("result", {})
 
             synthesis["summary"] = "综合诊断结果："
             if risk_info.get("risk_level"):

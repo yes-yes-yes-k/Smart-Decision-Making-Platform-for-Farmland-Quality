@@ -779,8 +779,8 @@ SELECT r.agent_id, r.name AS model_name, r.question_type,
     SUM(CASE WHEN l.status = 'ok' THEN 1 ELSE 0 END) AS success_count,
     SUM(CASE WHEN l.status = 'error' THEN 1 ELSE 0 END) AS error_count,
     SUM(CASE WHEN l.simulated THEN 1 ELSE 0 END) AS simulated_count,
-    ROUND(AVG(l.duration_ms), 2) AS avg_duration_ms,
-    ROUND(AVG(l.confidence), 4) AS avg_confidence,
+    ROUND(AVG(l.duration_ms)::numeric, 2) AS avg_duration_ms,
+    ROUND(AVG(l.confidence)::numeric, 4) AS avg_confidence,
     MAX(l.started_at) AS last_execution_time
 FROM thematic_model_registry r
 LEFT JOIN model_execution_log l ON r.agent_id = l.agent_id

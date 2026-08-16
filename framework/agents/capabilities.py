@@ -28,36 +28,36 @@ PROFESSIONAL_CAPABILITIES: tuple[ProfessionalCapability, ...] = (
     # question_type 编号与 routing.py 的 QUESTION_TYPE_N_KEYWORDS 语义对齐：
     #   type=1 稳定性 / type=2 质量等级 / type=3 障碍诊断
     #   type=4 酸化改良 / type=5 有机质培肥
-    # model_id 与 agent_id 保持稳定 API 标识，不随 question_type 改变。
+    # agent_id 与 model_id 一一对应，与 spec professional-model-agents 保持一致。
     ProfessionalCapability(
-        "model-1", "obstacle-diagnosis", "耕地质量主要问题与障碍诊断",
-        "识别主要/次要障碍因素、障碍类型和组合。", "problem", 3,
-        ("parcel_id",), "需完成障碍诊断批量计算并提供 parcel_id。",
-        "地块", "指标数据",   # model-1 障碍诊断：地块级指标数据
-    ),
-    ProfessionalCapability(
-        "model-2", "acidification-remediation", "耕地土壤酸化改良",
-        "判定酸化程度并给出调理剂和改良措施建议。", "acidification", 4,
-        ("parcel_id",), "需完成酸化评估并提供 parcel_id；结构化指标可用于规则降级。",
-        "地块", "处方用量",   # model-2 酸化改良：地块级处方用量
-    ),
-    ProfessionalCapability(
-        "model-3", "organic-matter-improvement", "耕地土壤有机质培肥提升",
-        "围绕有机肥、秸秆还田和培肥措施提供治理建议。", "organic_matter", 5,
-        ("indicators",), "可使用结构化土壤指标；当前规则结果会明确模拟状态。",
-        "县", "处方用量",     # model-3 有机质培肥：县级处方用量
-    ),
-    ProfessionalCapability(
-        "model-4", "stability-risk-evaluation", "耕地质量稳定性与退化风险评价",
+        "model-1", "stability-risk-evaluation", "耕地质量稳定性与退化风险评价",
         "基于预计算结果识别稳定性、历史变化和退化风险。", "stability", 1,
         ("parcel_id",), "需先完成稳定性离线预计算并提供 parcel_id。",
-        "地块", "评价结果",   # model-4 稳定性风险：地块级评价结果
+        "地块", "评价结果",   # model-1 稳定性风险：地块级评价结果
     ),
     ProfessionalCapability(
-        "model-5", "quality-grade-evaluation", "耕地质量等级评价",
+        "model-2", "quality-grade-evaluation", "耕地质量等级评价",
         "通过质量等级评价程序输出综合指数、等级和障碍度。", "grade", 2,
         ("parcel_code",), "真实评价需部署 exe/dat 文件并提供 parcel_code。",
-        "地块", "评价结果",   # model-5 质量等级评价：地块级评价结果
+        "地块", "评价结果",   # model-2 质量等级评价：地块级评价结果
+    ),
+    ProfessionalCapability(
+        "model-3", "obstacle-diagnosis", "耕地质量主要问题与障碍诊断",
+        "识别主要/次要障碍因素、障碍类型和组合。", "problem", 3,
+        ("parcel_id",), "需完成障碍诊断批量计算并提供 parcel_id。",
+        "地块", "指标数据",   # model-3 障碍诊断：地块级指标数据
+    ),
+    ProfessionalCapability(
+        "model-4", "acidification-remediation", "耕地土壤酸化改良",
+        "判定酸化程度并给出调理剂和改良措施建议。", "acidification", 4,
+        ("parcel_id",), "需完成酸化评估并提供 parcel_id；结构化指标可用于规则降级。",
+        "地块", "处方用量",   # model-4 酸化改良：地块级处方用量
+    ),
+    ProfessionalCapability(
+        "model-5", "organic-matter-improvement", "耕地土壤有机质培肥提升",
+        "围绕有机肥、秸秆还田和培肥措施提供治理建议。", "organic_matter", 5,
+        ("indicators",), "可使用结构化土壤指标；当前规则结果会明确模拟状态。",
+        "县", "处方用量",     # model-5 有机质培肥：县级处方用量
     ),
     ProfessionalCapability(
         "model-6", "comprehensive-fertility-improvement", "耕地综合地力改良提升模型",

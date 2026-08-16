@@ -88,6 +88,6 @@ class SQLiteConfig(Config):
 config_map = {
     'development': DevelopmentConfig,
     'production': ProductionConfig,
-    'default': DevelopmentConfig,
+    'default': Config,
     'sqlite': SQLiteConfig
 }
