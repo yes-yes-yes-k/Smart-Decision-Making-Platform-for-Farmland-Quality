@@ -1,6 +1,6 @@
 """数据驱动的排他规则配置与判定。
 
-用于消除 model-3/2、model-4/5 两组易混淆对的误选。
+用于消除 model-2/3、model-4/5 两组易混淆对的误选。
 排他规则无法消解重叠（优先级冲突）时返回「模型边界待确认」显式降级，
 不自行选择任一易混淆专业 Agent。
 """
@@ -45,8 +45,8 @@ EXCLUSIVE_CONDITION_KEYWORDS: Dict[str, Tuple[str, ...]] = {
 
 EXCLUSIVE_RULES: Tuple[ExclusiveRule, ...] = (
     # ===== v1 纯关键词规则（向后兼容，dimension_conditions 为空）=====
-    # model-3 vs model-2：现状评价 → model-3（障碍诊断）
-    ExclusiveRule(frozenset({"model-3", "model-2"}), "业务任务", "现状评价", "model-3"),
+    # model-2 vs model-3：现状评价 → model-3（障碍诊断）
+    ExclusiveRule(frozenset({"model-2", "model-3"}), "业务任务", "现状评价", "model-3"),
     # model-4 vs model-5：酸化调理剂 → model-4（酸化改良）
     ExclusiveRule(frozenset({"model-4", "model-5"}), "业务任务", "酸化调理剂", "model-4"),
     # model-1：稳定性风险 → model-1
@@ -55,17 +55,17 @@ EXCLUSIVE_RULES: Tuple[ExclusiveRule, ...] = (
     ExclusiveRule(frozenset({"model-2"}), "预期输出", "质量等级评价", "model-2"),
 
     # ===== v1.1 维度驱动规则（condition=None，仅依赖 dimension_conditions）=====
-    # model-3/2：地块级质量等级评价 → model-2（五维全量参与：scale+data_type+business_task+expected_output）
+    # model-2/3：地块级质量等级评价 → model-2（五维全量参与：scale+data_type+business_task+expected_output）
     ExclusiveRule(
-        frozenset({"model-3", "model-2"}),
+        frozenset({"model-2", "model-3"}),
         "分析尺度+数据类型+业务任务+预期输出",
         None,
         "model-2",
         dimension_conditions={"scale": "地块", "data_type": "评价结果", "business_task": "质量等级评价", "expected_output": "评价结果"},
     ),
-    # model-3/2：地块级障碍诊断 → model-3（加 expected_output 收敛，避免裸词跨域误触）
+    # model-2/3：地块级障碍诊断 → model-3（加 expected_output 收敛，避免裸词跨域误触）
     ExclusiveRule(
-        frozenset({"model-3", "model-2"}),
+        frozenset({"model-2", "model-3"}),
         "分析尺度+业务任务+预期输出",
         None,
         "model-3",

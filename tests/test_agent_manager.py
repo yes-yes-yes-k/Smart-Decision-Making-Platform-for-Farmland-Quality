@@ -6,14 +6,14 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from framework.agents.manager import AgentManager
 
 
-def test_manager_register_six_agents():
-    """Manager 注册 6 个智能体（model-1..model-6）"""
+def test_manager_register_five_agents():
+    """Manager 注册 5 个智能体（model-1..model-5）"""
     mgr = AgentManager()
     assert set(mgr.agents.keys()) == {
         "model-1", "model-2", "model-3",
-        "model-4", "model-5", "model-6",
+        "model-4", "model-5",
     }
-    print("✓ AgentManager 注册 6 个智能体")
+    print("✓ AgentManager 注册 5 个智能体")
 
 
 def test_manager_topological_sort_province():
@@ -34,13 +34,13 @@ def test_manager_topological_sort_farmer():
     print("✓ 拓扑排序包含 farmer 角色全部两个智能体")
 
 
-def test_manager_process_type4_returns_structured_result():
-    """process 返回符合 API 规范的结构化字典（type 4 → model-4 酸化改良）"""
+def test_manager_process_type1_returns_structured_result():
+    """process 返回符合 API 规范的结构化字典（type 1 稳定性 → model-4）"""
     mgr = AgentManager()
-    result = mgr.process("我的田酸化严重吗", {"question_type": 4, "area_code": "lechang"})
+    result = mgr.process("我的田质量等级稳定吗", {"question_type": 1, "area_code": "lechang"})
     assert result["status"] == "ok"
     data = result["data"]
-    assert data["question_type"] == 4
+    assert data["question_type"] == 1
     assert data["agents_invoked"] == ["model-4"]
     assert "summary" in data and isinstance(data["summary"], str)
     assert "details" in data and isinstance(data["details"], dict)
@@ -60,74 +60,74 @@ def test_manager_process_no_question_type_returns_no_routing():
     print("✓ 无 question_type 返回 no_routing")
 
 
-def test_type5_routes_to_model5():
-    """type=5 应路由到 model-5（1:1 映射）"""
+def test_type2_routes_to_model5():
+    """type=2 质量等级应路由到 model-5（1:1 映射）"""
     from framework.agents.router import QuestionTypeRouter
     router = QuestionTypeRouter()
-    agents = router.get_agents_for_type(5)
-    assert agents == ["model-5"], f"type 5 应仅映射 model-5: {agents}"
-    print("✓ type 5 路由到 model-5（1:1 映射）")
+    agents = router.get_agents_for_type(2)
+    assert agents == ["model-5"], f"type 2 应仅映射 model-5: {agents}"
+    print("✓ type 2 路由到 model-5（1:1 映射）")
 
 
-def test_model5_executed_for_type5_question():
-    """type=5 问题 → details['model-5'] 被执行（不 skipped）"""
+def test_model5_executed_for_type2_question():
+    """type=2 质量等级问题 → details['model-5'] 被执行（不 skipped）"""
     mgr = AgentManager()
-    result = mgr.process("全省耕地土壤有机质含量如何？", {"question_type": 5, "parcel_code": "A0001"})
+    result = mgr.process("我的田耕地质量等级是多少？", {"question_type": 2, "parcel_code": "A0001"})
     details = result["data"]["details"]
     m5 = details.get("model-5", {})
     assert m5.get("status") != "skipped", f"model-5 不应被跳过，实际: {m5}"
-    # parcel_code 已传，model-5 应调有机质培肥（若部署就绪）或走 mock 回退
+    # parcel_code 已传，model-5 应调等级评价（若部署就绪）或走 mock 回退
     assert "answer" in m5 or "simulated" in m5
-    print("✓ type=5 有机质培肥问题 model-5 被执行")
+    print("✓ type=2 质量等级问题 model-5 被执行")
 
 
-def test_process_type1_routes_to_model1_only():
-    """type=1 → 仅调 model-1，不调 model-2/3"""
+def test_process_type1_routes_to_model4_only():
+    """type=1 稳定性 → 仅调 model-4，不调 model-1/2/3/5"""
     mgr = AgentManager()
     result = mgr.process("查询区域内耕地质量等级整体稳定吗", {"question_type": 1})
     assert result["status"] == "ok"
-    assert result["data"]["agents_invoked"] == ["model-1"]
+    assert result["data"]["agents_invoked"] == ["model-4"]
     assert result["data"]["question_type"] == 1
-    print("✓ type=1 路由到 model-1")
+    print("✓ type=1 路由到 model-4（稳定性）")
 
 
-def test_process_type2_routes_to_model2_only():
-    """type=2 → 仅调 model-2（质量等级评价）"""
+def test_process_type2_routes_to_model5_only():
+    """type=2 质量等级 → 仅调 model-5"""
     mgr = AgentManager()
-    result = mgr.process("我的田耕地质量等级是多少", {"question_type": 2})
-    assert result["data"]["agents_invoked"] == ["model-2"]
+    result = mgr.process("我的田耕地质量等级是多少", {"question_type": 2, "parcel_code": "A0001"})
+    assert result["data"]["agents_invoked"] == ["model-5"]
     assert result["data"]["question_type"] == 2
-    print("✓ type=2 路由到 model-2")
+    print("✓ type=2 路由到 model-5（质量等级）")
 
 
-def test_process_type3_routes_to_model3_only():
-    """type=3 → 仅调 model-3，不调 model-2"""
+def test_process_type3_routes_to_model1_only():
+    """type=3 障碍诊断 → 仅调 model-1，不调 model-2"""
     mgr = AgentManager()
     result = mgr.process("我这块地到底有啥毛病", {"question_type": 3})
-    assert result["data"]["agents_invoked"] == ["model-3"]
+    assert result["data"]["agents_invoked"] == ["model-1"]
     assert "model-2" not in result["data"]["agents_invoked"]
-    print("✓ type=3 路由到 model-3（不调 model-2）")
+    print("✓ type=3 路由到 model-1（障碍诊断，不调 model-2）")
 
 
-def test_process_type4_routes_to_model4_only():
-    """type=4 → 仅调 model-4（酸化改良），不调 model-5"""
+def test_process_type4_routes_to_model2_only():
+    """type=4 酸化改良 → 仅调 model-2，不调 model-4"""
     mgr = AgentManager()
     result = mgr.process("我的田酸化严重吗", {"question_type": 4})
-    assert result["data"]["agents_invoked"] == ["model-4"]
-    assert "model-5" not in result["data"]["agents_invoked"]
-    print("✓ type=4 路由到 model-4（不调 model-5）")
+    assert result["data"]["agents_invoked"] == ["model-2"]
+    assert "model-4" not in result["data"]["agents_invoked"]
+    print("✓ type=4 路由到 model-2（酸化改良，不调 model-4）")
 
 
-def test_process_type5_routes_to_model5_only():
-    """type=5 → 仅调 model-5（有机质培肥），不调 model-1/2/3/4"""
+def test_process_type5_routes_to_model3_only():
+    """type=5 有机质培肥 → 仅调 model-3，不调 model-1/2/4/5"""
     mgr = AgentManager()
-    result = mgr.process("全省耕地土壤有机质含量如何", {"question_type": 5, "parcel_code": "A0001"})
-    assert result["data"]["agents_invoked"] == ["model-5"]
+    result = mgr.process("为了提升耕地土壤有机质，有机肥或者秸秆每亩施用量多少", {"question_type": 5})
+    assert result["data"]["agents_invoked"] == ["model-3"]
     assert "model-1" not in result["data"]["agents_invoked"]
     assert "model-2" not in result["data"]["agents_invoked"]
-    assert "model-3" not in result["data"]["agents_invoked"]
     assert "model-4" not in result["data"]["agents_invoked"]
-    print("✓ type=5 路由到 model-5（不调 model-1/2/3/4）")
+    assert "model-5" not in result["data"]["agents_invoked"]
+    print("✓ type=5 路由到 model-3（有机质培肥，不调 model-1/2/4/5）")
 
 
 def test_process_no_routing_when_question_type_none():
@@ -158,25 +158,25 @@ def test_process_no_routing_when_question_type_unknown():
     print("✓ 未知 question_type 返回 no_routing")
 
 
-def test_no_skipped_entries_in_details_for_type4():
-    """type=4 路由到 model-4，details 中 model-4 不应有 skipped 状态"""
+def test_no_skipped_entries_in_details_for_type1():
+    """type=1 路由到 model-4，details 中 model-4 不应有 skipped 状态"""
     mgr = AgentManager()
-    result = mgr.process("我的田酸化严重吗", {"question_type": 4})
+    result = mgr.process("我的田质量等级稳定吗", {"question_type": 1})
     details = result["data"]["details"]
     m4 = details.get("model-4", {})
     assert m4.get("status") != "skipped", f"model-4 不应被 skipped: {m4}"
     assert m4.get("reason") != "question_not_related"
-    print("✓ type=4 details 中 model-4 未被 skipped")
+    print("✓ type=1 details 中 model-4 未被 skipped")
 
 
-def test_no_skipped_entries_in_details_for_type5():
-    """type=5 路由到 model-5，details 中 model-5 不应有 skipped 状态"""
+def test_no_skipped_entries_in_details_for_type2():
+    """type=2 路由到 model-5，details 中 model-5 不应有 skipped 状态"""
     mgr = AgentManager()
-    result = mgr.process("全省耕地土壤有机质含量是多少", {"question_type": 5, "parcel_code": "A0001"})
+    result = mgr.process("我的田耕地质量等级是多少", {"question_type": 2, "parcel_code": "A0001"})
     details = result["data"]["details"]
     m5 = details.get("model-5", {})
     assert m5.get("status") != "skipped", f"model-5 不应被 skipped: {m5}"
-    print("✓ type=5 details 中 model-5 未被 skipped")
+    print("✓ type=2 details 中 model-5 未被 skipped")
 
 
 def test_should_execute_agent_method_removed():
@@ -201,23 +201,23 @@ def test_grade_keywords_constant_removed():
 
 
 if __name__ == "__main__":
-    test_manager_register_six_agents()
+    test_manager_register_five_agents()
     test_manager_topological_sort_province()
     test_manager_topological_sort_farmer()
-    test_manager_process_type4_returns_structured_result()
+    test_manager_process_type1_returns_structured_result()
     test_manager_process_no_question_type_returns_no_routing()
-    test_type5_routes_to_model5()
-    test_model5_executed_for_type5_question()
-    test_process_type1_routes_to_model1_only()
-    test_process_type2_routes_to_model2_only()
-    test_process_type3_routes_to_model3_only()
-    test_process_type4_routes_to_model4_only()
-    test_process_type5_routes_to_model5_only()
+    test_type2_routes_to_model5()
+    test_model5_executed_for_type2_question()
+    test_process_type1_routes_to_model4_only()
+    test_process_type2_routes_to_model5_only()
+    test_process_type3_routes_to_model1_only()
+    test_process_type4_routes_to_model2_only()
+    test_process_type5_routes_to_model3_only()
     test_process_no_routing_when_question_type_none()
     test_process_no_routing_when_question_type_zero()
     test_process_no_routing_when_question_type_unknown()
-    test_no_skipped_entries_in_details_for_type4()
-    test_no_skipped_entries_in_details_for_type5()
+    test_no_skipped_entries_in_details_for_type1()
+    test_no_skipped_entries_in_details_for_type2()
     test_should_execute_agent_method_removed()
     test_fertility_keywords_constant_removed()
     test_grade_keywords_constant_removed()

@@ -12,13 +12,13 @@ class Config:
         SECRET_KEY = 'dev-secret-key-change-in-production'
 
     DB_HOST = os.environ.get('DB_HOST') or 'localhost'
-    DB_PORT = int(os.environ.get('DB_PORT') or 3306)
+    DB_PORT = int(os.environ.get('DB_PORT') or 5432)
     DB_USER = os.environ.get('DB_USER') or 'root'
     DB_PASSWORD = os.environ.get('DB_PASSWORD') or ''
     DB_NAME = os.environ.get('DB_NAME') or 'db_enterprise_qa'
 
     SQLALCHEMY_DATABASE_URI = (
-        f"mysql+pymysql://{DB_USER}:{DB_PASSWORD}@{DB_HOST}:{DB_PORT}/{DB_NAME}?charset=utf8mb4"
+        f"postgresql+psycopg2://{DB_USER}:{DB_PASSWORD}@{DB_HOST}:{DB_PORT}/{DB_NAME}"
     )
     SQLALCHEMY_TRACK_MODIFICATIONS = False
     SQLALCHEMY_ENGINE_OPTIONS = {
@@ -50,9 +50,6 @@ class Config:
     CHUNK_OVERLAP = 150
     RETRIEVAL_TOP_K = 5
 
-    # 路由判定模式：llm=LLM 全量初判（失败自动回退关键词），keyword=纯关键词/向量
-    ROUTING_MODE = os.environ.get("ROUTING_MODE", "llm")
-
     MAX_CONCURRENT_MODELS = int(os.environ.get('MAX_CONCURRENT_MODELS') or '0')
 
     # 数据导入接口配置
@@ -64,6 +61,10 @@ class Config:
         'dat': 'bin/farmland_quality_eval',
     }
     BACKUP_RETENTION_COUNT = 3
+
+    # 路由模式开关：llm（默认，LLM 初判+回退）/ keyword（纯关键词+向量）
+    # 受 2026-08-11 llm-routing-judgment 特性引入；test_llm_routing.py 依赖此字段存在
+    ROUTING_MODE = os.environ.get("ROUTING_MODE", "llm")
 
     @classmethod
     def get_max_concurrent(cls) -> int:
@@ -87,6 +88,6 @@ class SQLiteConfig(Config):
 config_map = {
     'development': DevelopmentConfig,
     'production': ProductionConfig,
-    'default': DevelopmentConfig,
+    'default': Config,
     'sqlite': SQLiteConfig
 }

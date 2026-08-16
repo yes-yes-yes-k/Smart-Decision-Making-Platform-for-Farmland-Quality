@@ -14,3 +14,20 @@ from .soil_data import (
     GrainYield,
 )
 from .report import Report
+from .thematic_model import (
+    ThematicModelRegistry,
+    ModelExecutionLog,
+    SpatialDataLayer,
+    ParcelGeometry,
+    StabilityRiskResult,
+    QualityGradeResult,
+    ObstacleDiagnosisResult,
+    AcidificationRemediationResult,
+    OrganicMatterResult,
+    ComprehensiveFertilityResult,
+    RoutingDecisionLog,
+    ModelEvaluationMetrics,
+    ExclusiveRuleConfig,
+    ParcelInfo,
+    ModelVersionHistory,
+)
