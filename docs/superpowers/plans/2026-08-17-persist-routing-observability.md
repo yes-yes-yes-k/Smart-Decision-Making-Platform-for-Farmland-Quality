@@ -558,7 +558,7 @@ Expected: `ok`
 
 ### Task 4.3：新增 `_get_active_rules()` 统一入口
 
-- [ ] **任务 4.3 完成**：新增 `_get_active_rules()` 统一入口函数，优先返回 DB 缓存规则，DB 为空或不可用时回退硬编码 `EXCLUSIVE_RULES`
+- [x] **任务 4.3 完成**：新增 `_get_active_rules()` 统一入口函数，优先返回 DB 缓存规则，DB 为空或不可用时回退硬编码 `EXCLUSIVE_RULES`
 
 **Files:**
 - Modify: `framework/agents/exclusive_rules.py`（在 `from_database` 之后新增）
