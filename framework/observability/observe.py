@@ -92,12 +92,20 @@ def observe_routing(
         entry["routing_status"] = routing_status
         entry["degradation"] = routing_status
         _attach_llm_routing_state(entry)
+        _FIVE_DIM_KEYS = ("scale", "data_type", "business_task", "expected_output")
+        entry["five_dim_context"] = (
+            {k: context.get(k) for k in _FIVE_DIM_KEYS} if context else {}
+        )
         entry["duration_ms"] = round((time.perf_counter() - t0) * 1000, 2)
         _safe_write_log(entry)
         return question_type, relevance, final_type, routing_status
     except Exception as exc:
         entry["failure_reason"] = str(exc)
         _attach_llm_routing_state(entry)
+        _FIVE_DIM_KEYS = ("scale", "data_type", "business_task", "expected_output")
+        entry["five_dim_context"] = (
+            {k: context.get(k) for k in _FIVE_DIM_KEYS} if context else {}
+        )
         entry["duration_ms"] = round((time.perf_counter() - t0) * 1000, 2)
         _safe_write_log(entry)
         raise
