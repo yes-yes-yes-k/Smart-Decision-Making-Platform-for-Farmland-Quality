@@ -73,21 +73,15 @@ class Config:
         import multiprocessing
         return max(2, min(6, multiprocessing.cpu_count()))
 
-class DevelopmentConfig(Config):
-    DEBUG = True
-    SQLALCHEMY_DATABASE_URI = 'sqlite:///./development.db'
-
-class ProductionConfig(Config):
-    DEBUG = False
-    SQLALCHEMY_DATABASE_URI = 'sqlite:///instance/production.db'
-
 class SQLiteConfig(Config):
+    """SQLite 降级配置，仅供测试套件临时数据库使用。"""
     DEBUG = True
     SQLALCHEMY_DATABASE_URI = 'sqlite:///./development.db'
 
 config_map = {
-    'development': DevelopmentConfig,
-    'production': ProductionConfig,
+    'development': Config,
+    'production': Config,
     'default': Config,
-    'sqlite': SQLiteConfig
+    'sqlite': SQLiteConfig,
 }
+

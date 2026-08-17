@@ -71,3 +71,15 @@ AGENTS.md
 
 # 本地路由观测日志（按天生成，不入库）
 logs/
+
+# 本地依赖目录（--target 安装的 geoalchemy2/sqlalchemy 等）
+.libs/
+.tmp_libs/
+
+# Trae IDE 本地配置与技能目录
+.trae-cn/
+.trae/
+
+# 根目录散落的 docx 参考文档
+/*.docx
+
