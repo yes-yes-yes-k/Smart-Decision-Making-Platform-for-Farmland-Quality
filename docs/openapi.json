@@ -233,7 +233,7 @@
       "post": {
         "tags": ["聊天"],
         "summary": "智能问答（多智能体协作）",
-        "description": "统一智能路由入口，根据问题类型（question_type 0-7）自动路由到 RAG 链或单一专业智能体：1→model-1 稳定性、2→model-4 酸化改良、3→model-3 障碍诊断、4→model-6 SOC/Dose 预测、5→model-7 质量等级、6→model-2 提升潜力、7→model-5 有机质培肥；知识性问题（type 0）走 RAG 链路。",
+        "description": "统一智能路由入口，根据问题类型（question_type 0-6）自动路由到 RAG 链或单一专业智能体：1→model-1 稳定性、2→model-2 质量等级、3→model-3 障碍诊断、4→model-4 酸化改良、5→model-5 有机质培肥 ML、6→model-6 占位能力；知识性问题（type 0）走 RAG 链路。",
         "security": [
           {
             "BearerAuth": []
@@ -269,7 +269,7 @@
                   },
                   "parcel_code": {
                     "type": "string",
-                    "description": "地块代码（字母数字，给 model-7 调 Python 模型），type 5 质量等级评价必需",
+                    "description": "地块代码（字母数字，给 model-2 调质量等级模型），质量等级评价必需",
                     "example": "A0001"
                   },
                   "land_type": {
@@ -623,7 +623,7 @@
       "post": {
         "tags": ["模型"],
         "summary": "执行专题模型",
-        "description": "执行指定正式专业模型，支持7项：stability-risk-evaluation、improvement-potential-assessment、obstacle-diagnosis、acidification-remediation、organic-matter-improvement、fertility-soc-dose-prediction、quality-grade-evaluation。辅助空间/指标能力和实验性协同提升能力可独立调用，但不参与聊天路由。",
+        "description": "执行指定正式专业模型，支持6项：stability-risk-evaluation、quality-grade-evaluation、obstacle-diagnosis、acidification-remediation、organic-matter-improvement、placeholder。model-5 使用韶关旱地/水田 RF 或全局 ETR；model-6 为占位能力。辅助空间/指标能力和实验性协同提升能力可独立调用，但不参与聊天路由。",
         "security": [
           {
             "BearerAuth": []
@@ -719,15 +719,10 @@
                     }
                   }
                 },
-                "fertility_soc_dose_prediction": {
-                  "summary": "肥力 SOC/Dose 预测",
+                "placeholder": {
+                  "summary": "model-6 占位能力",
                   "value": {
-                    "model_id": "fertility-soc-dose-prediction",
-                    "area_code": "lechang",
-                    "indicators": {
-                      "organic_matter": 18.5,
-                      "ph": 5.2
-                    }
+                    "model_id": "placeholder"
                   }
                 },
                 "quality_grade_evaluation": {

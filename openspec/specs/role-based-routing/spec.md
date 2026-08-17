@@ -129,3 +129,11 @@ TBD - created by archiving change multi-agent-model-framework. Update Purpose af
 - **WHEN** 已路由的专业 Agent 抛出异常或返回未就绪状态
 - **THEN** 系统 SHALL 返回当前 `question_type`、对应 Agent ID、错误/降级原因和可用专业结果
 - **AND** SHALL NOT 调用额外的专业 Agent
+
+### Requirement: model-5 肥力字段透传
+
+系统 SHALL 通过 `/api/v1/chat/` 将 `area_code`、`land_type`、规范土壤字段及 `SJD/YJZ/TD/TL/TJ/YXL/SXJ/YJZTSZ/YJFLX` 外部字段透传至 model-5；type 5 返回 `agents_invoked=["model-5"]` 及真实或明确降级的模型元数据。type 6 SHALL 继续只调用 model-6 占位 Agent。
+
+#### Scenario: type 5 韶关请求
+- **WHEN** type 5 请求包含 `area_code=lechang`、土地类型和土壤特征
+- **THEN** API SHALL 返回对应 RF 的 `model_version`、Dose 和可靠性状态

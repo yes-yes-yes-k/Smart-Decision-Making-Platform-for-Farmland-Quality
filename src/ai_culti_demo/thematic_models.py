@@ -110,16 +110,16 @@ MODEL_SPECS: dict[str, ModelSpec] = {
     "organic-matter-improvement": {
         "model_id": "organic-matter-improvement",
         "name": "土壤有机质提升模型",
-        "purpose": "对有机质不足问题进行占位识别、提升需求分析和措施匹配。",
-        "minimum_inputs": ["area_code"],
+        "purpose": "基于韶关旱地/水田随机森林与全局肥力模型预测 SOC 和有机质培肥施用量；缺少特征时明确降级。",
+        "minimum_inputs": ["area_code", "land_type", "indicators"],
         "recommended_layers": ["organic-matter", "soil_points", "cropland"],
         "findings": [
-            {"title": "问题识别", "content": "有机质提升模型以样点和有机质图层为基础返回结构化占位判断。"},
-            {"title": "提升方向", "content": "当前建议围绕培肥、秸秆还田和区域复核三类措施组织。"},
+            {"title": "机器学习预测", "content": "model-5_execution 输出 SOC 预测、Dose 预测、置信度和实际模型版本。"},
+            {"title": "区域路由", "content": "area_code=lechang 时按 upland/paddy 选择韶关 RF；其他区域使用全局 ETR。"},
         ],
         "recommendations": [
-            "先确认有机质水平图层与样点表字段映射。",
-            "将提升建议拆分为核验、培肥和持续监测三类动作。",
+            "确认 pH、SOCbe、TN、TP、TK、AP、AK、Gap、Dose 和 Fertilizer type 字段及单位。",
+            "模型结果仅供辅助决策，需结合田间试验和农艺人员复核。",
         ],
         "fallback_fields": ["longitude", "latitude"],
     },
@@ -282,6 +282,19 @@ def _run_professional_capability(payload: dict[str, Any], requested_model_id: st
 
         agent = AgentManager().agents[capability.agent_id]
         result = agent.analyze(payload)
+        # 将 model-5 的关键 ML 元数据提升到专题 API 顶层，便于调用方直接消费。
+        analysis = result.get("analysis", {}) if isinstance(result, dict) else {}
+        if isinstance(analysis, dict):
+            raw_status = analysis.get("status")
+            if raw_status in {"rejected", "fallback"}:
+                result["status"] = raw_status
+            for key in (
+                "model_id", "model_version", "soc_prediction", "soc_confidence",
+                "dose_prediction", "dose_confidence", "simulated", "region", "land_type",
+                "imputation_applied", "imputed_features", "fallback_reason", "reason",
+            ):
+                if key in analysis:
+                    result.setdefault(key, analysis[key])
         result["model"] = public_capability_descriptor(capability)
         result["capability"] = public_capability_descriptor(capability)
         result.setdefault("recommended_layers", [])

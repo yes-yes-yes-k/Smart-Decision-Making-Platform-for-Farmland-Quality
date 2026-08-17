@@ -37,7 +37,13 @@ def run_model():
         payload['indicators'] = data['indicators']
     if 'context' in data:
         payload['context'] = data['context']
-    for key in ('parcel_id', 'parcel_code', 'target_ph', 'exe_path', 'dat_path'):
+    for key in (
+        'parcel_id', 'parcel_code', 'target_ph', 'exe_path', 'dat_path',
+        'land_type', 'fertilizer_type', 'db_path',
+        'pH', 'SOCbe', 'SOMbe', 'TN', 'TP', 'TK', 'AP', 'AK', 'Gap',
+        'Dose', 'Fertilizer type',
+        'SJD', 'YJZ', 'TD', 'TL', 'TJ', 'YXL', 'SXJ', 'YJZTSZ', 'YJFLX',
+    ):
         if key in data:
             payload[key] = data[key]
 

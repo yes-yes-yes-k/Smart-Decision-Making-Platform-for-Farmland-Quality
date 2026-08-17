@@ -83,3 +83,5 @@ logs/
 # 根目录散落的 docx 参考文档
 /*.docx
 
+# Codex 本地配置
+.codex/

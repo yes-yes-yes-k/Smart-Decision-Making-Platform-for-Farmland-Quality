@@ -5,11 +5,11 @@
 ## 功能特性
 
 - **统一框架**：Flask + SQLAlchemy + JWT + ChromaDB + LangChain + LangGraph
-- **核心引擎**：县域概览、结构化诊断、7 个正式专业模型与 3 个辅助/实验性能力、报告汇总（`src/ai_culti_demo`）
-- **多智能体编排**：7 个专业智能体 + AgentManager + QuestionTypeRouter（基于 question_type 1:1 映射）
-  - model-1 稳定性风险识别 / model-2 潜力评估 / model-3 问题识别
-  - model-4 酸化改良（过程模型，4 子模型：水田/旱地 × 尿素/复合肥，输出 YTK/MBNT） / model-5 有机质培肥 / model-6 肥力 SOC/Dose 预测（ML）
-  - model-7 耕地质量等级评价（Python 实现，移植 model2，含潜力分析/县域统计/调理剂库函数）
+- **核心引擎**：县域概览、结构化诊断、6 个正式专业模型与 3 个辅助/实验性能力、报告汇总（`src/ai_culti_demo`）
+- **多智能体编排**：6 个专业智能体 + AgentManager + QuestionTypeRouter（基于 question_type 1:1 映射）
+  - model-1 稳定性风险识别 / model-2 质量等级与提升潜力 / model-3 问题识别
+  - model-4 酸化改良（过程模型，4 子模型：水田/旱地 × 尿素/复合肥，输出 YTK/MBNT）
+  - model-5 有机质培肥（韶关旱地/水田 RF + 全局 ETR）/ model-6 占位模型
 - **RAG 知识检索**：基于 ChromaDB 的向量检索与 SiliconFlow LLM 问答，知识性问题自动路由到 RAG
 - **Function Calling**：工具注册表 + LangChain Tools 集成 + 自定义工具接口
 - **JWT 认证**：用户体系、会话管理、权限装饰器
@@ -185,7 +185,7 @@ agent_culti_demo/
 │   │   ├── manager.py          #     AgentManager
 │   │   ├── router.py           #     QuestionTypeRouter 问题类型路由（1:1 映射）
 │   │   ├── orchestrator.py     #     LangGraph 编排器
-│   │   └── specialized/        #     7 个专业智能体实现
+│   │   └── specialized/        #     6 个专业智能体实现
 │   ├── auth/                   #   JWT 认证与权限装饰器
 │   ├── core_engine/            #   核心引擎适配器
 │   │   └── adapter.py          #     桥接 src/ai_culti_demo
@@ -235,28 +235,27 @@ python -m pytest tests/test_rag.py -q
    ↓
 identify_question_type（问题类型识别）
    ├─ 知识性问题预检（"什么是X"等） → type 0
-   ├─ 关键词匹配 → type 1-7
-   └─ 向量降级匹配 → type 1-7/0
+   ├─ 关键词匹配 → type 1-6
+   └─ 向量降级匹配 → type 1-6/0
    ↓
 route_models（路由分发）
    ├─ type 0 → RAG 链（知识库问答）
-   └─ type 1-7 → execute_models
+   └─ type 1-6 → execute_models
        ↓
        QuestionTypeRouter（1:1 映射）
        ├─ type 1 → model-1（稳定性风险）
-       ├─ type 2 → model-4（酸化改良，过程模型 4 子模型）
+       ├─ type 2 → model-2（质量等级与提升潜力）
        ├─ type 3 → model-3（障碍诊断）
-       ├─ type 4 → model-6（肥力 ML 预测）
-       ├─ type 5 → model-7（耕地质量等级评价）
-       ├─ type 6 → model-2（提升潜力评估）
-       └─ type 7 → model-5（有机质培肥）
+       ├─ type 4 → model-4（酸化改良，过程模型 4 子模型）
+       ├─ type 5 → model-5（有机质培肥 ML）
+       └─ type 6 → model-6（占位模型）
        ↓
        AgentManager（编排调度）
        ↓
        结果汇总 + 推荐建议
 ```
 
-7 个专业智能体通过统一能力注册表与 [src/ai_culti_demo/thematic_models.py](src/ai_culti_demo/thematic_models.py) 的正式模型 API 一一对应。空间结构解析和关键指标解析为辅助能力，多项协同提升为实验性能力，不参与聊天路由。
+6 个专业智能体通过统一能力注册表与 [src/ai_culti_demo/thematic_models.py](src/ai_culti_demo/thematic_models.py) 的正式模型 API 一一对应。空间结构解析和关键指标解析为辅助能力，多项协同提升为实验性能力，不参与聊天路由。
 
 **酸化改良（model-4）过程模型**：已从规则导向（GB/T 42817-2023 石灰剂量）替换为过程模型（移植自模型5源码），按 `land_type`（水田 paddy / 旱地 upland）× `fertilizer_type`（尿素 urea / 复合肥 compound）组合选择 4 个子模型之一，计算亿土康（YTK）与木本泥炭（MBNT）需求量（kg/ha）。必填输入为 SJD（pH）、JHX（交换性氢）、JLA（交换性铝）；`parcel_id` 可自动补 SJD。模型版本 `process_v2_20260801`。详见 [docs/api.md](docs/api.md) 酸化改良章节。
 
@@ -313,7 +312,7 @@ python start_production_server.py
 
 - 密码哈希使用 `werkzeug.security`（非 MD5）
 - 新框架通过 `framework/core_engine/adapter.py` 访问核心引擎
-- 专题模型通过统一能力注册表对应 question_types 1-7（1=稳定性、2=酸化、3=障碍诊断、4=SOC/Dose 预测、5=质量等级、6=提升潜力、7=有机质培肥），通过 QuestionTypeRouter 1:1 映射到单一专业智能体
+- 专题模型通过统一能力注册表对应 question_types 1-6（1=稳定性、2=质量等级与提升潜力、3=障碍诊断、4=酸化、5=有机质培肥、6=model-6 占位），通过 QuestionTypeRouter 1:1 映射到单一专业智能体
 - 开发环境使用 SQLite（`instance/development.db`）
 - 生产环境使用 SQLite（`instance/production.db`）
 - API 认证头格式：`Authorization: Bearer <token>`

@@ -38,7 +38,7 @@
 
 | 外部模型 | 项目内位置 | 模型ID | 状态 |
 |---------|-----------|--------|------|
-| Fortran exe | `src/ai_culti_demo/farmland_grade_eval/runner.py` | model-7 | 已集成（exe调用包装） |
+| Fortran/Python 质量等级引擎 | `src/ai_culti_demo/farmland_grade_eval/runner.py` | model-2 | 已集成（质量等级能力） |
 | 模型1 | `src/ai_culti_demo/farmland_stability/model.py` | model-1 | 已集成（简化版9模块） |
 | 模型3 | `src/ai_culti_demo/farmland_diagnosis/` | model-3 | 已集成（诊断逻辑） |
 
@@ -47,10 +47,11 @@
 ```python
 TYPE_AGENTS = {
     1: ["model-1"],  # 稳定性/退化风险
-    2: ["model-4"],  # 酸化改良
+    2: ["model-2"],  # 质量等级评价
     3: ["model-3"],  # 障碍诊断
-    4: ["model-6"],  # 肥力/SOC/Dose
-    5: ["model-7"],  # 耕地质量等级评价
+    4: ["model-4"],  # 酸化改良
+    5: ["model-5"],  # 有机质培肥 ML
+    6: ["model-6"],  # 占位能力
 }
 ```
 

@@ -97,13 +97,13 @@ TBD - created by archiving change multi-agent-model-framework. Update Purpose af
 - **THEN** 智能体 SHALL 输出该地块土壤酸化等级
 
 ### Requirement: OrganicMatterAgent 智能体
-系统 SHALL 实现 `OrganicMatterAgent` 智能体，对应模型5「耕地土壤有机质培肥提升模型」，负责有机质提升评估和有机肥施用量计算。
+系统 SHALL 实现 `OrganicMatterAgent` 智能体，对应模型5「耕地土壤有机质培肥提升模型」，通过 `model_5_execution` 提供 SOC 与 Dose 机器学习预测；韶关区域按旱地/水田选择 RF，非韶关使用全局 ETR 或明确降级。
 
 **模型输入**（来源：xlsx 总览表）：
 - 土壤pH、有机质、有效磷、速效钾、总氮、阳离子交换量、土壤黏粒、交换性氢离子、交换性铝离子、游离铁、总铁、全氮、全磷、全钾、游离氧化铁、土壤容重、年降雨量、年降雨pH年均值、施肥类型及施肥量、作物类型及产量、农田类型（水田/旱地）、目标土壤有机质
 
-**模型输出**（来源：xlsx 总览表）：
-- 有机肥/秸秆、有机肥施用量、秸秆施用量
+**模型输出**：
+- `model_id=model-5`、SOC 预测、Dose 预测、置信度、实际 `model_version`、`simulated`、`fallback` 和输入处理状态
 
 #### Scenario: 有机质含量评估
 - **WHEN** 用户询问"全省耕地土壤有机质含量如何，空间分布情况？"
@@ -120,6 +120,14 @@ TBD - created by archiving change multi-agent-model-framework. Update Purpose af
 #### Scenario: 有机质低值原因
 - **WHEN** 用户询问"耕地有机质含量低的原因是什么？"
 - **THEN** 智能体 SHALL 从土壤类型、气候、地形、耕作制度、秸秆还田和施肥管理等方面解释差异，指出低有机质区域及后续培肥重点
+
+#### Scenario: 韶关 RF 预测
+- **WHEN** Agent 收到 `area_code=lechang`、`land_type` 和规范或外部土壤字段
+- **THEN** SHALL 调用 `model_5_execution` 对应的韶关 RF，返回 `model_id=model-5`、`model_version=SG_RF_v2_20260804` 和 `simulated=false`
+
+#### Scenario: 输入不足或模型不可用
+- **WHEN** 关键特征缺失、字段冲突、输入越界或 joblib/依赖不可用
+- **THEN** SHALL 返回机器可读的 `need_input`、`input_conflict`、`input_out_of_range` 或 `fallback_reason`，不得把规则结果标记为真实 RF
 
 ### Requirement: FarmlandGradeObstacleAgent 智能体
 系统 SHALL 实现 `FarmlandGradeObstacleAgent` 智能体，对应模型2「耕地质量等级评价模型」（纯 Python 实现），通过调用 `run_grade_evaluation` 获取地块评价结果，返回基于 GB/T 33469-2016 标准的真实质量等级和障碍度诊断。

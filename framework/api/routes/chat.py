@@ -75,9 +75,13 @@ def chat():
     history = [{"role": m.role, "content": m.content} for m in conversation.messages if m.id != user_message.id]
 
     orchestrator_request = {"question": message, **context}
-    # top-level parcel_id/parcel_code 优先（覆盖 context 内同名字段）
-    # parcel_id（数字字符串）给 model-1/2/4 查 DB，parcel_code（字母数字）给 model-5 调评价程序
-    for k in ("parcel_id", "parcel_code", "land_type", "fertilizer_type"):
+    # 顶层字段优先，确保 model-5 的区域、土地类型和土壤指标不在 API 边界丢失。
+    for k in (
+        "area_code", "parcel_id", "parcel_code", "land_type", "fertilizer_type", "db_path",
+        "pH", "SOCbe", "SOMbe", "TN", "TP", "TK", "AP", "AK", "Gap",
+        "Dose", "Fertilizer type", "SJD", "YJZ", "TD", "TL", "TJ", "YXL", "SXJ",
+        "YJZTSZ", "YJFLX",
+    ):
         if data.get(k) is not None:
             orchestrator_request[k] = data[k]
     result = multi_agent_orchestrator.run(orchestrator_request, conversation_history=history)
@@ -155,7 +159,12 @@ def chat_stream():
     history = [{"role": m.role, "content": m.content} for m in conversation.messages if m.id != user_message.id]
 
     orchestrator_request = {"question": message, **context}
-    for k in ("parcel_id", "parcel_code", "land_type", "fertilizer_type"):
+    for k in (
+        "area_code", "parcel_id", "parcel_code", "land_type", "fertilizer_type", "db_path",
+        "pH", "SOCbe", "SOMbe", "TN", "TP", "TK", "AP", "AK", "Gap",
+        "Dose", "Fertilizer type", "SJD", "YJZ", "TD", "TL", "TJ", "YXL", "SXJ",
+        "YJZTSZ", "YJFLX",
+    ):
         if data.get(k) is not None:
             orchestrator_request[k] = data[k]
 

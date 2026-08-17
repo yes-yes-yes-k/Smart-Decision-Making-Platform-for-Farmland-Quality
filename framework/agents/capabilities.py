@@ -55,9 +55,11 @@ PROFESSIONAL_CAPABILITIES: tuple[ProfessionalCapability, ...] = (
     ),
     ProfessionalCapability(
         "model-5", "organic-matter-improvement", "耕地土壤有机质培肥提升",
-        "围绕有机肥、秸秆还田和培肥措施提供治理建议。", "organic_matter", 5,
-        ("indicators",), "可使用结构化土壤指标；当前规则结果会明确模拟状态。",
-        "县", "处方用量",     # model-5 有机质培肥：县级处方用量
+        "基于韶关旱地/水田 RF 与全局肥力模型预测有机质培肥施用量。", "organic_matter", 5,
+        ("area_code", "land_type", "indicators"),
+        "韶关需要 area_code 与 land_type；缺少特征时明确降级并提示补充输入。",
+        "地块", "处方用量",
+
     ),
     ProfessionalCapability(
         "model-6", "comprehensive-fertility-improvement", "耕地综合地力改良提升模型",
