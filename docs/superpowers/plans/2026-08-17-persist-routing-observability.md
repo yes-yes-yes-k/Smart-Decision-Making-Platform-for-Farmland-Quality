@@ -302,7 +302,7 @@ git commit -m "feat(observability): add relevance field to routing log entry"
 
 ### Task 3.2：补充 `five_dim_context` 字段（4 字段子集）
 
-- [ ] **任务 3.2 完成**：在 entry 中补充 `five_dim_context` 字段（仅 4 字段：scale/data_type/business_task/expected_output，parcel_id/parcel_code 不入此字段）
+- [x] **任务 3.2 完成**：在 entry 中补充 `five_dim_context` 字段（仅 4 字段：scale/data_type/business_task/expected_output，parcel_id/parcel_code 不入此字段）
 
 **Files:**
 - Modify: `framework/observability/observe.py`（在 `_safe_write_log(entry)` 调用前赋值）
