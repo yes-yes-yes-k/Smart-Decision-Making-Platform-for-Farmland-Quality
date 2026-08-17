@@ -361,7 +361,7 @@ git commit -m "feat(observability): add five_dim_context (4-field subset) to rou
 
 ### Task 3.3：补充 `logged_at` 字段
 
-- [ ] **任务 3.3 完成**：在 entry 中补充 `logged_at` 字段（UTC 时间戳，落库到 `RoutingDecisionLog.logged_at`）
+- [x] **任务 3.3 完成**：在 entry 中补充 `logged_at` 字段（UTC 时间戳，落库到 `RoutingDecisionLog.logged_at`）
 
 **Files:**
 - Modify: `framework/observability/observe.py`（顶部 import + entry 赋值）
