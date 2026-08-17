@@ -1698,7 +1698,7 @@ Expected: 第二条命令输出混淆矩阵统计；第三条命令输出 `DB ro
 
 ### Task 7.6：修复 `run_routing_regression.py` CLI 模式的 app context 缺失与 rollback 二次异常
 
-- [ ] **任务 7.6 完成**：修复 `write_metrics_to_db` 的 rollback 二次异常（嵌套 try 保护），并为 `__main__` 入口包 app context，使 CLI 方式运行 `python scripts/run_routing_regression.py` 不崩溃且 DB 落库成功
+- [x] **任务 7.6 完成**：修复 `write_metrics_to_db` 的 rollback 二次异常（嵌套 try 保护），并为 `__main__` 入口包 app context，使 CLI 方式运行 `python scripts/run_routing_regression.py` 不崩溃且 DB 落库成功
 
 **背景**：Task 7.5 端到端验证发现：CLI 运行 `python scripts/run_routing_regression.py` 时 `write_metrics_to_db` 在无 app context 下 `db.session.add` 抛 `RuntimeError: Working outside of application context`，且 except 块内 `db.session.rollback()` 再次抛出同一异常未被捕获 → 脚本崩溃（exit 1），DB 未落库。app context 内调用 main() 则全部通过。
 
