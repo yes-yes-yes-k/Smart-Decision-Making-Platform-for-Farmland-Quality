@@ -1305,7 +1305,7 @@ git commit -m "fix(observability): serialize datetime in JSONL fallback with def
 
 ### Task 6.3：新增 `tests/test_regression_metrics_db.py`
 
-- [ ] **任务 6.3 完成**：新增 `tests/test_regression_metrics_db.py`（2 个测试用例：评估结果落库、DB 失败保留 JSON 输出）
+- [x] **任务 6.3 完成**：新增 `tests/test_regression_metrics_db.py`（2 个测试用例：评估结果落库、DB 失败保留 JSON 输出）
 
 **Files:**
 - Create: `tests/test_regression_metrics_db.py`
