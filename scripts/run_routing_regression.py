@@ -108,6 +108,7 @@ def main(argv=None) -> int:
     os.makedirs(os.path.dirname(os.path.abspath(args.output)), exist_ok=True)
     with open(args.output, "w", encoding="utf-8") as f:
         json.dump(matrix, f, ensure_ascii=False, indent=2)
+    write_metrics_to_db(matrix, evaluation_mode="keyword")
     print(f"混淆矩阵已写入 {args.output}")
     print("目标达成" if not failed else "未达成：存在混淆率超目标的对")
     return 1 if failed else 0
