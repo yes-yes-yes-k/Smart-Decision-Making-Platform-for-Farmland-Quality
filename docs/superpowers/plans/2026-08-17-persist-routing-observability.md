@@ -1272,7 +1272,7 @@ git commit -m "fix(app): add postgresql dialect branch to _has_column for PG com
 
 ### Task 6.6：修复 `routing_log.py` JSONL 写入的 datetime 序列化
 
-- [ ] **任务 6.6 完成**：`write_routing_log` 的 JSONL 写入改用 `json.dumps(entry, ensure_ascii=False, default=str)`，修复 `logged_at`（datetime）导致的 `TypeError: Object of type datetime is not JSON serializable`
+- [x] **任务 6.6 完成**：`write_routing_log` 的 JSONL 写入改用 `json.dumps(entry, ensure_ascii=False, default=str)`，修复 `logged_at`（datetime）导致的 `TypeError: Object of type datetime is not JSON serializable`
 
 **背景**：Task 6.5 使 DB 测试真实执行后暴露：`framework/observability/routing_log.py:91`（JSONL 写入处）的 `json.dumps(entry, ensure_ascii=False)` 无法序列化 entry 中的 `logged_at`（Task 3.3 新增的 datetime 字段），导致 `test_double_write_normal` 和 `test_db_failure_fallback_jsonl` 失败（JSONL 路径抛 TypeError）。
 
