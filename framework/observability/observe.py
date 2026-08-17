@@ -84,6 +84,7 @@ def observe_routing(
     t0 = time.perf_counter()
     try:
         question_type, relevance = identify_question_type(question, context)
+        entry["relevance"] = relevance
         entry["candidate_agents"] = _router.get_agents_for_type(question_type)
         entry["hit_exclusive_rules"] = _matched_rules(question, context)
         final_type, routing_status = apply_exclusive_rules(question, question_type, context)
