@@ -88,7 +88,7 @@ def write_routing_log(entry: Dict[str, Any]) -> None:
         return
     os.makedirs(os.path.dirname(os.path.abspath(path)), exist_ok=True)
     with open(path, "a", encoding="utf-8") as f:
-        f.write(json.dumps(entry, ensure_ascii=False) + "\n")
+        f.write(json.dumps(entry, ensure_ascii=False, default=str) + "\n")
 
 
 def read_routing_logs(log_dir: Optional[str] = None) -> list[Dict[str, Any]]:
