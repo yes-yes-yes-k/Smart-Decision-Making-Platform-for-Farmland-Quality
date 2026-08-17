@@ -11,7 +11,7 @@ from datetime import datetime, timezone
 from typing import Any, Dict, Optional, Tuple
 
 from framework.agents.exclusive_rules import (
-    EXCLUSIVE_RULES,
+    _get_active_rules,
     _rule_matches,
     apply_exclusive_rules,
 )
@@ -27,7 +27,7 @@ _router = QuestionTypeRouter()
 
 def _matched_rules(question: str, context: Optional[dict]) -> list[str]:
     """返回命中的排他规则 target（只读，不改变路由行为）。"""
-    return [r.target for r in EXCLUSIVE_RULES if _rule_matches(r, question, context)]
+    return [r.target for r in _get_active_rules() if _rule_matches(r, question, context)]
 
 
 def _safe_write_log(entry: Dict[str, Any]) -> None:
