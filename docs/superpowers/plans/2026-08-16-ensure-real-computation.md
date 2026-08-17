@@ -2,6 +2,7 @@
 change: ensure-real-computation-thematic-models
 design-doc: docs/superpowers/specs/2026-08-16-ensure-real-computation-design.md
 base-ref: ecfc2e8a87314aeae19af21f1f7201b3c094b8e6
+archived-with: 2026-08-17-ensure-real-computation-thematic-models
 ---
 
 # 实施计划：确保专题模型使用真实计算逻辑

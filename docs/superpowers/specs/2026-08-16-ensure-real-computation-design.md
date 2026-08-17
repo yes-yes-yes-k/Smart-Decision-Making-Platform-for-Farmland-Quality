@@ -2,6 +2,8 @@
 comet_change: ensure-real-computation-thematic-models
 role: technical-design
 canonical_spec: openspec
+archived-with: 2026-08-17-ensure-real-computation-thematic-models
+status: final
 ---
 
 # Design Doc: 确保专题模型使用真实计算逻辑
