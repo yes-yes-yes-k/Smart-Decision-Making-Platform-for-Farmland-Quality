@@ -6,9 +6,9 @@
 
 ## 2. Model-1 StabilityRiskAgent 改造
 
-- [ ] 2.1 将 `stability_risk_agent.py` 的 `_collect_inputs` 重构为 DB 优先：先调 `ParcelDataAccessor.get_parcel_indicators(parcel_id)`，命中时用 DB 指标；未命中时降级到 `MOCK_COUNTIES` 并记录 WARNING
-- [ ] 2.2 在 `StabilityRiskAgent` override `_get_result_model_class()` 返回 `StabilityRiskResult`
-- [ ] 2.3 在 `execute()` 成功路径调用 `_persist_result()`，返回结果中增加 `data_source` 和 `persisted` 标识
+- [x] 2.1 将 `stability_risk_agent.py` 的 `_collect_inputs` 重构为 DB 优先：先调 `ParcelDataAccessor.get_parcel_indicators(parcel_id)`，命中时用 DB 指标；未命中时降级到 `MOCK_COUNTIES` 并记录 WARNING
+- [x] 2.2 在 `StabilityRiskAgent` override `_build_result_record()` 返回 `StabilityRiskResult`（legacy 路径无 parcel_id 时返回 None）
+- [x] 2.3 在 `execute()` 成功路径调用 `_persist_result()`，返回结果中增加 `data_source` 和 `persisted` 标识
 
 ## 3. Model-2 FarmlandGradeAgent 改造
 
