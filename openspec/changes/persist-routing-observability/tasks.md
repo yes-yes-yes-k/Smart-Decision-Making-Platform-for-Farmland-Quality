@@ -44,8 +44,9 @@
 
 ## 7. 验证
 
-- [ ] 7.1 运行 `init_db.py` 创建三张新表
-- [ ] 7.2 验证路由日志双写：执行一次路由判定，确认 JSONL 和 DB 表均有记录
-- [ ] 7.3 验证 DB 写入失败降级：模拟 DB 异常，确认 JSONL 写入正常且告警输出
-- [ ] 7.4 验证排他规则动态加载：向 `exclusive_rule_config` 表插入测试规则，确认路由判定使用 DB 规则
-- [ ] 7.5 验证混淆矩阵落库：运行 `run_routing_regression.py`，确认 `model_evaluation_metrics` 表有记录
+- [x] 7.1 运行 `init_db.py` 创建三张新表
+- [x] 7.2 验证路由日志双写：执行一次路由判定，确认 JSONL 和 DB 表均有记录
+- [x] 7.3 验证 DB 写入失败降级：模拟 DB 异常，确认 JSONL 写入正常且告警输出
+- [x] 7.4 验证排他规则动态加载：向 `exclusive_rule_config` 表插入测试规则，确认路由判定使用 DB 规则
+- [ ] 7.5 验证混淆矩阵落库：运行 `run_routing_regression.py`，确认 `model_evaluation_metrics` 表有记录（app context 内已通过；CLI 方式待 Task 7.6 修复后复验）
+- [ ] 7.6 修复 `run_routing_regression.py` CLI 模式的 app context 缺失与 rollback 二次异常

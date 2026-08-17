@@ -1459,7 +1459,7 @@ git commit -m "test(observability): update duration_ms assertion to total_durati
 
 ### Task 7.1：运行 `init_db.py` 创建三张新表
 
-- [ ] **任务 7.1 完成**：运行 `python init_db.py` 创建 `routing_decision_log` / `model_evaluation_metrics` / `exclusive_rule_config` 三张表（已通过任务 1.x 自动完成，本任务校验存在性）
+- [x] **任务 7.1 完成**：运行 `python init_db.py` 创建 `routing_decision_log` / `model_evaluation_metrics` / `exclusive_rule_config` 三张表（已通过任务 1.x 自动完成，本任务校验存在性）
 
 **Files:**
 - 校验：`init_db.py`、PostgreSQL 实例
@@ -1545,7 +1545,7 @@ Expected: 输出 `DB row: <trace_id> 2 normal` + `JSONL entry trace_id matches D
 
 ### Task 7.3：验证 DB 写入失败降级
 
-- [ ] **任务 7.3 完成**：模拟 DB 异常，确认 JSONL 写入正常且告警输出
+- [x] **任务 7.3 完成**：模拟 DB 异常，确认 JSONL 写入正常且告警输出
 
 **Files:**
 - 运行时验证：`framework/observability/routing_log.py`
@@ -1599,7 +1599,7 @@ Expected: `JSONL fallback ok, warning emitted, DB row count=0`
 
 ### Task 7.4：验证排他规则动态加载
 
-- [ ] **任务 7.4 完成**：向 `exclusive_rule_config` 表插入测试规则，调用 `refresh_rules_cache()`，确认路由判定使用 DB 规则
+- [x] **任务 7.4 完成**：向 `exclusive_rule_config` 表插入测试规则，调用 `refresh_rules_cache()`，确认路由判定使用 DB 规则
 
 **Files:**
 - 运行时验证：`framework/agents/exclusive_rules.py`、`exclusive_rule_config` 表
@@ -1690,9 +1690,68 @@ with app.app_context():
     print(f'DB rows: {len(rows)}, pairs: {pairs}')
 "
 ```
-Expected: 第二条命令输出混淆矩阵统计；第三条命令输出 `DB rows: 2, pairs: ['model-1-vs-model-5', 'model-2-vs-model-3']`
+Expected: 第二条命令输出混淆矩阵统计；第三条命令输出 `DB rows: 2, pairs: ['model-3-vs-model-2', 'model-4-vs-model-5']`
 
 2. **无需提交**（端到端验证无文件变更）。
+
+---
+
+### Task 7.6：修复 `run_routing_regression.py` CLI 模式的 app context 缺失与 rollback 二次异常
+
+- [ ] **任务 7.6 完成**：修复 `write_metrics_to_db` 的 rollback 二次异常（嵌套 try 保护），并为 `__main__` 入口包 app context，使 CLI 方式运行 `python scripts/run_routing_regression.py` 不崩溃且 DB 落库成功
+
+**背景**：Task 7.5 端到端验证发现：CLI 运行 `python scripts/run_routing_regression.py` 时 `write_metrics_to_db` 在无 app context 下 `db.session.add` 抛 `RuntimeError: Working outside of application context`，且 except 块内 `db.session.rollback()` 再次抛出同一异常未被捕获 → 脚本崩溃（exit 1），DB 未落库。app context 内调用 main() 则全部通过。
+
+**Files:**
+- Modify: `scripts/run_routing_regression.py`（`write_metrics_to_db` 的 except 块 + `__main__` 入口）
+
+**实施步骤:**
+
+1. **修复 rollback 二次异常**：`write_metrics_to_db` 的 except 块内 rollback 用嵌套 try 保护：
+```python
+except Exception as exc:
+    try:
+        db.session.rollback()
+    except Exception:
+        pass
+    warnings.warn(f"[regression] model_evaluation_metrics DB 写入失败，回退 JSON: {exc}")
+```
+
+2. **`__main__` 入口包 app context**：
+```python
+if __name__ == "__main__":
+    from dotenv import load_dotenv
+    load_dotenv()
+    from framework.api.app import create_app
+    app = create_app("default")
+    with app.app_context():
+        sys.exit(main())
+```
+（注意：load_dotenv 是因为 create_app 不加载 .env，CLI 运行需 DB_* 环境变量）
+
+3. **CLI 冒烟验证**（直接命令行运行，不额外注入环境变量）：
+```bash
+.venv\Scripts\python.exe scripts/run_routing_regression.py --output logs/confusion_matrix_e2e_fix.json
+```
+Expected: exit 0，输出 `目标达成`，无 `Working outside of application context` 异常
+
+4. **DB 落库验证**：
+```bash
+.venv\Scripts\python.exe -c "from dotenv import load_dotenv; load_dotenv(); from framework.api.app import create_app; from framework.models import db, ModelEvaluationMetrics; app=create_app('default'); ctx=app.app_context(); ctx.push(); rows=db.session.query(ModelEvaluationMetrics).all(); print('DB rows:', len(rows), 'pairs:', sorted({r.model_pair for r in rows})); ctx.pop()"
+```
+Expected: `DB rows: 2, pairs: ['model-3-vs-model-2', 'model-4-vs-model-5']`
+
+5. **回归验证**：
+```bash
+.venv\Scripts\python.exe -m pytest tests/test_regression_metrics_db.py -v
+```
+Expected: 2 passed（需 load_dotenv 注入 .env）
+
+6. **提交**：
+```bash
+git add scripts/run_routing_regression.py
+git commit -m "fix(regression): wrap __main__ in app context and protect rollback from re-raising"
+```
 
 ---
 
