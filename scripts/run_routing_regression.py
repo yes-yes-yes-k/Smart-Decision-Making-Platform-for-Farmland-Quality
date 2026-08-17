@@ -20,6 +20,12 @@ PROJECT_ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(PROJECT_ROOT))
 sys.path.insert(0, str(PROJECT_ROOT / "tests"))
 
+# framework.config 在导入时读取 DB_* 环境变量并固化 SQLALCHEMY_DATABASE_URI，
+# 必须在任何 framework 导入之前加载 .env（create_app 不加载 dotenv）
+from dotenv import load_dotenv  # noqa: E402
+
+load_dotenv()
+
 from test_question_type_keywords import (  # noqa: E402
     MODEL2_STEMS, MODEL3_STEMS, MODEL4_STEMS, MODEL5_STEMS,
     PREFIXES, SUFFIXES, _expand,
@@ -73,8 +79,11 @@ def write_metrics_to_db(matrix: dict, evaluation_mode: str) -> None:
             db.session.add(record)
         db.session.commit()
     except Exception as exc:
-        db.session.rollback()
-        warnings.warn(f"[regression] model_evaluation_metrics DB 写入失败: {exc}")
+        try:
+            db.session.rollback()
+        except Exception:
+            pass
+        warnings.warn(f"[regression] model_evaluation_metrics DB 写入失败，回退 JSON: {exc}")
 
 
 def main(argv=None) -> int:
@@ -115,4 +124,7 @@ def main(argv=None) -> int:
 
 
 if __name__ == "__main__":
-    sys.exit(main())
+    from framework.api.app import create_app
+    app = create_app("default")
+    with app.app_context():
+        sys.exit(main())
