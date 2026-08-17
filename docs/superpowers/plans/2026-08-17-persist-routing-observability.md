@@ -806,7 +806,7 @@ git commit -m "feat(regression): add write_metrics_to_db for model_evaluation_me
 
 ### Task 5.2：`main()` 调用 `write_metrics_to_db` + DB 失败保留 JSON 输出
 
-- [ ] **任务 5.2 完成**：在 `main()` 写入 JSON 文件后调用 `write_metrics_to_db(matrix, evaluation_mode="keyword")`，DB 写入失败时保留 JSON 文件输出并告警
+- [x] **任务 5.2 完成**：在 `main()` 写入 JSON 文件后调用 `write_metrics_to_db(matrix, evaluation_mode="keyword")`，DB 写入失败时保留 JSON 文件输出并告警
 
 **Files:**
 - Modify: `scripts/run_routing_regression.py:80-85`（`main` 函数末尾）
@@ -849,7 +849,7 @@ git commit -m "feat(regression): main() calls write_metrics_to_db after JSON dum
 
 ### Task 5.3：DB 写入失败不改变退出码校验
 
-- [ ] **任务 5.3 完成**：确保 DB 写入失败不改变脚本退出码（`write_metrics_to_db` 内部 try/except 已隔离，`main` 退出码逻辑不受影响）
+- [x] **任务 5.3 完成**：确保 DB 写入失败不改变脚本退出码（`write_metrics_to_db` 内部 try/except 已隔离，`main` 退出码逻辑不受影响）
 
 **Files:**
 - 校验（Task 5.1 已实现）：`scripts/run_routing_regression.py`
