@@ -1414,7 +1414,7 @@ git commit -m "test(regression): add test_regression_metrics_db with PG skip"
 
 ### Task 6.4：更新现有 `test_routing_observability.py:69` + 运行现有测试套件确保无回归
 
-- [ ] **任务 6.4 完成**：更新 `tests/test_routing_observability.py:69` 的 `duration_ms` 断言为 `total_duration_ms`，并运行现有测试套件确保无回归
+- [x] **任务 6.4 完成**：更新 `tests/test_routing_observability.py:69` 的 `duration_ms` 断言为 `total_duration_ms`，并运行现有测试套件确保无回归
 
 **Files:**
 - Modify: `tests/test_routing_observability.py:69`
