@@ -1,8 +1,8 @@
 ## 1. 基础设施
 
 - [x] 1.1 新增 `framework/domain/data/parcel_data_accessor.py`，实现 `ParcelDataAccessor` 类：`get_parcel_indicators(parcel_id)` 方法查询 `parcel_info` 表 `soil_indicators` JSON 字段，返回 dict 或 None；DB 异常时返回 None 并记录 WARNING
-- [ ] 1.2 在 `framework/agents/base.py` 的 `BaseAgent` 增加 `_persist_result(agent_id, parcel_id, inputs, outputs, status, result_model_class=None)` 方法：同一事务内先写 `model_execution_log` 获取 `execution_id`，再写结果表；失败时记录 ERROR 但不抛异常
-- [ ] 1.3 在 `BaseAgent` 增加 `_get_result_model_class()` 钩子方法（默认返回 None），子类 override 返回对应 ORM 结果表模型类
+- [x] 1.2 在 `framework/agents/base.py` 的 `BaseAgent` 增加 `_persist_result(agent_id, parcel_id, inputs, outputs, status)` 方法：同一事务内先写 `model_execution_log` 获取 `execution_id`，再写结果表；失败时记录 ERROR 但不抛异常
+- [x] 1.3 在 `BaseAgent` 增加 `_build_result_record(execution_id, outputs)` 钩子方法（默认返回 None），子类 override 返回对应 ORM 结果表记录实例
 
 ## 2. Model-1 StabilityRiskAgent 改造
 
