@@ -1063,7 +1063,7 @@ git commit -m "test(observability): add test_routing_log_db with PG skip mechani
 
 ### Task 6.2：新增 `tests/test_exclusive_rules_db.py`
 
-- [ ] **任务 6.2 完成**：新增 `tests/test_exclusive_rules_db.py`（5 个测试用例：from_database 加载、DB 不可用回退、DB 为空回退、DB 规则与硬编码判定一致、refresh_rules_cache 生效）
+- [x] **任务 6.2 完成**：新增 `tests/test_exclusive_rules_db.py`（5 个测试用例：from_database 加载、DB 不可用回退、DB 为空回退、DB 规则与硬编码判定一致、refresh_rules_cache 生效）
 
 **Files:**
 - Create: `tests/test_exclusive_rules_db.py`
@@ -1231,6 +1231,41 @@ Expected: `5 passed`（PG 不可用时 `5 skipped`）
 ```bash
 git add tests/test_exclusive_rules_db.py
 git commit -m "test(exclusive_rules): add test_exclusive_rules_db with PG skip"
+```
+
+---
+
+### Task 6.5：修复 `framework/api/app.py` `_has_column` 的 PostgreSQL 方言支持
+
+- [ ] **任务 6.5 完成**：为 `_ensure_kb_message_columns._has_column` 增加 postgresql 分支（information_schema 查询），使 `create_app("default")` 在 PG 环境下可完成初始化，DB 测试获得真实执行证据
+
+**背景**：Task 6.2 implementer 发现：`framework/api/app.py:28-38` 的 `_has_column` 仅处理 mysql（information_schema）/sqlite（PRAGMA）方言，postgresql 方言落入 sqlite 分支执行 `PRAGMA table_info`，PG 必报语法错误 → `create_app("default")` 失败 → `conftest.PG_AVAILABLE` 探测恒为 False → Task 6.1/6.2 的 DB 测试全部 skip，DB 路径无真实执行证据。
+
+**Files:**
+- Modify: `framework/api/app.py`（`_has_column` 函数）
+
+**实施步骤:**
+
+1. **修改 `_has_column`**：增加 `elif dialect == "postgresql":` 分支，查询 `information_schema.COLUMNS WHERE table_schema = current_schema() AND table_name = :t AND column_name = :c`
+
+2. **DDL 选择确认**：现有 `ddl = ddl_mysql if dialect == "mysql" else ddl_sqlite`，PG 走 `ddl_sqlite`（`ALTER TABLE kb_message ADD COLUMN agents_invoked JSON DEFAULT NULL`），该语法对 PG 合法，无需修改
+
+3. **冒烟验证**：
+```bash
+.venv\Scripts\python.exe -c "from tests.conftest import PG_AVAILABLE; print('PG_AVAILABLE =', PG_AVAILABLE)"
+```
+Expected: 本地 PG（db_enterprise_qa）可达时 `PG_AVAILABLE = True`
+
+4. **DB 测试真实执行**：
+```bash
+.venv\Scripts\python.exe -m pytest tests/test_routing_log_db.py tests/test_exclusive_rules_db.py -v
+```
+Expected: PG 可用时全部 passed（而非 skipped）
+
+5. **提交**：
+```bash
+git add framework/api/app.py
+git commit -m "fix(app): add postgresql dialect branch to _has_column for PG compatibility"
 ```
 
 ---
