@@ -12,6 +12,7 @@ import argparse
 import json
 import os
 import sys
+import warnings
 from collections import defaultdict
 from pathlib import Path
 
@@ -47,6 +48,33 @@ def _predict_model(question: str, base_qtype: int) -> str:
     """完整路由判定：apply_exclusive_rules，返回最终 model_id。"""
     final_type, _ = apply_exclusive_rules(question, base_qtype, {"scale": "地块"})
     return f"model-{final_type}" if final_type in (1, 2, 3, 4, 5) else "unknown"
+
+
+def write_metrics_to_db(matrix: dict, evaluation_mode: str) -> None:
+    """批量写入 model_evaluation_metrics 表。
+
+    matrix 格式：{pair_label: {tp, fp, fn, tn, total, accuracy, confusion_rate}}
+    每对插入一条记录，positive_label 来自 PAIR_POSITIVE 映射。
+
+    DB 写入失败时 rollback 并告警，不抛出（保留 JSON 文件输出）。
+    """
+    from framework.models import db, ModelEvaluationMetrics
+    try:
+        for pair_label, m in matrix.items():
+            record = ModelEvaluationMetrics(
+                model_pair=pair_label,
+                positive_label=PAIR_POSITIVE.get(pair_label, ""),
+                tp=m["tp"], fp=m["fp"], fn=m["fn"], tn=m["tn"],
+                total=m["total"], accuracy=m["accuracy"],
+                confusion_rate=m["confusion_rate"],
+                evaluation_mode=evaluation_mode,
+                sample_count=m["total"],
+            )
+            db.session.add(record)
+        db.session.commit()
+    except Exception as exc:
+        db.session.rollback()
+        warnings.warn(f"[regression] model_evaluation_metrics DB 写入失败: {exc}")
 
 
 def main(argv=None) -> int:
