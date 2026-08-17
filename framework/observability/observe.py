@@ -98,7 +98,7 @@ def observe_routing(
         entry["five_dim_context"] = (
             {k: context.get(k) for k in _FIVE_DIM_KEYS} if context else {}
         )
-        entry["duration_ms"] = round((time.perf_counter() - t0) * 1000, 2)
+        entry["total_duration_ms"] = round((time.perf_counter() - t0) * 1000, 2)
         _safe_write_log(entry)
         return question_type, relevance, final_type, routing_status
     except Exception as exc:
@@ -108,6 +108,6 @@ def observe_routing(
         entry["five_dim_context"] = (
             {k: context.get(k) for k in _FIVE_DIM_KEYS} if context else {}
         )
-        entry["duration_ms"] = round((time.perf_counter() - t0) * 1000, 2)
+        entry["total_duration_ms"] = round((time.perf_counter() - t0) * 1000, 2)
         _safe_write_log(entry)
         raise
