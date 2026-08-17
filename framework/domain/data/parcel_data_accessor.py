@@ -26,7 +26,7 @@ class ParcelDataAccessor:
             parcel = ParcelInfo.query.filter_by(parcel_id=parcel_id).first()
             if parcel is None:
                 return None
-            return parcel.soil_indicators or None
+            return parcel.soil_indicators
         except Exception as e:
             logger.warning("查询 parcel_info 失败 (parcel_id=%s): %s", parcel_id, e)
             return None

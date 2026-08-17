@@ -61,18 +61,16 @@ class ParcelDataAccessorTests(unittest.TestCase):
         self.assertIsNone(result)
 
     def test_returns_none_and_logs_on_db_exception(self):
-        """DB 异常时返回 None，不抛异常。"""
-        mock_parcel_cls = MagicMock()
-        mock_parcel_cls.query.filter_by.side_effect = RuntimeError("db down")
-
-        with patch(
-            "framework.models.thematic_model.ParcelInfo",
-            new=mock_parcel_cls,
-        ):
-            accessor = ParcelDataAccessor()
-            result = accessor.get_parcel_indicators("P002")
-
-        self.assertIsNone(result)
+        """DB 异常时返回 None 并记录 WARNING 日志。"""
+        with patch("framework.models.thematic_model.ParcelInfo") as mock_model:
+            mock_model.query.filter_by.side_effect = Exception("DB connection lost")
+            with self.assertLogs(
+                "framework.domain.data.parcel_data_accessor", level="WARNING"
+            ) as cm:
+                accessor = ParcelDataAccessor()
+                result = accessor.get_parcel_indicators("P001")
+            self.assertIsNone(result)
+            self.assertTrue(any("查询 parcel_info 失败" in m for m in cm.output))
 
 
 if __name__ == "__main__":
