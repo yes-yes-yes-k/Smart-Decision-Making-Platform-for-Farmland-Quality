@@ -1,6 +1,11 @@
 from __future__ import annotations
 from abc import ABC, abstractmethod
-from typing import Any, Dict, List
+from typing import Any, Dict, List, Optional
+import logging
+import uuid
+from datetime import datetime, timezone
+
+logger = logging.getLogger(__name__)
 
 
 class BaseAgent(ABC):
@@ -123,6 +128,98 @@ class BaseAgent(ABC):
 {question}
 
 请以自然、专业的语言回答，回答要准确、有条理。"""
+
+    @property
+    def agent_id(self) -> str:
+        """从能力注册表查找 agent_id（如 model-1）；查找失败时回退到 model_id。"""
+        try:
+            from framework.agents.capabilities import CAPABILITY_BY_MODEL_ID
+            cap = CAPABILITY_BY_MODEL_ID.get(self.model_id)
+            if cap:
+                return cap.agent_id
+        except Exception:
+            pass
+        return self.model_id
+
+    def _get_question_type(self) -> int:
+        """从能力注册表查找 question_type；查找失败时返回 0。"""
+        try:
+            from framework.agents.capabilities import CAPABILITY_BY_MODEL_ID
+            cap = CAPABILITY_BY_MODEL_ID.get(self.model_id)
+            if cap:
+                return cap.question_type
+        except Exception:
+            pass
+        return 0
+
+    def _persist_result(
+        self,
+        agent_id: str,
+        parcel_id: Optional[str],
+        inputs: dict,
+        outputs: dict,
+        status: str,
+    ) -> bool:
+        """同步持久化执行日志和结果表。
+
+        Args:
+            agent_id: Agent 标识（如 "model-1"）
+            parcel_id: 地块 ID（Model-5 县级分析时为 None）
+            inputs: 输入快照
+            outputs: 输出快照
+            status: "ok" | "degraded" | "error"
+
+        Returns:
+            True: 持久化成功
+            False: 持久化失败（已记录 ERROR 日志，不抛异常）
+        """
+        try:
+            from framework.models.user import db
+            from framework.models.thematic_model import ModelExecutionLog
+
+            now = datetime.now(timezone.utc)
+            log = ModelExecutionLog(
+                trace_id=str(uuid.uuid4()),
+                agent_id=agent_id,
+                question_type=self._get_question_type(),
+                parcel_id=parcel_id,
+                input_params=inputs,
+                output_result=outputs,
+                status=status,
+                started_at=now,
+                completed_at=now,
+            )
+            db.session.add(log)
+            db.session.flush()
+
+            result_record = self._build_result_record(log.id, outputs)
+            if result_record is not None:
+                db.session.add(result_record)
+
+            db.session.commit()
+            return True
+        except Exception as e:
+            logger.error(
+                "持久化失败 (agent_id=%s, parcel_id=%s): %s", agent_id, parcel_id, e
+            )
+            try:
+                from framework.models.user import db as _db
+                _db.session.rollback()
+            except Exception:
+                pass
+            return False
+
+    def _build_result_record(self, execution_id: int, outputs: dict):
+        """构建结果表 ORM 实例。子类 override 返回对应结果表记录。
+
+        Args:
+            execution_id: model_execution_log.id
+            outputs: 模型输出
+
+        Returns:
+            ORM 实例（如 StabilityRiskResult(...)）或 None（无结果表时）
+        """
+        return None
 
     def analyze(self, payload: Dict[str, Any]) -> Dict[str, Any]:
         """以统一结构化包络执行专业分析。
