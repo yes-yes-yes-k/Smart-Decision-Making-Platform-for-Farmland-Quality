@@ -612,7 +612,7 @@ git commit -m "feat(exclusive_rules): add _get_active_rules + refresh_rules_cach
 
 ### Task 4.4：修改 `apply_exclusive_rules` 使用 `_get_active_rules()`
 
-- [ ] **任务 4.4 完成**：修改 `apply_exclusive_rules` 中 `for rule in EXCLUSIVE_RULES` 为 `for rule in _get_active_rules()`，匹配算法不变
+- [x] **任务 4.4 完成**：修改 `apply_exclusive_rules` 中 `for rule in EXCLUSIVE_RULES` 为 `for rule in _get_active_rules()`，匹配算法不变
 
 **Files:**
 - Modify: `framework/agents/exclusive_rules.py:169-173`（`matched_targets` 集合推导式）
