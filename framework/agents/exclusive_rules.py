@@ -120,6 +120,26 @@ def from_database() -> Tuple[ExclusiveRule, ...]:
         return tuple()
 
 
+def _get_active_rules() -> Tuple[ExclusiveRule, ...]:
+    """优先返回 DB 缓存规则，DB 为空或不可用时回退硬编码 EXCLUSIVE_RULES。"""
+    global _db_rules_cache
+    if _db_rules_cache is None:
+        _db_rules_cache = from_database()
+    if _db_rules_cache:
+        return _db_rules_cache
+    # DB 为空或不可用：回退硬编码
+    return EXCLUSIVE_RULES
+
+
+def refresh_rules_cache() -> None:
+    """手动刷新 DB 规则缓存。供运维/测试调用，运行时不自动刷新。
+
+    场景：运维通过 DB 修改 exclusive_rule_config 表后，调用此函数使新规则生效。
+    """
+    global _db_rules_cache
+    _db_rules_cache = None  # 清空缓存，下次 _get_active_rules() 重新加载
+
+
 def _condition_matches(question: str, condition: str) -> bool:
     for kw in EXCLUSIVE_CONDITION_KEYWORDS.get(condition, ()):
         if kw in question:
