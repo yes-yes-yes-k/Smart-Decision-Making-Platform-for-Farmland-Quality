@@ -473,7 +473,7 @@ git commit -m "refactor(observability): rename entry duration_ms to total_durati
 
 ### Task 4.1：新增 `from_database()` 函数
 
-- [ ] **任务 4.1 完成**：在 `framework/agents/exclusive_rules.py` 新增 `from_database()` 函数，从 `exclusive_rule_config` 表加载 `enabled=True` 的规则到 `ExclusiveRule` 元组
+- [x] **任务 4.1 完成**：在 `framework/agents/exclusive_rules.py` 新增 `from_database()` 函数，从 `exclusive_rule_config` 表加载 `enabled=True` 的规则到 `ExclusiveRule` 元组
 
 **Files:**
 - Modify: `framework/agents/exclusive_rules.py`（在 `apply_exclusive_rules` 之前新增）
@@ -535,7 +535,7 @@ git commit -m "feat(exclusive_rules): add from_database() to load rules from exc
 
 ### Task 4.2：模块级缓存 `_db_rules_cache`
 
-- [ ] **任务 4.2 完成**：新增模块级缓存 `_db_rules_cache`，首次加载后缓存，避免每次路由判定查询 DB
+- [x] **任务 4.2 完成**：新增模块级缓存 `_db_rules_cache`，首次加载后缓存，避免每次路由判定查询 DB
 
 **Files:**
 - 校验（Task 4.1 已声明 `_db_rules_cache`）：`framework/agents/exclusive_rules.py`

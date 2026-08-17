@@ -21,8 +21,8 @@
 
 ## 4. 排他规则动态加载
 
-- [ ] 4.1 在 `framework/agents/exclusive_rules.py` 新增 `from_database()` 函数，从 `exclusive_rule_config` 表加载 enabled=true 的规则到 `ExclusiveRule` 对象列表
-- [ ] 4.2 新增模块级缓存 `_db_rules_cache`，首次加载后缓存，避免每次路由判定查询 DB
+- [x] 4.1 在 `framework/agents/exclusive_rules.py` 新增 `from_database()` 函数，从 `exclusive_rule_config` 表加载 enabled=true 的规则到 `ExclusiveRule` 对象列表
+- [x] 4.2 新增模块级缓存 `_db_rules_cache`，首次加载后缓存，避免每次路由判定查询 DB
 - [ ] 4.3 新增 `_get_active_rules()` 统一入口函数，优先返回 DB 规则，DB 不可用或为空时回退硬编码 `EXCLUSIVE_RULES`
 - [ ] 4.4 修改 `apply_exclusive_rules` 使用 `_get_active_rules()` 替代直接引用 `EXCLUSIVE_RULES`
 - [ ] 4.5 修改 `_matched_rules`（observe.py）使用 `_get_active_rules()` 保持一致性
