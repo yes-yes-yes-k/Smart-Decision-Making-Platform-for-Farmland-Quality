@@ -1,8 +1,13 @@
 from __future__ import annotations
 from typing import Any, Dict, List
+import logging
 
 from ..base import BaseAgent
 from ..mock_data import MockDataLoader
+from ...domain.data.parcel_data_accessor import ParcelDataAccessor
+from ...models.thematic_model import QualityGradeResult
+
+logger = logging.getLogger(__name__)
 
 # 尝试导入实际 Python 模型实现
 try:
@@ -23,48 +28,151 @@ class FarmlandGradeAgent(BaseAgent):
             domain="grade",
         )
 
+    def _collect_inputs(self, context: dict) -> dict:
+        """DB 优先获取地块指标，未命中时降级到 CSV run_grade_evaluation。"""
+        parcel_id = context.get("parcel_id") or context.get("parcel_code")
+
+        if parcel_id:
+            accessor = ParcelDataAccessor()
+            indicators = accessor.get_parcel_indicators(str(parcel_id))
+            if indicators is not None:
+                inputs = self._map_indicators_to_inputs(indicators)
+                inputs["parcel_id"] = str(parcel_id)
+                inputs["data_source"] = "db"
+                return inputs
+
+        logger.warning("Parcel %s not in DB, falling back to CSV source", parcel_id)
+        inputs = self._collect_inputs_from_legacy(context)
+        inputs["data_source"] = "fallback"
+        return inputs
+
+    def _collect_inputs_from_legacy(self, context: dict) -> dict:
+        """原有数据源：CSV run_grade_evaluation。"""
+        return {
+            "parcel_code": context.get("parcel_code"),
+            "exe_path": context.get("exe_path"),
+            "dat_path": context.get("dat_path"),
+        }
+
+    def _map_indicators_to_inputs(self, indicators: dict) -> dict:
+        """将 soil_indicators JSON 映射为质量等级评价输入字段。"""
+        return {
+            "soil_ph": indicators.get("soil_ph"),
+            "organic_matter": indicators.get("organic_matter"),
+            "available_potassium": indicators.get("available_potassium"),
+            "available_phosphorus": indicators.get("available_phosphorus"),
+            "soil_bulk_density": indicators.get("soil_bulk_density"),
+            "topsoil_texture": indicators.get("topsoil_texture"),
+            "irrigation_capacity": indicators.get("irrigation_capacity"),
+            "drainage_capacity": indicators.get("drainage_capacity"),
+            "terrain_position": indicators.get("terrain_position"),
+            "topsoil_thickness": indicators.get("topsoil_thickness"),
+        }
+
+    def _build_result_record(self, execution_id: int, outputs: dict):
+        """构建 QualityGradeResult ORM 实例。legacy 路径无 parcel_id 时返回 None。"""
+        parcel_id = outputs.get("parcel_id")
+        if not parcel_id:
+            return None
+        return QualityGradeResult(
+            execution_id=execution_id,
+            parcel_id=parcel_id,
+            quality_grade=str(outputs.get("quality_grade", "0")),
+            composite_index=float(outputs.get("composite_index", 0.0)),
+            input_snapshot=outputs,
+            simulated=True,
+        )
+
     def execute(self, data: Dict[str, Any] = None) -> Dict[str, Any]:
         if not data:
             data = {}
 
-        if not GRADE_EVAL_AVAILABLE:
-            return {
-                "status": "degraded",
-                "degraded": True,
-                "reason": "model_unavailable",
-                "agent_id": "model-2",
-                "model_id": "quality-grade-evaluation",
-                "message": "模型2质量等级评价模块未安装，无法执行真实评价",
-            }
+        inputs = self._collect_inputs(data)
+        data_source = inputs.pop("data_source", "unknown")
 
-        parcel_code = data.get("parcel_code")
-        if not parcel_code:
-            return {
-                "status": "degraded",
-                "degraded": True,
-                "reason": "missing_input",
-                "agent_id": "model-2",
-                "model_id": "quality-grade-evaluation",
-                "message": "缺少 parcel_code，无法查询真实质量等级结果",
-            }
-
-        exe_path = data.get("exe_path")
-        dat_path = data.get("dat_path")
         try:
-            result = run_grade_evaluation(parcel_code, exe_path, dat_path)
-            if result.get("status") == "ok":
-                return {"status": "ok", "simulated": False, "result": result}
-        except Exception:
-            pass
+            if data_source == "db":
+                # DB 路径：直接使用 soil_indicators 作为评价结果快照
+                outputs = {
+                    "parcel_id": inputs.get("parcel_id"),
+                    "quality_grade": inputs.get("quality_grade", "0"),
+                    "composite_index": inputs.get("composite_index", 0.0),
+                    "indicators": inputs,
+                }
+                status = "ok"
+            elif not GRADE_EVAL_AVAILABLE:
+                return {
+                    "status": "degraded",
+                    "degraded": True,
+                    "reason": "model_unavailable",
+                    "agent_id": "model-2",
+                    "model_id": "quality-grade-evaluation",
+                    "message": "模型2质量等级评价模块未安装，无法执行真实评价",
+                    "data_source": data_source,
+                    "persisted": False,
+                }
+            else:
+                # Legacy 路径：CSV run_grade_evaluation
+                parcel_code = inputs.get("parcel_code")
+                if not parcel_code:
+                    return {
+                        "status": "degraded",
+                        "degraded": True,
+                        "reason": "missing_input",
+                        "agent_id": "model-2",
+                        "model_id": "quality-grade-evaluation",
+                        "message": "缺少 parcel_code，无法查询真实质量等级结果",
+                        "data_source": data_source,
+                        "persisted": False,
+                    }
+                exe_path = inputs.get("exe_path")
+                dat_path = inputs.get("dat_path")
+                result = run_grade_evaluation(parcel_code, exe_path, dat_path)
+                if result.get("status") != "ok":
+                    return {
+                        "status": "degraded",
+                        "degraded": True,
+                        "reason": "import_failed",
+                        "agent_id": "model-2",
+                        "model_id": "quality-grade-evaluation",
+                        "message": f"地块 {parcel_code} 的质量等级数据未就绪或查询失败",
+                        "data_source": data_source,
+                        "persisted": False,
+                    }
+                outputs = result
+                status = "degraded"
 
-        return {
-            "status": "degraded",
-            "degraded": True,
-            "reason": "import_failed",
-            "agent_id": "model-2",
-            "model_id": "quality-grade-evaluation",
-            "message": f"地块 {parcel_code} 的质量等级数据未就绪或查询失败",
-        }
+            persisted = self._persist_result(
+                agent_id=self.agent_id,
+                parcel_id=data.get("parcel_id") or data.get("parcel_code"),
+                inputs=inputs,
+                outputs=outputs,
+                status=status,
+            )
+
+            return {
+                "status": "ok",
+                "simulated": data_source != "db",
+                "result": outputs,
+                "data_source": data_source,
+                "persisted": persisted,
+            }
+        except Exception as e:
+            self._persist_result(
+                agent_id=self.agent_id,
+                parcel_id=data.get("parcel_id"),
+                inputs=inputs,
+                outputs={"error": str(e)},
+                status="error",
+            )
+            return {
+                "status": "degraded",
+                "degraded": True,
+                "reason": "exception",
+                "message": str(e),
+                "data_source": data_source,
+                "persisted": False,
+            }
 
     def _get_real_grade(self, context: Dict[str, Any]) -> Dict[str, Any]:
         """尝试获取实际质量等级评价结果"""

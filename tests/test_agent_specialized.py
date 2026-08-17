@@ -349,6 +349,68 @@ def test_stability_agent_legacy_no_result_record(monkeypatch):
     assert persist_calls[0] is None  # legacy 路径不写入结果表
 
 
+def test_grade_agent_db_path(monkeypatch):
+    """DB 命中时 data_source="db"。"""
+    from framework.agents.specialized.grade_agent import FarmlandGradeAgent
+    from framework.domain.data.parcel_data_accessor import ParcelDataAccessor
+
+    fake_indicators = {
+        "soil_ph": 5.5, "organic_matter": 22.0,
+        "available_potassium": 120.0, "available_phosphorus": 15.0,
+    }
+    monkeypatch.setattr(
+        ParcelDataAccessor, "get_parcel_indicators",
+        lambda self, pid: fake_indicators
+    )
+    agent = FarmlandGradeAgent()
+    result = agent.execute({"parcel_id": "P001"})
+    assert result["data_source"] == "db"
+
+
+def test_grade_agent_fallback_path(monkeypatch):
+    """DB 未命中时 data_source="fallback"。"""
+    from framework.agents.specialized.grade_agent import FarmlandGradeAgent
+    from framework.domain.data.parcel_data_accessor import ParcelDataAccessor
+
+    monkeypatch.setattr(
+        ParcelDataAccessor, "get_parcel_indicators",
+        lambda self, pid: None
+    )
+    agent = FarmlandGradeAgent()
+    result = agent.execute({"parcel_id": "NOT_IN_DB", "parcel_code": "C001"})
+    assert result["data_source"] == "fallback"
+
+
+def test_grade_agent_persist_success(monkeypatch):
+    """持久化成功时 persisted=True。"""
+    from framework.agents.specialized.grade_agent import FarmlandGradeAgent
+    from framework.domain.data.parcel_data_accessor import ParcelDataAccessor
+
+    monkeypatch.setattr(
+        ParcelDataAccessor, "get_parcel_indicators",
+        lambda self, pid: {"soil_ph": 5.5, "organic_matter": 22.0}
+    )
+    agent = FarmlandGradeAgent()
+    monkeypatch.setattr(agent, "_persist_result", lambda *a, **kw: True)
+    result = agent.execute({"parcel_id": "P001"})
+    assert result["persisted"] is True
+
+
+def test_grade_agent_persist_failure(monkeypatch):
+    """持久化失败时 persisted=False，不阻断结果。"""
+    from framework.agents.specialized.grade_agent import FarmlandGradeAgent
+    from framework.domain.data.parcel_data_accessor import ParcelDataAccessor
+
+    monkeypatch.setattr(
+        ParcelDataAccessor, "get_parcel_indicators",
+        lambda self, pid: {"soil_ph": 5.5, "organic_matter": 22.0}
+    )
+    agent = FarmlandGradeAgent()
+    monkeypatch.setattr(agent, "_persist_result", lambda *a, **kw: False)
+    result = agent.execute({"parcel_id": "P001"})
+    assert result["persisted"] is False
+
+
 if __name__ == "__main__":
     test_stability_risk_agent_execute()
     test_stability_risk_agent_answer_question_overall()
