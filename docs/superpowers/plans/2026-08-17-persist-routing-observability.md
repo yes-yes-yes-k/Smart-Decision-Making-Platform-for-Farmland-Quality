@@ -98,7 +98,7 @@ git commit -m "chore(models): export db from framework.models for unified import
 
 ### Task 2.1：新增 `write_routing_log_to_db(entry)` 函数
 
-- [ ] **任务 2.1 完成**：在 `framework/observability/routing_log.py` 新增 `write_routing_log_to_db(entry)` 函数，封装 SQLAlchemy session 写入 `routing_decision_log` 表
+- [x] **任务 2.1 完成**：在 `framework/observability/routing_log.py` 新增 `write_routing_log_to_db(entry)` 函数，封装 SQLAlchemy session 写入 `routing_decision_log` 表
 
 **Files:**
 - Modify: `framework/observability/routing_log.py`
