@@ -198,7 +198,7 @@ def apply_exclusive_rules(
     """应用排他规则判定，返回 (question_type, routing_status)。
 
     匹配算法（AND 逻辑）：
-    - 遍历 EXCLUSIVE_RULES，对每条规则检查 condition（关键词）与 dimension_conditions（维度）
+    - 遍历 _get_active_rules() 返回的规则，对每条规则检查 condition（关键词）与 dimension_conditions（维度）
       是否同时满足（任一声明缺失则跳过对应检查）。
     - 收集所有匹配规则的 target 到 set。
     - len(matched_targets) > 1 → boundary_pending（优先级冲突）
@@ -218,7 +218,7 @@ def apply_exclusive_rules(
 
     matched_targets = {
         rule.target
-        for rule in EXCLUSIVE_RULES
+        for rule in _get_active_rules()
         if _rule_matches(rule, question, context)
     }
 
