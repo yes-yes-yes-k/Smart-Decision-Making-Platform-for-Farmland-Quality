@@ -59,6 +59,41 @@ base-ref: 54e12f7c169aaee005739f017ac51e0e5553e637
 
 ---
 
+## 任务 0.x：前置准备 — 导出 `db` 到 `framework/models/__init__.py`
+
+### Task 0.1：在 `framework/models/__init__.py` 导出 `db`
+
+- [x] **任务 0.1 完成**：在 `framework/models/__init__.py` 顶部新增 `from .user import db`，使后续任务中的 `from framework.models import db` 导入可用
+
+**背景**：当前 `db = SQLAlchemy()` 定义于 `framework/models/user.py:4`，但 `framework/models/__init__.py` 未导出 `db`。现有代码使用 `from framework.models.user import db`。本计划后续任务（2.1、4.1、5.1）的代码片段使用 `from framework.models import db, ...`，需要 `__init__.py` 导出 `db` 才能工作。本任务统一导出路径。
+
+**Files:**
+- Modify: `framework/models/__init__.py`
+
+**实施步骤:**
+
+1. **修改 `framework/models/__init__.py`**：在文件最顶部（所有 model import 之前）新增一行：
+
+```python
+from .user import db
+```
+
+2. **冒烟验证**：
+
+```bash
+python -c "from framework.models import db, RoutingDecisionLog, ExclusiveRuleConfig, ModelEvaluationMetrics; print('ok', db, RoutingDecisionLog.__tablename__)"
+```
+Expected: `ok <SQLAlchemy object> routing_decision_log`
+
+3. **提交**：
+
+```bash
+git add framework/models/__init__.py
+git commit -m "chore(models): export db from framework.models for unified import path"
+```
+
+---
+
 ## 任务 2.x：路由日志 DB 双写层（Design Doc §3.1）
 
 ### Task 2.1：新增 `write_routing_log_to_db(entry)` 函数
