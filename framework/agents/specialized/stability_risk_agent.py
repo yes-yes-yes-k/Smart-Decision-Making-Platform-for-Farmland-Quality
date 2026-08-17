@@ -1,8 +1,13 @@
 from __future__ import annotations
 from typing import Any, Dict, List
+import logging
 
 from ..base import BaseAgent
 from ..mock_data import MockDataLoader
+from ...domain.data.parcel_data_accessor import ParcelDataAccessor
+from ...models.thematic_model import StabilityRiskResult
+
+logger = logging.getLogger(__name__)
 
 
 # 模拟数据：10 个县区的质量等级、稳定性评分、退化风险指数
@@ -38,19 +43,101 @@ class StabilityRiskAgent(BaseAgent):
             domain="stability",
         )
 
-    def execute(self, task: Dict[str, Any]) -> Dict[str, Any]:
-        counties = [dict(c) for c in MOCK_COUNTIES]
-        for c in counties:
-            c["stability"] = MockDataLoader.apply_threshold(c["stability_score"], STABILITY_RULES)
+    def _collect_inputs(self, context: dict) -> dict:
+        """DB 优先获取地块指标，未命中时降级到 MOCK_COUNTIES。"""
+        parcel_id = context.get("parcel_id")
 
-        return MockDataLoader.mark_simulated({
-            "status": "ok",
-            "result": {
-                "counties": counties,
-                "total_area_mu": sum(c["area_mu"] for c in counties),
-            },
-            "metadata": {"simulated": True},
-        })
+        if parcel_id:
+            accessor = ParcelDataAccessor()
+            indicators = accessor.get_parcel_indicators(str(parcel_id))
+            if indicators is not None:
+                inputs = self._map_indicators_to_inputs(indicators)
+                inputs["parcel_id"] = str(parcel_id)
+                inputs["data_source"] = "db"
+                return inputs
+
+        logger.warning("Parcel %s not in DB, falling back to MOCK_COUNTIES", parcel_id)
+        inputs = self._collect_inputs_from_legacy(context)
+        inputs["data_source"] = "fallback"
+        return inputs
+
+    def _collect_inputs_from_legacy(self, context: dict) -> dict:
+        """原有数据源：MOCK_COUNTIES 硬编码。"""
+        return {"counties": [dict(c) for c in MOCK_COUNTIES]}
+
+    def _map_indicators_to_inputs(self, indicators: dict) -> dict:
+        """将 soil_indicators JSON 映射为模型输入字段。"""
+        return {
+            "soil_ph": indicators.get("soil_ph"),
+            "organic_matter": indicators.get("organic_matter"),
+            "stability_score": indicators.get("stability_score"),
+            "quality_grade": indicators.get("quality_grade"),
+            "risk_index": indicators.get("risk_index"),
+            "area_mu": indicators.get("area_mu"),
+        }
+
+    def _build_result_record(self, execution_id: int, outputs: dict):
+        """构建 StabilityRiskResult ORM 实例。"""
+        return StabilityRiskResult(
+            execution_id=execution_id,
+            parcel_id=outputs.get("parcel_id") or "unknown",
+            input_snapshot=outputs,
+            simulated=True,
+        )
+
+    def execute(self, task: Dict[str, Any]) -> Dict[str, Any]:
+        inputs = self._collect_inputs(task)
+        data_source = inputs.pop("data_source", "unknown")
+
+        try:
+            if "counties" in inputs:
+                # Legacy 路径：县区聚合
+                counties = inputs["counties"]
+                for c in counties:
+                    c["stability"] = MockDataLoader.apply_threshold(
+                        c["stability_score"], STABILITY_RULES
+                    )
+                outputs = {
+                    "counties": counties,
+                    "total_area_mu": sum(c["area_mu"] for c in counties),
+                }
+                status = "degraded"
+            else:
+                # DB 路径：单地块
+                score = inputs.get("stability_score") or 70.0
+                stability = MockDataLoader.apply_threshold(score, STABILITY_RULES)
+                outputs = {
+                    "parcel_id": inputs.get("parcel_id"),
+                    "stability_score": score,
+                    "stability": stability,
+                    "soil_ph": inputs.get("soil_ph"),
+                }
+                status = "ok"
+
+            persisted = self._persist_result(
+                agent_id=self.agent_id,
+                parcel_id=task.get("parcel_id"),
+                inputs=inputs,
+                outputs=outputs,
+                status=status,
+            )
+
+            return MockDataLoader.mark_simulated({
+                "status": "ok",
+                "result": outputs,
+                "metadata": {"simulated": True, "data_source": data_source},
+                "data_source": data_source,
+                "persisted": persisted,
+            })
+        except Exception as e:
+            self._persist_result(
+                agent_id=self.agent_id,
+                parcel_id=task.get("parcel_id"),
+                inputs=inputs,
+                outputs={"error": str(e)},
+                status="error",
+            )
+            raise
 
     def answer_question(self, question: str, context: Dict[str, Any]) -> Dict[str, Any]:
         counties = [dict(c) for c in MOCK_COUNTIES]

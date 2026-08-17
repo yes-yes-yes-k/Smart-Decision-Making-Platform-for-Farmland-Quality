@@ -1,9 +1,27 @@
 """测试 6 个专业智能体"""
 import sys
 import os
+import types
+from unittest.mock import MagicMock
+
 _PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, _PROJECT_ROOT)
 sys.path.insert(0, os.path.join(_PROJECT_ROOT, "src"))
+
+# 测试环境可能未安装 geoalchemy2，这里在导入 thematic_model 之前先 stub
+# 一个 Geometry 类（返回 MagicMock 实例），避免 SQLAlchemy Column 在类定义
+# 阶段调用 Geometry(...) 时因缺少 `_set_parent_with_dispatch` 而失败。
+if "geoalchemy2" not in sys.modules:
+    _geo_stub = types.ModuleType("geoalchemy2")
+
+    class _Geometry:
+        """stub：返回 MagicMock，满足 SQLAlchemy Column 初始化所需协议。"""
+
+        def __new__(cls, *args, **kwargs):
+            return MagicMock()
+
+    _geo_stub.Geometry = _Geometry
+    sys.modules["geoalchemy2"] = _geo_stub
 
 
 def test_stability_risk_agent_execute():
@@ -241,6 +259,73 @@ def test_organic_matter_agent_answer_question_dosage():
     assert "kg" in out["answer"] or "有机肥" in out["answer"]
     assert any("manure_dosage" in str(e) or "有机肥" in str(e) for e in out["evidence"])
     print("✓ OrganicMatterAgent 返回有机肥施用量建议")
+
+
+def test_stability_agent_db_path(monkeypatch):
+    """DB 命中时 data_source="db"。"""
+    from framework.agents.specialized.stability_risk_agent import StabilityRiskAgent
+    from framework.domain.data.parcel_data_accessor import ParcelDataAccessor
+
+    fake_indicators = {
+        "soil_ph": 5.5,
+        "organic_matter": 22.0,
+        "stability_score": 78.5,
+        "quality_grade": 4,
+        "risk_index": 0.32,
+        "area_mu": 320000,
+    }
+    monkeypatch.setattr(
+        ParcelDataAccessor, "get_parcel_indicators",
+        lambda self, pid: fake_indicators
+    )
+    agent = StabilityRiskAgent()
+    result = agent.execute({"parcel_id": "P001"})
+    assert result["data_source"] == "db"
+
+
+def test_stability_agent_fallback_path(monkeypatch):
+    """DB 未命中时 data_source="fallback"。"""
+    from framework.agents.specialized.stability_risk_agent import StabilityRiskAgent
+    from framework.domain.data.parcel_data_accessor import ParcelDataAccessor
+
+    monkeypatch.setattr(
+        ParcelDataAccessor, "get_parcel_indicators",
+        lambda self, pid: None
+    )
+    agent = StabilityRiskAgent()
+    result = agent.execute({"parcel_id": "NOT_IN_DB"})
+    assert result["data_source"] == "fallback"
+
+
+def test_stability_agent_persist_success(monkeypatch):
+    """持久化成功时 persisted=True。"""
+    from framework.agents.specialized.stability_risk_agent import StabilityRiskAgent
+    from framework.domain.data.parcel_data_accessor import ParcelDataAccessor
+
+    monkeypatch.setattr(
+        ParcelDataAccessor, "get_parcel_indicators",
+        lambda self, pid: {"soil_ph": 5.5, "stability_score": 78.5}
+    )
+    agent = StabilityRiskAgent()
+    monkeypatch.setattr(agent, "_persist_result", lambda *a, **kw: True)
+    result = agent.execute({"parcel_id": "P001"})
+    assert result["persisted"] is True
+
+
+def test_stability_agent_persist_failure(monkeypatch):
+    """持久化失败时 persisted=False，但不阻断结果返回。"""
+    from framework.agents.specialized.stability_risk_agent import StabilityRiskAgent
+    from framework.domain.data.parcel_data_accessor import ParcelDataAccessor
+
+    monkeypatch.setattr(
+        ParcelDataAccessor, "get_parcel_indicators",
+        lambda self, pid: {"soil_ph": 5.5, "stability_score": 78.5}
+    )
+    agent = StabilityRiskAgent()
+    monkeypatch.setattr(agent, "_persist_result", lambda *a, **kw: False)
+    result = agent.execute({"parcel_id": "P001"})
+    assert result["persisted"] is False
+    assert result["status"] == "ok"
 
 
 if __name__ == "__main__":
