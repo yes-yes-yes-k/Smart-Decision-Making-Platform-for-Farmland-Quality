@@ -8,14 +8,14 @@ subagent_dispatch: null
 tdd_mode: tdd
 review_mode: standard
 isolation: branch
-verify_mode: null
+verify_mode: full
 auto_transition: true
 base_ref: ecfc2e8a87314aeae19af21f1f7201b3c094b8e6
 design_doc: docs/superpowers/specs/2026-08-16-ensure-real-computation-design.md
 plan: docs/superpowers/plans/2026-08-16-ensure-real-computation.md
 verify_result: pending
 verify_failures: 0
-verification_report: null
+verification_report: docs/superpowers/reports/2026-08-17-ensure-real-computation-thematic-models-verify.md
 branch_status: pending
 created_at: 2026-08-17
 verified_at: null
