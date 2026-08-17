@@ -75,7 +75,14 @@ def write_routing_log_to_db(entry: Dict[str, Any]) -> None:
 
 
 def write_routing_log(entry: Dict[str, Any]) -> None:
-    """追加一条 JSON 行式路由日志；日志关闭时静默跳过。"""
+    """双写：先写 DB，DB 失败告警并回退 JSONL；JSONL 始终写入作为降级备份。"""
+    # 1. 先写 DB（失败仅告警，不传播）
+    try:
+        write_routing_log_to_db(entry)
+    except Exception as exc:
+        warnings.warn(f"[observability] routing_decision_log DB 写入失败，回退 JSONL: {exc}")
+
+    # 2. JSONL 始终写入（降级备份 + 现有看板消费链）
     path = _resolve_log_path()
     if path is None:
         return
