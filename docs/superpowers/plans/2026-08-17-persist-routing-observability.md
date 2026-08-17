@@ -241,7 +241,7 @@ Expected: `outer ok`
 
 ### Task 3.1：补充 `relevance` 字段
 
-- [ ] **任务 3.1 完成**：在 `observe_routing` 的 entry 中补充 `relevance` 字段（从 `identify_question_type` 返回值获取）
+- [x] **任务 3.1 完成**：在 `observe_routing` 的 entry 中补充 `relevance` 字段（从 `identify_question_type` 返回值获取）
 
 **Files:**
 - Modify: `framework/observability/observe.py:86-96`、`framework/observability/observe.py:97-101`
