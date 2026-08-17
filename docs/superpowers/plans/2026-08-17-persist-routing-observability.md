@@ -881,7 +881,7 @@ Expected: `exit code ok`
 
 ### Task 6.1：新增 `tests/test_routing_log_db.py` + `conftest.py` PG 跳过机制
 
-- [ ] **任务 6.1 完成**：新增 `tests/test_routing_log_db.py`（3 个测试用例：双写正常路径、DB 失败回退 JSONL、entry 字段对齐）+ `tests/conftest.py` 增加 `PG_AVAILABLE` 探测与 `pg_available` fixture
+- [x] **任务 6.1 完成**：新增 `tests/test_routing_log_db.py`（3 个测试用例：双写正常路径、DB 失败回退 JSONL、entry 字段对齐）+ `tests/conftest.py` 增加 `PG_AVAILABLE` 探测与 `pg_available` fixture
 
 **Files:**
 - Modify: `tests/conftest.py`

@@ -35,7 +35,7 @@
 
 ## 6. 测试
 
-- [ ] 6.1 新增 `tests/test_routing_log_db.py`：测试双写正常路径、DB 失败回退 JSONL、entry 字段对齐
+- [x] 6.1 新增 `tests/test_routing_log_db.py`：测试双写正常路径、DB 失败回退 JSONL、entry 字段对齐
 - [ ] 6.2 新增 `tests/test_exclusive_rules_db.py`：测试 from_database() 加载、DB 不可用回退、DB 为空回退、动态规则与硬编码规则判定一致
 - [ ] 6.3 新增 `tests/test_regression_metrics_db.py`：测试评估结果落库、DB 失败保留 JSON 输出
 - [ ] 6.4 运行现有测试套件确保无回归（`pytest tests/`）
