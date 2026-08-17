@@ -702,7 +702,7 @@ git commit -m "refactor(observe): _matched_rules uses _get_active_rules() for co
 
 ### Task 5.0：修复 `run_routing_regression.py` 的 `MODEL1_STEMS` 导入错误
 
-- [ ] **任务 5.0 完成**：修复 `scripts/run_routing_regression.py` 的 `MODEL1_STEMS` 导入错误，使后续 Task 5.2/5.3/6.3 的冒烟测试可字面执行
+- [x] **任务 5.0 完成**：修复 `scripts/run_routing_regression.py` 的 `MODEL1_STEMS` 导入错误，使后续 Task 5.2/5.3/6.3 的冒烟测试可字面执行
 
 **背景**：`scripts/run_routing_regression.py:22-23` 导入 `MODEL1_STEMS` from `tests/test_question_type_keywords.py`，但 `MODEL1_STEMS` 已在模型编号重排 commit 中被删除（test 文件现存 `MODEL2_STEMS`/`MODEL3_STEMS`/`MODEL4_STEMS`/`MODEL5_STEMS`）。导致任何 `from run_routing_regression import ...` 都会 `ImportError: cannot import name 'MODEL1_STEMS'`。
 
