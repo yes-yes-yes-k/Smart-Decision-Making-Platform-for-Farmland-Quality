@@ -77,10 +77,13 @@ class StabilityRiskAgent(BaseAgent):
         }
 
     def _build_result_record(self, execution_id: int, outputs: dict):
-        """构建 StabilityRiskResult ORM 实例。"""
+        """构建 StabilityRiskResult ORM 实例。legacy 县区聚合路径无 parcel_id 时返回 None。"""
+        parcel_id = outputs.get("parcel_id")
+        if not parcel_id:
+            return None
         return StabilityRiskResult(
             execution_id=execution_id,
-            parcel_id=outputs.get("parcel_id") or "unknown",
+            parcel_id=parcel_id,
             input_snapshot=outputs,
             simulated=True,
         )

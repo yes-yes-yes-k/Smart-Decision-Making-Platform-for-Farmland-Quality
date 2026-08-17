@@ -328,6 +328,27 @@ def test_stability_agent_persist_failure(monkeypatch):
     assert result["status"] == "ok"
 
 
+def test_stability_agent_legacy_no_result_record(monkeypatch):
+    """legacy 路径（无 parcel_id）不写入 StabilityRiskResult。"""
+    from framework.agents.specialized.stability_risk_agent import StabilityRiskAgent
+
+    agent = StabilityRiskAgent()
+    # 捕获 _persist_result 的调用，验证 _build_result_record 返回 None
+    persist_calls = []
+
+    def fake_persist(agent_id, parcel_id, inputs, outputs, status):
+        # 调用 _build_result_record 验证返回值
+        result_record = agent._build_result_record(0, outputs)
+        persist_calls.append(result_record)
+        return True
+
+    monkeypatch.setattr(agent, "_persist_result", fake_persist)
+    # 不传 parcel_id，走 legacy 路径
+    result = agent.execute({"area_code": "lechang"})
+    assert result["data_source"] == "fallback"
+    assert persist_calls[0] is None  # legacy 路径不写入结果表
+
+
 if __name__ == "__main__":
     test_stability_risk_agent_execute()
     test_stability_risk_agent_answer_question_overall()
