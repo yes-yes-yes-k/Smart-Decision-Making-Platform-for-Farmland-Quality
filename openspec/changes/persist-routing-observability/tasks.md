@@ -9,8 +9,8 @@
 ## 2. 路由日志 DB 双写层
 
 - [x] 2.1 在 `framework/observability/routing_log.py` 新增 `write_routing_log_to_db(entry)` 函数，封装 SQLAlchemy session 写入 `routing_decision_log` 表
-- [ ] 2.2 修改 `write_routing_log(entry)` 实现双写逻辑：先写 DB，DB 失败时告警并回退 JSONL；JSONL 始终写入作为降级备份
-- [ ] 2.3 确保 DB 写入异常被 try/except 隔离，不传播到 `observe.py` 的 `_safe_write_log`
+- [x] 2.2 修改 `write_routing_log(entry)` 实现双写逻辑：先写 DB，DB 失败时告警并回退 JSONL；JSONL 始终写入作为降级备份
+- [x] 2.3 确保 DB 写入异常被 try/except 隔离，不传播到 `observe.py` 的 `_safe_write_log`
 
 ## 3. observe.py entry 字段对齐
 

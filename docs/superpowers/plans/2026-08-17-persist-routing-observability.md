@@ -160,7 +160,7 @@ git commit -m "feat(observability): add write_routing_log_to_db for routing_deci
 
 ### Task 2.2：修改 `write_routing_log(entry)` 实现双写
 
-- [ ] **任务 2.2 完成**：改造 `write_routing_log(entry)` 为双写：先写 DB（失败告警并回退 JSONL），JSONL 始终写入作为降级备份
+- [x] **任务 2.2 完成**：改造 `write_routing_log(entry)` 为双写：先写 DB（失败告警并回退 JSONL），JSONL 始终写入作为降级备份
 
 **Files:**
 - Modify: `framework/observability/routing_log.py:47-54`
@@ -209,7 +209,7 @@ git commit -m "feat(observability): double-write routing log to DB + JSONL fallb
 
 ### Task 2.3：DB 写入异常隔离边界校验
 
-- [ ] **任务 2.3 完成**：确保 DB 写入异常被 try/except 隔离，不传播到 `observe.py` 的 `_safe_write_log`（双重保险：`write_routing_log` 内层 + `_safe_write_log` 外层）
+- [x] **任务 2.3 完成**：确保 DB 写入异常被 try/except 隔离，不传播到 `observe.py` 的 `_safe_write_log`（双重保险：`write_routing_log` 内层 + `_safe_write_log` 外层）
 
 **Files:**
 - 校验（已通过 Task 2.2 实现）：`framework/observability/routing_log.py`、`framework/observability/observe.py:32-41`
