@@ -2,6 +2,7 @@
 change: persist-routing-observability
 design-doc: docs/superpowers/specs/2026-08-17-persist-routing-observability-design.md
 base-ref: 54e12f7c169aaee005739f017ac51e0e5553e637
+archived-with: 2026-08-17-persist-routing-observability
 ---
 
 # 路由可观测性数据库持久化实施计划

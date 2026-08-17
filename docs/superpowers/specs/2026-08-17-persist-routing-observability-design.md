@@ -2,6 +2,8 @@
 comet_change: persist-routing-observability
 role: technical-design
 canonical_spec: openspec
+archived-with: 2026-08-17-persist-routing-observability
+status: final
 ---
 
 # Design Doc: 路由可观测性数据库持久化
