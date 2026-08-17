@@ -124,8 +124,8 @@ class PersistResultFailureTests(unittest.TestCase):
 
 class AgentIdPropertyTests(unittest.TestCase):
     def test_agent_id_lookup_from_capabilities(self):
-        """agent_id 属性从能力注册表查找。"""
-        agent = _make_test_agent("model-1")
+        """agent_id 属性从能力注册表查找：真实 model_id 映射到对应 agent_id。"""
+        agent = _make_test_agent("stability-risk-evaluation")
         self.assertEqual(agent.agent_id, "model-1")
 
     def test_agent_id_fallback_to_model_id(self):
