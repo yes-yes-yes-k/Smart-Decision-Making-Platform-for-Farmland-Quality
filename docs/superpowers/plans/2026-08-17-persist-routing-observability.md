@@ -1497,7 +1497,7 @@ Expected: `all 3 tables exist`
 
 ### Task 7.2：验证路由日志双写
 
-- [ ] **任务 7.2 完成**：执行一次 observe_routing，确认 JSONL 和 routing_decision_log 表均有记录
+- [x] **任务 7.2 完成**：执行一次 observe_routing，确认 JSONL 和 routing_decision_log 表均有记录
 
 **Files:**
 - 运行时验证：`framework/observability/observe.py`、JSONL 日志路径、`routing_decision_log` 表
@@ -1655,7 +1655,7 @@ Expected: `DB rule loaded: model-3` + `cleanup ok, fallback to hardcoded`
 
 ### Task 7.5：验证混淆矩阵落库
 
-- [ ] **任务 7.5 完成**：运行 `python scripts/run_routing_regression.py`，确认 `model_evaluation_metrics` 表有记录
+- [x] **任务 7.5 完成**：运行 `python scripts/run_routing_regression.py`，确认 `model_evaluation_metrics` 表有记录
 
 **Files:**
 - 运行时验证：`scripts/run_routing_regression.py`、`model_evaluation_metrics` 表

@@ -1,10 +1,10 @@
 ## 1. SQLAlchemy 模型定义
 
-- [ ] 1.1 新增 `framework/models/routing_observability.py`，定义 `RoutingDecisionLog` 模型（表 `routing_decision_log`），字段：trace_id, question, question_type, relevance, routing_status, router_method, candidate_agents(JSONB), hit_exclusive_rules(JSONB), llm_reason, llm_duration_ms, total_duration_ms, degradation, five_dim_context(JSONB), data_version, agent_version, result_version, failure_reason, logged_at
-- [ ] 1.2 在同文件定义 `ModelEvaluationMetric` 模型（表 `model_evaluation_metrics`），字段：model_pair, positive_label, tp, fp, fn, tn, total, accuracy, confusion_rate, evaluation_mode, sample_count, evaluated_at
-- [ ] 1.3 在同文件定义 `ExclusiveRuleConfig` 模型（表 `exclusive_rule_config`），字段：rule_name, rule_pair(JSONB), discriminator, condition, target, dimension_conditions(JSONB), enabled, created_at, updated_at
-- [ ] 1.4 更新 `framework/models/__init__.py` 注册三个新模型
-- [ ] 1.5 更新 `init_db.py` 确保 `db.create_all()` 包含新表
+- [x] 1.1 新增 `framework/models/routing_observability.py`，定义 `RoutingDecisionLog` 模型（表 `routing_decision_log`），字段：trace_id, question, question_type, relevance, routing_status, router_method, candidate_agents(JSONB), hit_exclusive_rules(JSONB), llm_reason, llm_duration_ms, total_duration_ms, degradation, five_dim_context(JSONB), data_version, agent_version, result_version, failure_reason, logged_at
+- [x] 1.2 在同文件定义 `ModelEvaluationMetric` 模型（表 `model_evaluation_metrics`），字段：model_pair, positive_label, tp, fp, fn, tn, total, accuracy, confusion_rate, evaluation_mode, sample_count, evaluated_at
+- [x] 1.3 在同文件定义 `ExclusiveRuleConfig` 模型（表 `exclusive_rule_config`），字段：rule_name, rule_pair(JSONB), discriminator, condition, target, dimension_conditions(JSONB), enabled, created_at, updated_at
+- [x] 1.4 更新 `framework/models/__init__.py` 注册三个新模型
+- [x] 1.5 更新 `init_db.py` 确保 `db.create_all()` 包含新表
 
 ## 2. 路由日志 DB 双写层
 
