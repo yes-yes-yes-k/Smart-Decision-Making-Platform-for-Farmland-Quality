@@ -415,7 +415,7 @@ git commit -m "feat(observability): add logged_at (UTC) to routing log entry"
 
 ### Task 3.4：重命名 `duration_ms` → `total_duration_ms`（完全重命名，不保留别名）
 
-- [ ] **任务 3.4 完成**：将 entry 的 `duration_ms` 完全重命名为 `total_duration_ms`（遵循 Design Doc §3.2.1 决策；不保留 `duration_ms` 别名）
+- [x] **任务 3.4 完成**：将 entry 的 `duration_ms` 完全重命名为 `total_duration_ms`（遵循 Design Doc §3.2.1 决策；不保留 `duration_ms` 别名）
 
 > **冲突说明**：OpenSpec tasks.md 3.4 措辞为"保留 `duration_ms` 别名向后兼容"，但 Design Doc §3.2.1 明确"完全重命名，不保留别名"。本计划遵循 Design Doc（用户授权 `按 Design Doc §3 的小节拆分可执行任务`）。`entry["duration_ms"]` 仅在 `observe.py` 2 处赋值 + `tests/test_routing_observability.py:69` 1 处断言使用；`ModelExecutionLog.duration_ms` 与 `routing._last_llm_duration_ms` 是独立字段，不受影响。
 

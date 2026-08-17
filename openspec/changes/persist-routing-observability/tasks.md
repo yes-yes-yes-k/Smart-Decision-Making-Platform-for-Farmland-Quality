@@ -17,7 +17,7 @@
 - [x] 3.1 在 `observe.py` 的 entry 中补充 `relevance` 字段（从 `identify_question_type` 返回值获取）
 - [x] 3.2 在 entry 中补充 `five_dim_context` 字段（从 context 参数或 routing 模块五维特征提取）
 - [x] 3.3 在 entry 中补充 `logged_at` 字段（写入时间戳）
-- [ ] 3.4 将 entry 的 `duration_ms` 重命名为 `total_duration_ms`，保留 `duration_ms` 别名向后兼容
+- [x] 3.4 将 entry 的 `duration_ms` 重命名为 `total_duration_ms`，保留 `duration_ms` 别名向后兼容
 
 ## 4. 排他规则动态加载
 
