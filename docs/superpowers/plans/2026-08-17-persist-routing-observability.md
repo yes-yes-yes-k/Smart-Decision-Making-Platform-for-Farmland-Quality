@@ -1237,7 +1237,7 @@ git commit -m "test(exclusive_rules): add test_exclusive_rules_db with PG skip"
 
 ### Task 6.5：修复 `framework/api/app.py` `_has_column` 的 PostgreSQL 方言支持
 
-- [ ] **任务 6.5 完成**：为 `_ensure_kb_message_columns._has_column` 增加 postgresql 分支（information_schema 查询），使 `create_app("default")` 在 PG 环境下可完成初始化，DB 测试获得真实执行证据
+- [x] **任务 6.5 完成**：为 `_ensure_kb_message_columns._has_column` 增加 postgresql 分支（information_schema 查询），使 `create_app("default")` 在 PG 环境下可完成初始化，DB 测试获得真实执行证据
 
 **背景**：Task 6.2 implementer 发现：`framework/api/app.py:28-38` 的 `_has_column` 仅处理 mysql（information_schema）/sqlite（PRAGMA）方言，postgresql 方言落入 sqlite 分支执行 `PRAGMA table_info`，PG 必报语法错误 → `create_app("default")` 失败 → `conftest.PG_AVAILABLE` 探测恒为 False → Task 6.1/6.2 的 DB 测试全部 skip，DB 路径无真实执行证据。
 
@@ -1266,6 +1266,39 @@ Expected: PG 可用时全部 passed（而非 skipped）
 ```bash
 git add framework/api/app.py
 git commit -m "fix(app): add postgresql dialect branch to _has_column for PG compatibility"
+```
+
+---
+
+### Task 6.6：修复 `routing_log.py` JSONL 写入的 datetime 序列化
+
+- [ ] **任务 6.6 完成**：`write_routing_log` 的 JSONL 写入改用 `json.dumps(entry, ensure_ascii=False, default=str)`，修复 `logged_at`（datetime）导致的 `TypeError: Object of type datetime is not JSON serializable`
+
+**背景**：Task 6.5 使 DB 测试真实执行后暴露：`framework/observability/routing_log.py:91`（JSONL 写入处）的 `json.dumps(entry, ensure_ascii=False)` 无法序列化 entry 中的 `logged_at`（Task 3.3 新增的 datetime 字段），导致 `test_double_write_normal` 和 `test_db_failure_fallback_jsonl` 失败（JSONL 路径抛 TypeError）。
+
+**Files:**
+- Modify: `framework/observability/routing_log.py`（JSONL 写入的 json.dumps 调用）
+
+**实施步骤:**
+
+1. **修改**：`json.dumps(entry, ensure_ascii=False)` → `json.dumps(entry, ensure_ascii=False, default=str)`
+
+2. **DB 测试验证**（需注入 .env 凭据，PG 探测依赖 DB_* 环境变量）：
+```bash
+.venv\Scripts\python.exe -m pytest tests/test_routing_log_db.py -v
+```
+Expected: 3 passed
+
+3. **回归验证**：
+```bash
+.venv\Scripts\python.exe -m pytest tests/test_exclusive_rules.py -q
+```
+Expected: 38 passed
+
+4. **提交**：
+```bash
+git add framework/observability/routing_log.py
+git commit -m "fix(observability): serialize datetime in JSONL fallback with default=str"
 ```
 
 ---

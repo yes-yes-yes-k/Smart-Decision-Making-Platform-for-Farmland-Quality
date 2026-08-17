@@ -39,6 +39,8 @@
 - [x] 6.2 新增 `tests/test_exclusive_rules_db.py`：测试 from_database() 加载、DB 不可用回退、DB 为空回退、动态规则与硬编码规则判定一致
 - [ ] 6.3 新增 `tests/test_regression_metrics_db.py`：测试评估结果落库、DB 失败保留 JSON 输出
 - [ ] 6.4 运行现有测试套件确保无回归（`pytest tests/`）
+- [x] 6.5 修复 `framework/api/app.py` `_has_column` 的 postgresql 方言支持（DB 测试真实执行的前提）
+- [ ] 6.6 修复 `framework/observability/routing_log.py` JSONL 写入的 datetime 序列化（`json.dumps(..., default=str)`）
 
 ## 7. 验证
 
