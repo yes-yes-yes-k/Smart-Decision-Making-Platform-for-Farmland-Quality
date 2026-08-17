@@ -90,6 +90,56 @@ EXCLUSIVE_RULES: Tuple[ExclusiveRule, ...] = (
 )
 
 
+_db_rules_cache: Optional[Tuple["ExclusiveRule", ...]] = None
+
+
+def from_database() -> Tuple[ExclusiveRule, ...]:
+    """从 exclusive_rule_config 表加载 enabled=True 的规则。
+
+    规则结构转换：DB JSON 字段 → ExclusiveRule dataclass
+    - rule_pair (JSON list) → frozenset(rule_pair)
+    - dimension_conditions (JSON dict) → dict
+    - condition (str or None) → Optional[str]
+
+    DB 异常时返回空 tuple（由 _get_active_rules 回退硬编码）。
+    """
+    from framework.models import db, ExclusiveRuleConfig
+    try:
+        rows = db.session.query(ExclusiveRuleConfig).filter_by(enabled=True).all()
+        return tuple(
+            ExclusiveRule(
+                pair=frozenset(r.rule_pair),
+                discriminator=r.discriminator,
+                condition=r.condition,
+                target=r.target,
+                dimension_conditions=r.dimension_conditions or {},
+            )
+            for r in rows
+        )
+    except Exception:
+        return tuple()
+
+
+def _get_active_rules() -> Tuple[ExclusiveRule, ...]:
+    """优先返回 DB 缓存规则，DB 为空或不可用时回退硬编码 EXCLUSIVE_RULES。"""
+    global _db_rules_cache
+    if _db_rules_cache is None:
+        _db_rules_cache = from_database()
+    if _db_rules_cache:
+        return _db_rules_cache
+    # DB 为空或不可用：回退硬编码
+    return EXCLUSIVE_RULES
+
+
+def refresh_rules_cache() -> None:
+    """手动刷新 DB 规则缓存。供运维/测试调用，运行时不自动刷新。
+
+    场景：运维通过 DB 修改 exclusive_rule_config 表后，调用此函数使新规则生效。
+    """
+    global _db_rules_cache
+    _db_rules_cache = None  # 清空缓存，下次 _get_active_rules() 重新加载
+
+
 def _condition_matches(question: str, condition: str) -> bool:
     for kw in EXCLUSIVE_CONDITION_KEYWORDS.get(condition, ()):
         if kw in question:
@@ -148,7 +198,7 @@ def apply_exclusive_rules(
     """应用排他规则判定，返回 (question_type, routing_status)。
 
     匹配算法（AND 逻辑）：
-    - 遍历 EXCLUSIVE_RULES，对每条规则检查 condition（关键词）与 dimension_conditions（维度）
+    - 遍历 _get_active_rules() 返回的规则，对每条规则检查 condition（关键词）与 dimension_conditions（维度）
       是否同时满足（任一声明缺失则跳过对应检查）。
     - 收集所有匹配规则的 target 到 set。
     - len(matched_targets) > 1 → boundary_pending（优先级冲突）
@@ -168,7 +218,7 @@ def apply_exclusive_rules(
 
     matched_targets = {
         rule.target
-        for rule in EXCLUSIVE_RULES
+        for rule in _get_active_rules()
         if _rule_matches(rule, question, context)
     }
 

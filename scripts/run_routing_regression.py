@@ -1,6 +1,6 @@
 """路由回归自动化。
 
-对 model-1/5、model-2/3 两组易混淆对各 ≥20 条正反例运行完整路由判定，
+对 model-3/2、model-4/5 两组易混淆对各 ≥20 条正反例运行完整路由判定，
 输出混淆矩阵与分类性能统计，退出码反映目标达成（混淆率 ≤ 3%）。
 结果矩阵写入 logs/confusion_matrix.json 供看板读取。
 
@@ -12,6 +12,7 @@ import argparse
 import json
 import os
 import sys
+import warnings
 from collections import defaultdict
 from pathlib import Path
 
@@ -19,8 +20,14 @@ PROJECT_ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(PROJECT_ROOT))
 sys.path.insert(0, str(PROJECT_ROOT / "tests"))
 
+# framework.config 在导入时读取 DB_* 环境变量并固化 SQLALCHEMY_DATABASE_URI，
+# 必须在任何 framework 导入之前加载 .env（create_app 不加载 dotenv）
+from dotenv import load_dotenv  # noqa: E402
+
+load_dotenv()
+
 from test_question_type_keywords import (  # noqa: E402
-    MODEL1_STEMS, MODEL5_STEMS, MODEL2_STEMS, MODEL3_STEMS,
+    MODEL2_STEMS, MODEL3_STEMS, MODEL4_STEMS, MODEL5_STEMS,
     PREFIXES, SUFFIXES, _expand,
 )
 from framework.agents.exclusive_rules import apply_exclusive_rules  # noqa: E402
@@ -31,15 +38,15 @@ CONFUSION_RATE_TARGET = 0.03
 
 # 每个正例集：(pair_label, stems, expected_model, base_qtype)
 SETS = [
-    ("model-1-vs-model-5", MODEL1_STEMS, "model-1", 5),  # 现状评价 → model-1
-    ("model-1-vs-model-5", MODEL5_STEMS, "model-5", 1),  # 质量等级评价 → model-5
-    ("model-2-vs-model-3", MODEL2_STEMS, "model-2", 3),  # 酸化调理剂 → model-2
-    ("model-2-vs-model-3", MODEL3_STEMS, "model-3", 3),  # 有机质 → model-3
+    ("model-3-vs-model-2", MODEL3_STEMS, "model-3", 2),  # 现状评价 → model-3
+    ("model-3-vs-model-2", MODEL2_STEMS, "model-2", 3),  # 质量等级评价 → model-2
+    ("model-4-vs-model-5", MODEL4_STEMS, "model-4", 5),  # 酸化调理剂 → model-4
+    ("model-4-vs-model-5", MODEL5_STEMS, "model-5", 5),  # 有机质 → model-5
 ]
 
 PAIR_POSITIVE = {
-    "model-1-vs-model-5": "model-1",
-    "model-2-vs-model-3": "model-2",
+    "model-3-vs-model-2": "model-3",
+    "model-4-vs-model-5": "model-4",
 }
 
 
@@ -47,6 +54,36 @@ def _predict_model(question: str, base_qtype: int) -> str:
     """完整路由判定：apply_exclusive_rules，返回最终 model_id。"""
     final_type, _ = apply_exclusive_rules(question, base_qtype, {"scale": "地块"})
     return f"model-{final_type}" if final_type in (1, 2, 3, 4, 5) else "unknown"
+
+
+def write_metrics_to_db(matrix: dict, evaluation_mode: str) -> None:
+    """批量写入 model_evaluation_metrics 表。
+
+    matrix 格式：{pair_label: {tp, fp, fn, tn, total, accuracy, confusion_rate}}
+    每对插入一条记录，positive_label 来自 PAIR_POSITIVE 映射。
+
+    DB 写入失败时 rollback 并告警，不抛出（保留 JSON 文件输出）。
+    """
+    from framework.models import db, ModelEvaluationMetrics
+    try:
+        for pair_label, m in matrix.items():
+            record = ModelEvaluationMetrics(
+                model_pair=pair_label,
+                positive_label=PAIR_POSITIVE.get(pair_label, ""),
+                tp=m["tp"], fp=m["fp"], fn=m["fn"], tn=m["tn"],
+                total=m["total"], accuracy=m["accuracy"],
+                confusion_rate=m["confusion_rate"],
+                evaluation_mode=evaluation_mode,
+                sample_count=m["total"],
+            )
+            db.session.add(record)
+        db.session.commit()
+    except Exception as exc:
+        try:
+            db.session.rollback()
+        except Exception:
+            pass
+        warnings.warn(f"[regression] model_evaluation_metrics DB 写入失败，回退 JSON: {exc}")
 
 
 def main(argv=None) -> int:
@@ -80,10 +117,14 @@ def main(argv=None) -> int:
     os.makedirs(os.path.dirname(os.path.abspath(args.output)), exist_ok=True)
     with open(args.output, "w", encoding="utf-8") as f:
         json.dump(matrix, f, ensure_ascii=False, indent=2)
+    write_metrics_to_db(matrix, evaluation_mode="keyword")
     print(f"混淆矩阵已写入 {args.output}")
     print("目标达成" if not failed else "未达成：存在混淆率超目标的对")
     return 1 if failed else 0
 
 
 if __name__ == "__main__":
-    sys.exit(main())
+    from framework.api.app import create_app
+    app = create_app("default")
+    with app.app_context():
+        sys.exit(main())

@@ -44,14 +44,51 @@ def _resolve_log_path() -> Optional[str]:
     return os.path.join(_LOG_DIR, f"routing_calls_{day}.jsonl")
 
 
+def write_routing_log_to_db(entry: Dict[str, Any]) -> None:
+    """将 entry 写入 routing_decision_log 表。
+
+    抛出所有异常由调用方 try/except 隔离（IntegrityError/OperationalError/字段缺失等）。
+    """
+    from framework.models import db, RoutingDecisionLog
+    log = RoutingDecisionLog(
+        trace_id=entry["trace_id"],
+        question=entry["question"],
+        question_type=entry["question_type"],
+        relevance=entry.get("relevance"),
+        routing_status=entry.get("routing_status", "normal"),
+        router_method=entry.get("router_method", "keyword"),
+        candidate_agents=entry.get("candidate_agents"),
+        hit_exclusive_rules=entry.get("hit_exclusive_rules"),
+        llm_reason=entry.get("llm_reason"),
+        llm_duration_ms=entry.get("llm_duration_ms"),
+        total_duration_ms=entry.get("total_duration_ms"),
+        degradation=entry.get("degradation"),
+        five_dim_context=entry.get("five_dim_context"),
+        data_version=entry.get("data_version"),
+        agent_version=entry.get("agent_version"),
+        result_version=entry.get("result_version", "v1.2"),
+        failure_reason=entry.get("failure_reason"),
+        logged_at=entry.get("logged_at"),
+    )
+    db.session.add(log)
+    db.session.commit()
+
+
 def write_routing_log(entry: Dict[str, Any]) -> None:
-    """追加一条 JSON 行式路由日志；日志关闭时静默跳过。"""
+    """双写：先写 DB，DB 失败告警并回退 JSONL；JSONL 始终写入作为降级备份。"""
+    # 1. 先写 DB（失败仅告警，不传播）
+    try:
+        write_routing_log_to_db(entry)
+    except Exception as exc:
+        warnings.warn(f"[observability] routing_decision_log DB 写入失败，回退 JSONL: {exc}")
+
+    # 2. JSONL 始终写入（降级备份 + 现有看板消费链）
     path = _resolve_log_path()
     if path is None:
         return
     os.makedirs(os.path.dirname(os.path.abspath(path)), exist_ok=True)
     with open(path, "a", encoding="utf-8") as f:
-        f.write(json.dumps(entry, ensure_ascii=False) + "\n")
+        f.write(json.dumps(entry, ensure_ascii=False, default=str) + "\n")
 
 
 def read_routing_logs(log_dir: Optional[str] = None) -> list[Dict[str, Any]]:

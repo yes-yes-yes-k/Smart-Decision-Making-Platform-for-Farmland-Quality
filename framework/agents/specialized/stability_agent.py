@@ -27,43 +27,44 @@ class StabilityRiskAgent(BaseAgent):
         if not data:
             data = {}
 
-        # 尝试使用实际模型
-        if STABILITY_MODEL_AVAILABLE:
-            parcel_id = data.get("parcel_id")
-            db_path = data.get("db_path")
+        if not STABILITY_MODEL_AVAILABLE:
+            return {
+                "status": "degraded",
+                "degraded": True,
+                "reason": "model_unavailable",
+                "agent_id": "model-1",
+                "model_id": "stability-risk-evaluation",
+                "message": "模型1稳定性模块未安装，无法执行真实评价",
+            }
 
-            if parcel_id:
-                storage = StabilityStorage(db_path)
-                result = storage.get_result(parcel_id)
-                if result:
-                    return {"status": "ok", "result": result}
+        parcel_id = data.get("parcel_id")
+        if not parcel_id:
+            return {
+                "status": "degraded",
+                "degraded": True,
+                "reason": "missing_input",
+                "agent_id": "model-1",
+                "model_id": "stability-risk-evaluation",
+                "message": "缺少 parcel_id，无法查询真实稳定性结果",
+            }
 
-        # 模拟数据回退
-        risk_levels = ["低风险", "中风险", "高风险", "极高风险"]
-        risk_types = ["掉级风险", "关键因子退化", "退化集聚", "持续低质"]
+        db_path = data.get("db_path")
+        try:
+            storage = StabilityStorage(db_path)
+            result = storage.get_result(parcel_id)
+            if result:
+                return {"status": "ok", "simulated": False, "result": result}
+        except Exception:
+            pass
 
-        return MockDataLoader.mark_simulated({
-            "status": "ok",
-            "result": {
-                "risk_level": risk_levels[0],
-                "risk_score": 0.15,
-                "risk_types": [risk_types[0]],
-                "stability_score": 0.85,
-                "stability_level": "稳定",
-                "modules": {
-                    1: {"name": "等级边界安全度", "score": 0.9},
-                    2: {"name": "指标支撑均衡度", "score": 0.85},
-                    3: {"name": "关键指标临界度", "score": 0.8},
-                    4: {"name": "空间邻域一致性", "score": 0.95},
-                    5: {"name": "历史变化趋势", "score": 0.88},
-                    6: {"name": "掉级风险", "score": 0.15},
-                    7: {"name": "关键因子退化", "score": 0.2},
-                    8: {"name": "退化空间集聚", "score": 0.1},
-                    9: {"name": "持续低质风险", "score": 0.05},
-                }
-            },
-            "metadata": {"simulated": True},
-        })
+        return {
+            "status": "degraded",
+            "degraded": True,
+            "reason": "import_failed",
+            "agent_id": "model-1",
+            "model_id": "stability-risk-evaluation",
+            "message": f"地块 {parcel_id} 的稳定性数据未就绪或查询失败",
+        }
 
     def _get_real_stability(self, context: Dict[str, Any]) -> Dict[str, Any]:
         """尝试获取实际稳定性评价结果"""
@@ -157,45 +158,25 @@ class StabilityRiskAgent(BaseAgent):
                 "stability_detail": real_result,
             }
 
-        # 使用模拟数据回退
-        result = self.execute(data=context.get("data"))["result"]
-        stability_score = result["stability_score"]
-        risk_level = result["risk_level"]
-
-        if "稳定性" in question or "稳不稳" in question:
-            answer = (
-                f"您的地块耕地质量稳定性评价结果：稳定性得分 {stability_score}，"
-                f"稳定性等级：{result['stability_level']}。"
-            )
-            evidence = [
-                {"metric": "稳定性得分", "value": stability_score},
-                {"metric": "稳定性等级", "value": result["stability_level"]},
-            ]
-            confidence = 0.85
-        elif "退化风险" in question or "掉级" in question:
-            answer = (
-                f"退化风险评价结果：风险等级 {risk_level}，风险得分 {result['risk_score']}。"
-                f"风险类型：{', '.join(result['risk_types'])}。"
-            )
-            evidence = [
-                {"metric": "风险等级", "value": risk_level},
-                {"metric": "风险得分", "value": result["risk_score"]},
-            ]
-            confidence = 0.82
+        # 真实稳定性结果不可用时返回统一降级响应
+        if not STABILITY_MODEL_AVAILABLE:
+            reason = "model_unavailable"
+            hint = "模型1稳定性模块未安装"
         else:
-            answer = (
-                f"稳定性评价结果：稳定性得分 {stability_score}，"
-                f"风险等级：{risk_level}。"
-                f"九模块评价均已完成。"
-            )
-            evidence = [
-                {"metric": "稳定性得分", "value": stability_score},
-                {"metric": "风险等级", "value": risk_level},
-            ]
-            confidence = 0.85
+            parcel_id = context.get("parcel_id") or context.get("data", {}).get("parcel_id")
+            if not parcel_id:
+                reason = "missing_input"
+                hint = "提供地块 ID（parcel_id）后可获取真实稳定性评价结果"
+            else:
+                reason = "import_failed"
+                hint = f"地块 {parcel_id} 的稳定性数据未就绪"
 
-        return MockDataLoader.mark_simulated({
-            "answer": answer,
-            "evidence": evidence,
-            "confidence": confidence,
-        })
+        return {
+            "answer": f"当前无法提供真实稳定性评价结果：{hint}。",
+            "evidence": [],
+            "confidence": 0.0,
+            "simulated": False,
+            "degraded": True,
+            "reason": reason,
+            "need_input": "parcel_id" if reason == "missing_input" else None,
+        }

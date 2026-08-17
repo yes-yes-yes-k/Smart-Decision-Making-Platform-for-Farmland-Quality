@@ -132,6 +132,7 @@ class BaseAgent(ABC):
         """
         execution = self.execute(payload or {})
         raw_status = execution.get("status", "error")
+        degraded = execution.get("degraded") is True or raw_status == "degraded"
         result = execution.get("result", {})
         metadata = execution.get("metadata", {})
         simulated = bool(metadata.get("simulated", execution.get("simulated", False)))
@@ -151,7 +152,19 @@ class BaseAgent(ABC):
             "name": self.name,
             "purpose": self.description,
         })
-        fallback_used = raw_status in {"fallback", "rejected"} or simulated
+        fallback_used = raw_status in {"fallback", "rejected"} or simulated or degraded
+        if degraded:
+            reliability_level = "degraded"
+            reliability_message = "真实计算不可用，已返回统一降级响应。"
+            fallback_strategy = metadata.get("fallback_reason") or metadata.get("reason") or execution.get("reason") or "真实计算降级"
+        elif simulated:
+            reliability_level = "demo_stub"
+            reliability_message = "结果来自模拟/规则分析。"
+            fallback_strategy = metadata.get("fallback_reason") or metadata.get("reason") or "未使用回退"
+        else:
+            reliability_level = "real_model"
+            reliability_message = "结果来自已接入的专业计算。"
+            fallback_strategy = metadata.get("fallback_reason") or metadata.get("reason") or "未使用回退"
         return {
             "status": "ok" if raw_status in {"ok", "success", "fallback"} else raw_status,
             "capability": capability,
@@ -162,15 +175,16 @@ class BaseAgent(ABC):
             "evidence": result,
             "lineage": {"runtime_dependency": "agent"},
             "reliability": {
-                "level": "demo_stub" if simulated else "real_model",
-                "message": "结果来自模拟/规则分析。" if simulated else "结果来自已接入的专业计算。",
+                "level": reliability_level,
+                "message": reliability_message,
             },
             "fallback": {
                 "used": fallback_used,
                 "fields": [],
-                "strategy": metadata.get("fallback_reason") or metadata.get("reason") or "未使用回退",
+                "strategy": fallback_strategy,
             },
             "analysis": result,
+            "degraded": degraded,
         }
 
     def answer_from_analysis(self, analysis: Dict[str, Any]) -> Dict[str, Any]:

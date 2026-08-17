@@ -7,10 +7,11 @@ from __future__ import annotations
 import warnings
 import time
 import uuid
+from datetime import datetime, timezone
 from typing import Any, Dict, Optional, Tuple
 
 from framework.agents.exclusive_rules import (
-    EXCLUSIVE_RULES,
+    _get_active_rules,
     _rule_matches,
     apply_exclusive_rules,
 )
@@ -26,7 +27,7 @@ _router = QuestionTypeRouter()
 
 def _matched_rules(question: str, context: Optional[dict]) -> list[str]:
     """返回命中的排他规则 target（只读，不改变路由行为）。"""
-    return [r.target for r in EXCLUSIVE_RULES if _rule_matches(r, question, context)]
+    return [r.target for r in _get_active_rules() if _rule_matches(r, question, context)]
 
 
 def _safe_write_log(entry: Dict[str, Any]) -> None:
@@ -75,6 +76,7 @@ def observe_routing(
         "trace_id": tid,
         "question": question,
         "timestamp": time.strftime("%Y-%m-%d %H:%M:%S"),
+        "logged_at": datetime.now(timezone.utc),
         "data_version": data_version,
         "agent_version": agent_version,
         "params": params or {},
@@ -84,6 +86,7 @@ def observe_routing(
     t0 = time.perf_counter()
     try:
         question_type, relevance = identify_question_type(question, context)
+        entry["relevance"] = relevance
         entry["candidate_agents"] = _router.get_agents_for_type(question_type)
         entry["hit_exclusive_rules"] = _matched_rules(question, context)
         final_type, routing_status = apply_exclusive_rules(question, question_type, context)
@@ -91,12 +94,20 @@ def observe_routing(
         entry["routing_status"] = routing_status
         entry["degradation"] = routing_status
         _attach_llm_routing_state(entry)
-        entry["duration_ms"] = round((time.perf_counter() - t0) * 1000, 2)
+        _FIVE_DIM_KEYS = ("scale", "data_type", "business_task", "expected_output")
+        entry["five_dim_context"] = (
+            {k: context.get(k) for k in _FIVE_DIM_KEYS} if context else {}
+        )
+        entry["total_duration_ms"] = round((time.perf_counter() - t0) * 1000, 2)
         _safe_write_log(entry)
         return question_type, relevance, final_type, routing_status
     except Exception as exc:
         entry["failure_reason"] = str(exc)
         _attach_llm_routing_state(entry)
-        entry["duration_ms"] = round((time.perf_counter() - t0) * 1000, 2)
+        _FIVE_DIM_KEYS = ("scale", "data_type", "business_task", "expected_output")
+        entry["five_dim_context"] = (
+            {k: context.get(k) for k in _FIVE_DIM_KEYS} if context else {}
+        )
+        entry["total_duration_ms"] = round((time.perf_counter() - t0) * 1000, 2)
         _safe_write_log(entry)
         raise

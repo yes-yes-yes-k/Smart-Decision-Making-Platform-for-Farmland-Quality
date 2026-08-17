@@ -36,8 +36,9 @@ class ThematicModelTests(unittest.TestCase):
         self.assertEqual(result["deprecation"]["deprecated_model_id"], "acidification-governance")
         self.assertIn("findings", result)
         self.assertIn("recommended_layers", result)
-        self.assertTrue(result["fallback"]["used"])
-        self.assertEqual(result["reliability"]["level"], "demo_stub")
+        # 过程模型用默认输入真实计算 YTK/MBNT，不再走 demo 回退
+        self.assertFalse(result["fallback"]["used"])
+        self.assertEqual(result["reliability"]["level"], "real_model")
 
     def test_run_indicator_model_marks_missing_indicator_fallback(self):
         result = run_thematic_model(

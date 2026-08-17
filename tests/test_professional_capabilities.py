@@ -26,7 +26,9 @@ def test_formal_model_api_returns_agent_capability_descriptor():
     from ai_culti_demo import run_thematic_model
 
     result = run_thematic_model({"model_id": "quality-grade-evaluation"})
-    assert result["status"] == "ok"
+    # 缺少 parcel_code 时 model-2 返回统一降级响应（非 mock ok）
+    assert result["status"] == "degraded"
+    assert result["degraded"] is True
     assert result["capability"]["agent_id"] == "model-2"
     assert result["capability"]["model_id"] == "quality-grade-evaluation"
     assert "reliability" in result

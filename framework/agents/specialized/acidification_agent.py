@@ -35,8 +35,9 @@ class AcidificationRemediationAgent(BaseAgent):
         for k, v in MOCK_INPUTS.items():
             enriched.setdefault(k, v)
         result = model_4_execution(enriched, land_type=land_type, fertilizer_type=fertilizer_type)
-        return MockDataLoader.mark_simulated({
+        return {
             "status": result["status"],
+            "simulated": False,
             "result": {
                 "ytk": result.get("ytk"),
                 "mbnt": result.get("mbnt"),
@@ -48,7 +49,7 @@ class AcidificationRemediationAgent(BaseAgent):
                 "warning": result.get("warning"),
                 "reason": result.get("reason"),
             },
-        })
+        }
 
     def answer_question(self, question: str, context: Dict[str, Any]) -> Dict[str, Any]:
         # 从 context 提取数据并透传 land_type/fertilizer_type/parcel_id

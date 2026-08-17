@@ -66,7 +66,7 @@ class TestObserve:
                 assert entry["agent_version"] == "model-2@1.0"
                 assert entry["params"] == {"scale": "地块"}
                 assert {"trace_id", "candidate_agents", "hit_exclusive_rules",
-                        "duration_ms", "result_version", "failure_reason"}.issubset(entry.keys())
+                        "total_duration_ms", "result_version", "failure_reason"}.issubset(entry.keys())
         finally:
             _routing.EMBEDDING_AVAILABLE = real
 

@@ -89,6 +89,7 @@ class OrganicMatterAgent(BaseAgent):
     def _execute_rule_fallback(self, inputs: Dict[str, Any]) -> Dict[str, Any]:
         return {
             "status": "ok",
+            "degraded": True,
             "result": self._rule_fallback(inputs),
             "metadata": {
                 "simulated": True,

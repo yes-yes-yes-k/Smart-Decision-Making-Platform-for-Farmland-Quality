@@ -118,17 +118,19 @@ class TestStabilityOnlineQuery:
                 "parcel_id": "110105001",
             })
 
-        assert out["status"] == "ok"
-        assert out["reliability"]["level"] == "demo_stub"
+        # 真实结果缺失时返回统一降级响应（不再回退到 mock demo_stub）
+        assert out["status"] == "degraded"
+        assert out["degraded"] is True
+        assert out["reliability"]["level"] == "degraded"
         assert out["fallback"]["used"] is True
 
     @geopandas_required
     def test_parcel_not_found_falls_back_to_demo(self):
-        """地块无真实数据时回退到 demo_stub（analyze 包络的 fallback 字段）"""
+        """地块无真实数据时回退到统一降级响应（analyze 包络的 fallback 字段）"""
         from ai_culti_demo.thematic_models import run_thematic_model
 
         mock_storage = MagicMock()
-        mock_storage.get_result.return_value = None  # 地块无真实结果 → 走模拟回退
+        mock_storage.get_result.return_value = None  # 地块无真实结果 → 降级
 
         with patch("framework.agents.specialized.stability_agent.StabilityStorage", return_value=mock_storage):
             out = run_thematic_model({
@@ -136,12 +138,13 @@ class TestStabilityOnlineQuery:
                 "parcel_id": "nonexistent",
             })
 
-        assert out["status"] == "ok"
-        assert out["reliability"]["level"] == "demo_stub"
+        assert out["status"] == "degraded"
+        assert out["degraded"] is True
+        assert out["reliability"]["level"] == "degraded"
         assert out["fallback"]["used"] is True
 
     def test_missing_parcel_id_falls_back_to_demo(self):
-        """缺少 parcel_id 时回退到 demo 结果（不调用实际模型）"""
+        """缺少 parcel_id 时返回统一降级响应（不调用实际模型）"""
         from ai_culti_demo.thematic_models import run_thematic_model
 
         out = run_thematic_model({
@@ -149,7 +152,8 @@ class TestStabilityOnlineQuery:
             "area_code": "lechang",
         })
 
-        assert out["status"] == "ok"
+        assert out["status"] == "degraded"
+        assert out["degraded"] is True
 
 
 # ---------------------------------------------------------------------------
@@ -237,7 +241,7 @@ class TestCoreEngineDispatch:
         assert out["analysis"]["quality_grade"] == "3"
 
     def test_dispatch_grade_missing_parcel_code_falls_back_to_demo(self):
-        """quality-grade-evaluation 无 parcel_code 时回退到 demo"""
+        """quality-grade-evaluation 无 parcel_code 时返回统一降级响应"""
         from ai_culti_demo.thematic_models import run_thematic_model
 
         out = run_thematic_model({
@@ -245,7 +249,8 @@ class TestCoreEngineDispatch:
             "area_code": "lechang",
         })
 
-        assert out["status"] == "ok"
+        assert out["status"] == "degraded"
+        assert out["degraded"] is True
 
     def test_dispatch_invalid_model_id_returns_error(self):
         """无效 model_id 返回 INVALID_MODEL_ID 并列出支持的模型"""
@@ -343,12 +348,14 @@ class TestAgentRouting:
         assert "质量等级" in out["answer"]
 
     def test_problem_agent_handles_diagnosis_question(self):
-        """9.3 ProblemIdentificationAgent 处理障碍诊断问题"""
+        """9.3 ProblemIdentificationAgent 处理障碍诊断问题——缺输入时降级"""
         from framework.agents.specialized.problem_agent import ProblemIdentificationAgent
 
         out = ProblemIdentificationAgent().answer_question("全省耕地质量存在哪些问题？", {})
         assert "answer" in out
-        assert "主要障碍因素" in out["answer"]
+        # 真实诊断需 parcel_id；空 context 返回统一降级响应而非 mock 障碍因素
+        assert out.get("degraded") is True
+        assert "parcel_id" in out["answer"]
 
     def test_acidification_agent_handles_acidification_question(self):
         """9.4 AcidificationRemediationAgent 处理酸化问题（过程模型 YTK/MBNT）"""
@@ -399,8 +406,8 @@ class TestComprehensiveDiagnosis:
     """验证 StabilityRiskAgent + ProblemIdentificationAgent 整合"""
 
     def test_comprehensive_diagnosis_combines_results(self):
-        """综合诊断同时返回稳定性和障碍诊断信息"""
-        from framework.agents.specialized.stability_risk_agent import StabilityRiskAgent
+        """综合诊断：真实路径下缺 parcel_id 时双 agent 均返回统一降级响应"""
+        from framework.agents.specialized.stability_agent import StabilityRiskAgent
         from framework.agents.specialized.problem_agent import ProblemIdentificationAgent
 
         stability_out = StabilityRiskAgent().answer_question("全省耕地质量稳定性如何？", {})
@@ -413,8 +420,13 @@ class TestComprehensiveDiagnosis:
 
         assert "answer" in stability_out
         assert "answer" in problem_out
-        assert "稳定" in stability_out["answer"]
-        assert "障碍" in problem_out["answer"] or "问题" in problem_out["answer"]
+        # 真实路径下空 context 缺 parcel_id：两个 agent 均返回统一降级响应
+        assert stability_out.get("degraded") is True
+        assert stability_out.get("simulated") is False
+        assert problem_out.get("degraded") is True
+        assert problem_out.get("simulated") is False
+        assert stability_out.get("need_input") == "parcel_id"
+        assert problem_out.get("need_input") == "parcel_id"
         assert "stability" in combined
         assert "diagnosis" in combined
 

@@ -1,7 +1,9 @@
 """测试 6 个专业智能体"""
 import sys
 import os
-sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+_PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+sys.path.insert(0, _PROJECT_ROOT)
+sys.path.insert(0, os.path.join(_PROJECT_ROOT, "src"))
 
 
 def test_stability_risk_agent_execute():
@@ -44,33 +46,41 @@ def test_problem_agent_execute():
     agent = ProblemIdentificationAgent()
     assert agent.model_id == "model-3"
     assert agent.dependencies == ["model-2"]
+    # 缺 parcel_id 时返回统一降级响应（移除 mock 数据）
     result = agent.execute({"area_code": "lechang"})
-    assert result["status"] == "ok"
-    assert result["metadata"]["simulated"] is True
-    assert "primary_factors" in result["result"]
-    assert "secondary_factors" in result["result"]
-    assert "combinations" in result["result"]
-    print("✓ ProblemIdentificationAgent.execute 返回障碍因素结构")
+    assert result["status"] == "degraded"
+    assert result["degraded"] is True
+    assert result["reason"] == "missing_input"
+    assert result["agent_id"] == "model-3"
+    assert result["model_id"] == "obstacle-diagnosis"
+    print("✓ ProblemIdentificationAgent.execute 缺 parcel_id 返回统一降级响应")
 
 
 def test_problem_agent_answer_question():
     from framework.agents.specialized.problem_agent import ProblemIdentificationAgent
     agent = ProblemIdentificationAgent()
+    # 缺 parcel_id 时返回统一降级响应（移除 mock 数据）
     out = agent.answer_question("耕地在哪些方面有问题？", {})
-    assert out["simulated"] is True
-    assert "障碍" in out["answer"] or "问题" in out["answer"]
-    assert len(out["evidence"]) >= 1
-    print("✓ ProblemIdentificationAgent.answer_question 返回障碍识别")
+    assert out["degraded"] is True
+    assert out["simulated"] is False
+    assert out["reason"] == "missing_input"
+    assert out["need_input"] == "parcel_id"
+    assert "诊断" in out["answer"]
+    print("✓ ProblemIdentificationAgent.answer_question 缺 parcel_id 返回降级响应")
 
 
 def test_problem_agent_uses_model2_target_ph():
-    """当 context 包含 model-2 结果时，应使用其 target_ph"""
+    """model-2 target_ph 消费能力已被真实诊断路径取代；缺 parcel_id 时返回降级响应"""
     from framework.agents.specialized.problem_agent import ProblemIdentificationAgent
     agent = ProblemIdentificationAgent()
     ctx = {"model-2": {"target_ph": 6.8, "answer": "...", "evidence": [], "confidence": 0.8, "simulated": True}}
     out = agent.answer_question("主要障碍因素是什么？", ctx)
-    assert any("6.8" in str(e) for e in out["evidence"])
-    print("✓ ProblemIdentificationAgent 消费 model-2 的 target_ph")
+    # 真实诊断路径以 parcel_id 为入口，model-2 target_ph 不再驱动结果
+    assert out["degraded"] is True
+    assert out["simulated"] is False
+    assert out["reason"] == "missing_input"
+    assert out["need_input"] == "parcel_id"
+    print("✓ ProblemIdentificationAgent 真实路径下缺 parcel_id 时返回降级响应")
 
 
 def test_problem_agent_consumes_standard_field_names_has_question(monkeypatch):
