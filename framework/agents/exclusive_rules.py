@@ -90,6 +90,36 @@ EXCLUSIVE_RULES: Tuple[ExclusiveRule, ...] = (
 )
 
 
+_db_rules_cache: Optional[Tuple["ExclusiveRule", ...]] = None
+
+
+def from_database() -> Tuple[ExclusiveRule, ...]:
+    """从 exclusive_rule_config 表加载 enabled=True 的规则。
+
+    规则结构转换：DB JSON 字段 → ExclusiveRule dataclass
+    - rule_pair (JSON list) → frozenset(rule_pair)
+    - dimension_conditions (JSON dict) → dict
+    - condition (str or None) → Optional[str]
+
+    DB 异常时返回空 tuple（由 _get_active_rules 回退硬编码）。
+    """
+    from framework.models import db, ExclusiveRuleConfig
+    try:
+        rows = db.session.query(ExclusiveRuleConfig).filter_by(enabled=True).all()
+        return tuple(
+            ExclusiveRule(
+                pair=frozenset(r.rule_pair),
+                discriminator=r.discriminator,
+                condition=r.condition,
+                target=r.target,
+                dimension_conditions=r.dimension_conditions or {},
+            )
+            for r in rows
+        )
+    except Exception:
+        return tuple()
+
+
 def _condition_matches(question: str, condition: str) -> bool:
     for kw in EXCLUSIVE_CONDITION_KEYWORDS.get(condition, ()):
         if kw in question:
