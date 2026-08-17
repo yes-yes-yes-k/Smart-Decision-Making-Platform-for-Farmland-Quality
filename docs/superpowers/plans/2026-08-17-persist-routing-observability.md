@@ -698,11 +698,44 @@ git commit -m "refactor(observe): _matched_rules uses _get_active_rules() for co
 
 ---
 
-## 任务 5.x：混淆矩阵评估结果落库（Design Doc §3.4）
+## 任务 5.x：混淆矩阵评估结果落库（Design Doc §3.3）
+
+### Task 5.0：修复 `run_routing_regression.py` 的 `MODEL1_STEMS` 导入错误
+
+- [ ] **任务 5.0 完成**：修复 `scripts/run_routing_regression.py` 的 `MODEL1_STEMS` 导入错误，使后续 Task 5.2/5.3/6.3 的冒烟测试可字面执行
+
+**背景**：`scripts/run_routing_regression.py:22-23` 导入 `MODEL1_STEMS` from `tests/test_question_type_keywords.py`，但 `MODEL1_STEMS` 已在模型编号重排 commit 中被删除（test 文件现存 `MODEL2_STEMS`/`MODEL3_STEMS`/`MODEL4_STEMS`/`MODEL5_STEMS`）。导致任何 `from run_routing_regression import ...` 都会 `ImportError: cannot import name 'MODEL1_STEMS'`。
+
+**Files:**
+- Modify: `scripts/run_routing_regression.py`（import 行 + SETS 数组）
+
+**实施步骤**:
+
+1. **调查映射**：读取 `tests/test_question_type_keywords.py` 确认各 `MODEL*_STEMS` 内容对应的模型语义（stability/grade/obstacle/acidification/organic_matter），与 `scripts/run_routing_regression.py` 的 SETS 数组对齐
+
+2. **修复 import**：将 `MODEL1_STEMS` 替换为正确的 `MODEL*_STEMS` 变量
+
+3. **修复 SETS**：更新 SETS 数组中的变量引用和模型编号，使其与新编号一致
+
+4. **冒烟验证**：
+
+```bash
+.venv\Scripts\python.exe -c "import sys; sys.path.insert(0, 'scripts'); sys.path.insert(0, 'tests'); from run_routing_regression import SETS, _predict_model; print('ok', len(SETS))"
+```
+Expected: `ok 4`（SETS 有 4 项）
+
+5. **提交**：
+
+```bash
+git add scripts/run_routing_regression.py
+git commit -m "fix(regression): update MODEL1_STEMS import for new model numbering"
+```
+
+---
 
 ### Task 5.1：新增 `write_metrics_to_db(matrix, evaluation_mode)` 函数
 
-- [ ] **任务 5.1 完成**：在 `scripts/run_routing_regression.py` 新增 `write_metrics_to_db(matrix, evaluation_mode)` 函数，批量写入 `model_evaluation_metrics` 表
+- [x] **任务 5.1 完成**：在 `scripts/run_routing_regression.py` 新增 `write_metrics_to_db(matrix, evaluation_mode)` 函数，批量写入 `model_evaluation_metrics` 表
 
 **Files:**
 - Modify: `scripts/run_routing_regression.py`（在 `main` 之前新增；顶部 `import warnings`）

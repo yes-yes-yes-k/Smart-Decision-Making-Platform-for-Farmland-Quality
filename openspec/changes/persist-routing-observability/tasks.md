@@ -29,7 +29,7 @@
 
 ## 5. 混淆矩阵评估结果落库
 
-- [ ] 5.1 在 `scripts/run_routing_regression.py` 新增 `write_metrics_to_db(matrix, evaluation_mode)` 函数，批量写入 `model_evaluation_metrics` 表
+- [x] 5.1 在 `scripts/run_routing_regression.py` 新增 `write_metrics_to_db(matrix, evaluation_mode)` 函数，批量写入 `model_evaluation_metrics` 表
 - [ ] 5.2 在 `main()` 函数末尾调用 `write_metrics_to_db`，DB 写入失败时保留 JSON 文件输出并告警
 - [ ] 5.3 确保 DB 写入失败不改变脚本退出码
 
