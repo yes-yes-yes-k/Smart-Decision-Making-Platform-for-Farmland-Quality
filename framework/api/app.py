@@ -33,6 +33,12 @@ def _ensure_kb_message_columns(app: Flask):
                         "WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = :t AND COLUMN_NAME = :c"
                     ), {"t": table, "c": column}).fetchone()
                     return (row[0] if isinstance(row, tuple) else row[0]) > 0
+                elif dialect == "postgresql":
+                    row = conn.execute(sa_text(
+                        "SELECT COUNT(*) FROM information_schema.COLUMNS "
+                        "WHERE table_schema = current_schema() AND table_name = :t AND column_name = :c"
+                    ), {"t": table, "c": column}).fetchone()
+                    return (row[0] if isinstance(row, tuple) else row[0]) > 0
                 # sqlite
                 rows = conn.execute(sa_text(f"PRAGMA table_info(`{table}`)")).fetchall()
                 return any(str(r[1]).lower() == column.lower() for r in rows)
