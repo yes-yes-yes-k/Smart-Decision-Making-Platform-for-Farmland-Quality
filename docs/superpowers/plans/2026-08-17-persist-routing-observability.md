@@ -651,7 +651,7 @@ git commit -m "refactor(exclusive_rules): apply_exclusive_rules uses _get_active
 
 ### Task 4.5：修改 `observe._matched_rules` 使用 `_get_active_rules()`
 
-- [ ] **任务 4.5 完成**：修改 `observe._matched_rules` 中 `for r in EXCLUSIVE_RULES` 为 `for r in _get_active_rules()`，与 `apply_exclusive_rules` 保持规则源一致
+- [x] **任务 4.5 完成**：修改 `observe._matched_rules` 中 `for r in EXCLUSIVE_RULES` 为 `for r in _get_active_rules()`，与 `apply_exclusive_rules` 保持规则源一致
 
 **Files:**
 - Modify: `framework/observability/observe.py:27-29`

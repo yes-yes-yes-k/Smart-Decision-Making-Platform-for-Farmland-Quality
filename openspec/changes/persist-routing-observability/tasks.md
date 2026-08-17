@@ -25,7 +25,7 @@
 - [x] 4.2 新增模块级缓存 `_db_rules_cache`，首次加载后缓存，避免每次路由判定查询 DB
 - [x] 4.3 新增 `_get_active_rules()` 统一入口函数，优先返回 DB 规则，DB 不可用或为空时回退硬编码 `EXCLUSIVE_RULES`
 - [x] 4.4 修改 `apply_exclusive_rules` 使用 `_get_active_rules()` 替代硬编码 `EXCLUSIVE_RULES`
-- [ ] 4.5 修改 `_matched_rules`（observe.py）使用 `_get_active_rules()` 保持一致性
+- [x] 4.5 修改 `_matched_rules`（observe.py）使用 `_get_active_rules()` 保持一致性
 
 ## 5. 混淆矩阵评估结果落库
 
