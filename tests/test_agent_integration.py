@@ -97,9 +97,10 @@ def test_execute_models_writes_structured_result():
     assert "summary" in data
     assert "details" in data
     assert "recommendations" in data
-    # 每个智能体详情应携带 simulated 标记
+    # 每个智能体详情应携带 simulated 标记（真实/降级路径下为 False）
     for aid, payload in data["details"].items():
-        assert payload.get("simulated") is True
+        assert "simulated" in payload
+        assert payload.get("simulated") is False
     print("✓ execute_models 写入结构化多智能体结果")
 
 

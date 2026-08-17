@@ -1,72 +1,75 @@
-"""测试 6 个 agent 对 xlsx 3 角色经典问题的回复（D4 最小化改动）。"""
+"""测试 5 个专题模型 agent 对经典问题的回复。
+
+真实计算优先：当 ai_culti_demo 可导入且提供 parcel_id 时走真实路径；
+缺失输入时返回统一降级响应（degraded=True），不再返回 mock 数据。
+"""
 import sys
 import os
-sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+_PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+sys.path.insert(0, _PROJECT_ROOT)
+# 让 ai_culti_demo（位于 src/）可导入，使 model-1/2/3/4 走真实计算路径
+sys.path.insert(0, os.path.join(_PROJECT_ROOT, "src"))
 
 
 def test_stability_overall_province():
-    from framework.agents.specialized.stability_risk_agent import StabilityRiskAgent
+    """model-1 真实 agent：空 context 缺 parcel_id 时返回统一降级响应（非 mock）"""
+    from framework.agents.specialized.stability_agent import StabilityRiskAgent
     out = StabilityRiskAgent().answer_question("查询区域内耕地质量等级整体稳定吗？", {})
-    assert out["simulated"] is True
-    assert "稳定" in out["answer"]
-    assert 0.0 <= out["confidence"] <= 1.0
+    assert out["degraded"] is True
+    assert out["simulated"] is False
+    assert out["reason"] == "missing_input"
+    assert out["need_input"] == "parcel_id"
 
 
 def test_stability_weak_county_list():
-    """县域端：稳定性较弱乡镇/地块清单"""
-    from framework.agents.specialized.stability_risk_agent import StabilityRiskAgent
+    """县域端：稳定性较弱乡镇/地块清单——缺输入时降级而非返回 mock 清单"""
+    from framework.agents.specialized.stability_agent import StabilityRiskAgent
     out = StabilityRiskAgent().answer_question(
         "本县哪些乡镇或地块等级稳定性较弱，需要现场复核？", {})
-    assert out["simulated"] is True
-    # 收紧：必须命中「县域薄弱片区分支」专属产出，旧 else 分支不含此字符串
-    assert "本县稳定性较弱" in out["answer"]
-    assert len(out["evidence"]) >= 1
+    assert out["degraded"] is True
+    assert "parcel_id" in out["answer"]
 
 
 def test_stability_farmer_plain_language():
-    """农户端：通俗语言说明稳不稳"""
-    from framework.agents.specialized.stability_risk_agent import StabilityRiskAgent
+    """农户端：稳不稳——缺输入时降级而非编造「比较稳/一般稳/不太稳」"""
+    from framework.agents.specialized.stability_agent import StabilityRiskAgent
     out = StabilityRiskAgent().answer_question("我的这块田质量等级稳不稳？", {})
-    assert out["simulated"] is True
-    assert "稳" in out["answer"]
-    # 收紧：必须命中「农户稳不稳分支」三档之一，排除"稳定/一般/较弱"宽泛词
-    assert any(w in out["answer"] for w in ["比较稳", "一般稳", "不太稳"])
+    assert out["degraded"] is True
+    assert out["simulated"] is False
 
 
 def test_stability_attention_list():
-    """重点关注清单"""
-    from framework.agents.specialized.stability_risk_agent import StabilityRiskAgent
+    """重点关注清单——缺输入时降级而非返回 mock 关注清单"""
+    from framework.agents.specialized.stability_agent import StabilityRiskAgent
     out = StabilityRiskAgent().answer_question("查询区域内哪些对象需要纳入重点关注清单？", {})
-    assert out["simulated"] is True
-    # 收紧：必须命中「关注清单分支」专属产出
-    assert "建议纳入重点关注清单" in out["answer"]
+    assert out["degraded"] is True
+    assert out["reason"] == "missing_input"
 
 
 def test_problem_overall_factors():
-    """省市端：主要障碍因素"""
+    """model-3 真实 agent：缺 parcel_id 时返回统一降级响应（非 mock 障碍因素）"""
     from framework.agents.specialized.problem_agent import ProblemIdentificationAgent
     out = ProblemIdentificationAgent().answer_question("全省耕地质量存在哪些问题？", {})
-    assert out["simulated"] is True
-    # 收紧：实现产出 "主要障碍因素：..."
-    assert "主要障碍因素" in out["answer"]
+    assert out["degraded"] is True
+    assert out["simulated"] is False
+    assert out["reason"] == "missing_input"
+    assert out["need_input"] == "parcel_id"
 
 
 def test_problem_county_diagnosis():
-    """县域端：县/乡镇耕地障碍诊断"""
+    """县域端：县/乡镇耕地障碍诊断——缺输入时降级而非编造诊断"""
     from framework.agents.specialized.problem_agent import ProblemIdentificationAgent
     out = ProblemIdentificationAgent().answer_question("县/乡镇里的耕地在哪些方面有问题", {})
-    assert out["simulated"] is True
-    # 收紧：实现产出 "县域障碍诊断：..."
-    assert "县域障碍诊断" in out["answer"]
+    assert out["degraded"] is True
+    assert "parcel_id" in out["answer"]
 
 
 def test_problem_farmer_simple_language():
-    """农户端：我这块地有没有问题（简单语言）"""
+    """农户端：我这块地有没有问题——缺输入时降级而非编造诊断"""
     from framework.agents.specialized.problem_agent import ProblemIdentificationAgent
     out = ProblemIdentificationAgent().answer_question("我这块地有没有问题？", {})
-    assert out["simulated"] is True
-    # 收紧：实现产出 "您的地块耕地质量等级诊断：..."
-    assert "地块耕地质量等级诊断" in out["answer"]
+    assert out["degraded"] is True
+    assert out["simulated"] is False
 
 
 def test_acidification_degree_with_standard():
@@ -147,25 +150,31 @@ def test_organic_low_value_reason():
     assert "耕地有机质含量低的原因" in out["answer"]
 
 
-def test_all_agents_simulated_flag():
-    """纯模拟 agent 对代表性经典问题均返回 simulated=True 且 answer 非空
+def test_all_agents_degraded_or_real_flag():
+    """缺输入时各 agent 的标记一致性：
 
-    注：AcidificationRemediationAgent 已改为过程模型（success→simulated=False），
-    故不在此列表中（有独立测试覆盖）。
+    - model-1/3（真实 agent，需 parcel_id + DB）：返回 degraded=True、simulated=False
+    - model-5（有机质，缺模型特征）：走规则降级，标记 simulated=True
+    - model-4（酸化，有默认输入）：真实计算，simulated=False（独立测试覆盖）
     """
-    from framework.agents.specialized.stability_risk_agent import StabilityRiskAgent
+    from framework.agents.specialized.stability_agent import StabilityRiskAgent
     from framework.agents.specialized.problem_agent import ProblemIdentificationAgent
     from framework.agents.specialized.organic_matter_agent import OrganicMatterAgent
 
-    cases = [
+    degraded_cases = [
         (StabilityRiskAgent(), "查询区域内耕地质量等级整体稳定吗？"),
         (ProblemIdentificationAgent(), "全省耕地质量存在哪些问题？"),
-        (OrganicMatterAgent(), "全省耕地土壤有机质含量如何？"),
     ]
-    for agent, q in cases:
+    for agent, q in degraded_cases:
         out = agent.answer_question(q, {})
-        assert out.get("simulated") is True, f"{agent.name} 未标记 simulated"
+        assert out.get("degraded") is True, f"{agent.name} 未标记 degraded"
+        assert out.get("simulated") is False, f"{agent.name} 仍标记 simulated"
         assert out.get("answer"), f"{agent.name} answer 为空"
+
+    # model-5 缺模型特征时走规则降级，仍标记 simulated=True
+    out = OrganicMatterAgent().answer_question("全省耕地土壤有机质含量如何？", {})
+    assert out.get("simulated") is True
+    assert out.get("fallback") is True
 
 
 if __name__ == "__main__":
@@ -184,5 +193,5 @@ if __name__ == "__main__":
     test_organic_manure_straw_dosage()
     test_organic_county_average()
     test_organic_low_value_reason()
-    test_all_agents_simulated_flag()
+    test_all_agents_degraded_or_real_flag()
     print("\nmodel-1/2/3/4/5 经典 Q&A 测试通过！")
