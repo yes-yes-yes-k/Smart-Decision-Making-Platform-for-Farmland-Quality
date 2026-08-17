@@ -13,3 +13,19 @@ if _PROJECT_ROOT not in sys.path:
 _SRC_DIR = os.path.join(_PROJECT_ROOT, "src")
 if _SRC_DIR not in sys.path:
     sys.path.insert(0, _SRC_DIR)
+
+
+# PostgreSQL 测试库可用性探测：供 routing_log_db / exclusive_rules_db / regression_metrics_db 跳过
+def _probe_pg_available() -> bool:
+    try:
+        from framework.api.app import create_app
+        from framework.models.user import db
+        app = create_app("default")
+        with app.app_context():
+            db.session.execute(__import__("sqlalchemy").text("SELECT 1"))
+            return True
+    except Exception:
+        return False
+
+
+PG_AVAILABLE = _probe_pg_available()
