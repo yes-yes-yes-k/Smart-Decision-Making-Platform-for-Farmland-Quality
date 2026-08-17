@@ -7,6 +7,7 @@ from __future__ import annotations
 import warnings
 import time
 import uuid
+from datetime import datetime, timezone
 from typing import Any, Dict, Optional, Tuple
 
 from framework.agents.exclusive_rules import (
@@ -75,6 +76,7 @@ def observe_routing(
         "trace_id": tid,
         "question": question,
         "timestamp": time.strftime("%Y-%m-%d %H:%M:%S"),
+        "logged_at": datetime.now(timezone.utc),
         "data_version": data_version,
         "agent_version": agent_version,
         "params": params or {},
