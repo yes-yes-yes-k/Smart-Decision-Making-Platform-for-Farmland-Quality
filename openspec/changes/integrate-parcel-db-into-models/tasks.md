@@ -18,9 +18,9 @@
 
 ## 4. Model-3 ProblemIdentificationAgent 改造
 
-- [ ] 4.1 将 `problem_agent.py` 的 `_collect_inputs` 重构为 DB 优先：先查 `parcel_info`，未命中时降级到 SQLite `query_parcel` 并记录 WARNING
-- [ ] 4.2 在 `ProblemIdentificationAgent`（或 `ObstacleDiagnosisAgent`）override `_get_result_model_class()` 返回 `ObstacleDiagnosisResult`
-- [ ] 4.3 在 `execute()` 成功路径调用 `_persist_result()`
+- [x] 4.1 将 `problem_agent.py` 的 `_collect_inputs` 重构为 DB 优先：先查 `parcel_info`，未命中时降级到 SQLite `query_parcel` 并记录 WARNING
+- [x] 4.2 在 `ProblemIdentificationAgent` override `_build_result_record()` 返回 `ObstacleDiagnosisResult`（legacy 路径无 parcel_id 时返回 None）
+- [x] 4.3 在 `execute()` 成功路径调用 `_persist_result()`
 
 ## 5. Model-4 AcidificationRemediationAgent 改造
 
