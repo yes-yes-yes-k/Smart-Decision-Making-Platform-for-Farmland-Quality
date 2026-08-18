@@ -1,0 +1,495 @@
+{
+  "generated_at": "2026-08-18T16:42:46.949783",
+  "parcels": {
+    "P-VERIFY-001": {
+      "parcel_id": "P-VERIFY-001",
+      "area_code": "440281",
+      "land_type": "upland",
+      "fertilizer_type": "compound",
+      "target_ph": 6.5,
+      "soil_indicators": {
+        "soil_ph": 4.8,
+        "organic_matter": 15.0,
+        "total_nitrogen": 1.0,
+        "available_phosphorus": 8.0,
+        "available_potassium": 60.0,
+        "exchangeable_hydrogen": 5.0,
+        "cation_exchange_capacity": 8.0,
+        "clay_content": 30.0,
+        "sand_content": 40.0,
+        "silt_content": 30.0,
+        "bulk_density": 1.35,
+        "topsoil_thickness": 20.0,
+        "slope": 8.0,
+        "irrigation_condition": "dry",
+        "terrain_position": "lower",
+        "soil_texture": "loam",
+        "obstacle_factors": [
+          "acidification",
+          "low_organic_matter"
+        ]
+      }
+    },
+    "P-VERIFY-002": {
+      "parcel_id": "P-VERIFY-002",
+      "area_code": "440281",
+      "land_type": "paddy",
+      "fertilizer_type": "urea",
+      "target_ph": 6.0,
+      "soil_indicators": {
+        "soil_ph": 5.8,
+        "organic_matter": 28.0,
+        "total_nitrogen": 1.8,
+        "available_phosphorus": 15.0,
+        "available_potassium": 120.0,
+        "exchangeable_hydrogen": 2.0,
+        "cation_exchange_capacity": 15.0,
+        "clay_content": 45.0,
+        "sand_content": 20.0,
+        "silt_content": 35.0,
+        "bulk_density": 1.2,
+        "topsoil_thickness": 25.0,
+        "slope": 3.0,
+        "irrigation_condition": "irrigated",
+        "terrain_position": "middle",
+        "soil_texture": "clay_loam",
+        "obstacle_factors": []
+      }
+    },
+    "P-VERIFY-003": {
+      "parcel_id": "P-VERIFY-003",
+      "area_code": "440281",
+      "land_type": "upland",
+      "fertilizer_type": "organic",
+      "target_ph": 5.5,
+      "soil_indicators": {
+        "soil_ph": 5.2,
+        "organic_matter": 8.0,
+        "total_nitrogen": 0.6,
+        "available_phosphorus": 5.0,
+        "available_potassium": 40.0,
+        "exchangeable_hydrogen": 4.0,
+        "cation_exchange_capacity": 6.0,
+        "clay_content": 25.0,
+        "sand_content": 50.0,
+        "silt_content": 25.0,
+        "bulk_density": 1.45,
+        "topsoil_thickness": 15.0,
+        "slope": 12.0,
+        "irrigation_condition": "dry",
+        "terrain_position": "upper",
+        "soil_texture": "sandy_loam",
+        "obstacle_factors": [
+          "low_organic_matter",
+          "shallow_topsoil"
+        ]
+      }
+    }
+  },
+  "models": {
+    "model-1": {
+      "name": "Model-1 稳定性风险评价",
+      "parcels": {
+        "P-VERIFY-001": {
+          "status": "degraded",
+          "data_source": "unknown",
+          "simulated": null,
+          "persisted": null,
+          "result": {},
+          "metadata": {}
+        },
+        "P-VERIFY-002": {
+          "status": "degraded",
+          "data_source": "unknown",
+          "simulated": null,
+          "persisted": null,
+          "result": {},
+          "metadata": {}
+        },
+        "P-VERIFY-003": {
+          "status": "degraded",
+          "data_source": "unknown",
+          "simulated": null,
+          "persisted": null,
+          "result": {},
+          "metadata": {}
+        }
+      }
+    },
+    "model-2": {
+      "name": "Model-2 耕地质量等级评价",
+      "parcels": {
+        "P-VERIFY-001": {
+          "status": "ok",
+          "data_source": "db",
+          "simulated": false,
+          "persisted": true,
+          "result": {
+            "parcel_id": "P-VERIFY-001",
+            "quality_grade": "0",
+            "composite_index": 0.0,
+            "indicators": {
+              "soil_ph": 4.8,
+              "organic_matter": 15.0,
+              "available_potassium": 60.0,
+              "available_phosphorus": 8.0,
+              "soil_bulk_density": null,
+              "topsoil_texture": null,
+              "irrigation_capacity": null,
+              "drainage_capacity": null,
+              "terrain_position": "lower",
+              "topsoil_thickness": 20.0,
+              "parcel_id": "P-VERIFY-001"
+            }
+          },
+          "metadata": {}
+        },
+        "P-VERIFY-002": {
+          "status": "ok",
+          "data_source": "db",
+          "simulated": false,
+          "persisted": true,
+          "result": {
+            "parcel_id": "P-VERIFY-002",
+            "quality_grade": "0",
+            "composite_index": 0.0,
+            "indicators": {
+              "soil_ph": 5.8,
+              "organic_matter": 28.0,
+              "available_potassium": 120.0,
+              "available_phosphorus": 15.0,
+              "soil_bulk_density": null,
+              "topsoil_texture": null,
+              "irrigation_capacity": null,
+              "drainage_capacity": null,
+              "terrain_position": "middle",
+              "topsoil_thickness": 25.0,
+              "parcel_id": "P-VERIFY-002"
+            }
+          },
+          "metadata": {}
+        },
+        "P-VERIFY-003": {
+          "status": "ok",
+          "data_source": "db",
+          "simulated": false,
+          "persisted": true,
+          "result": {
+            "parcel_id": "P-VERIFY-003",
+            "quality_grade": "0",
+            "composite_index": 0.0,
+            "indicators": {
+              "soil_ph": 5.2,
+              "organic_matter": 8.0,
+              "available_potassium": 40.0,
+              "available_phosphorus": 5.0,
+              "soil_bulk_density": null,
+              "topsoil_texture": null,
+              "irrigation_capacity": null,
+              "drainage_capacity": null,
+              "terrain_position": "upper",
+              "topsoil_thickness": 15.0,
+              "parcel_id": "P-VERIFY-003"
+            }
+          },
+          "metadata": {}
+        }
+      }
+    },
+    "model-3": {
+      "name": "Model-3 障碍诊断",
+      "parcels": {
+        "P-VERIFY-001": {
+          "status": "ok",
+          "data_source": "db",
+          "simulated": false,
+          "persisted": true,
+          "result": {
+            "parcel_id": "P-VERIFY-001",
+            "diagnosis": {
+              "ZALX": "待诊断",
+              "ZYZAYS": "",
+              "CYZAYS": ""
+            },
+            "evaluation": {
+              "GDZLDJ": "未知"
+            },
+            "indicators": {
+              "soil_ph": 4.8,
+              "organic_matter": 15.0,
+              "available_potassium": 60.0,
+              "available_phosphorus": 8.0,
+              "soil_bulk_density": null,
+              "topsoil_texture": null,
+              "irrigation_capacity": null,
+              "drainage_capacity": null,
+              "terrain_position": "lower",
+              "topsoil_thickness": 20.0,
+              "parcel_id": "P-VERIFY-001"
+            }
+          },
+          "metadata": {}
+        },
+        "P-VERIFY-002": {
+          "status": "ok",
+          "data_source": "db",
+          "simulated": false,
+          "persisted": true,
+          "result": {
+            "parcel_id": "P-VERIFY-002",
+            "diagnosis": {
+              "ZALX": "待诊断",
+              "ZYZAYS": "",
+              "CYZAYS": ""
+            },
+            "evaluation": {
+              "GDZLDJ": "未知"
+            },
+            "indicators": {
+              "soil_ph": 5.8,
+              "organic_matter": 28.0,
+              "available_potassium": 120.0,
+              "available_phosphorus": 15.0,
+              "soil_bulk_density": null,
+              "topsoil_texture": null,
+              "irrigation_capacity": null,
+              "drainage_capacity": null,
+              "terrain_position": "middle",
+              "topsoil_thickness": 25.0,
+              "parcel_id": "P-VERIFY-002"
+            }
+          },
+          "metadata": {}
+        },
+        "P-VERIFY-003": {
+          "status": "ok",
+          "data_source": "db",
+          "simulated": false,
+          "persisted": true,
+          "result": {
+            "parcel_id": "P-VERIFY-003",
+            "diagnosis": {
+              "ZALX": "待诊断",
+              "ZYZAYS": "",
+              "CYZAYS": ""
+            },
+            "evaluation": {
+              "GDZLDJ": "未知"
+            },
+            "indicators": {
+              "soil_ph": 5.2,
+              "organic_matter": 8.0,
+              "available_potassium": 40.0,
+              "available_phosphorus": 5.0,
+              "soil_bulk_density": null,
+              "topsoil_texture": null,
+              "irrigation_capacity": null,
+              "drainage_capacity": null,
+              "terrain_position": "upper",
+              "topsoil_thickness": 15.0,
+              "parcel_id": "P-VERIFY-003"
+            }
+          },
+          "metadata": {}
+        }
+      }
+    },
+    "model-4": {
+      "name": "Model-4 酸化改良",
+      "parcels": {
+        "P-VERIFY-001": {
+          "status": "rejected",
+          "data_source": "db",
+          "simulated": false,
+          "persisted": true,
+          "result": {
+            "ytk": null,
+            "mbnt": null,
+            "sub_model": null,
+            "customized_params": {}
+          },
+          "metadata": {
+            "model_version": "process_v2_20260801",
+            "warning": null,
+            "reason": "model_unavailable"
+          }
+        },
+        "P-VERIFY-002": {
+          "status": "rejected",
+          "data_source": "db",
+          "simulated": false,
+          "persisted": true,
+          "result": {
+            "ytk": null,
+            "mbnt": null,
+            "sub_model": null,
+            "customized_params": {}
+          },
+          "metadata": {
+            "model_version": "process_v2_20260801",
+            "warning": null,
+            "reason": "model_unavailable"
+          }
+        },
+        "P-VERIFY-003": {
+          "status": "rejected",
+          "data_source": "db",
+          "simulated": false,
+          "persisted": true,
+          "result": {
+            "ytk": null,
+            "mbnt": null,
+            "sub_model": null,
+            "customized_params": {}
+          },
+          "metadata": {
+            "model_version": "process_v2_20260801",
+            "warning": null,
+            "reason": "model_unavailable"
+          }
+        }
+      }
+    },
+    "model-5": {
+      "name": "Model-5 有机质培肥",
+      "parcels": {
+        "P-VERIFY-001": {
+          "status": "ok",
+          "data_source": "db",
+          "simulated": null,
+          "persisted": true,
+          "result": {
+            "soil_ph": 4.8,
+            "organic_matter": 15.0,
+            "available_potassium": 60.0,
+            "level": "低",
+            "manure_dosage": 1500.0,
+            "potential_increase": 2.25
+          },
+          "metadata": {
+            "simulated": false,
+            "data_source": "db"
+          }
+        },
+        "P-VERIFY-002": {
+          "status": "ok",
+          "data_source": "db",
+          "simulated": null,
+          "persisted": true,
+          "result": {
+            "soil_ph": 5.8,
+            "organic_matter": 28.0,
+            "available_potassium": 120.0,
+            "level": "中",
+            "manure_dosage": 1000.0,
+            "potential_increase": 1.5
+          },
+          "metadata": {
+            "simulated": false,
+            "data_source": "db"
+          }
+        },
+        "P-VERIFY-003": {
+          "status": "ok",
+          "data_source": "db",
+          "simulated": null,
+          "persisted": true,
+          "result": {
+            "soil_ph": 5.2,
+            "organic_matter": 8.0,
+            "available_potassium": 40.0,
+            "level": "极低",
+            "manure_dosage": 2000.0,
+            "potential_increase": 3.0
+          },
+          "metadata": {
+            "simulated": false,
+            "data_source": "db"
+          }
+        }
+      }
+    }
+  },
+  "execution_logs": [
+    {
+      "agent_id": "model-5",
+      "parcel_id": "P-VERIFY-003",
+      "status": "ok",
+      "execution_id": 24
+    },
+    {
+      "agent_id": "model-5",
+      "parcel_id": "P-VERIFY-002",
+      "status": "ok",
+      "execution_id": 23
+    },
+    {
+      "agent_id": "model-5",
+      "parcel_id": "P-VERIFY-001",
+      "status": "ok",
+      "execution_id": 22
+    },
+    {
+      "agent_id": "model-4",
+      "parcel_id": "P-VERIFY-003",
+      "status": "ok",
+      "execution_id": 21
+    },
+    {
+      "agent_id": "model-4",
+      "parcel_id": "P-VERIFY-002",
+      "status": "ok",
+      "execution_id": 20
+    },
+    {
+      "agent_id": "model-4",
+      "parcel_id": "P-VERIFY-001",
+      "status": "ok",
+      "execution_id": 19
+    },
+    {
+      "agent_id": "model-3",
+      "parcel_id": "P-VERIFY-003",
+      "status": "ok",
+      "execution_id": 18
+    },
+    {
+      "agent_id": "model-3",
+      "parcel_id": "P-VERIFY-002",
+      "status": "ok",
+      "execution_id": 17
+    },
+    {
+      "agent_id": "model-3",
+      "parcel_id": "P-VERIFY-001",
+      "status": "ok",
+      "execution_id": 16
+    },
+    {
+      "agent_id": "model-2",
+      "parcel_id": "P-VERIFY-003",
+      "status": "ok",
+      "execution_id": 15
+    },
+    {
+      "agent_id": "model-2",
+      "parcel_id": "P-VERIFY-002",
+      "status": "ok",
+      "execution_id": 14
+    },
+    {
+      "agent_id": "model-2",
+      "parcel_id": "P-VERIFY-001",
+      "status": "ok",
+      "execution_id": 13
+    }
+  ],
+  "result_tables": {
+    "stability_risk_result": 0,
+    "quality_grade_result": 3,
+    "obstacle_diagnosis_result": 3,
+    "acidification_remediation_result": 3,
+    "organic_matter_result": 3,
+    "comprehensive_fertility_result": 0
+  }
+}
