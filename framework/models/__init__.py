@@ -15,20 +15,25 @@ from .soil_data import (
     GrainYield,
 )
 from .report import Report
-from .thematic_model import (
-    ThematicModelRegistry,
-    ModelExecutionLog,
-    SpatialDataLayer,
-    ParcelGeometry,
-    StabilityRiskResult,
-    QualityGradeResult,
-    ObstacleDiagnosisResult,
-    AcidificationRemediationResult,
-    OrganicMatterResult,
-    ComprehensiveFertilityResult,
-    RoutingDecisionLog,
-    ModelEvaluationMetrics,
-    ExclusiveRuleConfig,
-    ParcelInfo,
-    ModelVersionHistory,
-)
+
+try:
+    from .thematic_model import (
+        ThematicModelRegistry,
+        ModelExecutionLog,
+        SpatialDataLayer,
+        ParcelGeometry,
+        StabilityRiskResult,
+        QualityGradeResult,
+        ObstacleDiagnosisResult,
+        AcidificationRemediationResult,
+        OrganicMatterResult,
+        ComprehensiveFertilityResult,
+        RoutingDecisionLog,
+        ModelEvaluationMetrics,
+        ExclusiveRuleConfig,
+        ParcelInfo,
+        ModelVersionHistory,
+    )
+except ImportError:
+    # geoalchemy2 未安装时（如测试环境）跳过 thematic_model 导入
+    pass

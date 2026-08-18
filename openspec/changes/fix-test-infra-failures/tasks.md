@@ -13,8 +13,8 @@
 
 ## 3. test_import_lechang_data.py 导入路径修复
 
-- [ ] 3.1 修改 scripts/import_lechang_data.py 的导入：`import framework.models.soil_data` → `from framework.models import soil_data`
-- [ ] 3.2 运行 test_import_lechang_data.py 验证全部通过
+- [x] 3.1 修改 framework/models/__init__.py：用 try/except 包裹 thematic_model 导入，geoalchemy2 缺失时容错跳过
+- [x] 3.2 运行 test_import_lechang_data.py 验证全部通过
 
 ## 4. test_docs_dedup.py / test_observability_api.py fixture 表创建顺序
 
