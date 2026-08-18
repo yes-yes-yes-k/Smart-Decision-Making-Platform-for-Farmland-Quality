@@ -24,9 +24,9 @@
 
 ## 5. Model-4 AcidificationRemediationAgent 改造
 
-- [ ] 5.1 将 `acidification_agent.py` 和 `model_4.py` 的数据获取重构为 DB 优先：先查 `parcel_info` 的 `soil_ph`/`exchangeable_hydrogen` 等字段，未命中时降级到 SQLite `_query_sjd_by_parcel_id` 并记录 WARNING
-- [ ] 5.2 在 `AcidificationRemediationAgent` override `_get_result_model_class()` 返回 `AcidificationRemediationResult`
-- [ ] 5.3 在 `execute()` 成功路径调用 `_persist_result()`
+- [x] 5.1 将 `acidification_agent.py` 和 `model_4.py` 的数据获取重构为 DB 优先：先查 `parcel_info` 的 `soil_ph`/`exchangeable_hydrogen` 等字段，未命中时降级到 SQLite `_query_sjd_by_parcel_id` 并记录 WARNING
+- [x] 5.2 在 `AcidificationRemediationAgent` override `_get_result_model_class()` 返回 `AcidificationRemediationResult`
+- [x] 5.3 在 `execute()` 成功路径调用 `_persist_result()`
 
 ## 6. Model-5 OrganicMatterAgent 改造
 
@@ -36,7 +36,7 @@
 
 ## 7. 测试
 
-- [ ] 7.1 新增 `tests/test_parcel_data_accessor.py`：测试 DB 命中、DB 未命中、DB 异常三种场景
-- [ ] 7.2 新增 `tests/test_base_agent_persist.py`：测试 `_persist_result()` 成功写入 execution_log + 结果表、写入失败时不阻断返回、事务 rollback 一致性
+- [x] 7.1 新增 `tests/test_parcel_data_accessor.py`：测试 DB 命中、DB 未命中、DB 异常三种场景
+- [x] 7.2 新增 `tests/test_base_agent_persist.py`：测试 `_persist_result()` 成功写入 execution_log + 结果表、写入失败时不阻断返回、事务 rollback 一致性
 - [ ] 7.3 更新 5 个 Agent 的现有测试：验证 DB 优先 + fallback 降级路径、`data_source` 标识、`persisted` 标识
 - [ ] 7.4 运行完整测试套件验证无回归
