@@ -2,6 +2,8 @@
 comet_change: integrate-parcel-db-into-models
 role: technical-design
 canonical_spec: openspec
+archived-with: 2026-08-18-integrate-parcel-db-into-models
+status: final
 ---
 
 # Design Doc: 集成数据库地块数据到专题模型

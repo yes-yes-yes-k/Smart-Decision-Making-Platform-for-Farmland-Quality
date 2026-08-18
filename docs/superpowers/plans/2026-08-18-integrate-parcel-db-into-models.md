@@ -2,6 +2,7 @@
 change: integrate-parcel-db-into-models
 design-doc: docs/superpowers/specs/2026-08-18-integrate-parcel-db-into-models-design.md
 base-ref: bf63a92437f51903c20eeab26bdf21cd84fef3e1
+archived-with: 2026-08-18-integrate-parcel-db-into-models
 ---
 
 # 集成数据库地块数据到专题模型 实施计划
