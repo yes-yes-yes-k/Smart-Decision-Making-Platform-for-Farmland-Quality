@@ -162,6 +162,7 @@ class OrganicMatterAgent(BaseAgent):
                 # Legacy 降级路径：规则 fallback
                 outputs = self._rule_fallback(inputs)
                 status = "degraded"
+                simulated = True
             elif data_source == "db":
                 # DB 路径：直接使用 soil_indicators 构造结果快照
                 om = float(inputs.get("organic_matter", 0.0) or 0.0)
@@ -176,6 +177,7 @@ class OrganicMatterAgent(BaseAgent):
                     "potential_increase": round(manure_dosage / 1000.0 * 1.5, 2),
                 }
                 status = "ok"
+                simulated = False
             else:
                 # Legacy 路径：ML 模型
                 result = model_5_execution(
@@ -184,6 +186,8 @@ class OrganicMatterAgent(BaseAgent):
                 )
                 outputs = result
                 status = result.get("status", "degraded")
+                # ML 成功执行时 simulated=False；fallback/rejected 沿用模型自身判定
+                simulated = bool(result.get("simulated", status != "success"))
 
             persisted = self._persist_result(
                 agent_id=self.agent_id,
@@ -197,7 +201,7 @@ class OrganicMatterAgent(BaseAgent):
                 "status": status,
                 "result": outputs,
                 "metadata": {
-                    "simulated": data_source != "db",
+                    "simulated": simulated,
                     "data_source": data_source,
                 },
                 "data_source": data_source,

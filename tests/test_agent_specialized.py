@@ -3,22 +3,24 @@ import sys
 import os
 import types
 from unittest.mock import MagicMock
+from sqlalchemy import String
 
 _PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, _PROJECT_ROOT)
 sys.path.insert(0, os.path.join(_PROJECT_ROOT, "src"))
 
 # 测试环境可能未安装 geoalchemy2，这里在导入 thematic_model 之前先 stub
-# 一个 Geometry 类（返回 MagicMock 实例），避免 SQLAlchemy Column 在类定义
-# 阶段调用 Geometry(...) 时因缺少 `_set_parent_with_dispatch` 而失败。
+# 一个 Geometry 类（返回 String 实例），既满足 SQLAlchemy Column 在类定义
+# 阶段调用 Geometry(...) 时所需的 `_set_parent_with_dispatch` 协议，
+# 又能保证后续 db.create_all() 渲染 DDL 时 __str__ 返回真实字符串。
 if "geoalchemy2" not in sys.modules:
     _geo_stub = types.ModuleType("geoalchemy2")
 
     class _Geometry:
-        """stub：返回 MagicMock，满足 SQLAlchemy Column 初始化所需协议。"""
+        """DDL-safe stub：返回 String 类型实例，避免污染后续测试的 DDL 渲染。"""
 
         def __new__(cls, *args, **kwargs):
-            return MagicMock()
+            return String()
 
     _geo_stub.Geometry = _Geometry
     sys.modules["geoalchemy2"] = _geo_stub

@@ -23,7 +23,7 @@ class ThematicModelRegistry(db.Model):
     """专题模型注册表（V3.0 §8.1）。"""
     __tablename__ = "thematic_model_registry"
 
-    id = db.Column(db.BigInteger, primary_key=True, autoincrement=True, comment="主键")
+    id = db.Column(db.Integer, primary_key=True, autoincrement=True, comment="主键")
     agent_id = db.Column(db.String(32), nullable=False, comment="智能体标识（model-1 ~ model-6）")
     model_id = db.Column(db.String(64), nullable=False, comment="规范模型标识")
     name = db.Column(db.String(128), nullable=False, comment="模型中文名称")
@@ -52,7 +52,7 @@ class ModelExecutionLog(db.Model):
     """模型执行日志表（V3.0 §8.2，父表，被各结果表通过 execution_id 引用）。"""
     __tablename__ = "model_execution_log"
 
-    id = db.Column(db.BigInteger, primary_key=True, autoincrement=True, comment="主键")
+    id = db.Column(db.Integer, primary_key=True, autoincrement=True, comment="主键")
     trace_id = db.Column(db.String(64), nullable=False, comment="追溯ID（UUID）")
     agent_id = db.Column(db.String(32), db.ForeignKey("thematic_model_registry.agent_id", name="fk_model_execution_log_agent_id"), nullable=False, comment="关联 thematic_model_registry.agent_id")
     question_type = db.Column(db.SmallInteger, nullable=False, comment="问题类型（1~6）")
@@ -88,7 +88,7 @@ class SpatialDataLayer(db.Model):
     """空间数据图层管理表（V3.0 §8.3）。"""
     __tablename__ = "spatial_data_layer"
 
-    id = db.Column(db.BigInteger, primary_key=True, autoincrement=True, comment="主键")
+    id = db.Column(db.Integer, primary_key=True, autoincrement=True, comment="主键")
     layer_name = db.Column(db.String(128), nullable=False, comment="图层名称")
     layer_type = db.Column(db.String(32), nullable=False, comment="图层类型（farmland_boundary/stability_result/diagnosis_result 等）")
     file_path = db.Column(db.Text, nullable=False, comment="Shapefile 文件路径")
@@ -116,7 +116,7 @@ class ParcelGeometry(db.Model):
     """地块空间几何表（V3.0 §8.4，parcel_id 取代 V2.0 tybh）。"""
     __tablename__ = "parcel_geometry"
 
-    id = db.Column(db.BigInteger, primary_key=True, autoincrement=True, comment="主键")
+    id = db.Column(db.Integer, primary_key=True, autoincrement=True, comment="主键")
     parcel_id = db.Column(db.String(64), nullable=False, comment="地块唯一编号")
     geom = db.Column(Geometry("POLYGON", srid=4326), nullable=False, comment="地块几何（PostGIS Polygon）")
     crs = db.Column(db.String(32), nullable=False, server_default="EPSG:4326", comment="坐标参考系")
@@ -139,7 +139,7 @@ class StabilityRiskResult(db.Model):
     """稳定性风险评价结果表（Model-1，V3.0 §8.5）。"""
     __tablename__ = "stability_risk_result"
 
-    id = db.Column(db.BigInteger, primary_key=True, autoincrement=True, comment="主键")
+    id = db.Column(db.Integer, primary_key=True, autoincrement=True, comment="主键")
     execution_id = db.Column(db.BigInteger, db.ForeignKey("model_execution_log.id", name="fk_stability_risk_result_execution_id"), nullable=False, comment="关联 model_execution_log.id")
     parcel_id = db.Column(db.String(64), nullable=False, comment="地块唯一编号")
     geom = db.Column(Geometry("POLYGON", srid=4326), comment="地块几何（PostGIS，用于空间邻域分析）")
@@ -185,7 +185,7 @@ class QualityGradeResult(db.Model):
     """质量等级评价结果表（Model-2，V3.0 §8.6）。"""
     __tablename__ = "quality_grade_result"
 
-    id = db.Column(db.BigInteger, primary_key=True, autoincrement=True, comment="主键")
+    id = db.Column(db.Integer, primary_key=True, autoincrement=True, comment="主键")
     execution_id = db.Column(db.BigInteger, db.ForeignKey("model_execution_log.id", name="fk_quality_grade_result_execution_id"), nullable=False, comment="关联 model_execution_log.id")
     parcel_id = db.Column(db.String(64), comment="地块唯一编号")
     geom = db.Column(Geometry("POLYGON", srid=4326), comment="地块几何（PostGIS）")
@@ -210,7 +210,7 @@ class ObstacleDiagnosisResult(db.Model):
     """障碍诊断结果表（Model-3，V3.0 §8.7，含 12 隶属度 + 12 障碍度 + 12 障碍等级）。"""
     __tablename__ = "obstacle_diagnosis_result"
 
-    id = db.Column(db.BigInteger, primary_key=True, autoincrement=True, comment="主键")
+    id = db.Column(db.Integer, primary_key=True, autoincrement=True, comment="主键")
     execution_id = db.Column(db.BigInteger, db.ForeignKey("model_execution_log.id", name="fk_obstacle_diagnosis_result_execution_id"), nullable=False, comment="关联 model_execution_log.id")
     parcel_id = db.Column(db.String(64), comment="地块唯一编号")
     # —— 12 隶属度（_membership）——
@@ -273,7 +273,7 @@ class AcidificationRemediationResult(db.Model):
     """酸化改良结果表（Model-4，V3.0 §8.8）。"""
     __tablename__ = "acidification_remediation_result"
 
-    id = db.Column(db.BigInteger, primary_key=True, autoincrement=True, comment="主键")
+    id = db.Column(db.Integer, primary_key=True, autoincrement=True, comment="主键")
     execution_id = db.Column(db.BigInteger, db.ForeignKey("model_execution_log.id", name="fk_acidification_remediation_result_execution_id"), nullable=False, comment="关联 model_execution_log.id")
     parcel_id = db.Column(db.String(64), comment="地块唯一编号")
     soil_ph = db.Column(db.Float, comment="酸碱度（土壤pH）")
@@ -322,7 +322,7 @@ class OrganicMatterResult(db.Model):
     """有机质培肥结果表（Model-5，V3.0 §8.9，县级分析，无 parcel_id）。"""
     __tablename__ = "organic_matter_result"
 
-    id = db.Column(db.BigInteger, primary_key=True, autoincrement=True, comment="主键")
+    id = db.Column(db.Integer, primary_key=True, autoincrement=True, comment="主键")
     execution_id = db.Column(db.BigInteger, db.ForeignKey("model_execution_log.id", name="fk_organic_matter_result_execution_id"), nullable=False, comment="关联 model_execution_log.id")
     soil_ph = db.Column(db.Float, comment="酸碱度（土壤pH）")
     available_potassium = db.Column(db.Float, comment="土壤速效钾含量")
@@ -349,7 +349,7 @@ class ComprehensiveFertilityResult(db.Model):
     """综合地力改良提升结果表（Model-6 占位，V3.0 §8.10；业务逻辑尚未实现）。"""
     __tablename__ = "comprehensive_fertility_result"
 
-    id = db.Column(db.BigInteger, primary_key=True, autoincrement=True, comment="主键")
+    id = db.Column(db.Integer, primary_key=True, autoincrement=True, comment="主键")
     execution_id = db.Column(db.BigInteger, db.ForeignKey("model_execution_log.id", name="fk_comprehensive_fertility_result_execution_id"), nullable=False, comment="关联 model_execution_log.id")
     parcel_id = db.Column(db.String(64), comment="地块唯一编号")
     fertility_score = db.Column(db.Float, comment="综合地力得分")
@@ -369,7 +369,7 @@ class RoutingDecisionLog(db.Model):
     """路由决策日志表（V3.0 §8.11，无 FK）。"""
     __tablename__ = "routing_decision_log"
 
-    id = db.Column(db.BigInteger, primary_key=True, autoincrement=True, comment="主键")
+    id = db.Column(db.Integer, primary_key=True, autoincrement=True, comment="主键")
     trace_id = db.Column(db.String(64), nullable=False, comment="追溯ID（UUID）")
     question = db.Column(db.Text, nullable=False, comment="用户原始问题")
     question_type = db.Column(db.SmallInteger, nullable=False, comment="问题类型（0~6）")
@@ -402,7 +402,7 @@ class ModelEvaluationMetrics(db.Model):
     """模型评估指标表（V3.0 §8.12，无 FK）。"""
     __tablename__ = "model_evaluation_metrics"
 
-    id = db.Column(db.BigInteger, primary_key=True, autoincrement=True, comment="主键")
+    id = db.Column(db.Integer, primary_key=True, autoincrement=True, comment="主键")
     model_pair = db.Column(db.String(32), nullable=False, comment="易混淆模型对标识")
     positive_label = db.Column(db.String(32), nullable=False, comment="正类标签")
     tp = db.Column(db.Integer, nullable=False, server_default="0", comment="真阳性")
@@ -426,7 +426,7 @@ class ExclusiveRuleConfig(db.Model):
     """排他规则配置表（V3.0 §8.13，无 FK）。"""
     __tablename__ = "exclusive_rule_config"
 
-    id = db.Column(db.BigInteger, primary_key=True, autoincrement=True, comment="主键")
+    id = db.Column(db.Integer, primary_key=True, autoincrement=True, comment="主键")
     rule_name = db.Column(db.String(64), nullable=False, comment="规则名称")
     rule_pair = db.Column(db.JSON, nullable=False, comment="易混淆模型对")
     discriminator = db.Column(db.String(128), nullable=False, comment="判别维度描述")
@@ -448,7 +448,7 @@ class ParcelInfo(db.Model):
     """地块信息表（V3.0 §8.14，无 FK）。"""
     __tablename__ = "parcel_info"
 
-    id = db.Column(db.BigInteger, primary_key=True, autoincrement=True, comment="主键")
+    id = db.Column(db.Integer, primary_key=True, autoincrement=True, comment="主键")
     parcel_id = db.Column(db.String(64), nullable=False, comment="地块唯一编号")
     geom = db.Column(Geometry("POLYGON", srid=4326), comment="地块几何（PostGIS）")
     area_code = db.Column(db.String(32), comment="区域编码")
@@ -472,7 +472,7 @@ class ModelVersionHistory(db.Model):
     """模型版本历史表（V3.0 §8.15，FK → thematic_model_registry.agent_id）。"""
     __tablename__ = "model_version_history"
 
-    id = db.Column(db.BigInteger, primary_key=True, autoincrement=True, comment="主键")
+    id = db.Column(db.Integer, primary_key=True, autoincrement=True, comment="主键")
     agent_id = db.Column(db.String(32), db.ForeignKey("thematic_model_registry.agent_id", name="fk_model_version_history_agent_id"), nullable=False, comment="关联 thematic_model_registry.agent_id")
     version = db.Column(db.String(16), nullable=False, comment="版本号")
     change_description = db.Column(db.Text, comment="变更描述")

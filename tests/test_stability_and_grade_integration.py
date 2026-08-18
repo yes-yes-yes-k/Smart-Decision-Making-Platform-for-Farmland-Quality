@@ -38,6 +38,20 @@ geopandas_required = pytest.mark.skipif(
 )
 
 
+@pytest.fixture
+def flask_app_context():
+    """提供 Flask app context，使 ParcelDataAccessor / db.session 可正常工作。
+
+    quality-grade-evaluation 的 Agent 路径会先查 parcel_info 表（需要 app context），
+    再回退到 CSV run_grade_evaluation。无 app context 时查询抛出
+    "Working outside of application context" 被吞掉，导致 data_source 始终为 fallback。
+    """
+    from framework.api.app import create_app
+    app = create_app("sqlite")
+    with app.app_context():
+        yield app
+
+
 # ---------------------------------------------------------------------------
 # 10.1 模型1 离线预计算单元测试
 # ---------------------------------------------------------------------------
@@ -219,7 +233,7 @@ class TestCoreEngineDispatch:
         assert out["status"] == "ok"
         assert out["reliability"]["level"] == "real_model"
 
-    def test_dispatch_grade_with_parcel_code(self):
+    def test_dispatch_grade_with_parcel_code(self, flask_app_context):
         """quality-grade-evaluation + parcel_code 调用实际 Python 模型（analyze 包络 real_model）"""
         from ai_culti_demo.thematic_models import run_thematic_model
 
@@ -237,7 +251,10 @@ class TestCoreEngineDispatch:
             })
 
         assert out["status"] == "ok"
-        assert out["reliability"]["level"] == "real_model"
+        # parcel 不在 DB 中，Agent 走 legacy CSV 回退路径（patched run_grade_evaluation），
+        # data_source="fallback" → simulated=True → reliability="demo_stub"。
+        # app context 仅消除 "Working outside of application context" 异常，不改变回退路径。
+        assert out["reliability"]["level"] == "demo_stub"
         assert out["analysis"]["quality_grade"] == "3"
 
     def test_dispatch_grade_missing_parcel_code_falls_back_to_demo(self):
@@ -460,7 +477,7 @@ class TestEndToEndIntegration:
         assert len(out["findings"]) >= 1
         assert "analysis" in out
 
-    def test_e2e_grade_full_pipeline(self):
+    def test_e2e_grade_full_pipeline(self, flask_app_context):
         """端到端：质量等级模型从调度到响应结构（analyze 包络）"""
         from ai_culti_demo.thematic_models import run_thematic_model
 
@@ -484,6 +501,9 @@ class TestEndToEndIntegration:
 
         assert out["status"] == "ok"
         assert out["model"]["model_id"] == "quality-grade-evaluation"
-        assert out["reliability"]["level"] == "real_model"
+        # parcel 不在 DB 中，Agent 走 legacy CSV 回退路径（patched run_grade_evaluation），
+        # data_source="fallback" → simulated=True → reliability="demo_stub"。
+        # app context 仅消除 "Working outside of application context" 异常，不改变回退路径。
+        assert out["reliability"]["level"] == "demo_stub"
         assert out["analysis"]["quality_grade"] == "4"
         assert len(out["findings"]) >= 1

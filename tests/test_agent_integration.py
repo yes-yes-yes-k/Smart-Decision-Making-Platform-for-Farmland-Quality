@@ -59,10 +59,10 @@ def _make_state(question: str, question_type: int = 1) -> MultiAgentState:
 
 
 def test_execute_models_invokes_agent_manager_type1():
-    """type=1 稳定性问题应路由到 model-4（稳定性风险评价）。
+    """type=1 稳定性问题应路由到 model-1（稳定性风险评价）。
 
-    question_type 编号与 routing.py 关键词表语义对齐后：
-      type=1 → 稳定性 → model-4 (stability-risk-evaluation)
+    question_type 编号与 routing.py 关键词表语义对齐（直接映射）：
+      type=1 → 稳定性 → model-1 (stability-risk-evaluation)
     """
     state = _make_state("我的田质量等级稳定吗？", question_type=1)
     result = execute_models(state)
@@ -71,23 +71,23 @@ def test_execute_models_invokes_agent_manager_type1():
     assert mr.get("status") == "ok"
     data = mr.get("data", {})
     assert data.get("question_type") == 1
-    assert data.get("agents_invoked") == ["model-4"]
-    print("✓ execute_models 通过 AgentManager 路由到 type 1 (model-4 稳定性)")
+    assert data.get("agents_invoked") == ["model-1"]
+    print("✓ execute_models 通过 AgentManager 路由到 type 1 (model-1 稳定性)")
 
 
 def test_execute_models_invokes_agent_manager_type4():
-    """type=4 酸化改良问题应路由到 model-2（酸化改良）。
+    """type=4 酸化改良问题应路由到 model-4（酸化改良）。
 
-    question_type 编号与 routing.py 关键词表语义对齐后：
-      type=4 → 酸化改良 → model-2 (acidification-remediation)
+    question_type 编号与 routing.py 关键词表语义对齐（直接映射）：
+      type=4 → 酸化改良 → model-4 (acidification-remediation)
     """
     state = _make_state("全省耕地酸化程度如何？", question_type=4)
     result = execute_models(state)
     assert result["status"] == "model_completed"
     data = result["model_results"].get("data", {})
     assert data.get("question_type") == 4
-    assert data.get("agents_invoked") == ["model-2"]
-    print("✓ execute_models 通过 AgentManager 路由到 type 4 (model-2 酸化改良)")
+    assert data.get("agents_invoked") == ["model-4"]
+    print("✓ execute_models 通过 AgentManager 路由到 type 4 (model-4 酸化改良)")
 
 
 def test_execute_models_writes_structured_result():
@@ -152,57 +152,57 @@ def test_chat_api_returns_structured_multi_agent_result():
 
 
 def test_e2e_type1_stability_routing():
-    """type=1 稳定性问题应路由到 model-4（稳定性风险评价）。
+    """type=1 稳定性问题应路由到 model-1（稳定性风险评价）。
 
-    question_type 编号与 routing.py 关键词表语义对齐后：
-      type=1 → 稳定性 → model-4 (stability-risk-evaluation)
+    question_type 编号与 routing.py 关键词表语义对齐（直接映射）：
+      type=1 → 稳定性 → model-1 (stability-risk-evaluation)
     """
     state = _make_state("全省耕地质量整体稳定吗？哪些县区有退化风险？", question_type=1)
     result = execute_models(state)
     data = result["model_results"]["data"]
     assert data["question_type"] == 1
-    assert data["agents_invoked"] == ["model-4"]
-    assert "model-4" in data["details"]
-    assert data["details"]["model-4"]["simulated"] is True
-    print("✓ type=1 稳定性路由正确（model-4）")
+    assert data["agents_invoked"] == ["model-1"]
+    assert "model-1" in data["details"]
+    assert data["details"]["model-1"]["simulated"] is False
+    print("✓ type=1 稳定性路由正确（model-1）")
 
 
 def test_e2e_type1_county_stability_routing():
-    """type=1 县域稳定性问题也路由到 model-4（1:1 映射）"""
+    """type=1 县域稳定性问题也路由到 model-1（1:1 映射）"""
     state = _make_state("本县乡镇任务如何分配？县域耕地质量如何？", question_type=1)
     result = execute_models(state)
     data = result["model_results"]["data"]
     assert data["question_type"] == 1
-    assert data["agents_invoked"] == ["model-4"]
-    print("✓ type=1 县域稳定性路由正确（model-4，1:1 映射）")
+    assert data["agents_invoked"] == ["model-1"]
+    print("✓ type=1 县域稳定性路由正确（model-1，1:1 映射）")
 
 
 def test_e2e_type4_acidification_routing():
-    """type=4 酸化改良问题应路由到 model-2（酸化改良）。
+    """type=4 酸化改良问题应路由到 model-4（酸化改良）。
 
-    question_type 编号与 routing.py 关键词表语义对齐后：
-      type=4 → 酸化改良 → model-2 (acidification-remediation)
+    question_type 编号与 routing.py 关键词表语义对齐（直接映射）：
+      type=4 → 酸化改良 → model-4 (acidification-remediation)
     """
     state = _make_state("我的田酸化严重吗？", question_type=4)
     result = execute_models(state)
     data = result["model_results"]["data"]
     assert data["question_type"] == 4
-    assert data["agents_invoked"] == ["model-2"]
-    assert "model-2" in data["details"]
-    assert data["details"]["model-2"]["simulated"] is True
-    print("✓ type=4 酸化改良路由正确（model-2）")
+    assert data["agents_invoked"] == ["model-4"]
+    assert "model-4" in data["details"]
+    assert data["details"]["model-4"]["simulated"] is False
+    print("✓ type=4 酸化改良路由正确（model-4）")
 
 
 def test_e2e_recommendations_aggregated():
     """汇总的 recommendations 应来自智能体 evidence 中的 recommendation/source。
 
-    1:1 路由后，type 4 仅调 model-2（酸化改良），其 evidence 为 metric/value 格式，
+    1:1 路由后，type 4 仅调 model-4（酸化改良），其 evidence 为 metric/value 格式，
     不含 recommendation/source。使用 mock 验证：当 agent evidence 含
     recommendation/source 时，_summarize 能正确聚合并去重；metric/value 不混入。
     """
     from framework.agents.manager import agent_manager
 
-    real_agent = agent_manager.agents["model-2"]
+    real_agent = agent_manager.agents["model-4"]
 
     class _FakeAgent:
         dependencies: list = []
@@ -223,7 +223,7 @@ def test_e2e_recommendations_aggregated():
             }
 
     try:
-        agent_manager.agents["model-2"] = _FakeAgent()
+        agent_manager.agents["model-4"] = _FakeAgent()
         state = _make_state("我的田酸化严重吗？", question_type=4)
         result = execute_models(state)
         data = result["model_results"]["data"]
@@ -235,7 +235,7 @@ def test_e2e_recommendations_aggregated():
         # metric/value 格式的 evidence 不应出现在 recommendations
         assert "soc_prediction" not in data["recommendations"]
     finally:
-        agent_manager.agents["model-2"] = real_agent
+        agent_manager.agents["model-4"] = real_agent
     print("✓ recommendations 字段已聚合智能体建议（mock 验证）")
 
 
@@ -406,7 +406,7 @@ def test_chat_api_no_parcel_when_absent():
 
 
 def test_chat_api_type5_routes_to_model5_only():
-    """Task 6.2: type 5 问题经 API 路由后 agents_invoked 仅含 model-5，无 role 字段"""
+    """Task 6.2: 质量等级问题经 API 路由后 agents_invoked 仅含 model-2，无 role 字段"""
     from framework.api.app import create_app
 
     app = create_app("sqlite")
@@ -441,11 +441,11 @@ def test_chat_api_type5_routes_to_model5_only():
     data = payload["data"]
     # spec 验证：无 role 字段
     assert "role" not in data, f"响应不应含 role 字段: {data}"
-    # type 2 路由到 model-5（1:1 映射，质量等级）
+    # type 2 路由到 model-2（1:1 直接映射，质量等级）
     qt = data.get("question_type")
     agents_invoked = data.get("agents_invoked", [])
     assert qt == 2, f"质量等级问题期望 type 2，实际 type {qt}"
-    assert agents_invoked == ["model-5"], f"type 2 应仅调 model-5: {agents_invoked}"
+    assert agents_invoked == ["model-2"], f"type 2 应仅调 model-2: {agents_invoked}"
     print(f"✓ Task 6.2: type 2 API 路由正确 (type={qt}, agents={agents_invoked}, 无 role)")
 
 

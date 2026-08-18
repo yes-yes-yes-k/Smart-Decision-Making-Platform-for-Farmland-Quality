@@ -126,8 +126,8 @@ def test_organic_agent_and_model_registry_keep_model6_placeholder():
     assert isinstance(manager.agents["model-5"], OrganicMatterAgent)
     assert isinstance(manager.agents["model-6"], _StubAgent)
     assert manager.agents["model-6"].capability["agent_id"] == "model-6"
-    assert manager.agents["model-6"].capability["model_id"] == "placeholder"
-    assert manager.agents["model-6"].capability["name"] == "占位模型"
+    assert manager.agents["model-6"].capability["model_id"] == "comprehensive-fertility-improvement"
+    assert manager.agents["model-6"].capability["name"] == "耕地综合地力改良提升模型"
 
     result = manager.agents["model-5"].execute({"area_code": "lechang", "land_type": "upland", **EXTERNAL_FEATURES})
     assert result["status"] == "success"
