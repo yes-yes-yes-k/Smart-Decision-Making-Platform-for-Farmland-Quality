@@ -73,5 +73,58 @@ class ParcelDataAccessorTests(unittest.TestCase):
             self.assertTrue(any("查询 parcel_info 失败" in m for m in cm.output))
 
 
+def test_map_model2_indicators():
+    """Model-2 映射: V3.0 snake_case → 拼音缩写 + 离散代码."""
+    accessor = ParcelDataAccessor()
+    indicators = {
+        "soil_ph": 5.5, "organic_matter": 20.0, "available_phosphorus": 15.0,
+        "available_potassium": 100.0, "bulk_density": 1.2, "topsoil_thickness": 80.0,
+        "plow_layer_thickness": 15.0, "soil_texture": "loam",
+        "irrigation_condition": "irrigated", "drainage_capacity": "dry",
+        "terrain_position": "lower", "soil_structure": "loose",
+    }
+    mapped = accessor._map_indicators_to_inputs(indicators, "model-2")
+    assert mapped["SJD"] == 5.5
+    assert mapped["YJZ"] == 20.0
+    assert mapped["TRRZ"] == 1.2
+    assert mapped["GCHD"] == 15.0
+    assert mapped["GCZD"] == "RT"  # loam → RT
+    assert mapped["GGNL"] == "FS"  # irrigated → FS
+    assert mapped["PSNL"] == "BM"  # dry → BM
+    assert mapped["DXBW"] == "LHR"  # lower → LHR
+    assert mapped["ZDGX"] == "Lt"  # loose → Lt
+
+def test_map_model4_indicators():
+    """Model-4 映射: soil_ph→SJD, exchangeable_hydrogen→Hex, exchangeable_aluminum→Alex."""
+    accessor = ParcelDataAccessor()
+    indicators = {"soil_ph": 5.0, "exchangeable_hydrogen": 3.0, "exchangeable_aluminum": 0.5}
+    mapped = accessor._map_indicators_to_inputs(indicators, "model-4")
+    assert mapped["SJD"] == 5.0
+    assert mapped["Hex"] == 3.0
+    assert mapped["Alex"] == 0.5
+
+def test_map_model5_indicators():
+    """Model-5 映射: soil_ph→pH, organic_matter→SOMbe, etc."""
+    accessor = ParcelDataAccessor()
+    indicators = {"soil_ph": 5.5, "organic_matter": 22.0, "available_potassium": 90.0,
+                  "available_phosphorus": 12.0, "total_nitrogen": 1.5}
+    mapped = accessor._map_indicators_to_inputs(indicators, "model-5")
+    assert mapped["pH"] == 5.5
+    assert mapped["SOMbe"] == 22.0
+    assert mapped["AK"] == 90.0
+    assert mapped["AP"] == 12.0
+    assert mapped["TN"] == 1.5
+
+def test_to_code_chinese_fallback():
+    """中文值通过 DISCRETE_CN_MAP 回退."""
+    accessor = ParcelDataAccessor()
+    assert accessor._to_code("GCZD", "壤土") == "RT"
+
+def test_to_code_unknown_returns_none():
+    """未知值返回 None."""
+    accessor = ParcelDataAccessor()
+    assert accessor._to_code("GCZD", "unknown_texture") is None
+
+
 if __name__ == "__main__":
     unittest.main()
