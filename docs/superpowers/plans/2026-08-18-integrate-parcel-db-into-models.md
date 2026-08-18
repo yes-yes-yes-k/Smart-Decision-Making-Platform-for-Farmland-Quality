@@ -53,7 +53,7 @@ base-ref: bf63a92437f51903c20eeab26bdf21cd84fef3e1
 **Interfaces:**
 - Produces: `ParcelDataAccessor.get_parcel_indicators(parcel_id: str) -> Optional[dict]` — 供 Task 3~7 各 Agent 的 `_collect_inputs` 调用。
 
-- [ ] **Step 1: 编写失败测试**
+- [x] **Step 1: 编写失败测试**
 
 创建 `tests/test_parcel_data_accessor.py`：
 
@@ -98,12 +98,12 @@ if __name__ == "__main__":
     unittest.main()
 ```
 
-- [ ] **Step 2: 运行测试确认失败**
+- [x] **Step 2: 运行测试确认失败**
 
 Run: `python -m pytest tests/test_parcel_data_accessor.py -v`
 Expected: 3 个测试 FAIL，报 `ModuleNotFoundError: No module named 'framework.domain.data.parcel_data_accessor'`
 
-- [ ] **Step 3: 编写最小实现**
+- [x] **Step 3: 编写最小实现**
 
 创建 `framework/domain/data/parcel_data_accessor.py`：
 
@@ -142,12 +142,12 @@ class ParcelDataAccessor:
             return None
 ```
 
-- [ ] **Step 4: 运行测试确认通过**
+- [x] **Step 4: 运行测试确认通过**
 
 Run: `python -m pytest tests/test_parcel_data_accessor.py -v`
 Expected: 3 个测试 PASS
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add framework/domain/data/parcel_data_accessor.py tests/test_parcel_data_accessor.py
@@ -170,7 +170,7 @@ git commit -m "feat: add ParcelDataAccessor for parcel_info DB queries"
   - `BaseAgent._persist_result(agent_id, parcel_id, inputs, outputs, status)` → `bool`
   - `BaseAgent._build_result_record(execution_id, outputs)` → `Optional[db.Model]`（默认 `None`，子类 override）
 
-- [ ] **Step 1: 编写失败测试**
+- [x] **Step 1: 编写失败测试**
 
 创建 `tests/test_base_agent_persist.py`：
 
@@ -297,12 +297,12 @@ if __name__ == "__main__":
     unittest.main()
 ```
 
-- [ ] **Step 2: 运行测试确认失败**
+- [x] **Step 2: 运行测试确认失败**
 
 Run: `python -m pytest tests/test_base_agent_persist.py -v`
 Expected: 6 个测试 FAIL，报 `AttributeError: 'TestAgent' object has no attribute 'agent_id'` 或 `'_persist_result'`
 
-- [ ] **Step 3: 编写最小实现**
+- [x] **Step 3: 编写最小实现**
 
 修改 `framework/agents/base.py`，在文件头部添加 imports，在 `BaseAgent` 类中添加方法。
 
@@ -415,12 +415,12 @@ logger = logging.getLogger(__name__)
         return None
 ```
 
-- [ ] **Step 4: 运行测试确认通过**
+- [x] **Step 4: 运行测试确认通过**
 
 Run: `python -m pytest tests/test_base_agent_persist.py -v`
 Expected: 6 个测试 PASS
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add framework/agents/base.py tests/test_base_agent_persist.py
@@ -439,7 +439,7 @@ git commit -m "feat: add BaseAgent._persist_result and _build_result_record hook
 - Consumes: `ParcelDataAccessor.get_parcel_indicators(parcel_id) -> Optional[dict]`（Task 1）、`BaseAgent._persist_result()` + `_build_result_record()`（Task 2）
 - Produces: `StabilityRiskAgent.execute()` 返回结果中新增 `data_source: "db"|"fallback"` 和 `persisted: bool` 字段
 
-- [ ] **Step 1: 编写失败测试**
+- [x] **Step 1: 编写失败测试**
 
 在 `tests/test_agent_specialized.py` 末尾追加：
 
@@ -511,12 +511,12 @@ def test_stability_agent_persist_failure(monkeypatch):
     assert result["status"] == "ok"
 ```
 
-- [ ] **Step 2: 运行测试确认失败**
+- [x] **Step 2: 运行测试确认失败**
 
 Run: `python -m pytest tests/test_agent_specialized.py::test_stability_agent_db_path tests/test_agent_specialized.py::test_stability_agent_fallback_path tests/test_agent_specialized.py::test_stability_agent_persist_success tests/test_agent_specialized.py::test_stability_agent_persist_failure -v`
 Expected: 4 个测试 FAIL，报 `KeyError: 'data_source'` 或 `AttributeError`
 
-- [ ] **Step 3: 编写最小实现**
+- [x] **Step 3: 编写最小实现**
 
 修改 `framework/agents/specialized/stability_risk_agent.py`。
 
@@ -634,12 +634,12 @@ logger = logging.getLogger(__name__)
             raise
 ```
 
-- [ ] **Step 4: 运行测试确认通过**
+- [x] **Step 4: 运行测试确认通过**
 
 Run: `python -m pytest tests/test_agent_specialized.py -k stability -v`
 Expected: 所有 stability 相关测试 PASS（包括原有测试和 4 个新测试）
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add framework/agents/specialized/stability_risk_agent.py tests/test_agent_specialized.py
@@ -658,7 +658,7 @@ git commit -m "feat: integrate Model-1 StabilityRiskAgent with DB and persistenc
 - Consumes: `ParcelDataAccessor`（Task 1）、`BaseAgent._persist_result()` + `_build_result_record()`（Task 2）
 - Produces: `FarmlandGradeAgent.execute()` 返回结果中新增 `data_source` 和 `persisted` 字段
 
-- [ ] **Step 1: 编写失败测试**
+- [x] **Step 1: 编写失败测试**
 
 在 `tests/test_agent_specialized.py` 末尾追加：
 
@@ -725,12 +725,12 @@ def test_grade_agent_persist_failure(monkeypatch):
     assert result["persisted"] is False
 ```
 
-- [ ] **Step 2: 运行测试确认失败**
+- [x] **Step 2: 运行测试确认失败**
 
 Run: `python -m pytest tests/test_agent_specialized.py -k grade_agent_db -v`
 Expected: 测试 FAIL，报 `KeyError: 'data_source'`
 
-- [ ] **Step 3: 编写最小实现**
+- [x] **Step 3: 编写最小实现**
 
 修改 `framework/agents/specialized/grade_agent.py`。
 
@@ -895,12 +895,12 @@ logger = logging.getLogger(__name__)
             }
 ```
 
-- [ ] **Step 4: 运行测试确认通过**
+- [x] **Step 4: 运行测试确认通过**
 
 Run: `python -m pytest tests/test_agent_specialized.py -k grade_agent -v`
 Expected: 4 个新测试 PASS
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add framework/agents/specialized/grade_agent.py tests/test_agent_specialized.py
@@ -919,7 +919,7 @@ git commit -m "feat: integrate Model-2 FarmlandGradeAgent with DB and persistenc
 - Consumes: `ParcelDataAccessor`（Task 1）、`BaseAgent._persist_result()` + `_build_result_record()`（Task 2）
 - Produces: `ProblemIdentificationAgent.execute()` 返回结果中新增 `data_source` 和 `persisted` 字段
 
-- [ ] **Step 1: 编写失败测试**
+- [x] **Step 1: 编写失败测试**
 
 在 `tests/test_agent_specialized.py` 末尾追加：
 
@@ -982,12 +982,12 @@ def test_problem_agent_persist_failure(monkeypatch):
     assert result["persisted"] is False
 ```
 
-- [ ] **Step 2: 运行测试确认失败**
+- [x] **Step 2: 运行测试确认失败**
 
 Run: `python -m pytest tests/test_agent_specialized.py -k problem_agent_db -v`
 Expected: 测试 FAIL，报 `KeyError: 'data_source'`
 
-- [ ] **Step 3: 编写最小实现**
+- [x] **Step 3: 编写最小实现**
 
 修改 `framework/agents/specialized/problem_agent.py`。
 
@@ -1151,12 +1151,12 @@ logger = logging.getLogger(__name__)
             }
 ```
 
-- [ ] **Step 4: 运行测试确认通过**
+- [x] **Step 4: 运行测试确认通过**
 
 Run: `python -m pytest tests/test_agent_specialized.py -k problem_agent -v`
 Expected: 所有 problem_agent 相关测试 PASS
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add framework/agents/specialized/problem_agent.py tests/test_agent_specialized.py
@@ -1175,7 +1175,7 @@ git commit -m "feat: integrate Model-3 ProblemIdentificationAgent with DB and pe
 - Consumes: `ParcelDataAccessor`（Task 1）、`BaseAgent._persist_result()` + `_build_result_record()`（Task 2）
 - Produces: `AcidificationRemediationAgent.execute()` 返回结果中新增 `data_source` 和 `persisted` 字段
 
-- [ ] **Step 1: 编写失败测试**
+- [x] **Step 1: 编写失败测试**
 
 在 `tests/test_agent_specialized.py` 末尾追加：
 
@@ -1271,12 +1271,12 @@ def test_acidification_agent_persist_failure(monkeypatch):
     assert result["persisted"] is False
 ```
 
-- [ ] **Step 2: 运行测试确认失败**
+- [x] **Step 2: 运行测试确认失败**
 
 Run: `python -m pytest tests/test_agent_specialized.py -k acidification_agent_db -v`
 Expected: 测试 FAIL，报 `KeyError: 'data_source'`
 
-- [ ] **Step 3: 编写最小实现**
+- [x] **Step 3: 编写最小实现**
 
 修改 `framework/agents/specialized/acidification_agent.py`。
 
@@ -1405,12 +1405,12 @@ logger = logging.getLogger(__name__)
             raise
 ```
 
-- [ ] **Step 4: 运行测试确认通过**
+- [x] **Step 4: 运行测试确认通过**
 
 Run: `python -m pytest tests/test_agent_specialized.py -k acidification -v`
 Expected: 所有 acidification 相关测试 PASS
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add framework/agents/specialized/acidification_agent.py tests/test_agent_specialized.py
@@ -1430,7 +1430,7 @@ git commit -m "feat: integrate Model-4 AcidificationRemediationAgent with DB and
 - Produces: `OrganicMatterAgent.execute()` 返回结果中新增 `data_source` 和 `persisted` 字段
 - **注意**：Model-5 为县级分析，`parcel_id` 可为 `None`；`OrganicMatterResult` 表无 `parcel_id` 列。
 
-- [ ] **Step 1: 编写失败测试**
+- [x] **Step 1: 编写失败测试**
 
 在 `tests/test_agent_specialized.py` 末尾追加：
 
@@ -1489,12 +1489,12 @@ def test_organic_matter_agent_persist_success(monkeypatch):
     assert result["persisted"] is True
 ```
 
-- [ ] **Step 2: 运行测试确认失败**
+- [x] **Step 2: 运行测试确认失败**
 
 Run: `python -m pytest tests/test_agent_specialized.py -k organic_matter_agent_db -v`
 Expected: 测试 FAIL，报 `KeyError: 'data_source'`
 
-- [ ] **Step 3: 编写最小实现**
+- [x] **Step 3: 编写最小实现**
 
 修改 `framework/agents/specialized/organic_matter_agent.py`。
 
@@ -1646,12 +1646,12 @@ logger = logging.getLogger(__name__)
             }
 ```
 
-- [ ] **Step 4: 运行测试确认通过**
+- [x] **Step 4: 运行测试确认通过**
 
 Run: `python -m pytest tests/test_agent_specialized.py -k organic_matter -v`
 Expected: 所有 organic_matter 相关测试 PASS
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add framework/agents/specialized/organic_matter_agent.py tests/test_agent_specialized.py
@@ -1668,22 +1668,22 @@ git commit -m "feat: integrate Model-5 OrganicMatterAgent with DB and persistenc
 **Interfaces:**
 - Consumes: Task 1~7 全部实现
 
-- [ ] **Step 1: 运行新增测试文件**
+- [x] **Step 1: 运行新增测试文件**
 
 Run: `python -m pytest tests/test_parcel_data_accessor.py tests/test_base_agent_persist.py -v`
 Expected: 全部 PASS（9 个测试）
 
-- [ ] **Step 2: 运行 specialized agent 测试**
+- [x] **Step 2: 运行 specialized agent 测试**
 
 Run: `python -m pytest tests/test_agent_specialized.py -v`
 Expected: 全部 PASS（原有测试 + 20 个新测试无回归）
 
-- [ ] **Step 3: 运行完整测试套件**
+- [x] **Step 3: 运行完整测试套件**
 
 Run: `python -m pytest tests/ -v --tb=short 2>&1 | tail -50`
 Expected: 无 FAIL（SKIP 可接受，如 PG_AVAILABLE=False 时跳过 DB 集成测试）
 
-- [ ] **Step 4: 验证关键场景**
+- [x] **Step 4: 验证关键场景**
 
 手动验证以下场景的端到端流程：
 
@@ -1701,7 +1701,7 @@ print('db-miss:', r.get('data_source'), r.get('persisted'))
 ```
 Expected: `no-parcel: fallback True/False` 和 `db-miss: fallback True/False`（persisted 取决于 DB 是否可用）
 
-- [ ] **Step 5: Commit（如有修复）**
+- [x] **Step 5: Commit（如有修复）**
 
 仅当 Step 1~3 发现回归并修复后才提交；否则跳过。
 
