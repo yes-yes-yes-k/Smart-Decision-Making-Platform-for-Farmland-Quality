@@ -1,3 +1,7 @@
+---
+archived-with: 2026-08-18-implement-models-calculation-logic
+status: final
+---
 # 专题模型计算逻辑实现 Implementation Plan
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.

@@ -2,7 +2,9 @@
 
 ## Purpose
 TBD - created by archiving change add-stability-risk-and-grade-evaluation. Update Purpose after archive.
+
 ## Requirements
+
 ### Requirement: 模型3 批量质量等级评价
 系统 SHALL 提供基于 CSV 的批量质量等级评价入口，对包含 12 项指标（SJD/pH、YJZ/有机质、YXL/有效磷、SXJ/速效钾、TRRZ/容重、GCZD/耕层质地、GGNL/灌溉能力、PSNL/排水能力、DXBW/地形部位、ZDGX/质地构型、YXTCHD/有效土层、GCHD/耕层厚度）和区域信息（YJNYQ 一级农业区、EJNYQ 二级农业区）的 CSV 数据执行隶属度计算、综合权重计算和质量等级划分(1-10等)。障碍度 SHALL 存储在独立的 `xxxZAD` 列中，不得覆盖原始指标值。
 
@@ -78,3 +80,46 @@ TBD - created by archiving change add-stability-risk-and-grade-evaluation. Updat
 - **WHEN** 用户上传的 CSV 缺少必需字段（如 YJNYQ、EJNYQ、12 项标准指标字段）
 - **THEN** 系统 SHALL 拒绝导入并返回缺失字段列表
 
+### Requirement: 实现障碍等级判定
+
+系统 SHALL 对每个指标按阈值判定障碍等级（重度障碍/中度障碍/轻度障碍/无障碍）。SJD 障碍等级按 pH 区间判定（<=3 或 >10 为重度，6.5-7.5 为无障碍），YJZ 按 <=10 重度/<=20 中度/<=25 轻度/else 无障碍判定，其他指标类似。
+
+#### Scenario: pH 极酸判定为重度障碍
+- **WHEN** soil_ph <= 4.5
+- **THEN** SJD 障碍等级为「酸化重度障碍」
+
+#### Scenario: 有机质丰富判定为无障碍
+- **WHEN** organic_matter > 25
+- **THEN** YJZ 障碍等级为「无障碍」
+
+### Requirement: 实现障碍度计算
+
+系统 SHALL 按 `obstacle_degree = (1-membership)*weight / sum((1-membership)*weight)` 计算每个指标的障碍度，障碍度之和为 1。
+
+#### Scenario: 正常计算
+- **WHEN** 全部 12 个指标有有效的隶属度和权重
+- **THEN** 12 个障碍度值之和为 1.0，每个在 [0, 1] 范围内
+
+### Requirement: 实现障碍诊断（主要/次要因子识别）
+
+系统 SHALL 按障碍度降序排列，障碍度 >= 0.20 的因子为主要障碍因素，障碍度 >= 0.10 但 < 0.20 的为次要障碍因素。主要因子数=1 且无次要因子时为「单一障碍」，主要因子数>1 为「多障碍」，无主要因子为「无明显障碍」。
+
+#### Scenario: 多障碍诊断
+- **WHEN** 两个以上指标障碍度 >= 0.20
+- **THEN** 障碍类型为「多障碍」，主要障碍因素列表包含这些指标的中文名和障碍度
+
+#### Scenario: 无明显障碍
+- **WHEN** 所有指标障碍度 < 0.20
+- **THEN** 障碍类型为「无明显障碍」
+
+### Requirement: area_code 映射到农业区代码选择系数
+
+系统 SHALL 通过 `AREA_TO_REGION` 映射表将 `ParcelInfo.area_code` 转换为一级农业区代码（primary，HN/CJ）选择隶属度系数，二级农业区代码（secondary，MNY/YXG/NL/QN）选择权重。乐昌(440281)→primary=HN、secondary=NL。
+
+#### Scenario: 已知 area_code
+- **WHEN** area_code 为 "440281"
+- **THEN** 使用 MODEL3_COEFFICIENTS["HN"] 的隶属度系数和 MODEL3_WEIGHTS["NL"] 的权重
+
+#### Scenario: 未知 area_code
+- **WHEN** area_code 不在 AREA_TO_REGION 映射表中
+- **THEN** 降级到默认 primary=HN、secondary=MNY，标注 reason=unknown_area_code

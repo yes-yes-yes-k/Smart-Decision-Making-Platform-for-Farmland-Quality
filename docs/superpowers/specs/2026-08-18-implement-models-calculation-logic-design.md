@@ -2,6 +2,8 @@
 comet_change: implement-models-calculation-logic
 role: technical-design
 canonical_spec: openspec
+archived-with: 2026-08-18-implement-models-calculation-logic
+status: final
 ---
 
 # 专题模型计算逻辑实现 — 技术设计
