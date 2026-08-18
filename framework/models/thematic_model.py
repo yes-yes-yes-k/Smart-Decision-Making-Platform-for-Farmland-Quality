@@ -468,6 +468,25 @@ class ParcelInfo(db.Model):
     )
 
 
+class ParcelHistorySnapshot(db.Model):
+    """地块历史快照表（Model-1 模块 5-9 依赖，存储 2018/2021/2024 三期数据）。"""
+    __tablename__ = "parcel_history_snapshot"
+
+    id = db.Column(db.Integer, primary_key=True, autoincrement=True, comment="主键")
+    parcel_id = db.Column(db.String(64), db.ForeignKey("parcel_info.parcel_id", name="fk_parcel_history_parcel_id"), nullable=False, comment="关联 parcel_info.parcel_id")
+    survey_year = db.Column(db.Integer, nullable=False, comment="调查年份 2018/2021/2024")
+    soil_indicators = db.Column(db.JSON, comment="该年度指标快照")
+    quality_grade = db.Column(db.String(8), comment="该年度质量等级")
+    composite_index = db.Column(db.Float, comment="该年度综合指数")
+    created_at = db.Column(db.DateTime(timezone=True), nullable=False, server_default=db.func.current_timestamp(), comment="创建时间")
+
+    __table_args__ = (
+        db.UniqueConstraint("parcel_id", "survey_year", name="uk_parcel_history_parcel_year"),
+        db.Index("idx_parcel_history_year", "survey_year"),
+        db.Index("idx_parcel_history_parcel_id", "parcel_id"),
+    )
+
+
 class ModelVersionHistory(db.Model):
     """模型版本历史表（V3.0 §8.15，FK → thematic_model_registry.agent_id）。"""
     __tablename__ = "model_version_history"
