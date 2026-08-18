@@ -64,7 +64,7 @@
 **Interfaces:**
 - Produces: `AREA_TO_REGION`, `MODEL2_COEFFICIENTS`, `MODEL3_COEFFICIENTS`, `MODEL3_WEIGHTS`, `GRADE_CONFIG`, `OBSTACLE_THRESHOLDS`, `DISCRETE_CN_MAP`, `DISCRETE_EN_MAP`, `INDICATOR_DISPLAY_MAP` — 后续所有计算模块依赖这些常量
 
-- [ ] **Step 1: Write the failing test**
+- [x] **Step 1: Write the failing test**
 
 ```python
 # tests/calculations/test_coefficients.py
@@ -111,12 +111,12 @@ def test_grade_config_hn_thresholds():
     assert labels[9] == "1"  # >= 0.8850 为 1 等
 ```
 
-- [ ] **Step 2: Run test to verify it fails**
+- [x] **Step 2: Run test to verify it fails**
 
 Run: `python -m pytest tests/calculations/test_coefficients.py -v`
 Expected: FAIL with `ModuleNotFoundError: No module named 'framework.domain.calculations'`
 
-- [ ] **Step 3: Write minimal implementation**
+- [x] **Step 3: Write minimal implementation**
 
 ```python
 # framework/domain/calculations/__init__.py
@@ -333,12 +333,12 @@ ALL_INDICATORS = NUMERIC_INDICATORS + CONCEPT_INDICATORS  # 12 个
 PEAK_TYPE_INDICES = {0, 4}
 ```
 
-- [ ] **Step 4: Run test to verify it passes**
+- [x] **Step 4: Run test to verify it passes**
 
 Run: `python -m pytest tests/calculations/test_coefficients.py -v`
 Expected: PASS (all 6 tests)
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add framework/domain/calculations/__init__.py framework/domain/calculations/coefficients.py tests/calculations/__init__.py tests/calculations/test_coefficients.py
@@ -357,7 +357,7 @@ git commit -m "feat: add coefficients.py with Model-2/3 coefficients and discret
 - Consumes: `DISCRETE_EN_MAP`, `DISCRETE_CN_MAP` from Task 1
 - Produces: `ParcelDataAccessor._map_indicators_to_inputs(indicators, agent_id) -> dict`, `_to_code(indicator, value) -> str|None`
 
-- [ ] **Step 1: Write the failing test**
+- [x] **Step 1: Write the failing test**
 
 ```python
 # tests/test_parcel_data_accessor.py
@@ -416,12 +416,12 @@ def test_to_code_unknown_returns_none():
     assert accessor._to_code("GCZD", "unknown_texture") is None
 ```
 
-- [ ] **Step 2: Run test to verify it fails**
+- [x] **Step 2: Run test to verify it fails**
 
 Run: `python -m pytest tests/test_parcel_data_accessor.py -v`
 Expected: FAIL with `AttributeError: 'ParcelDataAccessor' object has no attribute '_map_indicators_to_inputs'`
 
-- [ ] **Step 3: Write minimal implementation**
+- [x] **Step 3: Write minimal implementation**
 
 ```python
 # framework/domain/data/parcel_data_accessor.py
@@ -531,12 +531,12 @@ class ParcelDataAccessor:
             return indicators
 ```
 
-- [ ] **Step 4: Run test to verify it passes**
+- [x] **Step 4: Run test to verify it passes**
 
 Run: `python -m pytest tests/test_parcel_data_accessor.py -v`
 Expected: PASS (all 5 tests)
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add framework/domain/data/parcel_data_accessor.py tests/test_parcel_data_accessor.py
@@ -555,7 +555,7 @@ git commit -m "feat: add _map_indicators_to_inputs to ParcelDataAccessor"
 - Consumes: `MODEL2_COEFFICIENTS`, `GRADE_CONFIG`, `AREA_TO_REGION`, `PEAK_TYPE_INDICES` from Task 1
 - Produces: `evaluate_land_quality(indicators, area_code) -> (quality_index, grade, memberships)`
 
-- [ ] **Step 1: Write the failing test**
+- [x] **Step 1: Write the failing test**
 
 ```python
 # tests/calculations/test_grade_calculation.py
@@ -620,12 +620,12 @@ def test_evaluate_land_quality_lechang():
     assert len(memberships) == 12
 ```
 
-- [ ] **Step 2: Run test to verify it fails**
+- [x] **Step 2: Run test to verify it fails**
 
 Run: `python -m pytest tests/calculations/test_grade_calculation.py -v`
 Expected: FAIL with `ModuleNotFoundError`
 
-- [ ] **Step 3: Write minimal implementation**
+- [x] **Step 3: Write minimal implementation**
 
 ```python
 # framework/domain/calculations/grade_calculation.py
@@ -746,12 +746,12 @@ def evaluate_land_quality(indicators: dict, area_code: str) -> Tuple[float, str,
     return quality_index, grade, memberships
 ```
 
-- [ ] **Step 4: Run test to verify it passes**
+- [x] **Step 4: Run test to verify it passes**
 
 Run: `python -m pytest tests/calculations/test_grade_calculation.py -v`
 Expected: PASS (all 8 tests)
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add framework/domain/calculations/grade_calculation.py tests/calculations/test_grade_calculation.py
@@ -770,7 +770,7 @@ git commit -m "feat: add Model-2 grade calculation with membership functions"
 - Consumes: `MODEL3_COEFFICIENTS`, `MODEL3_WEIGHTS`, `AREA_TO_REGION`, `OBSTACLE_THRESHOLDS`, `INDICATOR_DISPLAY_MAP` from Task 1; `membership_numeric`, `membership_concept` from Task 3
 - Produces: `calc_obstacle_level(indicator, value) -> str`, `calc_obstacle_degree(memberships, weights) -> list`, `diagnosis(obstacle_degrees, indicators) -> (obstacle_type, primary, secondary)`
 
-- [ ] **Step 1: Write the failing test**
+- [x] **Step 1: Write the failing test**
 
 ```python
 # tests/calculations/test_obstacle_calculation.py
@@ -832,12 +832,12 @@ def test_evaluate_obstacle_lechang():
     assert len(result["obstacle_degrees"]) == 12
 ```
 
-- [ ] **Step 2: Run test to verify it fails**
+- [x] **Step 2: Run test to verify it fails**
 
 Run: `python -m pytest tests/calculations/test_obstacle_calculation.py -v`
 Expected: FAIL with `ModuleNotFoundError`
 
-- [ ] **Step 3: Write minimal implementation**
+- [x] **Step 3: Write minimal implementation**
 
 ```python
 # framework/domain/calculations/obstacle_calculation.py
@@ -1005,12 +1005,12 @@ def evaluate_obstacle(indicators: dict, area_code: str) -> Dict:
     }
 ```
 
-- [ ] **Step 4: Run test to verify it passes**
+- [x] **Step 4: Run test to verify it passes**
 
 Run: `python -m pytest tests/calculations/test_obstacle_calculation.py -v`
 Expected: PASS (all 7 tests)
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add framework/domain/calculations/obstacle_calculation.py tests/calculations/test_obstacle_calculation.py
@@ -1028,7 +1028,7 @@ git commit -m "feat: add Model-3 obstacle diagnosis calculation"
 **Interfaces:**
 - Produces: `paddy_urea`, `paddy_compound`, `upland_urea`, `upland_compound`, `calculate_acidification(SJD, Hex, Alex, land_type, fertilizer_type, pHtarget) -> dict`
 
-- [ ] **Step 1: Write the failing test**
+- [x] **Step 1: Write the failing test**
 
 ```python
 # tests/calculations/test_acidification_calculation.py
@@ -1086,12 +1086,12 @@ def test_calculate_acidification_upland_compound():
     assert result["MBNT"] > 0
 ```
 
-- [ ] **Step 2: Run test to verify it fails**
+- [x] **Step 2: Run test to verify it fails**
 
 Run: `python -m pytest tests/calculations/test_acidification_calculation.py -v`
 Expected: FAIL with `ModuleNotFoundError`
 
-- [ ] **Step 3: Write minimal implementation**
+- [x] **Step 3: Write minimal implementation**
 
 ```python
 # framework/domain/calculations/acidification_calculation.py
@@ -1261,12 +1261,12 @@ def calculate_acidification(SJD: float, Hex: float, Alex: float,
     return func(SJD=SJD, Hex=Hex, Alex=Alex, **kwargs)
 ```
 
-- [ ] **Step 4: Run test to verify it passes**
+- [x] **Step 4: Run test to verify it passes**
 
 Run: `python -m pytest tests/calculations/test_acidification_calculation.py -v`
 Expected: PASS (all 6 tests)
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add framework/domain/calculations/acidification_calculation.py tests/calculations/test_acidification_calculation.py
@@ -1286,7 +1286,7 @@ git commit -m "feat: add Model-4 acidification calculation with 4 functions"
 **Interfaces:**
 - Produces: `predict_dose(indicators, land_type) -> (dose, simulated)`, `train_and_save(xlsx_path, output_path)`
 
-- [ ] **Step 1: Write the failing test**
+- [x] **Step 1: Write the failing test**
 
 ```python
 # tests/calculations/test_organic_matter_calculation.py
@@ -1320,12 +1320,12 @@ def test_predict_dose_uses_rf_when_available():
     assert simulated is False
 ```
 
-- [ ] **Step 2: Run test to verify it fails**
+- [x] **Step 2: Run test to verify it fails**
 
 Run: `python -m pytest tests/calculations/test_organic_matter_calculation.py -v`
 Expected: FAIL with `ModuleNotFoundError`
 
-- [ ] **Step 3: Write minimal implementation**
+- [x] **Step 3: Write minimal implementation**
 
 ```python
 # scripts/train_dose_rf_models.py
@@ -1493,17 +1493,17 @@ def predict_dose(indicators: dict, land_type: str) -> Tuple[float, bool]:
         return degrade_to_rules(indicators), True
 ```
 
-- [ ] **Step 4: Run test to verify it passes**
+- [x] **Step 4: Run test to verify it passes**
 
 Run: `python -m pytest tests/calculations/test_organic_matter_calculation.py -v`
 Expected: PASS (all 3 tests)
 
-- [ ] **Step 5: Run RF training script to generate .joblib files**
+- [x] **Step 5: Run RF training script to generate .joblib files**
 
 Run: `python scripts/train_dose_rf_models.py`
 Expected: 输出 upland/paddy 的 RMSE/R2，生成 `data/model_artifacts/upland_dose_rf.joblib` 和 `paddy_dose_rf.joblib`
 
-- [ ] **Step 6: Commit**
+- [x] **Step 6: Commit**
 
 ```bash
 git add scripts/train_dose_rf_models.py framework/domain/calculations/organic_matter_calculation.py tests/calculations/test_organic_matter_calculation.py data/model_artifacts/.gitkeep data/model_artifacts/upland_dose_rf.joblib data/model_artifacts/paddy_dose_rf.joblib
@@ -1523,7 +1523,7 @@ git commit -m "feat: add Model-5 RF prediction with build-time retraining"
 - Consumes: `evaluate_land_quality` from Task 3, `evaluate_obstacle` from Task 4
 - Produces: `calculate_stability(parcel_info, history_snapshots, neighbors) -> dict`（含 9 模块结果）
 
-- [ ] **Step 1: Write the failing test**
+- [x] **Step 1: Write the failing test**
 
 ```python
 # tests/calculations/test_stability_calculation.py
@@ -1591,12 +1591,12 @@ def test_calculate_stability_returns_all_modules():
     assert len(result) == 9
 ```
 
-- [ ] **Step 2: Run test to verify it fails**
+- [x] **Step 2: Run test to verify it fails**
 
 Run: `python -m pytest tests/calculations/test_stability_calculation.py -v`
 Expected: FAIL with `ModuleNotFoundError`
 
-- [ ] **Step 3: Add ParcelHistorySnapshot ORM model**
+- [x] **Step 3: Add ParcelHistorySnapshot ORM model**
 
 在 `framework/models/thematic_model.py` 的 `ParcelInfo` 类之后添加：
 
@@ -1620,7 +1620,7 @@ class ParcelHistorySnapshot(db.Model):
     )
 ```
 
-- [ ] **Step 4: Write stability_calculation.py**
+- [x] **Step 4: Write stability_calculation.py**
 
 ```python
 # framework/domain/calculations/stability_calculation.py
@@ -1836,12 +1836,12 @@ def _grade_value(grade) -> int:
         return 10
 ```
 
-- [ ] **Step 5: Run test to verify it passes**
+- [x] **Step 5: Run test to verify it passes**
 
 Run: `python -m pytest tests/calculations/test_stability_calculation.py -v`
 Expected: PASS (all 6 tests)
 
-- [ ] **Step 6: Commit**
+- [x] **Step 6: Commit**
 
 ```bash
 git add framework/models/thematic_model.py framework/domain/calculations/stability_calculation.py tests/calculations/test_stability_calculation.py
@@ -1862,7 +1862,7 @@ git commit -m "feat: add Model-1 stability calculation with 9 modules + ParcelHi
 **Interfaces:**
 - Consumes: 所有计算模块（Task 3-7）+ `ParcelDataAccessor._map_indicators_to_inputs`（Task 2）
 
-- [ ] **Step 1: Update grade_agent.py execute method**
+- [x] **Step 1: Update grade_agent.py execute method**
 
 在 `grade_agent.py` 的 `execute` 方法中，DB 路径替换占位逻辑：
 
@@ -1886,7 +1886,7 @@ if data_source == "db":
 
 同时删除 `grade_agent._map_indicators_to_inputs` 方法（改用 `ParcelDataAccessor` 的统一映射）。
 
-- [ ] **Step 2: Update problem_agent.py execute method**
+- [x] **Step 2: Update problem_agent.py execute method**
 
 ```python
 if data_source == "db":
@@ -1906,7 +1906,7 @@ if data_source == "db":
     status = "ok"
 ```
 
-- [ ] **Step 3: Update acidification_agent.py execute method**
+- [x] **Step 3: Update acidification_agent.py execute method**
 
 ```python
 if data_source == "db":
@@ -1926,7 +1926,7 @@ if data_source == "db":
     status = "ok"
 ```
 
-- [ ] **Step 4: Update organic_matter_agent.py execute method**
+- [x] **Step 4: Update organic_matter_agent.py execute method**
 
 ```python
 if data_source == "db":
@@ -1945,7 +1945,7 @@ if data_source == "db":
     status = "ok"
 ```
 
-- [ ] **Step 5: Update stability_agent.py execute method**
+- [x] **Step 5: Update stability_agent.py execute method**
 
 ```python
 if data_source == "db":
@@ -1977,12 +1977,12 @@ if data_source == "db":
     status = "ok"
 ```
 
-- [ ] **Step 6: Run existing tests to check for regressions**
+- [x] **Step 6: Run existing tests to check for regressions**
 
 Run: `python -m pytest tests/test_agent_specialized.py -v`
 Expected: PASS（现有测试不回归）
 
-- [ ] **Step 7: Commit**
+- [x] **Step 7: Commit**
 
 ```bash
 git add framework/agents/specialized/grade_agent.py framework/agents/specialized/problem_agent.py framework/agents/specialized/acidification_agent.py framework/agents/specialized/organic_matter_agent.py framework/agents/specialized/stability_agent.py
@@ -1997,7 +1997,7 @@ git commit -m "feat: update 5 agents to call calculation modules replacing place
 - Create: `scripts/import_history_snapshots.py`
 - Modify: `scripts/verify_thematic_models_db.py`
 
-- [ ] **Step 1: Create import_history_snapshots.py**
+- [x] **Step 1: Create import_history_snapshots.py**
 
 ```python
 # scripts/import_history_snapshots.py
@@ -2099,7 +2099,7 @@ if __name__ == "__main__":
     import_history_snapshots()
 ```
 
-- [ ] **Step 2: Update verify_thematic_models_db.py seed data**
+- [x] **Step 2: Update verify_thematic_models_db.py seed data**
 
 在 `verify_thematic_models_db.py` 的 3 个测试地块 `soil_indicators` 中补充缺失字段：
 
@@ -2120,12 +2120,12 @@ if __name__ == "__main__":
 "soil_structure": "interlayer",
 ```
 
-- [ ] **Step 3: Run import script**
+- [x] **Step 3: Run import script**
 
 Run: `python scripts/import_history_snapshots.py`
 Expected: 导入 2018/2021/2024 三期历史数据
 
-- [ ] **Step 4: Commit**
+- [x] **Step 4: Commit**
 
 ```bash
 git add scripts/import_history_snapshots.py scripts/verify_thematic_models_db.py
@@ -2140,27 +2140,27 @@ git commit -m "feat: add history import script and enrich seed data"
 - Run: `scripts/verify_thematic_models_db.py`
 - Run: `python -m pytest tests/ -v`
 
-- [ ] **Step 1: Run calculation unit tests**
+- [x] **Step 1: Run calculation unit tests**
 
 Run: `python -m pytest tests/calculations/ -v`
 Expected: PASS (all calculation tests)
 
-- [ ] **Step 2: Run agent integration tests**
+- [x] **Step 2: Run agent integration tests**
 
 Run: `python -m pytest tests/test_agent_specialized.py -v`
 Expected: PASS（无回归）
 
-- [ ] **Step 3: Run full test suite**
+- [x] **Step 3: Run full test suite**
 
 Run: `python -m pytest tests/ -v`
 Expected: 566+ passed, 0 failed, 0 errors（现有 + 新增）
 
-- [ ] **Step 4: Run verification script**
+- [x] **Step 4: Run verification script**
 
 Run: `python scripts/verify_thematic_models_db.py`
 Expected: 5 模型 × 3 地块全部 `status=ok`、`data_source=db`、`simulated=False`、持久化成功
 
-- [ ] **Step 5: Final commit**
+- [x] **Step 5: Final commit**
 
 ```bash
 git add -A
