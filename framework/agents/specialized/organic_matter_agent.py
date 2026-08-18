@@ -1,10 +1,15 @@
 from __future__ import annotations
 
 from typing import Any, Dict
+import logging
 
 from ..base import BaseAgent
 from ..mock_data import MockDataLoader
+from ...domain.data.parcel_data_accessor import ParcelDataAccessor
 from ...domain.other_models.model_5 import EXTERNAL_FIELD_MAP, model_5_execution
+from ...models.thematic_model import OrganicMatterResult
+
+logger = logging.getLogger(__name__)
 
 
 # 旧规则仅作为没有任何模型特征时的明确降级路径，不代表真实 RF 结果。
@@ -48,8 +53,28 @@ class OrganicMatterAgent(BaseAgent):
             domain="organic_matter",
         )
 
+    def _collect_inputs(self, task: Dict[str, Any]) -> Dict[str, Any]:
+        """DB 优先获取地块指标，未命中时降级到用户传入参数。"""
+        task = task or {}
+        parcel_id = task.get("parcel_id")
+
+        if parcel_id:
+            accessor = ParcelDataAccessor()
+            indicators = accessor.get_parcel_indicators(str(parcel_id))
+            if indicators is not None:
+                inputs = self._map_indicators_to_inputs(indicators)
+                inputs["parcel_id"] = str(parcel_id)
+                inputs["data_source"] = "db"
+                return inputs
+
+        logger.warning("Parcel %s not in DB, falling back to user inputs", parcel_id)
+        inputs = self._collect_inputs_from_legacy(task)
+        inputs["data_source"] = "fallback"
+        return inputs
+
     @staticmethod
-    def _collect_inputs(task: Dict[str, Any] | None) -> Dict[str, Any]:
+    def _collect_inputs_from_legacy(task: Dict[str, Any] | None) -> Dict[str, Any]:
+        """原有数据源：用户传入参数（原 _collect_inputs 逻辑）。"""
         task = task or {}
         inputs: Dict[str, Any] = {}
         if isinstance(task.get("data"), dict):
@@ -64,6 +89,34 @@ class OrganicMatterAgent(BaseAgent):
             inputs.update(task["indicators"])
         inputs.update({k: v for k, v in task.items() if k not in {"data", "task"}})
         return inputs
+
+    def _map_indicators_to_inputs(self, indicators: dict) -> dict:
+        """将 soil_indicators JSON 映射为有机质培肥模型输入字段。"""
+        return {
+            "pH": indicators.get("soil_ph"),
+            "soil_ph": indicators.get("soil_ph"),
+            "organic_matter": indicators.get("organic_matter"),
+            "SOMbe": indicators.get("organic_matter"),
+            "available_potassium": indicators.get("available_potassium"),
+            "AK": indicators.get("available_potassium"),
+            "available_phosphorus": indicators.get("available_phosphorus"),
+            "AP": indicators.get("available_phosphorus"),
+            "total_nitrogen": indicators.get("total_nitrogen"),
+            "TN": indicators.get("total_nitrogen"),
+        }
+
+    def _build_result_record(self, execution_id: int, outputs: dict):
+        """构建 OrganicMatterResult ORM 实例（县级分析，无 parcel_id）。"""
+        result_data = outputs.get("result", outputs)
+        return OrganicMatterResult(
+            execution_id=execution_id,
+            soil_ph=float(outputs.get("soil_ph", 0.0) or 0.0),
+            organic_matter=float(result_data.get("organic_matter", 0.0) or 0.0),
+            available_potassium=float(outputs.get("available_potassium", 0.0) or 0.0),
+            level=result_data.get("level", "未知"),
+            potential_increase=float(result_data.get("potential_increase", 0.0) or 0.0),
+            simulated=True,
+        )
 
     @staticmethod
     def _has_model_features(inputs: Dict[str, Any]) -> bool:
@@ -101,28 +154,68 @@ class OrganicMatterAgent(BaseAgent):
 
     def execute(self, task: Dict[str, Any]) -> Dict[str, Any]:
         inputs = self._collect_inputs(task)
-        if not self._has_model_features(inputs):
-            return self._execute_rule_fallback(inputs)
+        data_source = inputs.pop("data_source", "unknown")
 
-        result = model_5_execution(
-            inputs,
-            land_type=inputs.get("land_type"),
-        )
-        metadata = {
-            "simulated": bool(result.get("simulated", result.get("status") != "success")),
-            "model_version": result.get("model_version"),
-            "fallback_reason": result.get("fallback_reason"),
-            "fallback": result.get("status") == "fallback" or bool(result.get("fallback_reason")),
-            "need_input": result.get("need_input", []),
-            "warning": result.get("dose_warning"),
-            "imputation_applied": result.get("imputation_applied", False),
-            "reliability": "real_model" if result.get("status") == "success" else "fallback",
-        }
-        return {
-            "status": result.get("status", "error"),
-            "result": result,
-            "metadata": metadata,
-        }
+        try:
+            if not self._has_model_features(inputs) and data_source != "db":
+                # Legacy 降级路径：规则 fallback
+                outputs = self._rule_fallback(inputs)
+                status = "degraded"
+            elif data_source == "db":
+                # DB 路径：直接使用 soil_indicators 构造结果快照
+                om = float(inputs.get("organic_matter", 0.0) or 0.0)
+                level = MockDataLoader.apply_threshold(om, ORGANIC_RULES)
+                manure_dosage = MANURE_DOSAGE_RULES.get(level, 0.0)
+                outputs = {
+                    "soil_ph": inputs.get("soil_ph"),
+                    "organic_matter": om,
+                    "available_potassium": inputs.get("available_potassium"),
+                    "level": level,
+                    "manure_dosage": manure_dosage,
+                    "potential_increase": round(manure_dosage / 1000.0 * 1.5, 2),
+                }
+                status = "ok"
+            else:
+                # Legacy 路径：ML 模型
+                result = model_5_execution(
+                    inputs,
+                    land_type=inputs.get("land_type"),
+                )
+                outputs = result
+                status = "degraded"
+
+            persisted = self._persist_result(
+                agent_id=self.agent_id,
+                parcel_id=task.get("parcel_id") if isinstance(task, dict) else None,
+                inputs=inputs,
+                outputs=outputs,
+                status=status,
+            )
+
+            return {
+                "status": status,
+                "result": outputs,
+                "metadata": {
+                    "simulated": data_source != "db",
+                    "data_source": data_source,
+                },
+                "data_source": data_source,
+                "persisted": persisted,
+            }
+        except Exception as e:
+            self._persist_result(
+                agent_id=self.agent_id,
+                parcel_id=task.get("parcel_id") if isinstance(task, dict) else None,
+                inputs=inputs,
+                outputs={"error": str(e)},
+                status="error",
+            )
+            return {
+                "status": "error",
+                "result": {"error": str(e)},
+                "data_source": data_source,
+                "persisted": False,
+            }
 
     @staticmethod
     def _answer_from_ml(question: str, result: Dict[str, Any]) -> Dict[str, Any]:

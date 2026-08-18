@@ -234,7 +234,7 @@ def test_organic_matter_agent_execute():
     assert agent.model_id == "model-5"
     assert agent.dependencies == []
     result = agent.execute({"area_code": "lechang"})
-    assert result["status"] == "ok"
+    assert result["status"] == "degraded"
     assert result["metadata"]["simulated"] is True
     assert "level" in result["result"]
     assert "manure_dosage" in result["result"]
@@ -605,6 +605,60 @@ def test_acidification_agent_build_result_record_legacy_none():
     )
     assert record is None
     print("✓ AcidificationRemediationAgent._build_result_record legacy 路径返回 None")
+
+
+def test_organic_matter_agent_db_path(monkeypatch):
+    """DB 命中时 data_source="db"。"""
+    from framework.agents.specialized.organic_matter_agent import OrganicMatterAgent
+    from framework.domain.data.parcel_data_accessor import ParcelDataAccessor
+
+    monkeypatch.setattr(
+        ParcelDataAccessor, "get_parcel_indicators",
+        lambda self, pid: {
+            "soil_ph": 5.5, "organic_matter": 22.0,
+            "available_potassium": 120.0, "SOCbe": 15.0,
+        }
+    )
+    agent = OrganicMatterAgent()
+    result = agent.execute({"parcel_id": "P001"})
+    assert result["data_source"] == "db"
+
+
+def test_organic_matter_agent_fallback_path(monkeypatch):
+    """DB 未命中时 data_source="fallback"。"""
+    from framework.agents.specialized.organic_matter_agent import OrganicMatterAgent
+    from framework.domain.data.parcel_data_accessor import ParcelDataAccessor
+
+    monkeypatch.setattr(
+        ParcelDataAccessor, "get_parcel_indicators",
+        lambda self, pid: None
+    )
+    agent = OrganicMatterAgent()
+    result = agent.execute({"parcel_id": "NOT_IN_DB"})
+    assert result["data_source"] == "fallback"
+
+
+def test_organic_matter_agent_no_parcel_id_uses_fallback():
+    """无 parcel_id 时直接走 fallback（县级分析）。"""
+    from framework.agents.specialized.organic_matter_agent import OrganicMatterAgent
+    agent = OrganicMatterAgent()
+    result = agent.execute({"area_code": "lechang"})
+    assert result["data_source"] == "fallback"
+
+
+def test_organic_matter_agent_persist_success(monkeypatch):
+    """持久化成功时 persisted=True。"""
+    from framework.agents.specialized.organic_matter_agent import OrganicMatterAgent
+    from framework.domain.data.parcel_data_accessor import ParcelDataAccessor
+
+    monkeypatch.setattr(
+        ParcelDataAccessor, "get_parcel_indicators",
+        lambda self, pid: {"soil_ph": 5.5, "organic_matter": 22.0}
+    )
+    agent = OrganicMatterAgent()
+    monkeypatch.setattr(agent, "_persist_result", lambda *a, **kw: True)
+    result = agent.execute({"parcel_id": "P001"})
+    assert result["persisted"] is True
 
 
 if __name__ == "__main__":

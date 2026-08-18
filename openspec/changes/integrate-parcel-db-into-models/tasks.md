@@ -30,9 +30,9 @@
 
 ## 6. Model-5 OrganicMatterAgent 改造
 
-- [ ] 6.1 将 `organic_matter_agent.py` 的 `_collect_inputs` 增加 DB 优先路径：先查 `parcel_info` 获取 `soil_ph`/`organic_matter`/`available_potassium` 等字段，未命中时降级到用户传入参数并记录 WARNING
-- [ ] 6.2 在 `OrganicMatterAgent` override `_get_result_model_class()` 返回 `OrganicMatterResult`
-- [ ] 6.3 在 `execute()` 成功路径调用 `_persist_result()`（注意 Model-5 为县级分析，`parcel_id` 可为空）
+- [x] 6.1 将 `organic_matter_agent.py` 的 `_collect_inputs` 增加 DB 优先路径：先查 `parcel_info` 获取 `soil_ph`/`organic_matter`/`available_potassium` 等字段，未命中时降级到用户传入参数并记录 WARNING
+- [x] 6.2 在 `OrganicMatterAgent` override `_get_result_model_class()` 返回 `OrganicMatterResult`
+- [x] 6.3 在 `execute()` 成功路径调用 `_persist_result()`（注意 Model-5 为县级分析，`parcel_id` 可为空）
 
 ## 7. 测试
 
