@@ -18,8 +18,8 @@
 
 ## 4. test_docs_dedup.py / test_observability_api.py fixture 表创建顺序
 
-- [ ] 4.1 修复 _ensure_kb_message_columns：先检查表是否存在，不存在时先 CREATE TABLE 再 ALTER TABLE
-- [ ] 4.2 运行 test_docs_dedup.py 和 test_observability_api.py 验证全部通过
+- [x] 4.1 修复 _ensure_kb_message_columns：表不存在时跳过（db.create_all() 会创建包含所有列的表）
+- [x] 4.2 运行 test_docs_dedup.py 和 test_observability_api.py 验证全部通过
 
 ## 5. chromadb 旧文件兼容
 
