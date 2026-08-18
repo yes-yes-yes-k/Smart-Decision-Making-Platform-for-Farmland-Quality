@@ -38,5 +38,5 @@
 
 - [x] 7.1 新增 `tests/test_parcel_data_accessor.py`：测试 DB 命中、DB 未命中、DB 异常三种场景
 - [x] 7.2 新增 `tests/test_base_agent_persist.py`：测试 `_persist_result()` 成功写入 execution_log + 结果表、写入失败时不阻断返回、事务 rollback 一致性
-- [ ] 7.3 更新 5 个 Agent 的现有测试：验证 DB 优先 + fallback 降级路径、`data_source` 标识、`persisted` 标识
-- [ ] 7.4 运行完整测试套件验证无回归
+- [x] 7.3 更新 5 个 Agent 的现有测试：验证 DB 优先 + fallback 降级路径、`data_source` 标识、`persisted` 标识
+- [x] 7.4 运行完整测试套件验证无回归
