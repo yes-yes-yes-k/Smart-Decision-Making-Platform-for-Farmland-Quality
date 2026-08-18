@@ -450,7 +450,7 @@ class ParcelInfo(db.Model):
 
     id = db.Column(db.Integer, primary_key=True, autoincrement=True, comment="主键")
     parcel_id = db.Column(db.String(64), nullable=False, comment="地块唯一编号")
-    geom = db.Column(Geometry("POLYGON", srid=4326), comment="地块几何（PostGIS）")
+    geom = db.Column(Geometry("MULTIPOLYGON", srid=4326), comment="地块几何（PostGIS）")
     area_code = db.Column(db.String(32), comment="区域编码")
     centroid_lon = db.Column(db.Float, comment="质心经度")
     centroid_lat = db.Column(db.Float, comment="质心纬度")

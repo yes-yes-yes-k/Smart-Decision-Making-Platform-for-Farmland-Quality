@@ -78,6 +78,7 @@ class StabilityRiskAgent(BaseAgent):
                 # DB 路径：调用 calculate_stability
                 from framework.domain.calculations.stability_calculation import calculate_stability
                 from framework.models.thematic_model import ParcelHistorySnapshot, ParcelInfo
+                from framework.models.user import db
                 accessor = ParcelDataAccessor()
                 mapped = accessor._map_indicators_to_inputs(inputs, "model-1")
                 parcel_id = str(inputs.get("parcel_id"))
@@ -94,28 +95,46 @@ class StabilityRiskAgent(BaseAgent):
                         for h in history
                     ]
                 except Exception:
+                    db.session.rollback()
                     history_data = []
                 # PostGIS 邻域查询
                 try:
                     parcel = ParcelInfo.query.filter_by(parcel_id=parcel_id).first()
                 except Exception:
+                    db.session.rollback()
                     parcel = None
                 neighbors = []
                 if parcel and parcel.geom:
                     try:
-                        from framework.models.user import db
-                        neighbor_parcels = ParcelInfo.query.filter(
-                            ParcelInfo.parcel_id != parcel_id,
-                            db.func.ST_DWithin(ParcelInfo.geom, parcel.geom, 1000),
-                        ).all()
+                        from sqlalchemy import text as sa_text
+                        # 使用 geography 类型，ST_DWithin 第三参数为米
+                        # geometry 类型下 1000 表示 1000 度（覆盖全球）
+                        neighbor_rows = db.session.execute(
+                            sa_text(
+                                "SELECT parcel_id, soil_indicators "
+                                "FROM parcel_info "
+                                "WHERE parcel_id != :pid "
+                                "AND ST_DWithin(geom::geography, "
+                                "ST_GeomFromText(:wkt, 4326)::geography, :radius)"
+                            ),
+                            {
+                                "pid": parcel_id,
+                                "wkt": db.session.execute(
+                                    sa_text("SELECT ST_AsText(geom) FROM parcel_info WHERE parcel_id = :pid"),
+                                    {"pid": parcel_id},
+                                ).scalar(),
+                                "radius": 1000,  # 1000 米 = 1km
+                            },
+                        ).fetchall()
                         neighbors = [
                             {
-                                "parcel_id": p.parcel_id,
-                                "quality_grade": p.soil_indicators.get("quality_grade") if p.soil_indicators else None,
+                                "parcel_id": r[0],
+                                "quality_grade": (r[1] or {}).get("quality_grade") if isinstance(r[1], dict) else None,
                             }
-                            for p in neighbor_parcels
+                            for r in neighbor_rows
                         ]
                     except Exception:
+                        db.session.rollback()
                         neighbors = []
                 # 计算稳定性
                 parcel_info = {

@@ -188,6 +188,7 @@ class OrganicMatterAgent(BaseAgent):
 
             return {
                 "status": status,
+                "simulated": simulated,
                 "result": outputs,
                 "metadata": {
                     "simulated": simulated,
