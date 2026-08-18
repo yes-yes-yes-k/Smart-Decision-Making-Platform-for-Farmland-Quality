@@ -12,9 +12,9 @@
 
 ## 3. Model-2 FarmlandGradeAgent 改造
 
-- [ ] 3.1 将 `grade_agent.py` 的 `_collect_inputs` 重构为 DB 优先：先查 `parcel_info`，未命中时降级到 CSV `run_grade_evaluation` 并记录 WARNING
-- [ ] 3.2 在 `FarmlandGradeAgent`（或 `FarmlandGradeObstacleAgent`）override `_get_result_model_class()` 返回 `QualityGradeResult`
-- [ ] 3.3 在 `execute()` 成功路径调用 `_persist_result()`
+- [x] 3.1 将 `grade_agent.py` 的 `_collect_inputs` 重构为 DB 优先：先查 `parcel_info`，未命中时降级到 CSV `run_grade_evaluation` 并记录 WARNING
+- [x] 3.2 在 `FarmlandGradeAgent` override `_build_result_record()` 返回 `QualityGradeResult`（legacy 路径无 parcel_id 时返回 None）
+- [x] 3.3 在 `execute()` 成功路径调用 `_persist_result()`
 
 ## 4. Model-3 ProblemIdentificationAgent 改造
 
