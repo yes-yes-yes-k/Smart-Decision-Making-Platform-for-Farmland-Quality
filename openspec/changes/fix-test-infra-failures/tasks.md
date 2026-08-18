@@ -7,9 +7,9 @@
 
 ## 2. test_agent_manager.py 路由期望值修正
 
-- [ ] 2.1 修正 test_manager_register_five_agents 期望：包含 6 个 Agent（model-1 到 model-6，model-6 为占位）
-- [ ] 2.2 修正 9 个路由映射测试期望值：type N → model-N（非偏移映射）
-- [ ] 2.3 运行 test_agent_manager.py 验证全部通过
+- [x] 2.1 修正 test_manager_register_five_agents 期望：包含 6 个 Agent（model-1 到 model-6，model-6 为占位）
+- [x] 2.2 修正 9 个路由映射测试期望值：type N → model-N（非偏移映射）
+- [x] 2.3 运行 test_agent_manager.py 验证全部通过
 
 ## 3. test_import_lechang_data.py 导入路径修复
 
