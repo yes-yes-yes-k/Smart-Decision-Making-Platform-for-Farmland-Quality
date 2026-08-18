@@ -1,9 +1,14 @@
 from __future__ import annotations
 from typing import Any, Dict
+import logging
 
 from ..base import BaseAgent
 from ..mock_data import MockDataLoader
+from ...domain.data.parcel_data_accessor import ParcelDataAccessor
 from ...domain.other_models.model_4 import model_4_execution
+from ...models.thematic_model import AcidificationRemediationResult
+
+logger = logging.getLogger(__name__)
 
 # 模拟输入默认值（向后兼容保留 exchangeable_al）
 MOCK_INPUTS = {
@@ -25,31 +30,115 @@ class AcidificationRemediationAgent(BaseAgent):
             domain="acidification",
         )
 
-    def execute(self, task: Dict[str, Any]) -> Dict[str, Any]:
-        task = task or {}
-        land_type = task.get("land_type")
-        fertilizer_type = task.get("fertilizer_type")
-        # 兜底 mock 输入（与 answer_question 一致）：单模型接口（analyze→execute）在缺失
-        # SJD/JHX/JLA 时降级为 demo，而不是拒绝；仅在键缺失时填充，保留对越界值的拒绝语义。
-        enriched = dict(task)
+    def _collect_inputs(self, context: dict) -> dict:
+        """DB 优先获取地块指标，未命中时降级到 MOCK_INPUTS。"""
+        parcel_id = context.get("parcel_id")
+
+        if parcel_id:
+            accessor = ParcelDataAccessor()
+            indicators = accessor.get_parcel_indicators(str(parcel_id))
+            if indicators is not None:
+                inputs = self._map_indicators_to_inputs(indicators)
+                inputs["parcel_id"] = str(parcel_id)
+                inputs["data_source"] = "db"
+                return inputs
+
+        logger.warning("Parcel %s not in DB, falling back to MOCK_INPUTS", parcel_id)
+        inputs = self._collect_inputs_from_legacy(context)
+        inputs["data_source"] = "fallback"
+        return inputs
+
+    def _collect_inputs_from_legacy(self, context: dict) -> dict:
+        """原有数据源：MOCK_INPUTS 硬编码 + context 透传。"""
+        enriched = dict(context)
         for k, v in MOCK_INPUTS.items():
             enriched.setdefault(k, v)
-        result = model_4_execution(enriched, land_type=land_type, fertilizer_type=fertilizer_type)
+        return enriched
+
+    def _map_indicators_to_inputs(self, indicators: dict) -> dict:
+        """将 soil_indicators JSON 映射为酸化改良模型输入字段。"""
         return {
-            "status": result["status"],
-            "simulated": False,
-            "result": {
-                "ytk": result.get("ytk"),
-                "mbnt": result.get("mbnt"),
-                "sub_model": result.get("sub_model"),
-                "customized_params": result.get("customized_params", {}),
-            },
-            "metadata": {
-                "model_version": result.get("model_version"),
-                "warning": result.get("warning"),
-                "reason": result.get("reason"),
-            },
+            "SJD": indicators.get("soil_ph"),
+            "JHX": indicators.get("exchangeable_hydrogen"),
+            "JLA": indicators.get("exchangeable_aluminum"),
+            "exchangeable_al": indicators.get("exchangeable_aluminum"),
+            "soil_ph": indicators.get("soil_ph"),
         }
+
+    def _build_result_record(self, execution_id: int, outputs: dict):
+        """构建 AcidificationRemediationResult ORM 实例。legacy 路径无 parcel_id 时返回 None。"""
+        parcel_id = outputs.get("parcel_id")
+        if not parcel_id:
+            return None
+        result_data = outputs.get("result", outputs)
+        return AcidificationRemediationResult(
+            execution_id=execution_id,
+            parcel_id=parcel_id,
+            soil_ph=float(outputs.get("soil_ph", 0.0) or 0.0),
+            soil_conditioner_dosage=float(result_data.get("ytk", 0.0) or 0.0),
+            woody_peat_dosage=float(result_data.get("mbnt", 0.0) or 0.0),
+            model_version=result_data.get("model_version", "unknown"),
+            status=result_data.get("sub_model", "ok"),
+            input_snapshot=outputs,
+            simulated=True,
+        )
+
+    def execute(self, task: Dict[str, Any]) -> Dict[str, Any]:
+        task = task or {}
+        inputs = self._collect_inputs(task)
+        data_source = inputs.pop("data_source", "unknown")
+        land_type = task.get("land_type") or inputs.get("land_type")
+        fertilizer_type = task.get("fertilizer_type") or inputs.get("fertilizer_type")
+
+        try:
+            # 使用收集到的输入运行 model_4_execution
+            enriched = dict(inputs)
+            for k, v in MOCK_INPUTS.items():
+                enriched.setdefault(k, v)
+
+            result = model_4_execution(enriched, land_type=land_type, fertilizer_type=fertilizer_type)
+            outputs = {
+                "parcel_id": inputs.get("parcel_id"),
+                "soil_ph": enriched.get("SJD"),
+                "result": {
+                    "ytk": result.get("ytk"),
+                    "mbnt": result.get("mbnt"),
+                    "sub_model": result.get("sub_model"),
+                    "customized_params": result.get("customized_params", {}),
+                },
+                "metadata": {
+                    "model_version": result.get("model_version"),
+                    "warning": result.get("warning"),
+                    "reason": result.get("reason"),
+                },
+            }
+            status = "ok" if data_source == "db" else "degraded"
+
+            persisted = self._persist_result(
+                agent_id=self.agent_id,
+                parcel_id=task.get("parcel_id") or inputs.get("parcel_id"),
+                inputs=enriched,
+                outputs=outputs,
+                status=status,
+            )
+
+            return {
+                "status": result["status"],
+                "simulated": False,
+                "result": outputs["result"],
+                "metadata": outputs["metadata"],
+                "data_source": data_source,
+                "persisted": persisted,
+            }
+        except Exception as e:
+            self._persist_result(
+                agent_id=self.agent_id,
+                parcel_id=task.get("parcel_id"),
+                inputs=inputs,
+                outputs={"error": str(e)},
+                status="error",
+            )
+            raise
 
     def answer_question(self, question: str, context: Dict[str, Any]) -> Dict[str, Any]:
         # 从 context 提取数据并透传 land_type/fertilizer_type/parcel_id
