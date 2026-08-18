@@ -560,6 +560,53 @@ def test_acidification_agent_persist_failure(monkeypatch):
     assert result["persisted"] is False
 
 
+def test_acidification_agent_build_result_record_db_path():
+    """_build_result_record 在有 parcel_id 时应返回 AcidificationRemediationResult 实例。
+
+    验证构造函数参数与 ORM 模型一致（AcidificationRemediationResult 无 input_snapshot 列）。
+    """
+    from framework.agents.specialized.acidification_agent import AcidificationRemediationAgent
+    from framework.models.thematic_model import AcidificationRemediationResult
+
+    agent = AcidificationRemediationAgent()
+    outputs = {
+        "parcel_id": "P001",
+        "soil_ph": 4.31,
+        "result": {
+            "ytk": 1234.5,
+            "mbnt": 567.8,
+            "sub_model": "upland_compound",
+            "model_version": "process_v2_20260801",
+            "customized_params": {},
+        },
+    }
+    record = agent._build_result_record(execution_id=1, outputs=outputs)
+    assert isinstance(record, AcidificationRemediationResult)
+    assert record.execution_id == 1
+    assert record.parcel_id == "P001"
+    assert record.soil_ph == 4.31
+    assert record.soil_conditioner_dosage == 1234.5
+    assert record.woody_peat_dosage == 567.8
+    assert record.model_version == "process_v2_20260801"
+    assert record.status == "upland_compound"
+    assert record.simulated is True
+    print("✓ AcidificationRemediationAgent._build_result_record 返回有效 ORM 实例")
+
+
+def test_acidification_agent_build_result_record_legacy_none():
+    """_build_result_record 在无 parcel_id（legacy 路径）时返回 None，避免污染结果表。"""
+    from framework.agents.specialized.acidification_agent import AcidificationRemediationAgent
+
+    agent = AcidificationRemediationAgent()
+    # legacy 路径：outputs 无 parcel_id
+    record = agent._build_result_record(
+        execution_id=1,
+        outputs={"soil_ph": 5.5, "result": {"ytk": 100.0, "mbnt": 50.0}},
+    )
+    assert record is None
+    print("✓ AcidificationRemediationAgent._build_result_record legacy 路径返回 None")
+
+
 if __name__ == "__main__":
     test_stability_risk_agent_execute()
     test_stability_risk_agent_answer_question_overall()

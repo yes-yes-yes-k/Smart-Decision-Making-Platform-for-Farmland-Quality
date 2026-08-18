@@ -79,7 +79,6 @@ class AcidificationRemediationAgent(BaseAgent):
             woody_peat_dosage=float(result_data.get("mbnt", 0.0) or 0.0),
             model_version=result_data.get("model_version", "unknown"),
             status=result_data.get("sub_model", "ok"),
-            input_snapshot=outputs,
             simulated=True,
         )
 
