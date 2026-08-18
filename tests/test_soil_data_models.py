@@ -1,4 +1,20 @@
+import sys
+import types
 import unittest
+from unittest.mock import MagicMock
+
+# 测试环境可能未安装 geoalchemy2，在导入 thematic_model 之前先 stub
+if "geoalchemy2" not in sys.modules:
+    _geo_stub = types.ModuleType("geoalchemy2")
+
+    class _Geometry:
+        """stub：返回 MagicMock，满足 SQLAlchemy Column 初始化所需协议。"""
+
+        def __new__(cls, *args, **kwargs):
+            return MagicMock()
+
+    _geo_stub.Geometry = _Geometry
+    sys.modules["geoalchemy2"] = _geo_stub
 
 from flask import Flask
 from sqlalchemy import inspect, String

@@ -2,8 +2,8 @@
 
 ## 1. geoalchemy2 stub 统一
 
-- [ ] 1.1 在 test_soil_data_models.py 顶部添加 geoalchemy2 stub 模式（与 test_agent_specialized.py 一致）
-- [ ] 1.2 运行 test_soil_data_models.py 验证全部通过
+- [x] 1.1 在 test_soil_data_models.py 顶部添加 geoalchemy2 stub 模式（与 test_agent_specialized.py 一致）
+- [x] 1.2 运行 test_soil_data_models.py 验证全部通过
 
 ## 2. test_agent_manager.py 路由期望值修正
 
