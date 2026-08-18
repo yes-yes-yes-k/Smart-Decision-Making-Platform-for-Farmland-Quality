@@ -7,7 +7,6 @@ from ..base import BaseAgent
 from ..mock_data import MockDataLoader
 from ...domain.data.parcel_data_accessor import ParcelDataAccessor
 from ...domain.other_models.model_5 import EXTERNAL_FIELD_MAP, model_5_execution
-from ...models.thematic_model import OrganicMatterResult
 
 logger = logging.getLogger(__name__)
 
@@ -107,6 +106,8 @@ class OrganicMatterAgent(BaseAgent):
 
     def _build_result_record(self, execution_id: int, outputs: dict):
         """构建 OrganicMatterResult ORM 实例（县级分析，无 parcel_id）。"""
+        from ...models.thematic_model import OrganicMatterResult
+
         result_data = outputs.get("result", outputs)
         return OrganicMatterResult(
             execution_id=execution_id,
@@ -182,7 +183,7 @@ class OrganicMatterAgent(BaseAgent):
                     land_type=inputs.get("land_type"),
                 )
                 outputs = result
-                status = "degraded"
+                status = result.get("status", "degraded")
 
             persisted = self._persist_result(
                 agent_id=self.agent_id,

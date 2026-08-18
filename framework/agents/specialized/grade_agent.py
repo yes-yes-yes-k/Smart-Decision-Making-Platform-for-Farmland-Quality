@@ -5,7 +5,6 @@ import logging
 from ..base import BaseAgent
 from ..mock_data import MockDataLoader
 from ...domain.data.parcel_data_accessor import ParcelDataAccessor
-from ...models.thematic_model import QualityGradeResult
 
 logger = logging.getLogger(__name__)
 
@@ -71,6 +70,8 @@ class FarmlandGradeAgent(BaseAgent):
 
     def _build_result_record(self, execution_id: int, outputs: dict):
         """构建 QualityGradeResult ORM 实例。legacy 路径无 parcel_id 时返回 None。"""
+        from ...models.thematic_model import QualityGradeResult
+
         parcel_id = outputs.get("parcel_id")
         if not parcel_id:
             return None

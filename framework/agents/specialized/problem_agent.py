@@ -4,7 +4,6 @@ from typing import Any, Dict
 
 from ..base import BaseAgent
 from ...domain.data.parcel_data_accessor import ParcelDataAccessor
-from ...models.thematic_model import ObstacleDiagnosisResult
 
 logger = logging.getLogger(__name__)
 
@@ -82,6 +81,8 @@ class ProblemIdentificationAgent(BaseAgent):
 
     def _build_result_record(self, execution_id: int, outputs: dict):
         """构建 ObstacleDiagnosisResult ORM 实例。legacy 路径无 parcel_id 时返回 None。"""
+        from ...models.thematic_model import ObstacleDiagnosisResult
+
         parcel_id = outputs.get("parcel_id")
         if not parcel_id:
             return None
