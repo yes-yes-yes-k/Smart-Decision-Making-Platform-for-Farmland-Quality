@@ -661,6 +661,73 @@ def test_organic_matter_agent_persist_success(monkeypatch):
     assert result["persisted"] is True
 
 
+def test_organic_matter_agent_persist_failure(monkeypatch):
+    """持久化失败时 persisted=False，不阻断结果返回（补 Model-5 缺口）。"""
+    from framework.agents.specialized.organic_matter_agent import OrganicMatterAgent
+    from framework.domain.data.parcel_data_accessor import ParcelDataAccessor
+
+    monkeypatch.setattr(
+        ParcelDataAccessor, "get_parcel_indicators",
+        lambda self, pid: {"soil_ph": 5.5, "organic_matter": 22.0}
+    )
+    agent = OrganicMatterAgent()
+    monkeypatch.setattr(agent, "_persist_result", lambda *a, **kw: False)
+    result = agent.execute({"parcel_id": "P001"})
+    assert result["persisted"] is False
+    assert result["status"] == "ok"
+
+
+def test_organic_matter_agent_degraded_logs_status(monkeypatch):
+    """降级路径执行日志 status="degraded"，且返回 data_source="fallback"（补 B3 场景断言）。"""
+    from framework.agents.specialized.organic_matter_agent import OrganicMatterAgent
+    from framework.domain.data.parcel_data_accessor import ParcelDataAccessor
+
+    # DB 未命中 + 无模型特征 → legacy 降级路径
+    monkeypatch.setattr(
+        ParcelDataAccessor, "get_parcel_indicators",
+        lambda self, pid: None
+    )
+    agent = OrganicMatterAgent()
+    persist_calls = []
+
+    def capture_persist(agent_id, parcel_id, inputs, outputs, status):
+        persist_calls.append({"status": status, "inputs": inputs, "outputs": outputs})
+        return True
+
+    monkeypatch.setattr(agent, "_persist_result", capture_persist)
+    result = agent.execute({"parcel_id": "NOT_IN_DB"})
+    assert result["status"] == "degraded"
+    assert result["data_source"] == "fallback"
+    assert len(persist_calls) == 1
+    assert persist_calls[0]["status"] == "degraded"
+
+
+def test_organic_matter_agent_error_logs_status(monkeypatch):
+    """计算失败时执行日志 status="error"，返回 persisted=False（补 B4 场景）。"""
+    from framework.agents.specialized.organic_matter_agent import OrganicMatterAgent
+
+    def boom(*a, **kw):
+        raise RuntimeError("model crashed")
+
+    monkeypatch.setattr(
+        "framework.agents.specialized.organic_matter_agent.model_5_execution", boom
+    )
+    agent = OrganicMatterAgent()
+    persist_calls = []
+
+    def capture_persist(agent_id, parcel_id, inputs, outputs, status):
+        persist_calls.append({"status": status, "outputs": outputs})
+        return True
+
+    monkeypatch.setattr(agent, "_persist_result", capture_persist)
+    # 传入模型特征（SOCbe/pH）但不传 parcel_id，走 ML 路径触发异常
+    result = agent.execute({"SOCbe": 15.0, "pH": 5.5})
+    assert result["status"] == "error"
+    assert result["persisted"] is False
+    assert len(persist_calls) == 1
+    assert persist_calls[0]["status"] == "error"
+
+
 if __name__ == "__main__":
     test_stability_risk_agent_execute()
     test_stability_risk_agent_answer_question_overall()
