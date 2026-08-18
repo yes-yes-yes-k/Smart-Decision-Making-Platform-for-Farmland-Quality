@@ -35,7 +35,7 @@ class FarmlandGradeAgent(BaseAgent):
             accessor = ParcelDataAccessor()
             indicators = accessor.get_parcel_indicators(str(parcel_id))
             if indicators is not None:
-                inputs = self._map_indicators_to_inputs(indicators)
+                inputs = dict(indicators)
                 inputs["parcel_id"] = str(parcel_id)
                 inputs["data_source"] = "db"
                 return inputs
@@ -51,21 +51,6 @@ class FarmlandGradeAgent(BaseAgent):
             "parcel_code": context.get("parcel_code"),
             "exe_path": context.get("exe_path"),
             "dat_path": context.get("dat_path"),
-        }
-
-    def _map_indicators_to_inputs(self, indicators: dict) -> dict:
-        """将 soil_indicators JSON 映射为质量等级评价输入字段。"""
-        return {
-            "soil_ph": indicators.get("soil_ph"),
-            "organic_matter": indicators.get("organic_matter"),
-            "available_potassium": indicators.get("available_potassium"),
-            "available_phosphorus": indicators.get("available_phosphorus"),
-            "soil_bulk_density": indicators.get("soil_bulk_density"),
-            "topsoil_texture": indicators.get("topsoil_texture"),
-            "irrigation_capacity": indicators.get("irrigation_capacity"),
-            "drainage_capacity": indicators.get("drainage_capacity"),
-            "terrain_position": indicators.get("terrain_position"),
-            "topsoil_thickness": indicators.get("topsoil_thickness"),
         }
 
     def _build_result_record(self, execution_id: int, outputs: dict):
@@ -93,12 +78,18 @@ class FarmlandGradeAgent(BaseAgent):
 
         try:
             if data_source == "db":
-                # DB 路径：直接使用 soil_indicators 作为评价结果快照
+                # DB 路径：调用 evaluate_land_quality 计算质量等级
+                from framework.domain.calculations.grade_calculation import evaluate_land_quality
+                accessor = ParcelDataAccessor()
+                mapped = accessor._map_indicators_to_inputs(inputs, "model-2")
+                area_code = data.get("area_code", "440281")
+                quality_index, grade, memberships = evaluate_land_quality(mapped, area_code)
                 outputs = {
                     "parcel_id": inputs.get("parcel_id"),
-                    "quality_grade": inputs.get("quality_grade", "0"),
-                    "composite_index": inputs.get("composite_index", 0.0),
-                    "indicators": inputs,
+                    "quality_grade": grade,
+                    "composite_index": quality_index,
+                    "memberships": memberships,
+                    "indicators": mapped,
                 }
                 status = "ok"
             elif not GRADE_EVAL_AVAILABLE:

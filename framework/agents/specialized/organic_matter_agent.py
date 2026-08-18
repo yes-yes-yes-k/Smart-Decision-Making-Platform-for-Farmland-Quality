@@ -61,7 +61,7 @@ class OrganicMatterAgent(BaseAgent):
             accessor = ParcelDataAccessor()
             indicators = accessor.get_parcel_indicators(str(parcel_id))
             if indicators is not None:
-                inputs = self._map_indicators_to_inputs(indicators)
+                inputs = dict(indicators)
                 inputs["parcel_id"] = str(parcel_id)
                 inputs["data_source"] = "db"
                 return inputs
@@ -88,21 +88,6 @@ class OrganicMatterAgent(BaseAgent):
             inputs.update(task["indicators"])
         inputs.update({k: v for k, v in task.items() if k not in {"data", "task"}})
         return inputs
-
-    def _map_indicators_to_inputs(self, indicators: dict) -> dict:
-        """将 soil_indicators JSON 映射为有机质培肥模型输入字段。"""
-        return {
-            "pH": indicators.get("soil_ph"),
-            "soil_ph": indicators.get("soil_ph"),
-            "organic_matter": indicators.get("organic_matter"),
-            "SOMbe": indicators.get("organic_matter"),
-            "available_potassium": indicators.get("available_potassium"),
-            "AK": indicators.get("available_potassium"),
-            "available_phosphorus": indicators.get("available_phosphorus"),
-            "AP": indicators.get("available_phosphorus"),
-            "total_nitrogen": indicators.get("total_nitrogen"),
-            "TN": indicators.get("total_nitrogen"),
-        }
 
     def _build_result_record(self, execution_id: int, outputs: dict):
         """构建 OrganicMatterResult ORM 实例（县级分析，无 parcel_id）。"""
@@ -164,20 +149,24 @@ class OrganicMatterAgent(BaseAgent):
                 status = "degraded"
                 simulated = True
             elif data_source == "db":
-                # DB 路径：直接使用 soil_indicators 构造结果快照
-                om = float(inputs.get("organic_matter", 0.0) or 0.0)
-                level = MockDataLoader.apply_threshold(om, ORGANIC_RULES)
-                manure_dosage = MANURE_DOSAGE_RULES.get(level, 0.0)
+                # DB 路径：调用 predict_dose 预测推荐施用量
+                from framework.domain.calculations.organic_matter_calculation import predict_dose
+                accessor = ParcelDataAccessor()
+                mapped = accessor._map_indicators_to_inputs(inputs, "model-5")
+                try:
+                    from framework.models.thematic_model import ParcelInfo
+                    parcel = ParcelInfo.query.filter_by(parcel_id=str(inputs.get("parcel_id"))).first()
+                except Exception:
+                    parcel = None
+                land_type = (parcel.land_type if parcel else None) or inputs.get("land_type") or "upland"
+                dose, simulated_flag = predict_dose(mapped, land_type)
                 outputs = {
-                    "soil_ph": inputs.get("soil_ph"),
-                    "organic_matter": om,
-                    "available_potassium": inputs.get("available_potassium"),
-                    "level": level,
-                    "manure_dosage": manure_dosage,
-                    "potential_increase": round(manure_dosage / 1000.0 * 1.5, 2),
+                    "parcel_id": inputs.get("parcel_id"),
+                    "dose": dose,
+                    "simulated": simulated_flag,
                 }
                 status = "ok"
-                simulated = False
+                simulated = simulated_flag
             else:
                 # Legacy 路径：ML 模型
                 result = model_5_execution(

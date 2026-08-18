@@ -47,7 +47,7 @@ class ProblemIdentificationAgent(BaseAgent):
             accessor = ParcelDataAccessor()
             indicators = accessor.get_parcel_indicators(str(parcel_id))
             if indicators is not None:
-                inputs = self._map_indicators_to_inputs(indicators)
+                inputs = dict(indicators)
                 inputs["parcel_id"] = str(parcel_id)
                 inputs["data_source"] = "db"
                 return inputs
@@ -62,21 +62,6 @@ class ProblemIdentificationAgent(BaseAgent):
         return {
             "parcel_id": context.get("parcel_id") or context.get("data", {}).get("parcel_id"),
             "db_path": context.get("db_path") or context.get("data", {}).get("db_path"),
-        }
-
-    def _map_indicators_to_inputs(self, indicators: dict) -> dict:
-        """将 soil_indicators JSON 映射为障碍诊断输入字段。"""
-        return {
-            "soil_ph": indicators.get("soil_ph"),
-            "organic_matter": indicators.get("organic_matter"),
-            "available_potassium": indicators.get("available_potassium"),
-            "available_phosphorus": indicators.get("available_phosphorus"),
-            "soil_bulk_density": indicators.get("soil_bulk_density"),
-            "topsoil_texture": indicators.get("topsoil_texture"),
-            "irrigation_capacity": indicators.get("irrigation_capacity"),
-            "drainage_capacity": indicators.get("drainage_capacity"),
-            "terrain_position": indicators.get("terrain_position"),
-            "topsoil_thickness": indicators.get("topsoil_thickness"),
         }
 
     def _build_result_record(self, execution_id: int, outputs: dict):
@@ -100,16 +85,19 @@ class ProblemIdentificationAgent(BaseAgent):
 
         try:
             if data_source == "db":
-                # DB 路径：直接使用 soil_indicators 构造诊断快照
+                # DB 路径：调用 diagnosis_row 计算障碍诊断
+                from framework.domain.calculations.obstacle_calculation import diagnosis_row
+                accessor = ParcelDataAccessor()
+                mapped = accessor._map_indicators_to_inputs(inputs, "model-3")
+                area_code = task.get("area_code", "440281")
+                obstacle_result = diagnosis_row(mapped, area_code)
                 outputs = {
                     "parcel_id": inputs.get("parcel_id"),
-                    "diagnosis": {
-                        "ZALX": "待诊断",
-                        "ZYZAYS": "",
-                        "CYZAYS": "",
-                    },
-                    "evaluation": {"GDZLDJ": "未知"},
-                    "indicators": inputs,
+                    "obstacle_type": obstacle_result["obstacle_type"],
+                    "primary_factors": obstacle_result["primary_factors"],
+                    "secondary_factors": obstacle_result["secondary_factors"],
+                    "obstacle_degrees": obstacle_result["obstacle_degrees"],
+                    "obstacle_levels": obstacle_result["obstacle_levels"],
                 }
                 status = "ok"
             else:

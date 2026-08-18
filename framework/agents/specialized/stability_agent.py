@@ -1,8 +1,12 @@
 from __future__ import annotations
 from typing import Any, Dict, List
+import logging
 
 from ..base import BaseAgent
 from ..mock_data import MockDataLoader
+from ...domain.data.parcel_data_accessor import ParcelDataAccessor
+
+logger = logging.getLogger(__name__)
 
 # 尝试导入实际模型1实现
 try:
@@ -23,48 +27,179 @@ class StabilityRiskAgent(BaseAgent):
             domain="stability",
         )
 
+    def _collect_inputs(self, context: dict) -> dict:
+        """DB 优先获取地块指标，未命中时降级到 StabilityStorage。"""
+        parcel_id = context.get("parcel_id") or context.get("data", {}).get("parcel_id")
+
+        if parcel_id:
+            accessor = ParcelDataAccessor()
+            indicators = accessor.get_parcel_indicators(str(parcel_id))
+            if indicators is not None:
+                inputs = dict(indicators)
+                inputs["parcel_id"] = str(parcel_id)
+                inputs["data_source"] = "db"
+                return inputs
+
+        logger.warning("Parcel %s not in DB, falling back to StabilityStorage", parcel_id)
+        inputs = self._collect_inputs_from_legacy(context)
+        inputs["data_source"] = "fallback"
+        return inputs
+
+    def _collect_inputs_from_legacy(self, context: dict) -> dict:
+        """原有数据源：StabilityStorage。"""
+        return {
+            "parcel_id": context.get("parcel_id") or context.get("data", {}).get("parcel_id"),
+            "db_path": context.get("db_path") or context.get("data", {}).get("db_path"),
+        }
+
+    def _build_result_record(self, execution_id: int, outputs: dict):
+        """构建 StabilityRiskResult ORM 实例。legacy 路径无 parcel_id 时返回 None。"""
+        from ...models.thematic_model import StabilityRiskResult
+
+        parcel_id = outputs.get("parcel_id")
+        if not parcel_id:
+            return None
+        return StabilityRiskResult(
+            execution_id=execution_id,
+            parcel_id=parcel_id,
+            input_snapshot=outputs,
+            simulated=True,
+        )
+
     def execute(self, data: Dict[str, Any] = None) -> Dict[str, Any]:
         if not data:
             data = {}
 
-        if not STABILITY_MODEL_AVAILABLE:
-            return {
-                "status": "degraded",
-                "degraded": True,
-                "reason": "model_unavailable",
-                "agent_id": "model-1",
-                "model_id": "stability-risk-evaluation",
-                "message": "模型1稳定性模块未安装，无法执行真实评价",
-            }
+        inputs = self._collect_inputs(data)
+        data_source = inputs.pop("data_source", "unknown")
 
-        parcel_id = data.get("parcel_id")
-        if not parcel_id:
-            return {
-                "status": "degraded",
-                "degraded": True,
-                "reason": "missing_input",
-                "agent_id": "model-1",
-                "model_id": "stability-risk-evaluation",
-                "message": "缺少 parcel_id，无法查询真实稳定性结果",
-            }
-
-        db_path = data.get("db_path")
         try:
-            storage = StabilityStorage(db_path)
-            result = storage.get_result(parcel_id)
-            if result:
-                return {"status": "ok", "simulated": False, "result": result}
-        except Exception:
-            pass
+            if data_source == "db":
+                # DB 路径：调用 calculate_stability
+                from framework.domain.calculations.stability_calculation import calculate_stability
+                from framework.models.thematic_model import ParcelHistorySnapshot, ParcelInfo
+                accessor = ParcelDataAccessor()
+                mapped = accessor._map_indicators_to_inputs(inputs, "model-1")
+                parcel_id = str(inputs.get("parcel_id"))
+                # 查询历史快照
+                try:
+                    history = ParcelHistorySnapshot.query.filter_by(parcel_id=parcel_id).all()
+                    history_data = [
+                        {
+                            "survey_year": h.survey_year,
+                            "soil_indicators": h.soil_indicators,
+                            "quality_grade": h.quality_grade,
+                            "composite_index": h.composite_index,
+                        }
+                        for h in history
+                    ]
+                except Exception:
+                    history_data = []
+                # PostGIS 邻域查询
+                try:
+                    parcel = ParcelInfo.query.filter_by(parcel_id=parcel_id).first()
+                except Exception:
+                    parcel = None
+                neighbors = []
+                if parcel and parcel.geom:
+                    try:
+                        from framework.models.user import db
+                        neighbor_parcels = ParcelInfo.query.filter(
+                            ParcelInfo.parcel_id != parcel_id,
+                            db.func.ST_DWithin(ParcelInfo.geom, parcel.geom, 1000),
+                        ).all()
+                        neighbors = [
+                            {
+                                "parcel_id": p.parcel_id,
+                                "quality_grade": p.soil_indicators.get("quality_grade") if p.soil_indicators else None,
+                            }
+                            for p in neighbor_parcels
+                        ]
+                    except Exception:
+                        neighbors = []
+                # 计算稳定性
+                parcel_info = {
+                    "indicators": mapped,
+                    "quality_index": inputs.get("quality_index", 0.5),
+                    "quality_grade": inputs.get("quality_grade", "5"),
+                    "area_code": inputs.get("area_code", "440281"),
+                }
+                stability_result = calculate_stability(parcel_info, history_data, neighbors)
+                outputs = {"parcel_id": parcel_id, "stability_modules": stability_result}
+                status = "ok"
+            elif not STABILITY_MODEL_AVAILABLE:
+                return {
+                    "status": "degraded",
+                    "degraded": True,
+                    "reason": "model_unavailable",
+                    "agent_id": "model-1",
+                    "model_id": "stability-risk-evaluation",
+                    "message": "模型1稳定性模块未安装，无法执行真实评价",
+                    "data_source": data_source,
+                    "persisted": False,
+                }
+            else:
+                # Legacy 路径：StabilityStorage
+                parcel_id = inputs.get("parcel_id")
+                if not parcel_id:
+                    return {
+                        "status": "degraded",
+                        "degraded": True,
+                        "reason": "missing_input",
+                        "agent_id": "model-1",
+                        "model_id": "stability-risk-evaluation",
+                        "message": "缺少 parcel_id，无法查询真实稳定性结果",
+                        "data_source": data_source,
+                        "persisted": False,
+                    }
+                db_path = inputs.get("db_path")
+                storage = StabilityStorage(db_path)
+                result = storage.get_result(parcel_id)
+                if not result:
+                    return {
+                        "status": "degraded",
+                        "degraded": True,
+                        "reason": "import_failed",
+                        "agent_id": "model-1",
+                        "model_id": "stability-risk-evaluation",
+                        "message": f"地块 {parcel_id} 的稳定性数据未就绪或查询失败",
+                        "data_source": data_source,
+                        "persisted": False,
+                    }
+                outputs = result
+                status = "degraded"
 
-        return {
-            "status": "degraded",
-            "degraded": True,
-            "reason": "import_failed",
-            "agent_id": "model-1",
-            "model_id": "stability-risk-evaluation",
-            "message": f"地块 {parcel_id} 的稳定性数据未就绪或查询失败",
-        }
+            persisted = self._persist_result(
+                agent_id=self.agent_id,
+                parcel_id=data.get("parcel_id") or inputs.get("parcel_id"),
+                inputs=inputs,
+                outputs=outputs,
+                status=status,
+            )
+
+            return {
+                "status": "ok",
+                "simulated": data_source != "db",
+                "result": outputs,
+                "data_source": data_source,
+                "persisted": persisted,
+            }
+        except Exception as e:
+            self._persist_result(
+                agent_id=self.agent_id,
+                parcel_id=data.get("parcel_id"),
+                inputs=inputs,
+                outputs={"error": str(e)},
+                status="error",
+            )
+            return {
+                "status": "degraded",
+                "degraded": True,
+                "reason": "exception",
+                "message": str(e),
+                "data_source": data_source,
+                "persisted": False,
+            }
 
     def _get_real_stability(self, context: Dict[str, Any]) -> Dict[str, Any]:
         """尝试获取实际稳定性评价结果"""
