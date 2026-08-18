@@ -98,6 +98,8 @@ class ChromaVectorStore:
                 # （如 KeyError: '_type'）。清理持久化目录后重试一次。
                 print(f"[Chroma] 创建集合失败: {e}，清理持久化目录后重试")
                 try:
+                    # 先释放旧 client，避免 Windows 文件锁导致 rmtree 不彻底
+                    self._client = None
                     shutil.rmtree(persist_dir, ignore_errors=True)
                     os.makedirs(persist_dir, exist_ok=True)
                     self._client = chromadb.PersistentClient(
@@ -114,8 +116,7 @@ class ChromaVectorStore:
                     print(f"[Chroma] 集合 '{collection_name}' 初始化完成（已重建持久化目录）")
                 except Exception as e2:
                     print(f"Chroma初始化失败: {e2}")
-                    import traceback
-                    traceback.print_exc()
+                    self._collection = None
         except Exception as e:
             print(f"Chroma初始化失败: {e}")
             import traceback

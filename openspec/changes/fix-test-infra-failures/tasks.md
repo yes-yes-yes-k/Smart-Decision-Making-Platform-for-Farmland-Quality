@@ -23,8 +23,8 @@
 
 ## 5. chromadb 旧文件兼容
 
-- [ ] 5.1 在 chroma_store.py 的 _init_client 中捕获 KeyError: '_type'，清理持久化目录后重试一次
-- [ ] 5.2 运行 test_rag.py 验证通过
+- [x] 5.1 在 chroma_store.py 的 _init_client 中改进清理重试：释放旧 client 后再 rmtree，失败时设置 self._collection = None 优雅降级
+- [x] 5.2 运行 test_rag.py 验证通过（删除旧 chroma.sqlite3 后 4 passed）
 
 ## 6. 完整测试套件回归验证
 

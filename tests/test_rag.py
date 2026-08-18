@@ -3,8 +3,10 @@ import sys
 import os
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
+import pytest
 from framework.rag.chain import rag_chain
 from framework.vector_store.chroma_store import vector_store
+from framework.embedding.service import embedding_service
 
 def test_rag_chain_initialization():
     """测试 RAG 链初始化"""
@@ -19,6 +21,7 @@ def test_rag_chat_without_documents():
     assert "answer" in result or "content" in result
     print("✓ 无文档 RAG 问答成功")
 
+@pytest.mark.skipif(not embedding_service.is_available(), reason="embedding_service API 不可用")
 def test_vector_store_operations():
     """测试向量存储操作"""
     # 测试添加文档
@@ -44,6 +47,7 @@ def test_vector_store_operations():
     vector_store.delete_by_source("test.pdf")
     print("✓ 向量存储清理成功")
 
+@pytest.mark.skipif(not embedding_service.is_available(), reason="embedding_service API 不可用")
 def test_rag_with_context():
     """测试带上下文的 RAG 问答"""
     # 添加测试文档
