@@ -1,0 +1,815 @@
+{
+  "generated_at": "2026-08-18T21:54:48.271511",
+  "parcels": {
+    "P-VERIFY-001": {
+      "parcel_id": "P-VERIFY-001",
+      "area_code": "440281",
+      "land_type": "upland",
+      "fertilizer_type": "compound",
+      "target_ph": 6.5,
+      "soil_indicators": {
+        "soil_ph": 4.8,
+        "organic_matter": 15.0,
+        "total_nitrogen": 1.0,
+        "available_phosphorus": 8.0,
+        "available_potassium": 60.0,
+        "exchangeable_hydrogen": 5.0,
+        "cation_exchange_capacity": 8.0,
+        "clay_content": 30.0,
+        "sand_content": 40.0,
+        "silt_content": 30.0,
+        "bulk_density": 1.35,
+        "topsoil_thickness": 20.0,
+        "plow_layer_thickness": 15.0,
+        "slope": 8.0,
+        "irrigation_condition": "dry",
+        "terrain_position": "lower",
+        "soil_texture": "loam",
+        "soil_structure": "loose",
+        "drainage_capacity": "satisfied",
+        "exchangeable_aluminum": 0.8,
+        "obstacle_factors": [
+          "acidification",
+          "low_organic_matter"
+        ]
+      }
+    },
+    "P-VERIFY-002": {
+      "parcel_id": "P-VERIFY-002",
+      "area_code": "440281",
+      "land_type": "paddy",
+      "fertilizer_type": "urea",
+      "target_ph": 6.0,
+      "soil_indicators": {
+        "soil_ph": 5.8,
+        "organic_matter": 28.0,
+        "total_nitrogen": 1.8,
+        "available_phosphorus": 15.0,
+        "available_potassium": 120.0,
+        "exchangeable_hydrogen": 2.0,
+        "cation_exchange_capacity": 15.0,
+        "clay_content": 45.0,
+        "sand_content": 20.0,
+        "silt_content": 35.0,
+        "bulk_density": 1.2,
+        "topsoil_thickness": 25.0,
+        "plow_layer_thickness": 18.0,
+        "slope": 3.0,
+        "irrigation_condition": "irrigated",
+        "terrain_position": "middle",
+        "soil_texture": "clay_loam",
+        "soil_structure": "compact",
+        "drainage_capacity": "satisfied",
+        "exchangeable_aluminum": 0.3,
+        "obstacle_factors": []
+      }
+    },
+    "P-VERIFY-003": {
+      "parcel_id": "P-VERIFY-003",
+      "area_code": "440281",
+      "land_type": "upland",
+      "fertilizer_type": "urea",
+      "target_ph": 5.5,
+      "soil_indicators": {
+        "soil_ph": 5.2,
+        "organic_matter": 8.0,
+        "total_nitrogen": 0.6,
+        "available_phosphorus": 5.0,
+        "available_potassium": 40.0,
+        "exchangeable_hydrogen": 4.0,
+        "cation_exchange_capacity": 6.0,
+        "clay_content": 25.0,
+        "sand_content": 50.0,
+        "silt_content": 25.0,
+        "bulk_density": 1.45,
+        "topsoil_thickness": 15.0,
+        "plow_layer_thickness": 12.0,
+        "slope": 12.0,
+        "irrigation_condition": "dry",
+        "terrain_position": "upper",
+        "soil_texture": "sandy_loam",
+        "soil_structure": "interlayer",
+        "drainage_capacity": "basic",
+        "exchangeable_aluminum": 1.2,
+        "obstacle_factors": [
+          "low_organic_matter",
+          "shallow_topsoil"
+        ]
+      }
+    }
+  },
+  "models": {
+    "model-1": {
+      "name": "Model-1 稳定性风险评价",
+      "parcels": {
+        "P-VERIFY-001": {
+          "status": "ok",
+          "data_source": "db",
+          "simulated": false,
+          "persisted": true,
+          "result": {
+            "parcel_id": "P-VERIFY-001",
+            "stability_modules": {
+              "module_1": {
+                "SAFE_ABS": 0.0
+              },
+              "module_2": {
+                "BAL_ABS": 0.22272176051516868,
+                "BAL_M": 0.32294,
+                "BAL_VAR": 0.13209975640000002
+              },
+              "module_3": {
+                "KEY_FAC": "SJD",
+                "KEY_ABS": 1.0
+              },
+              "module_4": {
+                "NEI_ABS": 1.0,
+                "neighbor_count": 2
+              },
+              "module_5": {
+                "H_ABS": null,
+                "reason": "insufficient_history"
+              },
+              "module_6": {
+                "DOWNGRADE_ABS": null,
+                "reason": "insufficient_history"
+              },
+              "module_7": {
+                "DEGRADE_ABS": null,
+                "reason": "insufficient_history"
+              },
+              "module_8": {
+                "CLUSTER_ABS": 1.0
+              },
+              "module_9": {
+                "PERSIST_ABS": null,
+                "reason": "insufficient_history"
+              }
+            }
+          },
+          "metadata": {}
+        },
+        "P-VERIFY-002": {
+          "status": "ok",
+          "data_source": "db",
+          "simulated": false,
+          "persisted": true,
+          "result": {
+            "parcel_id": "P-VERIFY-002",
+            "stability_modules": {
+              "module_1": {
+                "SAFE_ABS": 0.0
+              },
+              "module_2": {
+                "BAL_ABS": 0.1918138683591719,
+                "BAL_M": 0.40359,
+                "BAL_VAR": 0.15722011190000001
+              },
+              "module_3": {
+                "KEY_FAC": "SJD",
+                "KEY_ABS": 1.0
+              },
+              "module_4": {
+                "NEI_ABS": 1.0,
+                "neighbor_count": 2
+              },
+              "module_5": {
+                "H_ABS": null,
+                "reason": "insufficient_history"
+              },
+              "module_6": {
+                "DOWNGRADE_ABS": null,
+                "reason": "insufficient_history"
+              },
+              "module_7": {
+                "DEGRADE_ABS": null,
+                "reason": "insufficient_history"
+              },
+              "module_8": {
+                "CLUSTER_ABS": 1.0
+              },
+              "module_9": {
+                "PERSIST_ABS": null,
+                "reason": "insufficient_history"
+              }
+            }
+          },
+          "metadata": {}
+        },
+        "P-VERIFY-003": {
+          "status": "ok",
+          "data_source": "db",
+          "simulated": false,
+          "persisted": true,
+          "result": {
+            "parcel_id": "P-VERIFY-003",
+            "stability_modules": {
+              "module_1": {
+                "SAFE_ABS": 0.0
+              },
+              "module_2": {
+                "BAL_ABS": 0.37945400743304225,
+                "BAL_M": 0.26946499999999995,
+                "BAL_VAR": 0.075803863775
+              },
+              "module_3": {
+                "KEY_FAC": "SJD",
+                "KEY_ABS": 1.0
+              },
+              "module_4": {
+                "NEI_ABS": 1.0,
+                "neighbor_count": 2
+              },
+              "module_5": {
+                "H_ABS": null,
+                "reason": "insufficient_history"
+              },
+              "module_6": {
+                "DOWNGRADE_ABS": null,
+                "reason": "insufficient_history"
+              },
+              "module_7": {
+                "DEGRADE_ABS": null,
+                "reason": "insufficient_history"
+              },
+              "module_8": {
+                "CLUSTER_ABS": 1.0
+              },
+              "module_9": {
+                "PERSIST_ABS": null,
+                "reason": "insufficient_history"
+              }
+            }
+          },
+          "metadata": {}
+        }
+      }
+    },
+    "model-2": {
+      "name": "Model-2 耕地质量等级评价",
+      "parcels": {
+        "P-VERIFY-001": {
+          "status": "ok",
+          "data_source": "db",
+          "simulated": false,
+          "persisted": true,
+          "result": {
+            "parcel_id": "P-VERIFY-001",
+            "quality_grade": "10",
+            "composite_index": 0.5908334405957435,
+            "memberships": [
+              0.5278566097233562,
+              0.6093355058531599,
+              0.4345965803954138,
+              0.45492690608163894,
+              0.9589587708708321,
+              0.4381357366524933,
+              0.6577048332255224,
+              1.0,
+              0.3,
+              0.8,
+              0.6,
+              0.2
+            ],
+            "indicators": {
+              "SJD": 4.8,
+              "YJZ": 15.0,
+              "YXL": 8.0,
+              "SXJ": 60.0,
+              "TRRZ": 1.35,
+              "YXTCHD": 20.0,
+              "GCHD": 15.0,
+              "GCZD": "RT",
+              "GGNL": "US",
+              "PSNL": "M",
+              "DXBW": "LHR",
+              "ZDGX": "Lt"
+            }
+          },
+          "metadata": {}
+        },
+        "P-VERIFY-002": {
+          "status": "ok",
+          "data_source": "db",
+          "simulated": false,
+          "persisted": true,
+          "result": {
+            "parcel_id": "P-VERIFY-002",
+            "quality_grade": "5",
+            "composite_index": 0.7759543726437644,
+            "memberships": [
+              0.8155862999121994,
+              0.9443445867395366,
+              0.5946621753469293,
+              0.7647690580679232,
+              0.9996952667805734,
+              0.4705033444626701,
+              0.9147829547540668,
+              0.8,
+              1.0,
+              0.8,
+              0.5,
+              0.7
+            ],
+            "indicators": {
+              "SJD": 5.8,
+              "YJZ": 28.0,
+              "YXL": 15.0,
+              "SXJ": 120.0,
+              "TRRZ": 1.2,
+              "YXTCHD": 25.0,
+              "GCHD": 18.0,
+              "GCZD": "NRT",
+              "GGNL": "FS",
+              "PSNL": "M",
+              "DXBW": "MPH",
+              "ZDGX": "Ct"
+            }
+          },
+          "metadata": {}
+        },
+        "P-VERIFY-003": {
+          "status": "ok",
+          "data_source": "db",
+          "simulated": false,
+          "persisted": true,
+          "result": {
+            "parcel_id": "P-VERIFY-003",
+            "quality_grade": "10",
+            "composite_index": 0.5019745749557764,
+            "memberships": [
+              0.6353054113541505,
+              0.4519769039597643,
+              0.38063722456161636,
+              0.38100864888937364,
+              0.8872764658578393,
+              0.4082195818593286,
+              0.43588781551804906,
+              0.75,
+              0.3,
+              0.6,
+              0.4,
+              0.5
+            ],
+            "indicators": {
+              "SJD": 5.2,
+              "YJZ": 8.0,
+              "YXL": 5.0,
+              "SXJ": 40.0,
+              "TRRZ": 1.45,
+              "YXTCHD": 15.0,
+              "GCHD": 12.0,
+              "GCZD": "SRT",
+              "GGNL": "US",
+              "PSNL": "JM",
+              "DXBW": "UHR",
+              "ZDGX": "IL"
+            }
+          },
+          "metadata": {}
+        }
+      }
+    },
+    "model-3": {
+      "name": "Model-3 障碍诊断",
+      "parcels": {
+        "P-VERIFY-001": {
+          "status": "ok",
+          "data_source": "db",
+          "simulated": false,
+          "persisted": true,
+          "result": {
+            "parcel_id": "P-VERIFY-001",
+            "obstacle_type": "多障碍",
+            "primary_factors": [
+              "GGNL"
+            ],
+            "secondary_factors": [
+              "ZDGX",
+              "YJZ",
+              "DXBW",
+              "YXL"
+            ],
+            "obstacle_degrees": {
+              "SJD": 0.07414152389094768,
+              "YJZ": 0.12215987636833274,
+              "YXL": 0.10046144344395688,
+              "SXJ": 0.08769904098328996,
+              "TRRZ": 0.0,
+              "YXTCHD": 0.07531257675933227,
+              "GCHD": 0.044498224291977556,
+              "GCZD": 0.0,
+              "GGNL": 0.2097282615590617,
+              "PSNL": 0.046834861706813315,
+              "DXBW": 0.11117808293019239,
+              "ZDGX": 0.1279861080660955
+            },
+            "obstacle_levels": {
+              "SJD": "中度障碍",
+              "YJZ": "中度障碍",
+              "YXL": "重度障碍",
+              "SXJ": "中度障碍",
+              "TRRZ": "中度障碍",
+              "YXTCHD": "重度障碍",
+              "GCHD": "中度障碍",
+              "GCZD": "无障碍",
+              "GGNL": "重度障碍",
+              "PSNL": "轻度障碍",
+              "DXBW": "中度障碍",
+              "ZDGX": "重度障碍"
+            }
+          },
+          "metadata": {}
+        },
+        "P-VERIFY-002": {
+          "status": "ok",
+          "data_source": "db",
+          "simulated": false,
+          "persisted": true,
+          "result": {
+            "parcel_id": "P-VERIFY-002",
+            "obstacle_type": "多障碍",
+            "primary_factors": [
+              "DXBW"
+            ],
+            "secondary_factors": [
+              "YXL",
+              "ZDGX",
+              "YXTCHD"
+            ],
+            "obstacle_degrees": {
+              "SJD": 0.04427965067126826,
+              "YJZ": 0.06791590053218133,
+              "YXL": 0.14824826396031915,
+              "SXJ": 0.08191299861205878,
+              "TRRZ": 0.010641104445573285,
+              "YXTCHD": 0.11900931132232342,
+              "GCHD": 0.018481485805278437,
+              "GCZD": 0.06608494627146579,
+              "GGNL": 0.0,
+              "PSNL": 0.07813358288449547,
+              "DXBW": 0.2318449772507226,
+              "ZDGX": 0.13344777824431353
+            },
+            "obstacle_levels": {
+              "SJD": "轻度障碍",
+              "YJZ": "无障碍",
+              "YXL": "中度障碍",
+              "SXJ": "轻度障碍",
+              "TRRZ": "轻度障碍",
+              "YXTCHD": "重度障碍",
+              "GCHD": "轻度障碍",
+              "GCZD": "轻度障碍",
+              "GGNL": "无障碍",
+              "PSNL": "轻度障碍",
+              "DXBW": "重度障碍",
+              "ZDGX": "中度障碍"
+            }
+          },
+          "metadata": {}
+        },
+        "P-VERIFY-003": {
+          "status": "ok",
+          "data_source": "db",
+          "simulated": false,
+          "persisted": true,
+          "result": {
+            "parcel_id": "P-VERIFY-003",
+            "obstacle_type": "无明显障碍",
+            "primary_factors": [],
+            "secondary_factors": [
+              "GGNL",
+              "DXBW",
+              "YJZ"
+            ],
+            "obstacle_degrees": {
+              "SJD": 0.04989176675873389,
+              "YJZ": 0.1336824368049686,
+              "YXL": 0.09188454144741076,
+              "SXJ": 0.08553828961855404,
+              "TRRZ": 0.0025907945144850895,
+              "YXTCHD": 0.06979602383360763,
+              "GCHD": 0.06482335257721913,
+              "GCZD": 0.04376915386132041,
+              "GGNL": 0.18538775754830206,
+              "PSNL": 0.08279866454207796,
+              "DXBW": 0.1474125756566902,
+              "ZDGX": 0.04242464283663013
+            },
+            "obstacle_levels": {
+              "SJD": "中度障碍",
+              "YJZ": "重度障碍",
+              "YXL": "重度障碍",
+              "SXJ": "重度障碍",
+              "TRRZ": "重度障碍",
+              "YXTCHD": "重度障碍",
+              "GCHD": "中度障碍",
+              "GCZD": "轻度障碍",
+              "GGNL": "重度障碍",
+              "PSNL": "中度障碍",
+              "DXBW": "重度障碍",
+              "ZDGX": "轻度障碍"
+            }
+          },
+          "metadata": {}
+        }
+      }
+    },
+    "model-4": {
+      "name": "Model-4 酸化改良",
+      "parcels": {
+        "P-VERIFY-001": {
+          "status": "ok",
+          "data_source": "db",
+          "simulated": false,
+          "persisted": true,
+          "result": {
+            "parcel_id": "P-VERIFY-001",
+            "Adep": 59.89184706504092,
+            "Acrop": 7053.005896628844,
+            "ANcy": 11441.667970381184,
+            "Aagri": 18554.56571407507,
+            "Aback": 145097.0794009912,
+            "YTK": 6569.564157996471,
+            "MBNT": 3105.723053654766
+          },
+          "metadata": {}
+        },
+        "P-VERIFY-002": {
+          "status": "ok",
+          "data_source": "db",
+          "simulated": false,
+          "persisted": true,
+          "result": {
+            "parcel_id": "P-VERIFY-002",
+            "Adep": 59.89184706504092,
+            "Acrop": 4829.685494527697,
+            "ANcy": 11048.447541846343,
+            "Aagri": 15938.02488343908,
+            "Aback": 57503.65558245288,
+            "YTK": 2473.444742021035,
+            "MBNT": 3498.2817398645016
+          },
+          "metadata": {}
+        },
+        "P-VERIFY-003": {
+          "status": "ok",
+          "data_source": "db",
+          "simulated": false,
+          "persisted": true,
+          "result": {
+            "parcel_id": "P-VERIFY-003",
+            "Adep": 59.89184706504092,
+            "Acrop": 7053.005896628844,
+            "ANcy": 8004.713684666897,
+            "Aagri": 15117.611428360782,
+            "Aback": 130019.67059865396,
+            "YTK": 6421.053573573161,
+            "MBNT": 2923.8736205481896
+          },
+          "metadata": {}
+        }
+      }
+    },
+    "model-5": {
+      "name": "Model-5 有机质培肥",
+      "parcels": {
+        "P-VERIFY-001": {
+          "status": "ok",
+          "data_source": "db",
+          "simulated": null,
+          "persisted": true,
+          "result": {
+            "parcel_id": "P-VERIFY-001",
+            "dose": 629.7489888420438,
+            "simulated": false
+          },
+          "metadata": {
+            "simulated": false,
+            "data_source": "db"
+          }
+        },
+        "P-VERIFY-002": {
+          "status": "ok",
+          "data_source": "db",
+          "simulated": null,
+          "persisted": true,
+          "result": {
+            "parcel_id": "P-VERIFY-002",
+            "dose": 166.2320209394668,
+            "simulated": false
+          },
+          "metadata": {
+            "simulated": false,
+            "data_source": "db"
+          }
+        },
+        "P-VERIFY-003": {
+          "status": "ok",
+          "data_source": "db",
+          "simulated": null,
+          "persisted": true,
+          "result": {
+            "parcel_id": "P-VERIFY-003",
+            "dose": 705.5690582836734,
+            "simulated": false
+          },
+          "metadata": {
+            "simulated": false,
+            "data_source": "db"
+          }
+        }
+      }
+    }
+  },
+  "execution_logs": [
+    {
+      "agent_id": "model-5",
+      "parcel_id": "P-VERIFY-003",
+      "status": "ok",
+      "execution_id": 53
+    },
+    {
+      "agent_id": "model-5",
+      "parcel_id": "P-VERIFY-002",
+      "status": "ok",
+      "execution_id": 52
+    },
+    {
+      "agent_id": "model-5",
+      "parcel_id": "P-VERIFY-001",
+      "status": "ok",
+      "execution_id": 51
+    },
+    {
+      "agent_id": "model-4",
+      "parcel_id": "P-VERIFY-003",
+      "status": "ok",
+      "execution_id": 50
+    },
+    {
+      "agent_id": "model-4",
+      "parcel_id": "P-VERIFY-002",
+      "status": "ok",
+      "execution_id": 49
+    },
+    {
+      "agent_id": "model-4",
+      "parcel_id": "P-VERIFY-001",
+      "status": "ok",
+      "execution_id": 48
+    },
+    {
+      "agent_id": "model-3",
+      "parcel_id": "P-VERIFY-003",
+      "status": "ok",
+      "execution_id": 47
+    },
+    {
+      "agent_id": "model-3",
+      "parcel_id": "P-VERIFY-002",
+      "status": "ok",
+      "execution_id": 46
+    },
+    {
+      "agent_id": "model-3",
+      "parcel_id": "P-VERIFY-001",
+      "status": "ok",
+      "execution_id": 45
+    },
+    {
+      "agent_id": "model-2",
+      "parcel_id": "P-VERIFY-003",
+      "status": "ok",
+      "execution_id": 44
+    },
+    {
+      "agent_id": "model-2",
+      "parcel_id": "P-VERIFY-002",
+      "status": "ok",
+      "execution_id": 43
+    },
+    {
+      "agent_id": "model-2",
+      "parcel_id": "P-VERIFY-001",
+      "status": "ok",
+      "execution_id": 42
+    },
+    {
+      "agent_id": "model-1",
+      "parcel_id": "P-VERIFY-003",
+      "status": "ok",
+      "execution_id": 41
+    },
+    {
+      "agent_id": "model-1",
+      "parcel_id": "P-VERIFY-002",
+      "status": "ok",
+      "execution_id": 40
+    },
+    {
+      "agent_id": "model-1",
+      "parcel_id": "P-VERIFY-001",
+      "status": "ok",
+      "execution_id": 39
+    },
+    {
+      "agent_id": "model-1",
+      "parcel_id": "P-VERIFY-002",
+      "status": "ok",
+      "execution_id": 38
+    },
+    {
+      "agent_id": "model-1",
+      "parcel_id": "P-VERIFY-001",
+      "status": "ok",
+      "execution_id": 37
+    },
+    {
+      "agent_id": "model-5",
+      "parcel_id": "P-VERIFY-003",
+      "status": "ok",
+      "execution_id": 36
+    },
+    {
+      "agent_id": "model-5",
+      "parcel_id": "P-VERIFY-002",
+      "status": "ok",
+      "execution_id": 35
+    },
+    {
+      "agent_id": "model-5",
+      "parcel_id": "P-VERIFY-001",
+      "status": "ok",
+      "execution_id": 34
+    },
+    {
+      "agent_id": "model-4",
+      "parcel_id": "P-VERIFY-003",
+      "status": "error",
+      "execution_id": 33
+    },
+    {
+      "agent_id": "model-4",
+      "parcel_id": "P-VERIFY-002",
+      "status": "ok",
+      "execution_id": 32
+    },
+    {
+      "agent_id": "model-4",
+      "parcel_id": "P-VERIFY-001",
+      "status": "ok",
+      "execution_id": 31
+    },
+    {
+      "agent_id": "model-3",
+      "parcel_id": "P-VERIFY-003",
+      "status": "ok",
+      "execution_id": 30
+    },
+    {
+      "agent_id": "model-3",
+      "parcel_id": "P-VERIFY-002",
+      "status": "ok",
+      "execution_id": 29
+    },
+    {
+      "agent_id": "model-3",
+      "parcel_id": "P-VERIFY-001",
+      "status": "ok",
+      "execution_id": 28
+    },
+    {
+      "agent_id": "model-2",
+      "parcel_id": "P-VERIFY-003",
+      "status": "ok",
+      "execution_id": 27
+    },
+    {
+      "agent_id": "model-2",
+      "parcel_id": "P-VERIFY-002",
+      "status": "ok",
+      "execution_id": 26
+    },
+    {
+      "agent_id": "model-2",
+      "parcel_id": "P-VERIFY-001",
+      "status": "ok",
+      "execution_id": 25
+    },
+    {
+      "agent_id": "model-5",
+      "parcel_id": "P-VERIFY-003",
+      "status": "ok",
+      "execution_id": 24
+    }
+  ],
+  "result_tables": {
+    "stability_risk_result": 5,
+    "quality_grade_result": 9,
+    "obstacle_diagnosis_result": 9,
+    "acidification_remediation_result": 8,
+    "organic_matter_result": 9,
+    "comprehensive_fertility_result": 0
+  }
+}

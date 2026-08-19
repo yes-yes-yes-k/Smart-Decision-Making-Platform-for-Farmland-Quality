@@ -1,7 +1,11 @@
 from __future__ import annotations
+import logging
 from typing import Any, Dict
 
 from ..base import BaseAgent
+from ...domain.data.parcel_data_accessor import ParcelDataAccessor
+
+logger = logging.getLogger(__name__)
 
 # 尝试导入实际模型3实现
 try:
@@ -35,32 +39,140 @@ class ProblemIdentificationAgent(BaseAgent):
         )
         self.dependencies = ["model-2"]
 
-    def execute(self, task: Dict[str, Any]) -> Dict[str, Any]:
-        if not FARMland_DIAGNOSIS_AVAILABLE:
-            return _degraded_response(
-                "model_unavailable",
-                "模型3诊断模块未安装，无法执行真实诊断",
-            )
+    def _collect_inputs(self, context: dict) -> dict:
+        """DB 优先获取地块指标，未命中时降级到 SQLite query_parcel。"""
+        parcel_id = context.get("parcel_id") or context.get("data", {}).get("parcel_id")
 
-        parcel_id = task.get("parcel_id") or task.get("data", {}).get("parcel_id")
-        if not parcel_id:
-            return _degraded_response(
-                "missing_input",
-                "缺少 parcel_id，无法查询真实诊断结果",
-            )
+        if parcel_id:
+            accessor = ParcelDataAccessor()
+            indicators = accessor.get_parcel_indicators(str(parcel_id))
+            if indicators is not None:
+                inputs = dict(indicators)
+                inputs["parcel_id"] = str(parcel_id)
+                inputs["data_source"] = "db"
+                return inputs
 
-        real_result = self._get_real_diagnosis(task)
-        if not real_result:
-            return _degraded_response(
-                "import_failed",
-                f"地块 {parcel_id} 的诊断数据未就绪或查询失败",
-            )
+        logger.warning("Parcel %s not in DB, falling back to SQLite source", parcel_id)
+        inputs = self._collect_inputs_from_legacy(context)
+        inputs["data_source"] = "fallback"
+        return inputs
 
+    def _collect_inputs_from_legacy(self, context: dict) -> dict:
+        """原有数据源：SQLite query_parcel。"""
         return {
-            "status": "ok",
-            "simulated": False,
-            "result": real_result,
+            "parcel_id": context.get("parcel_id") or context.get("data", {}).get("parcel_id"),
+            "db_path": context.get("db_path") or context.get("data", {}).get("db_path"),
         }
+
+    def _build_result_record(self, execution_id: int, outputs: dict):
+        """构建 ObstacleDiagnosisResult ORM 实例。legacy 路径无 parcel_id 时返回 None。"""
+        from ...models.thematic_model import ObstacleDiagnosisResult
+
+        parcel_id = outputs.get("parcel_id")
+        if not parcel_id:
+            return None
+        return ObstacleDiagnosisResult(
+            execution_id=execution_id,
+            parcel_id=parcel_id,
+            obstacle_type=outputs.get("obstacle_type", "未知"),
+            input_snapshot=outputs,
+            simulated=True,
+        )
+
+    def execute(self, task: Dict[str, Any]) -> Dict[str, Any]:
+        inputs = self._collect_inputs(task)
+        data_source = inputs.pop("data_source", "unknown")
+
+        try:
+            if data_source == "db":
+                # DB 路径：调用 diagnosis_row 计算障碍诊断
+                from framework.domain.calculations.obstacle_calculation import diagnosis_row
+                accessor = ParcelDataAccessor()
+                mapped = accessor._map_indicators_to_inputs(inputs, "model-3")
+                area_code = task.get("area_code", "440281")
+                obstacle_result = diagnosis_row(mapped, area_code)
+                outputs = {
+                    "parcel_id": inputs.get("parcel_id"),
+                    "obstacle_type": obstacle_result["obstacle_type"],
+                    "primary_factors": obstacle_result["primary_factors"],
+                    "secondary_factors": obstacle_result["secondary_factors"],
+                    "obstacle_degrees": obstacle_result["obstacle_degrees"],
+                    "obstacle_levels": obstacle_result["obstacle_levels"],
+                }
+                status = "ok"
+            else:
+                # Legacy 路径：SQLite query_parcel
+                if not FARMland_DIAGNOSIS_AVAILABLE:
+                    return {
+                        "status": "degraded",
+                        "degraded": True,
+                        "reason": "model_unavailable",
+                        "agent_id": "model-3",
+                        "model_id": "obstacle-diagnosis",
+                        "message": "模型3诊断模块未安装，无法执行真实诊断",
+                        "data_source": data_source,
+                        "persisted": False,
+                    }
+
+                parcel_id = inputs.get("parcel_id")
+                if not parcel_id:
+                    return {
+                        "status": "degraded",
+                        "degraded": True,
+                        "reason": "missing_input",
+                        "agent_id": "model-3",
+                        "model_id": "obstacle-diagnosis",
+                        "message": "缺少 parcel_id，无法查询真实诊断结果",
+                        "data_source": data_source,
+                        "persisted": False,
+                    }
+
+                real_result = self._get_real_diagnosis(inputs)
+                if not real_result:
+                    return {
+                        "status": "degraded",
+                        "degraded": True,
+                        "reason": "import_failed",
+                        "agent_id": "model-3",
+                        "model_id": "obstacle-diagnosis",
+                        "message": f"地块 {parcel_id} 的诊断数据未就绪或查询失败",
+                        "data_source": data_source,
+                        "persisted": False,
+                    }
+                outputs = real_result
+                status = "degraded"
+
+            persisted = self._persist_result(
+                agent_id=self.agent_id,
+                parcel_id=task.get("parcel_id") or inputs.get("parcel_id"),
+                inputs=inputs,
+                outputs=outputs,
+                status=status,
+            )
+
+            return {
+                "status": "ok",
+                "simulated": data_source != "db",
+                "result": outputs,
+                "data_source": data_source,
+                "persisted": persisted,
+            }
+        except Exception as e:
+            self._persist_result(
+                agent_id=self.agent_id,
+                parcel_id=task.get("parcel_id"),
+                inputs=inputs,
+                outputs={"error": str(e)},
+                status="error",
+            )
+            return {
+                "status": "degraded",
+                "degraded": True,
+                "reason": "exception",
+                "message": str(e),
+                "data_source": data_source,
+                "persisted": False,
+            }
 
     def _get_real_diagnosis(self, context: Dict[str, Any]) -> Dict[str, Any]:
         """尝试获取实际诊断结果"""

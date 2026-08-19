@@ -6,6 +6,7 @@ FARMland_DIAGNOSIS_AVAILABLE 等模块级常量冻结为 False（model_unavailab
 """
 import os
 import sys
+import types
 
 _PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 if _PROJECT_ROOT not in sys.path:
@@ -13,6 +14,25 @@ if _PROJECT_ROOT not in sys.path:
 _SRC_DIR = os.path.join(_PROJECT_ROOT, "src")
 if _SRC_DIR not in sys.path:
     sys.path.insert(0, _SRC_DIR)
+
+
+# geoalchemy2 DDL-safe 全局 stub：测试环境未安装 geoalchemy2 时，
+# 用 String 类型实例代替 Geometry，既满足 SQLAlchemy Column 初始化所需
+# 的 `_set_parent_with_dispatch` 协议，又能保证 db.create_all() 渲染 DDL
+# 时 __str__ 返回真实字符串（MagicMock 会触发 TypeError）。
+if "geoalchemy2" not in sys.modules:
+    from sqlalchemy import String
+
+    _geo_stub = types.ModuleType("geoalchemy2")
+
+    class _Geometry:
+        """DDL-safe stub：返回 String 类型实例，避免污染后续测试的 DDL 渲染。"""
+
+        def __new__(cls, *args, **kwargs):
+            return String()
+
+    _geo_stub.Geometry = _Geometry
+    sys.modules["geoalchemy2"] = _geo_stub
 
 
 # PostgreSQL 测试库可用性探测：供 routing_log_db / exclusive_rules_db / regression_metrics_db 跳过

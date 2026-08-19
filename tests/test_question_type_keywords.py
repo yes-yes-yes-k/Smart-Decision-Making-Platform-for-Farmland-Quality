@@ -1,7 +1,21 @@
 """测试问题类型关键词路由覆盖 xlsx 经典问题（D5）。"""
 import sys
 import os
+import pytest
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
+
+@pytest.fixture(autouse=True)
+def disable_llm_routing(monkeypatch):
+    """禁用 LLM 路由，确保关键词匹配不被 LLM 初判覆盖。
+
+    ROUTING_MODE 默认 "llm" 时，LLM 路由器会将有机质相关问题
+    （如「全省耕地土壤有机质含量如何，空间分布情况？」）误判为 type 0，
+    覆盖关键词匹配应返回的 type 5。本套件聚焦关键词路由行为，
+    统一禁用 LLM 路由以保证确定性与既有 1..5 路由不回归。
+    """
+    from framework.config import Config
+    monkeypatch.setattr(Config, "ROUTING_MODE", "keyword")
 
 
 def _identify(question):
@@ -499,6 +513,8 @@ def test_v1_compat_context_scale_only_does_not_trigger_dim_rules():
 
 
 if __name__ == "__main__":
+    from framework.config import Config
+    Config.ROUTING_MODE = "keyword"
     test_type1_stability_province_question()
     test_type1_stability_county_question()
     test_type1_stability_farmer_question()

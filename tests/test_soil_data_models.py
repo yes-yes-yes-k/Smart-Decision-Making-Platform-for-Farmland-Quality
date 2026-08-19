@@ -1,4 +1,22 @@
+import sys
+import types
 import unittest
+from unittest.mock import MagicMock
+from sqlalchemy import String
+
+# 测试环境可能未安装 geoalchemy2，在导入 thematic_model 之前先 stub
+# 使用 String 实例（而非 MagicMock）保证 DDL 渲染时 __str__ 返回真实字符串。
+if "geoalchemy2" not in sys.modules:
+    _geo_stub = types.ModuleType("geoalchemy2")
+
+    class _Geometry:
+        """DDL-safe stub：返回 String 类型实例，避免污染后续测试的 DDL 渲染。"""
+
+        def __new__(cls, *args, **kwargs):
+            return String()
+
+    _geo_stub.Geometry = _Geometry
+    sys.modules["geoalchemy2"] = _geo_stub
 
 from flask import Flask
 from sqlalchemy import inspect, String

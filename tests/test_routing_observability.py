@@ -154,6 +154,18 @@ class TestObserveLLMFields:
 
 
 class TestNodeInjection:
+    @pytest.fixture(autouse=True)
+    def app_context(self):
+        """提供 Flask app context，使 routing_decision_log DB 写入正常工作。"""
+        from framework.api.app import create_app
+        from framework.models.user import db
+        app = create_app("sqlite")
+        app.config["TESTING"] = True
+        with app.app_context():
+            db.create_all()
+            yield app
+            db.session.remove()
+
     def test_identify_question_node_preserves_return_and_logs(self):
         from framework.agents.nodes import identify_question_node
         from framework.agents import routing as _routing

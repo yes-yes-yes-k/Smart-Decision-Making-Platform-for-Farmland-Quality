@@ -20,10 +20,12 @@ from tests.conftest import PG_AVAILABLE
 
 pytestmark = pytest.mark.skipif(not PG_AVAILABLE, reason="PostgreSQL 测试库不可用")
 
-from framework.api.app import create_app  # noqa: E402
-from framework.models.user import db  # noqa: E402
-from framework.models import RoutingDecisionLog  # noqa: E402
-from framework.observability import routing_log  # noqa: E402
+# PG 不可用时跳过 thematic_model 相关导入（geoalchemy2 缺失会导致名字未定义）
+if PG_AVAILABLE:
+    from framework.api.app import create_app  # noqa: E402
+    from framework.models.user import db  # noqa: E402
+    from framework.models import RoutingDecisionLog  # noqa: E402
+    from framework.observability import routing_log  # noqa: E402
 
 
 @pytest.fixture

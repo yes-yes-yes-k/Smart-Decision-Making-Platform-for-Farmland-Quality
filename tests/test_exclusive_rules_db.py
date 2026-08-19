@@ -19,13 +19,15 @@ from tests.conftest import PG_AVAILABLE
 
 pytestmark = pytest.mark.skipif(not PG_AVAILABLE, reason="PostgreSQL 测试库不可用")
 
-from framework.api.app import create_app  # noqa: E402
-from framework.models.user import db  # noqa: E402
-from framework.models import ExclusiveRuleConfig  # noqa: E402
-from framework.agents.exclusive_rules import (  # noqa: E402
-    from_database, _get_active_rules, refresh_rules_cache,
-    EXCLUSIVE_RULES, apply_exclusive_rules,
-)
+# PG 不可用时跳过 thematic_model 相关导入（geoalchemy2 缺失会导致名字未定义）
+if PG_AVAILABLE:
+    from framework.api.app import create_app  # noqa: E402
+    from framework.models.user import db  # noqa: E402
+    from framework.models import ExclusiveRuleConfig  # noqa: E402
+    from framework.agents.exclusive_rules import (  # noqa: E402
+        from_database, _get_active_rules, refresh_rules_cache,
+        EXCLUSIVE_RULES, apply_exclusive_rules,
+    )
 
 
 @pytest.fixture

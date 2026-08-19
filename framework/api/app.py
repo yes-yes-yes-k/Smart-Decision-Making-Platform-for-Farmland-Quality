@@ -20,10 +20,15 @@ def _ensure_kb_message_columns(app: Flask):
     这里兜底避免用户漏跑迁移脚本导致 500 "no such column"。
     """
     from sqlalchemy import text as sa_text
+    from sqlalchemy import inspect as sa_inspect
 
     with app.app_context():
         engine = db.engine
         dialect = engine.dialect.name
+
+        # 表不存在时跳过（db.create_all() 会创建包含所有列的表）
+        if not sa_inspect(engine).has_table("kb_message"):
+            return
 
         def _has_column(table: str, column: str) -> bool:
             with engine.connect() as conn:
