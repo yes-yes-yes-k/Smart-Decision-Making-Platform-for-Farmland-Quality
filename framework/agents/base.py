@@ -177,27 +177,41 @@ class BaseAgent(ABC):
             from framework.models.user import db
             from framework.models.thematic_model import ModelExecutionLog
 
-            now = datetime.now(timezone.utc)
-            log = ModelExecutionLog(
-                trace_id=str(uuid.uuid4()),
-                agent_id=agent_id,
-                question_type=self._get_question_type(),
-                parcel_id=parcel_id,
-                input_params=inputs,
-                output_result=outputs,
-                status=status,
-                started_at=now,
-                completed_at=now,
-            )
-            db.session.add(log)
-            db.session.flush()
+            # 确保在 Flask 应用上下文中执行数据库操作
+            app_ctx = None
+            try:
+                from framework.api.app import create_app
+                _app = create_app("default")
+                app_ctx = _app.app_context()
+                app_ctx.push()
+            except Exception:
+                pass
 
-            result_record = self._build_result_record(log.id, outputs)
-            if result_record is not None:
-                db.session.add(result_record)
+            try:
+                now = datetime.now(timezone.utc)
+                log = ModelExecutionLog(
+                    trace_id=str(uuid.uuid4()),
+                    agent_id=agent_id,
+                    question_type=self._get_question_type(),
+                    parcel_id=parcel_id,
+                    input_params=inputs,
+                    output_result=outputs,
+                    status=status,
+                    started_at=now,
+                    completed_at=now,
+                )
+                db.session.add(log)
+                db.session.flush()
 
-            db.session.commit()
-            return True
+                result_record = self._build_result_record(log.id, outputs)
+                if result_record is not None:
+                    db.session.add(result_record)
+
+                db.session.commit()
+                return True
+            finally:
+                if app_ctx:
+                    app_ctx.pop()
         except Exception as e:
             logger.error(
                 "持久化失败 (agent_id=%s, parcel_id=%s): %s", agent_id, parcel_id, e
@@ -267,6 +281,7 @@ class BaseAgent(ABC):
             "capability": capability,
             "model": capability,
             "summary": f"{capability['name']}已完成结构化分析。",
+            "data_source": execution.get("data_source", "unknown"),
             "findings": findings,
             "recommendations": [],
             "evidence": result,

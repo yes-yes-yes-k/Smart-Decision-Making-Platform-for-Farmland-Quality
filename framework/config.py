@@ -13,8 +13,8 @@ class Config:
 
     DB_HOST = os.environ.get('DB_HOST') or 'localhost'
     DB_PORT = int(os.environ.get('DB_PORT') or 5432)
-    DB_USER = os.environ.get('DB_USER') or 'root'
-    DB_PASSWORD = os.environ.get('DB_PASSWORD') or ''
+    DB_USER = os.environ.get('DB_USER') or 'postgres'
+    DB_PASSWORD = os.environ.get('DB_PASSWORD') or '123456'
     DB_NAME = os.environ.get('DB_NAME') or 'db_enterprise_qa'
 
     SQLALCHEMY_DATABASE_URI = (
@@ -31,7 +31,7 @@ class Config:
     JWT_SECRET_KEY = os.environ.get('JWT_SECRET_KEY') or SECRET_KEY
     JWT_ACCESS_TOKEN_EXPIRES = 24 * 60 * 60
 
-    SILICONFLOW_API_KEY = os.environ.get('SILICONFLOW_API_KEY') or 'sk-truhokzloepabjhdeepqtrzifzwaoyffocmaodsyqfepzwfy'
+    SILICONFLOW_API_KEY = os.environ.get('SILICONFLOW_API_KEY') or ''
     SILICONFLOW_CHAT_MODEL = os.environ.get('SILICONFLOW_CHAT_MODEL') or 'deepseek-ai/DeepSeek-V3'
     SILICONFLOW_EMBED_MODEL = os.environ.get('SILICONFLOW_EMBED_MODEL') or 'BAAI/bge-m3'
     SILICONFLOW_BASE_URL = os.environ.get('SILICONFLOW_BASE_URL') or 'https://api.siliconflow.cn/v1'

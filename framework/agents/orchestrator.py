@@ -156,6 +156,18 @@ class MultiAgentOrchestrator:
 
                 if question:
                     # 复刻 llm_generate 节点的 prompt 构造逻辑
+                    # 提取关键模型结果摘要，便于排查
+                    agent_data = model_results.get("data", {}) if isinstance(model_results, dict) else {}
+                    summary = agent_data.get("summary", "")
+                    details = agent_data.get("details", {}) if isinstance(agent_data, dict) else {}
+                    for aid, detail in (details.items() if isinstance(details, dict) else []):
+                        if isinstance(detail, dict):
+                            evidence = detail.get("evidence", [])
+                            simulated = detail.get("simulated")
+                            print(f"[LLM-Prompt] agent={aid}, simulated={simulated}, "
+                                  f"evidence_count={len(evidence) if evidence else 0}, "
+                                  f"answer_preview={str(detail.get('answer', ''))[:80]}")
+                    print(f"[LLM-Prompt] summary_preview={str(summary)[:120]}")
                     prompt = (
                         "你是耕地质量与土壤改良领域的助手。请基于专业智能体结果，"
                         "整合成一份准确、简洁、可执行的中文答复。不要编造未提供的数据，"

@@ -198,6 +198,10 @@ def execute_models(state: MultiAgentState) -> MultiAgentState:
         for key in ("parcel_id", "parcel_code"):
             if key in state["request"]:
                 context[key] = state["request"][key]
+        print(f"[execute_models] context: parcel_id={context.get('parcel_id')}, "
+              f"parcel_code={context.get('parcel_code')}, "
+              f"question_type={context.get('question_type')}, "
+              f"area_code={context.get('area_code')}")
         # 透传 question_type 到 context（agent 可能需要）
         if "question_type" in state:
             context["question_type"] = state["question_type"]

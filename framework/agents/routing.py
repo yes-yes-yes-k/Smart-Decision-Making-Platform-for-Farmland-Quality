@@ -179,6 +179,7 @@ def identify_question_type(question: str, context: Optional[dict] = None) -> tup
     # 知识性问题：type 0，不调 LLM
     if _is_knowledge_question(question):
         _last_router_method = "knowledge"
+        print(f"[路由] 知识性问题 → RAG (type=0)")
         return 0, 1.0
 
     base_type, base_rel = _identify_question_type_keyword(question)
@@ -205,10 +206,40 @@ def identify_question_type(question: str, context: Optional[dict] = None) -> tup
                     _last_router_method = "vector"
         # 关键词命中时 router_method 保持 keyword
 
+    # 当用户已选择地块（parcel_id/parcel_code 存在）但路由为RAG时，
+    # 尝试回退到通用模型，避免AI回复"没有传递地块编号"
+    if base_type == 0 and context is not None:
+        has_parcel = context.get("parcel_id") or context.get("parcel_code")
+        if has_parcel:
+            base_type = _infer_model_from_question(question, context)
+            if base_type > 0:
+                _last_router_method = "parcel_fallback"
+                print(f"[路由] 用户已选地块({has_parcel})，关键词未命中，回退到模型 type={base_type}")
+
     if context is not None:
         refined_type, _status = apply_exclusive_rules(question, base_type, context)
+        print(f"[路由] 问题='{question[:30]}...' → type={base_type}→{refined_type}, "
+              f"relevance={base_rel:.2f}, method={_last_router_method}")
         return refined_type, base_rel
     return base_type, base_rel
+
+
+def _infer_model_from_question(question: str, context: dict) -> int:
+    """当用户已选择地块但关键词未命中时，根据问题内容推断模型类型。
+
+    优先级：问题关键词 → 默认 model-1（稳定性退化分析，最通用的地块分析模型）。
+    """
+    # 尝试从问题中找线索
+    if any(w in question for w in ("等级", "评价", "质量")):
+        return 2
+    if any(w in question for w in ("障碍", "问题", "毛病", "诊断")):
+        return 3
+    if any(w in question for w in ("酸化", "pH", "酸性", "石灰")):
+        return 4
+    if any(w in question for w in ("有机质", "有机肥", "培肥", "秸秆")):
+        return 5
+    # 默认：model-1 稳定性退化分析（最通用的地块分析）
+    return 1
 
 def _identify_question_type_vector(question: str) -> tuple[int, float]:
     keyword_relevance = _check_relevance_keyword(question)
