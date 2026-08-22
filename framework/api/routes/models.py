@@ -1,7 +1,9 @@
 from flask import Blueprint, request, jsonify
 from flask_jwt_extended import jwt_required
 from framework.core_engine import core_engine
+import logging
 
+logger = logging.getLogger(__name__)
 models_bp = Blueprint('models', __name__)
 
 @models_bp.route('/', methods=['GET'])
@@ -26,6 +28,12 @@ def run_model():
     if not model_id:
         return jsonify({"status": "error", "error": {"code": "MISSING_MODEL_ID", "message": "调用专题模型时必须提供 model_id"}}), 400
 
+    parcel_id = data.get('parcel_id', '')
+    parcel_code = data.get('parcel_code', '')
+    print(f"\n{'='*60}")
+    print(f"[模型调用] 收到请求: model_id={model_id}, parcel_id={parcel_id}, parcel_code={parcel_code}")
+    print(f"{'='*60}")
+
     payload = {"model_id": model_id}
     if 'area_code' in data:
         payload['area_code'] = data['area_code']
@@ -48,6 +56,15 @@ def run_model():
             payload[key] = data[key]
 
     result = core_engine.run_thematic_model(payload)
+
+    # 输出结果摘要
+    reliability = result.get('reliability', {})
+    data_source = result.get('data_source', '')
+    simulated = result.get('simulated', None)
+    level = reliability.get('level', 'unknown')
+    print(f"[模型调用] 结果: model_id={model_id}, status={result.get('status')}, "
+          f"reliability_level={level}, data_source={data_source}, simulated={simulated}")
+
     if result.get('status') == 'ok':
         return jsonify({"status": "ok", "data": result})
     return jsonify(result)

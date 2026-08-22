@@ -176,6 +176,10 @@ class AgentManager:
         for key, value in context.items():
             if key not in {"data", "question_type"} and not key.startswith("model-"):
                 payload[key] = value
+        parcel_id = payload.get("parcel_id", "")
+        parcel_code = payload.get("parcel_code", "")
+        print(f"[AgentManager] _analysis_payload: parcel_id={parcel_id}, parcel_code={parcel_code}, "
+              f"keys={list(payload.keys())}")
         return payload
 
     def _topological_sort(self, agent_ids: List[str]) -> List[str]:

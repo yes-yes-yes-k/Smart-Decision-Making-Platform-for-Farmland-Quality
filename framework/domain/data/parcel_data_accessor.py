@@ -10,6 +10,19 @@ logger = logging.getLogger(__name__)
 class ParcelDataAccessor:
     """从 parcel_info 表查询地块指标的统一入口。"""
 
+    def __init__(self):
+        self._app = None
+
+    def _get_app(self):
+        """获取 Flask app 实例（延迟初始化）。"""
+        if self._app is None:
+            try:
+                from framework.api.app import create_app
+                self._app = create_app("default")
+            except Exception:
+                pass
+        return self._app
+
     def get_parcel_indicators(self, parcel_id: str) -> Optional[dict]:
         """按 parcel_id 查询 soil_indicators JSON 字段。
 
@@ -23,10 +36,18 @@ class ParcelDataAccessor:
         try:
             from framework.models.thematic_model import ParcelInfo
 
-            parcel = ParcelInfo.query.filter_by(parcel_id=parcel_id).first()
-            if parcel is None:
-                return None
-            return parcel.soil_indicators
+            app = self._get_app()
+            ctx = app.app_context() if app else None
+            if ctx:
+                ctx.push()
+            try:
+                parcel = ParcelInfo.query.filter_by(parcel_id=parcel_id).first()
+                if parcel is None:
+                    return None
+                return parcel.soil_indicators
+            finally:
+                if ctx:
+                    ctx.pop()
         except Exception as e:
             logger.warning("查询 parcel_info 失败 (parcel_id=%s): %s", parcel_id, e)
             return None

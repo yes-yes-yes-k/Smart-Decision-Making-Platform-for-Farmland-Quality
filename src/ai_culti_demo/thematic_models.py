@@ -281,6 +281,8 @@ def _run_professional_capability(payload: dict[str, Any], requested_model_id: st
         from framework.agents.manager import AgentManager
 
         agent = AgentManager().agents[capability.agent_id]
+        print(f"[Agent执行] agent_id={capability.agent_id}, model_id={requested_model_id}, "
+              f"parcel_id={payload.get('parcel_id', '')}, parcel_code={payload.get('parcel_code', '')}")
         result = agent.analyze(payload)
         # 将 model-5 的关键 ML 元数据提升到专题 API 顶层，便于调用方直接消费。
         analysis = result.get("analysis", {}) if isinstance(result, dict) else {}
@@ -305,8 +307,11 @@ def _run_professional_capability(payload: dict[str, Any], requested_model_id: st
                 "canonical_model_id": capability.model_id,
                 "message": "该模型标识已弃用，请迁移到 canonical_model_id。",
             }
+        print(f"[Agent执行] agent_id={capability.agent_id} → 完成: status={result.get('status')}, "
+              f"data_source={result.get('data_source', '')}, simulated={result.get('simulated', '')}")
         return result
     except Exception as exc:
+        print(f"[Agent执行] agent_id={capability.agent_id} → 失败: {exc}")
         return {
             "status": "error",
             "model": public_capability_descriptor(capability),
@@ -338,11 +343,14 @@ def _fallback_for_payload(payload: dict[str, Any], model: ModelSpec) -> dict[str
 
 
 def _single_model_result(payload: dict[str, Any], model: ModelSpec, area: dict[str, Any]) -> dict[str, Any]:
+    print(f"[Demo降级] model_id={model['model_id']} → 返回 Demo 桩结果 (parcel_id={payload.get('parcel_id', '')})")
     result = {
         "status": "ok",
         "model": _base_model_descriptor(model),
         "area": area,
         "summary": f"{model['name']} 已返回结构化 Demo 结果，可供大模型继续编排调用。",
+        "data_source": "demo",
+        "simulated": True,
         "findings": model["findings"],
         "recommended_layers": model["recommended_layers"],
         "recommendations": model["recommendations"],
@@ -377,9 +385,11 @@ def _run_real_diagnosis_model(payload: dict[str, Any], model: ModelSpec) -> dict
             },
         }
 
+    print(f"[实际模型] farmland_diagnosis → query_parcel(parcel_id={parcel_id}, db_path={db_path})")
     result = query_parcel(parcel_id, db_path)
 
     if result["status"] == "not_ready":
+        print(f"[实际模型] farmland_diagnosis → 数据未就绪")
         return {
             "status": "error",
             "error": {
@@ -389,6 +399,7 @@ def _run_real_diagnosis_model(payload: dict[str, Any], model: ModelSpec) -> dict
         }
 
     if result["status"] == "not_found":
+        print(f"[实际模型] farmland_diagnosis → 地块 {parcel_id} 未找到")
         return {
             "status": "error",
             "error": {
@@ -399,12 +410,15 @@ def _run_real_diagnosis_model(payload: dict[str, Any], model: ModelSpec) -> dict
 
     diagnosis = result.get("diagnosis", {})
     evaluation = result.get("evaluation", {})
+    print(f"[实际模型] farmland_diagnosis → 成功: parcel_id={parcel_id}, 障碍类型={diagnosis.get('ZALX', '未知')}")
 
     return {
         "status": "ok",
         "model": _base_model_descriptor(model),
         "area": {"name": "地块诊断", "code": parcel_id},
         "summary": f"{model['name']} 已返回实际诊断结果。障碍类型：{diagnosis.get('ZALX', '未知')}",
+        "data_source": "db",
+        "simulated": False,
         "findings": [
             {"title": "障碍类型", "content": diagnosis.get('ZALX', '无明显障碍')},
             {"title": "主要障碍因素", "content": diagnosis.get('ZYZAYS', '') or "无"},
@@ -441,9 +455,11 @@ def _run_real_acidification_model(payload: dict[str, Any], model: ModelSpec) -> 
             },
         }
 
+    print(f"[实际模型] farmland_acidification → query_acidification(parcel_id={parcel_id}, db_path={db_path})")
     result = query_acidification(parcel_id, db_path)
 
     if result["status"] == "not_ready":
+        print(f"[实际模型] farmland_acidification → 数据未就绪")
         return {
             "status": "error",
             "error": {
@@ -453,6 +469,7 @@ def _run_real_acidification_model(payload: dict[str, Any], model: ModelSpec) -> 
         }
 
     if result["status"] == "not_found":
+        print(f"[实际模型] farmland_acidification → 地块 {parcel_id} 未找到")
         return {
             "status": "error",
             "error": {
@@ -462,12 +479,15 @@ def _run_real_acidification_model(payload: dict[str, Any], model: ModelSpec) -> 
         }
 
     acidification = result.get("acidification", {})
+    print(f"[实际模型] farmland_acidification → 成功: parcel_id={parcel_id}, 酸化程度={acidification.get('acidification_level', '未知')}")
 
     return {
         "status": "ok",
         "model": _base_model_descriptor(model),
         "area": {"name": "地块酸化改良", "code": parcel_id},
         "summary": f"{model['name']} 已返回实际改良方案。酸化程度：{acidification.get('acidification_level', '未知')}",
+        "data_source": "db",
+        "simulated": False,
         "findings": [
             {"title": "酸化程度", "content": acidification.get('acidification_level', '未知')},
             {"title": "改良需求", "content": "需要改良" if acidification.get('need_amendment', False) else "无需改良"},
@@ -504,9 +524,11 @@ def _run_real_stability_model(payload: dict[str, Any], model: ModelSpec) -> dict
             },
         }
 
+    print(f"[实际模型] farmland_stability → get_parcel_result(parcel_id={parcel_id}, module={module})")
     storage = StabilityStorage(db_path)
 
     if not storage.is_ready():
+        print(f"[实际模型] farmland_stability → 数据未就绪")
         return {
             "status": "error",
             "error": {
@@ -518,6 +540,7 @@ def _run_real_stability_model(payload: dict[str, Any], model: ModelSpec) -> dict
     result = storage.get_result(parcel_id, module)
 
     if result is None:
+        print(f"[实际模型] farmland_stability → 地块 {parcel_id} 未找到")
         return {
             "status": "error",
             "error": {
@@ -526,11 +549,15 @@ def _run_real_stability_model(payload: dict[str, Any], model: ModelSpec) -> dict
             },
         }
 
+    print(f"[实际模型] farmland_stability → 成功: parcel_id={parcel_id}, grade={result.get('grade', '未知')}")
+
     return {
         "status": "ok",
         "model": _base_model_descriptor(model),
         "area": {"name": "地块稳定性评价", "code": parcel_id},
         "summary": f"{model['name']} 已返回实际评价结果。地块ID：{parcel_id}",
+        "data_source": "db",
+        "simulated": False,
         "findings": [
             {"title": "质量等级", "content": f"等级：{result.get('grade', '未知')}"},
             {"title": "综合得分", "content": f"综合指数：{result.get('score', '未知')}"},
@@ -566,16 +593,22 @@ def _run_real_grade_model(payload: dict[str, Any], model: ModelSpec) -> dict[str
             },
         }
 
+    print(f"[实际模型] farmland_grade_eval → run_grade_evaluation(parcel_code={parcel_code})")
     result = run_grade_evaluation(parcel_code, exe_path, dat_path)
 
     if result["status"] == "error":
+        print(f"[实际模型] farmland_grade_eval → 失败: {result.get('error', {}).get('message', '未知错误')}")
         return result
+
+    print(f"[实际模型] farmland_grade_eval → 成功: parcel_code={parcel_code}, quality_grade={result.get('quality_grade', '未知')}")
 
     return {
         "status": "ok",
         "model": _base_model_descriptor(model),
         "area": {"name": "地块质量等级评价", "code": parcel_code},
         "summary": f"{model['name']} 已返回实际评价结果。质量等级：{result.get('quality_grade', '未知')}",
+        "data_source": "csv",
+        "simulated": False,
         "findings": [
             {"title": "质量等级", "content": f"等级：{result.get('quality_grade', '未知')}"},
             {"title": "综合指数", "content": f"{result.get('composite_index', '未知')}"},
@@ -611,8 +644,13 @@ def run_thematic_model(payload: dict[str, Any]) -> dict[str, Any]:
         }
 
     # 正式专业能力优先由对应 Agent 的统一结构化分析入口执行。
-    if get_capability_by_model_id(model_id) is not None:
-        return _run_professional_capability(payload, model_id)
+    capability = get_capability_by_model_id(model_id)
+    if capability is not None:
+        print(f"[模型调度] model_id={model_id} → 走专业 Agent 路径 (agent_id={capability.agent_id})")
+        result = _run_professional_capability(payload, model_id)
+        print(f"[模型调度] model_id={model_id} → Agent 返回: status={result.get('status')}, "
+              f"data_source={result.get('data_source', '')}, simulated={result.get('simulated', '')}")
+        return result
 
     model = MODEL_SPECS.get(model_id)
     if model is None:
@@ -630,14 +668,26 @@ def run_thematic_model(payload: dict[str, Any]) -> dict[str, Any]:
     # 检查是否有实际模型实现
     real_model = model.get("real_model")
     if real_model:
+        parcel_id = payload.get("parcel_id")
+        print(f"[模型调度] model_id={model_id} → real_model={real_model}, "
+              f"parcel_id={parcel_id}, DIAGNOSIS_AVAILABLE={DIAGNOSIS_MODEL_AVAILABLE}, "
+              f"STABILITY_AVAILABLE={STABILITY_MODEL_AVAILABLE}, GRADE_AVAILABLE={GRADE_EVAL_MODEL_AVAILABLE}")
         if real_model == "farmland_diagnosis" and payload.get("parcel_id") and DIAGNOSIS_MODEL_AVAILABLE:
+            print(f"[模型调度] model_id={model_id} → 命中实际模型: farmland_diagnosis")
             return _run_real_diagnosis_model(payload, model)
         elif real_model == "farmland_acidification" and payload.get("parcel_id") and DIAGNOSIS_MODEL_AVAILABLE:
+            print(f"[模型调度] model_id={model_id} → 命中实际模型: farmland_acidification")
             return _run_real_acidification_model(payload, model)
         elif real_model == "farmland_stability" and payload.get("parcel_id") and STABILITY_MODEL_AVAILABLE:
+            print(f"[模型调度] model_id={model_id} → 命中实际模型: farmland_stability")
             return _run_real_stability_model(payload, model)
         elif real_model == "farmland_grade_eval" and payload.get("parcel_code") and GRADE_EVAL_MODEL_AVAILABLE:
+            print(f"[模型调度] model_id={model_id} → 命中实际模型: farmland_grade_eval")
             return _run_real_grade_model(payload, model)
+        else:
+            print(f"[模型调度] model_id={model_id} → real_model={real_model} 未命中条件，降级为 Demo 结果 "
+                  f"(parcel_id={payload.get('parcel_id')}, parcel_code={payload.get('parcel_code')}, "
+                  f"DIAGNOSIS={DIAGNOSIS_MODEL_AVAILABLE}, STABILITY={STABILITY_MODEL_AVAILABLE}, GRADE={GRADE_EVAL_MODEL_AVAILABLE})")
 
     area_code = payload.get("area_code", "lechang")
     overview = get_county_overview(area_code)
@@ -647,6 +697,7 @@ def run_thematic_model(payload: dict[str, Any]) -> dict[str, Any]:
     if model_id == "multi-factor-collaborative-improvement":
         result = _collaborative_result(payload, model, overview["area"])
     else:
+        print(f"[模型调度] model_id={model_id} → 返回 Demo 桩结果 (无 real_model)")
         result = _single_model_result(payload, model, overview["area"])
 
     result["capability"] = {
