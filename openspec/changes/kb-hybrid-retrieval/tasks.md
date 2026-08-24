@@ -1,7 +1,7 @@
 ## 1. 分块修复
 
 - [x] 1.1 新增 `framework/upload/chunker.py`，实现 `split_text(text, size, overlap)` 滑动窗口分块
-- [ ] 1.2 在 `framework/api/routes/docs.py` 中用 `Config.CHUNK_SIZE`/`Config.CHUNK_OVERLAP` 替换 `content[i:i+800]` 硬编码，接入 chunker
+- [x] 1.2 在 `framework/api/routes/docs.py` 中用 `Config.CHUNK_SIZE`/`Config.CHUNK_OVERLAP` 替换 `content[i:i+800]` 硬编码，接入 chunker
 - [x] 1.3 为 chunker 编写单元测试，覆盖重叠、空文本、小于 size 的文本
 
 ## 2. BM25 混合检索
