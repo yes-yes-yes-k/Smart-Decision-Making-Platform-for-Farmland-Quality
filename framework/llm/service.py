@@ -126,6 +126,54 @@ class LLMService:
             )
             yield "抱歉，AI服务暂时不可用，请稍后重试。"
 
+    def generate_with_tools(
+        self,
+        prompt: str,
+        messages: Optional[list] = None,
+        tools: Optional[list] = None,
+        tool_choice: str = "auto",
+        default_args: Optional[Dict[str, Any]] = None,
+        max_iterations: Optional[int] = None,
+        trace_id: Optional[str] = None,
+    ) -> Dict[str, Any]:
+        """带工具调用的生成（function calling）。
+
+        若 tools 为空或 LLM 不可用 → 退化为 generate()。
+        若 bind_tools 不支持 → 返回 success=False 让调用方 fallback。
+        否则构造 ToolCallingLoop 执行多轮工具调用。
+        """
+        if not self.is_available() or not tools:
+            return self.generate(prompt, messages)
+
+        if not getattr(Config, "SILICONFLOW_SUPPORTS_TOOL_CALLING", True):
+            return {"success": False, "reason": "bind_tools_disabled"}
+
+        try:
+            bound = self._client.bind_tools(tools, tool_choice=tool_choice)
+        except (TypeError, AttributeError) as e:
+            print(f"[LLM] bind_tools 不支持: {type(e).__name__}: {e}", flush=True)
+            return {"success": False, "reason": "bind_tools_unsupported", "error": str(e)}
+
+        from framework.function_calling.tool_loop import ToolCallingLoop
+
+        max_iter = max_iterations or getattr(Config, "FUNCTION_CALLING_MAX_ITERATIONS", 3)
+        loop = ToolCallingLoop(
+            llm=bound,
+            max_iterations=max_iter,
+            default_args=default_args or {},
+            trace_id=trace_id,
+        )
+        started_at = time.perf_counter()
+        print(
+            f"[LLM] 工具调用开始 - 模型: {Config.SILICONFLOW_CHAT_MODEL}, "
+            f"工具数: {len(tools)}, 最大迭代: {max_iter}, trace: {trace_id}",
+            flush=True,
+        )
+        result = loop.run(prompt, messages)
+        elapsed = time.perf_counter() - started_at
+        print(f"[LLM] 工具调用结束 - 耗时: {elapsed:.2f}s", flush=True)
+        return result
+
     def _get_fallback_response(self, prompt: str) -> Dict[str, Any]:
         return {
             "success": False,

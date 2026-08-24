@@ -66,6 +66,14 @@ class Config:
     # 受 2026-08-11 llm-routing-judgment 特性引入；test_llm_routing.py 依赖此字段存在
     ROUTING_MODE = os.environ.get("ROUTING_MODE", "llm")
 
+    # Function calling 配置（2026-08-22 function-calling-refactor 引入）
+    # FUNCTION_CALLING_ENABLED=false 时 execute_models 直接走旧关键词路由
+    FUNCTION_CALLING_ENABLED = os.environ.get("FUNCTION_CALLING_ENABLED", "true").lower() == "true"
+    # 多轮工具调用最大迭代数
+    FUNCTION_CALLING_MAX_ITERATIONS = int(os.environ.get("FUNCTION_CALLING_MAX_ITERATIONS") or 3)
+    # SiliconFlow 模型是否支持 OpenAI 兼容的 function calling（运行时首次失败后翻为 False）
+    SILICONFLOW_SUPPORTS_TOOL_CALLING = os.environ.get("SILICONFLOW_SUPPORTS_TOOL_CALLING", "true").lower() == "true"
+
     @classmethod
     def get_max_concurrent(cls) -> int:
         if cls.MAX_CONCURRENT_MODELS > 0:

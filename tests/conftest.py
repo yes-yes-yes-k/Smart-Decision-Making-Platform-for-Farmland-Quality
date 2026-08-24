@@ -8,6 +8,8 @@ import os
 import sys
 import types
 
+import pytest
+
 _PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 if _PROJECT_ROOT not in sys.path:
     sys.path.insert(0, _PROJECT_ROOT)
@@ -49,3 +51,24 @@ def _probe_pg_available() -> bool:
 
 
 PG_AVAILABLE = _probe_pg_available()
+
+
+@pytest.fixture(autouse=True)
+def _disable_function_calling_for_tests():
+    """测试套件默认关闭 function calling，走关键词路由 fallback，保证确定性。
+
+    FC 路径会调用真实 LLM（非确定性、慢、依赖网络与 API key）。FC 的组件级行为
+    （Tool schema / wrapper / ToolCallingLoop / 降级分支）在 test_specialized_tools.py
+    中以 mock llm 独立覆盖；端到端 FC 集成由 scripts/verify_dialogue.py 等脚本验证。
+
+    需要 FC=True 的单测可在用例体内通过
+    `monkeypatch.setattr(Config, "FUNCTION_CALLING_ENABLED", True)` 覆盖。
+    """
+    from framework.config import Config
+
+    saved = getattr(Config, "FUNCTION_CALLING_ENABLED", True)
+    Config.FUNCTION_CALLING_ENABLED = False
+    try:
+        yield
+    finally:
+        Config.FUNCTION_CALLING_ENABLED = saved
