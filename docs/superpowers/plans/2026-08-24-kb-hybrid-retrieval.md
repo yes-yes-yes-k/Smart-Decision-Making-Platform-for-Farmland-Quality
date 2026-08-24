@@ -2,6 +2,7 @@
 change: kb-hybrid-retrieval
 design-doc: docs/superpowers/specs/2026-08-24-kb-hybrid-retrieval-design.md
 base-ref: 71c072c2bba09f18fded4c113d6125a80eeb8af4
+archived-with: 2026-08-25-kb-hybrid-retrieval
 ---
 
 # kb-hybrid-retrieval 实施计划
