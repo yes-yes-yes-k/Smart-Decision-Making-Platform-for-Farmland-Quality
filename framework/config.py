@@ -49,6 +49,9 @@ class Config:
     CHUNK_SIZE = 800
     CHUNK_OVERLAP = 150
     RETRIEVAL_TOP_K = 5
+    RECALL_TOP_K = int(os.environ.get("RECALL_TOP_K") or 20)      # 混合召回阶段候选数
+    RRF_K = int(os.environ.get("RRF_K") or 60)                    # RRF 平滑常数
+    HYBRID_SEARCH_ENABLED = os.environ.get("HYBRID_SEARCH_ENABLED", "true").lower() == "true"
 
     MAX_CONCURRENT_MODELS = int(os.environ.get('MAX_CONCURRENT_MODELS') or '0')
 

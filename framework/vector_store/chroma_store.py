@@ -7,6 +7,7 @@ from chromadb.api.types import EmbeddingFunction, Documents, Embeddings
 from chromadb.config import Settings
 from framework.config import Config
 from framework.embedding.service import embedding_service
+from framework.vector_store.bm25_store import BM25Store
 
 
 class NoOpEmbeddingFunction(EmbeddingFunction[Documents]):
@@ -36,6 +37,7 @@ class ChromaVectorStore:
     def __init__(self):
         self._client = None
         self._collection = None
+        self._bm25 = BM25Store()
         self._init_client()
 
     def _init_client(self):
@@ -142,6 +144,7 @@ class ChromaVectorStore:
                 documents=texts,
                 metadatas=metadatas or [],
             )
+            self._bm25.add_documents(texts, metadatas)
             return len(texts)
         except Exception as e:
             print(f"添加文档失败: {e}")
@@ -185,6 +188,35 @@ class ChromaVectorStore:
             print(f"搜索失败: {e}")
             return {"results": [], "count": 0}
 
+    def hybrid_search(self, query: str, n_results: int = 20, filters: Optional[Dict] = None) -> Dict[str, Any]:
+        """双路召回：向量 + BM25，RRF 融合去重后取 top-n。
+
+        Config.HYBRID_SEARCH_ENABLED=False 时回退纯向量单路（回滚路径）。
+        """
+        if not Config.HYBRID_SEARCH_ENABLED:
+            return self.search(query, n_results, filters)
+
+        vector_res = self.search(query, n_results, filters)
+        bm25_docs = self._bm25.search(query, n_results, filters)
+        fused = self._rrf_fuse(vector_res["results"], bm25_docs, k=Config.RRF_K)
+        fused = fused[:n_results]
+        return {"results": fused, "count": len(fused)}
+
+    @staticmethod
+    def _rrf_fuse(vector_docs: List[Dict], bm25_docs: List[Dict], k: int = 60) -> List[Dict]:
+        """RRF 融合：以 (source, content) 为键去重并累加倒数排名分。"""
+        score: Dict[tuple, float] = {}
+        docref: Dict[tuple, Dict] = {}
+        for rank, d in enumerate(vector_docs):
+            key = (d.get("metadata", {}).get("source"), d.get("content"))
+            score[key] = score.get(key, 0.0) + 1.0 / (k + rank + 1)
+            docref[key] = d
+        for rank, d in enumerate(bm25_docs):
+            key = (d.get("metadata", {}).get("source"), d.get("content"))
+            score[key] = score.get(key, 0.0) + 1.0 / (k + rank + 1)
+            docref[key] = d
+        return [docref[k] for k, _ in sorted(score.items(), key=lambda kv: -kv[1])]
+
     def delete_by_source(self, source_doc_name: str) -> int:
         if not self._collection:
             return 0
@@ -193,6 +225,7 @@ class ChromaVectorStore:
             count_before = self._collection.count()
             self._collection.delete(where={"source": source_doc_name})
             count_after = self._collection.count()
+            self._bm25.delete_by_source(source_doc_name)
             return count_before - count_after
         except Exception as e:
             print(f"删除失败: {e}")
@@ -218,11 +251,13 @@ class ChromaVectorStore:
         try:
             count_before = self._collection.count()
             if count_before == 0:
+                self._bm25.clear()
                 return 0
             all_data = self._collection.get()
             ids = all_data.get("ids", [])
             if ids:
                 self._collection.delete(ids=ids)
+            self._bm25.clear()
             return count_before
         except Exception as e:
             print(f"清空集合失败: {e}")
