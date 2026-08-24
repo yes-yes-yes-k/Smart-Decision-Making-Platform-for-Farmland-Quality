@@ -184,8 +184,103 @@ def rag_chat_node(state: MultiAgentState) -> MultiAgentState:
             "error": None,
         }
 
+def _execute_via_function_calling(
+    question: str, context: dict, trace_id: Optional[str] = None
+) -> Optional[dict]:
+    """尝试通过 LLM function calling 调用专题模型。
+
+    成功返回标准化的 model_results dict；失败返回 None 让调用方 fallback。
+    """
+    try:
+        from framework.config import Config
+
+        if not getattr(Config, "FUNCTION_CALLING_ENABLED", True):
+            return None
+
+        from framework.function_calling.specialized_tools import (
+            get_specialized_tools,
+            TOOL_NAME_TO_AGENT_ID,
+        )
+        from framework.llm.service import llm_service
+
+        tools = get_specialized_tools()
+        if not tools or not llm_service.is_available():
+            return None
+
+        # 构造 default_args：从 context 提取地块标识和参数
+        default_args: dict = {}
+        for key in (
+            "parcel_id", "parcel_code", "area_code", "land_type",
+            "fertilizer_type", "target_ph", "db_path",
+        ):
+            if key in context and context[key] is not None:
+                default_args[key] = context[key]
+
+        result = llm_service.generate_with_tools(
+            prompt=question,
+            messages=None,
+            tools=tools,
+            default_args=default_args,
+            trace_id=trace_id,
+        )
+
+        if not result.get("success"):
+            print(
+                f"[FC] function calling 失败: {result.get('reason', 'unknown')}，"
+                f"回退到关键词路由",
+                flush=True,
+            )
+            return None
+
+        # 标准化为 model_results 结构（兼容 agent_manager.process 返回格式）
+        tool_results: dict = result.get("tool_results", {})
+        # LLM 未调用任何工具（直接给出文本答复）→ 降级走关键词路由。
+        # 对齐方案设计："无 tool_calls → 降级走旧 agent_manager.process 路径"，
+        # 避免空结果绕过 fallback 导致用户拿不到真实模型计算。
+        if not tool_results:
+            return None
+        agents_invoked = [
+            TOOL_NAME_TO_AGENT_ID.get(name, name)
+            for name in (tc.get("tool_name", "") for tc in result.get("tool_calls_trace", []))
+        ]
+        # 去重保持顺序
+        seen = set()
+        agents_invoked = [a for a in agents_invoked if not (a in seen or seen.add(a))]
+
+        details: dict = {}
+        for agent_id, tool_result in tool_results.items():
+            details[agent_id] = {
+                "answer": result.get("content", ""),
+                "result": tool_result.get("result", {}),
+                "simulated": tool_result.get("simulated", False),
+                "data_source": tool_result.get("data_source", "unknown"),
+                "persisted": tool_result.get("persisted", False),
+                "status": tool_result.get("status", "ok"),
+                "confidence": 0.9,
+                "evidence": [],
+            }
+
+        question_type = context.get("question_type")
+        return {
+            "status": "ok",
+            "data": {
+                "question_type": question_type,
+                "agents_invoked": agents_invoked,
+                "summary": result.get("content", ""),
+                "details": details,
+                "recommendations": [],
+                "routing_method": "function_calling",
+                "tool_calls_trace": result.get("tool_calls_trace", []),
+                "iterations": result.get("iterations", 0),
+            },
+        }
+    except Exception as exc:
+        print(f"[FC] _execute_via_function_calling 异常: {exc}，回退到关键词路由", flush=True)
+        return None
+
+
 def execute_models(state: MultiAgentState) -> MultiAgentState:
-    """调用已由问题类型确定的单一专业能力。"""
+    """调用已由问题类型确定的专业能力（优先 function calling，失败回退关键词路由）。"""
     try:
         from framework.agents.manager import agent_manager
 
@@ -211,7 +306,22 @@ def execute_models(state: MultiAgentState) -> MultiAgentState:
             if key in state["request"]:
                 context[key] = state["request"][key]
 
+        # 优先尝试 function calling 路径
+        trace_id = state.get("trace_id")
+        fc_result = _execute_via_function_calling(question, context, trace_id)
+        if fc_result is not None:
+            return {
+                **state,
+                "model_results": fc_result,
+                "status": "model_completed",
+                "error": None,
+            }
+
+        # fallback: 原有关键词路由路径
         result = agent_manager.process(question, context)
+        # 标注 routing_method 便于 observability 区分
+        if isinstance(result, dict) and isinstance(result.get("data"), dict):
+            result["data"]["routing_method"] = "keyword_fallback"
         return {
             **state,
             "model_results": result,
