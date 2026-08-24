@@ -10,10 +10,11 @@ from __future__ import annotations
 from typing import Dict, List, Tuple, Any
 
 from framework.domain.calculations.coefficients import (
-    MODEL3_COEFFICIENTS, MODEL3_WEIGHTS, AREA_TO_REGION,
+    MODEL3_COEFFICIENTS, MODEL3_WEIGHTS,
     OBSTACLE_THRESHOLDS, ALL_INDICATORS, NUMERIC_INDICATORS,
     CONCEPT_INDICATORS,
 )
+from framework.domain.calculations.region_mapping_service import get_region_mapping
 
 # GCZD/DXBW 标记为 "by_membership": 按隶属度值判定障碍等级的阈值
 # (移植自 config.py calc_obstacle_level 中的 GCZD/DXBW 分支)
@@ -171,7 +172,7 @@ def diagnosis_row(indicators: Dict[str, Any], area_code: str) -> Dict:
         dict: obstacle_type, primary_factors, secondary_factors,
               obstacle_levels, obstacle_degrees, memberships。
     """
-    region = AREA_TO_REGION.get(area_code, {"primary": "HN", "secondary": "MNY"})
+    region = get_region_mapping(area_code)
     primary = region["primary"]
     secondary = region["secondary"]
     coef = MODEL3_COEFFICIENTS[primary]

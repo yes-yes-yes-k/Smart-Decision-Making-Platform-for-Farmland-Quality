@@ -8,9 +8,10 @@
 from __future__ import annotations
 from typing import List, Tuple
 from framework.domain.calculations.coefficients import (
-    MODEL2_COEFFICIENTS, GRADE_CONFIG, AREA_TO_REGION,
+    MODEL2_COEFFICIENTS, GRADE_CONFIG,
     NUMERIC_INDICATORS, CONCEPT_INDICATORS, PEAK_TYPE_INDICES,
 )
+from framework.domain.calculations.region_mapping_service import get_region_mapping
 
 
 def membership_numeric(u: float, a: float, c: float, ut1: float, ut2: float, idx: int) -> float:
@@ -83,7 +84,7 @@ def evaluate_land_quality(indicators: dict, area_code: str) -> Tuple[float, str,
     Returns:
         (quality_index, grade, memberships): 综合指数、等级、12 个隶属度列表。
     """
-    region = AREA_TO_REGION.get(area_code, {"ejnyq_idx": 0, "primary": "HN"})
+    region = get_region_mapping(area_code)
     ejnyq_idx = region["ejnyq_idx"]
     primary = region["primary"]
     coef = MODEL2_COEFFICIENTS[ejnyq_idx]

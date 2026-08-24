@@ -80,7 +80,14 @@ def to_float(val):
 
 
 def build_soil_indicators(row):
-    """从 shp 行构建 V3.0 soil_indicators dict。"""
+    """从 shp 行构建 V3.0 soil_indicators dict。
+
+    包含 12 个标准指标 + Model-4/5 默认值：
+    - target_ph: 6.5（广东省耕地一般目标值，后续 Model-4 可调整）
+    - fertilizer_type: "compound"（通用复合肥，后续 Model-4 可调整）
+    - exchangeable_hydrogen / exchangeable_aluminum / total_n: 由关联脚本
+      link_soil_indicators.py 从 third_survey_profiles/topsoils 表按行政区域补充
+    """
     indicators = {}
     for shp_field, v3_field in FIELD_MAP.items():
         val = row.get(shp_field)
@@ -93,6 +100,9 @@ def build_soil_indicators(row):
             fval = to_float(val)
             if fval is not None:
                 indicators[v3_field] = fval
+    # Model-4/5 默认值（源数据不含 target_ph/fertilizer_type，由 Model-4 交互层调整）
+    indicators.setdefault("target_ph", 6.5)
+    indicators.setdefault("fertilizer_type", "compound")
     return indicators
 
 

@@ -31,4 +31,5 @@ from .thematic_model import (
     ExclusiveRuleConfig,
     ParcelInfo,
     ModelVersionHistory,
+    AreaCodeRegionMap,
 )

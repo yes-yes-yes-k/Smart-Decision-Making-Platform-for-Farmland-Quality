@@ -3,6 +3,10 @@ from framework.domain.calculations.coefficients import (
     AREA_TO_REGION, MODEL2_COEFFICIENTS, MODEL3_COEFFICIENTS, MODEL3_WEIGHTS,
     GRADE_CONFIG, DISCRETE_CN_MAP, DISCRETE_EN_MAP,
 )
+from framework.domain.calculations.region_mapping_service import (
+    get_region_mapping, refresh_region_cache, validate_region_mappings,
+    DEFAULT_REGION_MAPPING,
+)
 
 def test_area_to_region_lechang():
     """乐昌 440281 → 南岭丘陵 NL, 华南 HN, ejnyq_idx 3."""
@@ -40,3 +44,47 @@ def test_grade_config_hn_thresholds():
     assert bounds[1] == 0.6650
     assert labels[0] == "10"  # < 0.6650 为 10 等
     assert labels[9] == "1"  # >= 0.8850 为 1 等
+
+
+# ===== get_region_mapping 服务层测试 =====
+
+def test_get_region_mapping_hardcoded_fallback_lechang():
+    """硬编码回退：乐昌 440281 在 DB 不可用时从 AREA_TO_REGION 返回."""
+    refresh_region_cache()  # 清空缓存，强制重新加载（DB 不可用→空缓存→回退硬编码）
+    result = get_region_mapping("440281")
+    assert result["primary"] == "HN"
+    assert result["secondary"] == "NL"
+    assert result["ejnyq_idx"] == 3
+
+def test_get_region_mapping_unknown_area_code_degrades():
+    """未知 area_code 降级到默认值."""
+    refresh_region_cache()
+    result = get_region_mapping("999999")
+    assert result == DEFAULT_REGION_MAPPING
+    assert result["primary"] == "HN"
+    assert result["secondary"] == "MNY"
+    assert result["ejnyq_idx"] == 0
+
+def test_get_region_mapping_returns_dict_not_shared_reference():
+    """返回的 dict 应为独立副本，避免调用方修改污染缓存."""
+    refresh_region_cache()
+    result = get_region_mapping("999999")
+    result["primary"] = "MODIFIED"
+    result2 = get_region_mapping("999999")
+    assert result2["primary"] == "HN"  # 默认值未被污染
+
+def test_refresh_region_cache_clears_cache():
+    """refresh_region_cache 清空缓存，下次查询重新加载."""
+    # 先填充缓存
+    get_region_mapping("440281")
+    refresh_region_cache()
+    # 再次查询，应重新加载（不报错即通过）
+    result = get_region_mapping("440281")
+    assert result["ejnyq_idx"] == 3
+
+def test_validate_region_mappings_passes_for_hardcoded():
+    """验证硬编码 AREA_TO_REGION 中的映射与系数配置一致."""
+    refresh_region_cache()
+    is_valid, issues = validate_region_mappings()
+    assert is_valid, f"映射一致性验证失败: {issues}"
+    assert len(issues) == 0

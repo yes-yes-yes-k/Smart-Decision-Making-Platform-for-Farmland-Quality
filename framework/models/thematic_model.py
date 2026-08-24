@@ -503,3 +503,27 @@ class ModelVersionHistory(db.Model):
         db.Index("idx_model_version_history_agent_id", "agent_id"),
         db.Index("idx_model_version_history_version", "version"),
     )
+
+
+class AreaCodeRegionMap(db.Model):
+    """行政区划代码 → 农业区映射表。
+
+    取代原硬编码 AREA_TO_REGION 字典，作为 Model-1/2/3 选择隶属度参数和权重的
+    唯一数据源。region_mapping_service 提供带缓存和回退的查询入口。
+    """
+    __tablename__ = "area_code_region_map"
+
+    id = db.Column(db.Integer, primary_key=True, autoincrement=True, comment="主键")
+    area_code = db.Column(db.String(10), nullable=False, comment="行政区划代码，如 440281")
+    region_name = db.Column(db.String(64), comment="行政区名称，如 乐昌市")
+    primary = db.Column(db.String(10), nullable=False, comment="一级农业区代码 HN/CJ")
+    secondary = db.Column(db.String(10), nullable=False, comment="二级农业区代码 MNY/YXG/QN/NL")
+    ejnyq_idx = db.Column(db.Integer, nullable=False, comment="二级农业区索引 0-3，用于选择 MODEL2_COEFFICIENTS")
+    enabled = db.Column(db.Boolean, nullable=False, server_default="true", comment="是否启用")
+    created_at = db.Column(db.DateTime(timezone=True), nullable=False, server_default=db.func.current_timestamp(), comment="创建时间")
+    updated_at = db.Column(db.DateTime(timezone=True), nullable=False, server_default=db.func.current_timestamp(), comment="更新时间")
+
+    __table_args__ = (
+        db.UniqueConstraint("area_code", name="uk_area_code_region_map_area_code"),
+        db.Index("idx_area_code_region_map_enabled", "enabled"),
+    )
