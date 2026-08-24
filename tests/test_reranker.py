@@ -69,3 +69,36 @@ def test_rerank_api_exception_falls_back(monkeypatch):
     monkeypatch.setattr(requests, "post", fake_post)
     svc = RerankService()
     assert svc.rerank("q", CANDIDATES) == CANDIDATES
+
+
+def test_rag_chain_retrieve_triggers_rerank(monkeypatch):
+    from framework.rag.chain import rag_chain
+    from framework.rag import reranker as reranker_mod
+
+    monkeypatch.setattr(Config, "RECALL_TOP_K", 20)
+    monkeypatch.setattr(Config, "RETRIEVAL_TOP_K", 5)
+    monkeypatch.setattr(Config, "RERANK_ENABLED", True)
+
+    recalled = {
+        "results": [{"content": f"c{i}", "metadata": {"source": "s"}} for i in range(20)],
+        "count": 20,
+    }
+
+    class FakeVS:
+        def hybrid_search(self, query, n_results=None, filters=None):
+            return recalled
+
+    monkeypatch.setattr(rag_chain, "vector_store", FakeVS())
+
+    seen = {}
+
+    def fake_rerank(query, candidates):
+        seen["n"] = len(candidates)
+        return list(reversed(candidates))[:5]
+
+    monkeypatch.setattr(reranker_mod.rerank_service, "rerank", fake_rerank)
+
+    result = rag_chain._retrieve_documents("查询农耕", {"s"})
+    assert seen["n"] == 20
+    assert result["count"] == 5
+    assert len(result["results"]) == 5
