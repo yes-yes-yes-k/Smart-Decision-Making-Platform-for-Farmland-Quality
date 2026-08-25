@@ -248,7 +248,7 @@ git commit -m "feat(kb): add soil synonym dict and whole-word query normalizer"
 - Consumes: `normalize_query(text: str) -> str`（Task 1 产出）。
 - Produces: `_retrieve_documents(query, valid_doc_names)` 在调用 `hybrid_search` 前以 `normalize_query(query)` 作为召回 query；`rerank` 仍使用原始 `query`（设计文档仅要求「规范化后的 query 用于向量与 BM25 两路召回」）。
 
-- [ ] **Step 1: 新增 import**
+- [x] **Step 1: 新增 import**
 
 在 `framework/rag/chain.py` 顶部 import 区（`from framework.rag.reranker import rerank_service` 之后）加入：
 
@@ -256,7 +256,7 @@ git commit -m "feat(kb): add soil synonym dict and whole-word query normalizer"
 from framework.rag.synonyms import normalize_query
 ```
 
-- [ ] **Step 2: 修改 `_retrieve_documents`**
+- [x] **Step 2: 修改 `_retrieve_documents`**
 
 把 `framework/rag/chain.py` 第 116-124 行：
 
@@ -289,7 +289,7 @@ from framework.rag.synonyms import normalize_query
 
 （`rerank` 仍用原始 `query`，遵循设计文档范围；`chat_stream()` 走同一个 `_retrieve_documents`，无需改动。）
 
-- [ ] **Step 3: 追加链级流程测试**（追加到 `tests/test_reranker.py` 末尾）
+- [x] **Step 3: 追加链级流程测试**（追加到 `tests/test_reranker.py` 末尾）
 
 ```python
 def test_rag_chain_normalizes_query_before_recall(monkeypatch):
@@ -319,12 +319,12 @@ def test_rag_chain_normalizes_query_before_recall(monkeypatch):
     assert seen["query"] == "有效钾含量"
 ```
 
-- [ ] **Step 4: 运行测试确认通过**
+- [x] **Step 4: 运行测试确认通过**
 
 Run: `python -m pytest tests/test_reranker.py tests/test_synonyms.py -v`
 Expected: PASS（含新增链级流程测试 + 原有 5 个 reranker 用例全绿）
 
-- [ ] **Step 5: 提交**
+- [x] **Step 5: 提交**
 
 ```bash
 git add framework/rag/chain.py tests/test_reranker.py
