@@ -893,7 +893,7 @@ git commit -m "feat(kb): route vector store into per-category collections"
 - Consumes: `QUESTION_TYPE_1_KEYWORDS` ~ `QUESTION_TYPE_6_KEYWORDS`（复用 `framework/agents/routing.py` 中的题型关键词）。
 - Produces: `route_category(query: str) -> Optional[str]`：判断查询目标 category slug（`stability`/`grade`/`problem`/`acidification`/`organic_matter`/`fertility`），无法判断返回 `None`（由 `chroma_store` 走全库回退）。
 
-- [ ] **Step 1: 编写失败测试** `tests/test_category_router.py`
+- [x] **Step 1: 编写失败测试** `tests/test_category_router.py`
 
 ```python
 """测试耕地领域关键词路由。"""
@@ -930,12 +930,12 @@ def test_route_unknown_returns_none():
     assert route_category(None) is None
 ```
 
-- [ ] **Step 2: 运行测试确认失败**
+- [x] **Step 2: 运行测试确认失败**
 
 Run: `python -m pytest tests/test_category_router.py -v`
 Expected: FAIL（`ModuleNotFoundError: No module named 'framework.rag.category_router'`）
 
-- [ ] **Step 3: 编写实现** `framework/rag/category_router.py`
+- [x] **Step 3: 编写实现** `framework/rag/category_router.py`
 
 ```python
 """耕地领域查询分类路由：关键词规则 + 全库回退（无 LLM）。"""
@@ -986,12 +986,12 @@ def route_category(query: Optional[str]) -> Optional[str]:
     return None
 ```
 
-- [ ] **Step 4: 运行测试确认通过**
+- [x] **Step 4: 运行测试确认通过**
 
 Run: `python -m pytest tests/test_category_router.py -v`
 Expected: PASS（7 个用例全绿）
 
-- [ ] **Step 5: 提交**
+- [x] **Step 5: 提交**
 
 ```bash
 git add framework/rag/category_router.py tests/test_category_router.py
