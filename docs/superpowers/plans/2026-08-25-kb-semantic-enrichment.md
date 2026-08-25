@@ -1014,7 +1014,7 @@ git commit -m "feat(kb): add keyword-based category router for retrieval"
 - Consumes: `route_category(query) -> Optional[str]`（Task 5）、`ChromaVectorStore.hybrid_search(..., category=None)`（Task 4）。
 - Produces: `_retrieve_documents` 先 `normalize_query` 再 `route_category(normalized_query)`，将 category 传入 `hybrid_search`；入库侧 `docs.py` 将 form `category` 传入 `add_documents(category=...)`。
 
-- [ ] **Step 1: chain.py 加 import**
+- [x] **Step 1: chain.py 加 import**
 
 在 `framework/rag/chain.py` 顶部 import 区（`from framework.rag.synonyms import normalize_query` 之后）加入：
 
@@ -1022,7 +1022,7 @@ git commit -m "feat(kb): add keyword-based category router for retrieval"
 from framework.rag.category_router import route_category
 ```
 
-- [ ] **Step 2: chain.py 修改 `_retrieve_documents`**
+- [x] **Step 2: chain.py 修改 `_retrieve_documents`**
 
 把 `framework/rag/chain.py` 第 116-124 行：
 
@@ -1056,7 +1056,7 @@ from framework.rag.category_router import route_category
                 "count": len(results[:Config.RETRIEVAL_TOP_K])}
 ```
 
-- [ ] **Step 3: docs.py 传 category 入库**
+- [x] **Step 3: docs.py 传 category 入库**
 
 把 `framework/api/routes/docs.py` 第 121 行：
 
@@ -1070,7 +1070,7 @@ from framework.rag.category_router import route_category
             added_count = vector_store.add_documents(chunks, metadatas, category=category)
 ```
 
-- [ ] **Step 4: 更新受影响测试的 mock 签名**
+- [x] **Step 4: 更新受影响测试的 mock 签名**
 
 （1）`tests/test_reranker.py` 第 87-89 行：
 
@@ -1097,7 +1097,7 @@ from framework.rag.category_router import route_category
         return len(texts) if texts else 0
 ```
 
-- [ ] **Step 5: 追加链级路由接线测试**（追加到 `tests/test_reranker.py` 末尾）
+- [x] **Step 5: 追加链级路由接线测试**（追加到 `tests/test_reranker.py` 末尾）
 
 ```python
 def test_rag_chain_routes_category_and_passes_to_search(monkeypatch):
@@ -1123,7 +1123,7 @@ def test_rag_chain_routes_category_and_passes_to_search(monkeypatch):
     assert seen["category"] == "acidification"
 ```
 
-- [ ] **Step 6: 追加入库 category 透传断言**（追加到 `tests/test_metadata.py` 末尾）
+- [x] **Step 6: 追加入库 category 透传断言**（追加到 `tests/test_metadata.py` 末尾）
 
 ```python
 def test_upload_passes_category_to_vector_store(client):
@@ -1143,12 +1143,12 @@ def test_upload_passes_category_to_vector_store(client):
     assert client._capture_vs.captured["category"] == "acidification"
 ```
 
-- [ ] **Step 7: 运行测试确认通过**
+- [x] **Step 7: 运行测试确认通过**
 
 Run: `python -m pytest tests/test_reranker.py tests/test_metadata.py tests/test_docs_dedup.py tests/test_category_router.py tests/test_synonyms.py -v`
 Expected: PASS（新增 + 既有用例全绿；`test_docs_dedup.py` 的 mock 已接受 `category` 关键字）
 
-- [ ] **Step 8: 提交**
+- [x] **Step 8: 提交**
 
 ```bash
 git add framework/rag/chain.py framework/api/routes/docs.py tests/test_reranker.py tests/test_docs_dedup.py tests/test_metadata.py
