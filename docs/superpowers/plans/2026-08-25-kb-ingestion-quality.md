@@ -6,7 +6,7 @@ base-ref: 51adad01597cc00b44c8715cec047247dae7e794
 
 # kb-ingestion-quality 实施计划
 
-> **For agentic workers:** REQUIRED SUB-SKILL: 使用 superpowers:subagent-driven-development（推荐）或 superpowers:executing-plans 逐任务执行本计划。步骤用复选框（`- [ ]`）语法跟踪进度。
+> **For agentic workers:** REQUIRED SUB-SKILL: 使用 superpowers:subagent-driven-development（推荐）或 superpowers:executing-plans 逐任务执行本计划。步骤用复选框（`- [x]`）语法跟踪进度。
 
 **Goal:** 在 P0（hybrid retrieval：向量 + BM25 + RRF + rerank）与 P1（同义词预处理 + chunk 元数据 + 分领域 collection）之上，补齐入库质量治理与可观测性：解析后文本清洗、上传管线异步化、OCR/表格解析主路径化、答案引用溯源到 chunk/页码、检索质量评估脚本（hit_rate@K + MRR）。
 
@@ -57,7 +57,7 @@ base-ref: 51adad01597cc00b44c8715cec047247dae7e794
   - `clean_text(text: str) -> str`：Unicode NFKC → 去不可见控制字符（保留 `\t \n \r`）→ 合并连续空白（3+ 空白压 2 个、3+ 换行压 2 个）→ 去跨页重复 ≥ 3 次的页眉页脚行 → strip。空文本/None 返回 `""`。
   - `_strip_repeated_header_footer(text: str) -> str`：内部辅助，行数 < 6 原样返回；统计非空行 hash 频次，频次 ≥ 3 的行去除。
 
-- [ ] **Step 1: 编写失败测试** `tests/test_text_cleaner.py`
+- [x] **Step 1: 编写失败测试** `tests/test_text_cleaner.py`
 
 ```python
 """测试文本清洗纯函数。"""
@@ -112,12 +112,12 @@ def test_strip_leading_trailing_whitespace():
     assert clean_text("  hello  ") == "hello"
 ```
 
-- [ ] **Step 2: 运行测试确认失败**
+- [x] **Step 2: 运行测试确认失败**
 
 Run: `python -m pytest tests/test_text_cleaner.py -v`
 Expected: FAIL，`ModuleNotFoundError: No module named 'framework.upload.text_cleaner'`
 
-- [ ] **Step 3: 编写最小实现** `framework/upload/text_cleaner.py`
+- [x] **Step 3: 编写最小实现** `framework/upload/text_cleaner.py`
 
 ```python
 """文档解析后文本清洗：NFKC 规范化、去控制字符、合并空白、去重复页眉页脚。"""
@@ -168,12 +168,12 @@ def _strip_repeated_header_footer(text: str) -> str:
     return "\n".join(line for line in lines if line.strip() not in repeated)
 ```
 
-- [ ] **Step 4: 运行测试确认通过**
+- [x] **Step 4: 运行测试确认通过**
 
 Run: `python -m pytest tests/test_text_cleaner.py -v`
 Expected: PASS（7 项全通过）
 
-- [ ] **Step 5: 提交**
+- [x] **Step 5: 提交**
 
 ```bash
 git add framework/upload/text_cleaner.py tests/test_text_cleaner.py
@@ -192,7 +192,7 @@ git commit -m "feat(kb): 新增 clean_text 文本清洗纯函数"
 - Consumes: Task 1 的 `clean_text(text: str) -> str`。
 - Produces: `parse_document(file_path, file_type) -> Optional[str]`（签名暂不变，内部接入清洗）；后续 Task 5 扩展 `page_aware` 参数。
 
-- [ ] **Step 1: 编写失败测试** `tests/test_document_parser_clean.py`
+- [x] **Step 1: 编写失败测试** `tests/test_document_parser_clean.py`
 
 ```python
 """测试 document_parser 各路径接入 clean_text。"""
@@ -225,12 +225,12 @@ def test_parse_document_unknown_type_returns_none():
     assert parse_document("/tmp/x.xyz", "xyz") is None
 ```
 
-- [ ] **Step 2: 运行测试确认失败**
+- [x] **Step 2: 运行测试确认失败**
 
 Run: `python -m pytest tests/test_document_parser_clean.py -v`
 Expected: FAIL，`_parse_txt` 返回未清洗原文（含 `\x00` 与全角字符）
 
-- [ ] **Step 3: 接入 clean_text 到各 `_parse_*` 出口**
+- [x] **Step 3: 接入 clean_text 到各 `_parse_*` 出口**
 
 修改 `framework/upload/document_parser.py`：
 
@@ -251,17 +251,17 @@ def _parse_txt(file_path: str) -> str:
 5. `_parse_docx` 末尾 `return text` 改为 `return clean_text(text)`。
 6. `_parse_excel` 末尾 `return clean_text(df.to_string())`。
 
-- [ ] **Step 4: 运行测试确认通过**
+- [x] **Step 4: 运行测试确认通过**
 
 Run: `python -m pytest tests/test_document_parser_clean.py -v`
 Expected: PASS（3 项全通过）
 
-- [ ] **Step 5: 回归现有解析测试**
+- [x] **Step 5: 回归现有解析测试**
 
 Run: `python -m pytest tests/test_document_parser.py -v 2>/dev/null || echo "无现有测试或全部通过"`
 Expected: 无新增失败（若现有测试断言原文未清洗文本，按 Design Doc 第 7 节调整断言为清洗后等价语义）
 
-- [ ] **Step 6: 提交**
+- [x] **Step 6: 提交**
 
 ```bash
 git add framework/upload/document_parser.py tests/test_document_parser_clean.py
@@ -280,7 +280,7 @@ git commit -m "feat(kb): document_parser 各解析路径接入 clean_text"
 - Consumes: Task 1 的 `clean_text`。
 - Produces: 完整清洗单测覆盖（对应 spec `file-upload-management` 的 `Clean parsed text` 场景全部分支）。
 
-- [ ] **Step 1: 编写补充失败测试**（追加到 `tests/test_text_cleaner.py`）
+- [x] **Step 1: 编写补充失败测试**（追加到 `tests/test_text_cleaner.py`）
 
 ```python
 def test_nfkc_compatibility_chars():
@@ -316,16 +316,16 @@ def test_header_footer_threshold_exactly_three():
     assert "页眉行" not in result
 ```
 
-- [ ] **Step 2: 运行测试确认结果**
+- [x] **Step 2: 运行测试确认结果**
 
 Run: `python -m pytest tests/test_text_cleaner.py -v`
 Expected: 全部 PASS（若 `test_header_footer_threshold_exactly_three` 失败，检查 `_strip_repeated_header_footer` 的 `>= 3` 判定与行数 `>= 6` 判定）
 
-- [ ] **Step 3: 必要时 Refactor**
+- [x] **Step 3: 必要时 Refactor**
 
 若 Step 2 有失败，修正 `framework/upload/text_cleaner.py` 中阈值或边界条件；不改动对外签名。
 
-- [ ] **Step 4: 提交**
+- [x] **Step 4: 提交**
 
 ```bash
 git add tests/test_text_cleaner.py framework/upload/text_cleaner.py
@@ -336,11 +336,11 @@ git commit -m "test(kb): 补充 clean_text 边界与回归测试"
 
 ### 📋 审查检查点 #1（Task 1-3 完成后，thorough 模式分段审查）
 
-- [ ] 运行 `python -m pytest tests/test_text_cleaner.py tests/test_document_parser_clean.py -v` 全绿
-- [ ] 确认 `clean_text` 对 None/空串/纯空白均返回 `""`，不抛异常
-- [ ] 确认 `_parse_*` 所有 return 路径都经过 `clean_text`（含 PDF 的 pdfplumber/PyPDF2/OCR 三分支）
-- [ ] 确认现有 `test_upload.py` / `test_document_parser.py` 回归无破坏（若有断言依赖未清洗文本，已调整为等价语义）
-- [ ] Comet Classic：本段属 Build 阶段普通实现写入，Hook 应放行；若被拒按拒绝信息回到 Build
+- [x] 运行 `python -m pytest tests/test_text_cleaner.py tests/test_document_parser_clean.py -v` 全绿
+- [x] 确认 `clean_text` 对 None/空串/纯空白均返回 `""`，不抛异常
+- [x] 确认 `_parse_*` 所有 return 路径都经过 `clean_text`（含 PDF 的 pdfplumber/PyPDF2/OCR 三分支）
+- [x] 确认现有 `test_upload.py` / `test_document_parser.py` 回归无破坏（若有断言依赖未清洗文本，已调整为等价语义）
+- [x] Comet Classic：本段属 Build 阶段普通实现写入，Hook 应放行；若被拒按拒绝信息回到 Build
 
 ---
 
@@ -356,7 +356,7 @@ git commit -m "test(kb): 补充 clean_text 边界与回归测试"
 - Consumes: 无。
 - Produces: `Document.STATUS_PENDING=0 / STATUS_COMPLETED=1 / STATUS_PROCESSING=2 / STATUS_FAILED=3`；`status` 列默认仍为 `1`（现有数据语义不变）。
 
-- [ ] **Step 1: 编写失败测试** `tests/test_document_status_enum.py`
+- [x] **Step 1: 编写失败测试** `tests/test_document_status_enum.py`
 
 ```python
 """测试 Document 状态枚举常量。"""
@@ -380,12 +380,12 @@ def test_status_default_preserved():
     assert col.default.arg == 1
 ```
 
-- [ ] **Step 2: 运行测试确认失败**
+- [x] **Step 2: 运行测试确认失败**
 
 Run: `python -m pytest tests/test_document_status_enum.py -v`
 Expected: FAIL，`AttributeError: type object 'Document' has no attribute 'STATUS_PENDING'`
 
-- [ ] **Step 3: 新增枚举常量**
+- [x] **Step 3: 新增枚举常量**
 
 修改 `framework/models/document.py`，在 `class Document(db.Model):` 之后、字段定义之前插入：
 
@@ -405,12 +405,12 @@ class Document(db.Model):
 
 注意：`status = db.Column(db.SmallInteger, default=1, ...)` 保持不变。
 
-- [ ] **Step 4: 运行测试确认通过**
+- [x] **Step 4: 运行测试确认通过**
 
 Run: `python -m pytest tests/test_document_status_enum.py -v`
 Expected: PASS（2 项全通过）
 
-- [ ] **Step 5: 提交**
+- [x] **Step 5: 提交**
 
 ```bash
 git add framework/models/document.py tests/test_document_status_enum.py
@@ -437,7 +437,7 @@ git commit -m "feat(kb): Document 新增 STATUS 枚举常量（0/1/2/3）"
   - `_ingest(...)`：worker 主体，状态机 `pending(0) → processing(2) → completed(1)` 或异常 `→ failed(3)`；worker 线程内新建 app context。
   - `_set_status(document_id, status)`：更新文档状态并 commit。
 
-- [ ] **Step 1: 编写失败测试** `tests/test_ingestion_worker.py`
+- [x] **Step 1: 编写失败测试** `tests/test_ingestion_worker.py`
 
 ```python
 """测试异步入库 worker 状态机（mock vector_store 与 parse_document）。"""
@@ -519,12 +519,12 @@ def test_ingest_failure_promotes_to_failed(monkeypatch):
     assert fake.status == Document.STATUS_FAILED
 ```
 
-- [ ] **Step 2: 运行测试确认失败**
+- [x] **Step 2: 运行测试确认失败**
 
 Run: `python -m pytest tests/test_ingestion_worker.py -v`
 Expected: FAIL，`ModuleNotFoundError: No module named 'framework.upload.ingestion_worker'`
 
-- [ ] **Step 3: 编写实现** `framework/upload/ingestion_worker.py`
+- [x] **Step 3: 编写实现** `framework/upload/ingestion_worker.py`
 
 ```python
 """异步入库 worker：fire-and-forget 提交 + 状态机跟踪。
@@ -633,12 +633,12 @@ def _set_status(document_id, status):
 > - `_split_with_pages` 为 Task 7 前的占位包装；Task 7 Step 5 将 `_ingest` 切换为直接调用 `chunker.split_text_with_pages`，删除本函数。
 > - worker 调用 `parse_document(file_path, file_type, page_aware=True)`，`page_aware` 参数由 Task 8 实现。本任务单元测试 mock `parse_document`，不依赖真实参数支持；worker 端到端运行需在 Task 8 完成后。
 
-- [ ] **Step 4: 运行测试确认通过**
+- [x] **Step 4: 运行测试确认通过**
 
 Run: `python -m pytest tests/test_ingestion_worker.py -v`
 Expected: PASS（2 项全通过）
 
-- [ ] **Step 5: 提交**
+- [x] **Step 5: 提交**
 
 ```bash
 git add framework/upload/ingestion_worker.py tests/test_ingestion_worker.py
@@ -659,7 +659,7 @@ git commit -m "feat(kb): 新增异步入库 worker 与状态机"
   - Task 5 的 `submit_ingest(document_id, file_path, file_type, doc_name, category, treatment_type)`。
 - Produces: `/upload` 对文档类返回 HTTP 202 + `Document.to_dict()`（status=0 pending）；数据文件分支（`category in DATA_CATEGORIES`）保持原 200 同步行为。
 
-- [ ] **Step 1: 编写失败测试** `tests/test_upload_async.py`
+- [x] **Step 1: 编写失败测试** `tests/test_upload_async.py`
 
 ```python
 """测试上传接口异步化：文档类返回 202 + status=0，并提交后台 worker。"""
@@ -782,12 +782,12 @@ def test_upload_data_file_stays_sync(monkeypatch, tmp_path):
     assert submitted["called"] is False
 ```
 
-- [ ] **Step 2: 运行测试确认失败**
+- [x] **Step 2: 运行测试确认失败**
 
 Run: `python -m pytest tests/test_upload_async.py -v`
 Expected: FAIL（当前 `/upload` 同步返回 200 + status=1，未调 `submit_ingest`）
 
-- [ ] **Step 3: 改造 `/upload` 文档分支**
+- [x] **Step 3: 改造 `/upload` 文档分支**
 
 修改 `framework/api/routes/docs.py` 的 `upload_document()`：
 
@@ -833,17 +833,17 @@ Expected: FAIL（当前 `/upload` 同步返回 200 + status=1，未调 `submit_i
 - 数据文件分支（`category in DATA_CATEGORIES`）保持原 200 同步行为不变。
 - 文件保存 `save_uploaded_file`、查重逻辑保持不变。
 
-- [ ] **Step 4: 运行测试确认通过**
+- [x] **Step 4: 运行测试确认通过**
 
 Run: `python -m pytest tests/test_upload_async.py -v`
 Expected: PASS（2 项全通过）
 
-- [ ] **Step 5: 回归现有上传测试**
+- [x] **Step 5: 回归现有上传测试**
 
 Run: `python -m pytest tests/test_upload.py -v 2>/dev/null || echo "无现有测试或需调整断言"`
 Expected: 若现有 `test_upload.py` 断言 `status==1` / HTTP 200，按 Design Doc 第 7 节调整为：上传立即返回 202 + status=0(pending)，worker 完成后 status=1。调整断言不破坏语义。
 
-- [ ] **Step 6: 提交**
+- [x] **Step 6: 提交**
 
 ```bash
 git add framework/api/routes/docs.py tests/test_upload_async.py
@@ -854,12 +854,12 @@ git commit -m "feat(kb): 上传路由文档分支改异步 fire-and-forget + 202
 
 ### 📋 审查检查点 #2（Task 4-6 完成后，thorough 模式分段审查）
 
-- [ ] 运行 `python -m pytest tests/test_document_status_enum.py tests/test_ingestion_worker.py tests/test_upload_async.py -v` 全绿
-- [ ] 确认 `Document.status` 默认值仍为 `1`（现有数据语义不变，无 schema 迁移）
-- [ ] 确认 worker 异常路径推进到 `STATUS_FAILED` 且打印 traceback（spec `Worker failure promotes status to failed`）
-- [ ] 确认数据文件分支未受影响（仍 200 同步）
-- [ ] 确认 worker `max_workers=2` 与 `data_trigger.py` 模式一致，未引入 Celery/Redis
-- [ ] Comet Classic：Build 阶段写入；若 Hook 拒绝多文件改动，按拒绝信息回到 Build
+- [x] 运行 `python -m pytest tests/test_document_status_enum.py tests/test_ingestion_worker.py tests/test_upload_async.py -v` 全绿
+- [x] 确认 `Document.status` 默认值仍为 `1`（现有数据语义不变，无 schema 迁移）
+- [x] 确认 worker 异常路径推进到 `STATUS_FAILED` 且打印 traceback（spec `Worker failure promotes status to failed`）
+- [x] 确认数据文件分支未受影响（仍 200 同步）
+- [x] 确认 worker `max_workers=2` 与 `data_trigger.py` 模式一致，未引入 Celery/Redis
+- [x] Comet Classic：Build 阶段写入；若 Hook 拒绝多文件改动，按拒绝信息回到 Build
 
 ---
 
@@ -880,7 +880,7 @@ git commit -m "feat(kb): 上传路由文档分支改异步 fire-and-forget + 202
 
 > 说明：本任务属于引用溯源的基础设施（chunker 按页切分），放在组三是因为 `ingestion_worker` 与 `document_parser` 的 `page_aware` 都依赖它。tasks.md 4.1 是 chain.py sources 改造，本任务是其前置。
 
-- [ ] **Step 1: 编写失败测试** `tests/test_chunker_pages.py`
+- [x] **Step 1: 编写失败测试** `tests/test_chunker_pages.py`
 
 ```python
 """测试 page-aware 切分：跨页不拼接、空页跳过、参数缺省。"""
@@ -931,12 +931,12 @@ def test_empty_pages_returns_empty():
     assert split_text_with_pages([(1, None)]) == []
 ```
 
-- [ ] **Step 2: 运行测试确认失败**
+- [x] **Step 2: 运行测试确认失败**
 
 Run: `python -m pytest tests/test_chunker_pages.py -v`
 Expected: FAIL，`ImportError: cannot import name 'split_text_with_pages'`
 
-- [ ] **Step 3: 实现 `split_text_with_pages`**
+- [x] **Step 3: 实现 `split_text_with_pages`**
 
 在 `framework/upload/chunker.py` 末尾追加：
 
@@ -973,24 +973,24 @@ def split_text_with_pages(
     return result
 ```
 
-- [ ] **Step 4: 运行测试确认通过**
+- [x] **Step 4: 运行测试确认通过**
 
 Run: `python -m pytest tests/test_chunker_pages.py -v`
 Expected: PASS（5 项全通过）
 
-- [ ] **Step 5: Refactor worker 调用真实切分**
+- [x] **Step 5: Refactor worker 调用真实切分**
 
 修改 `framework/upload/ingestion_worker.py`：
 - 顶部 import 改为 `from framework.upload.chunker import split_text, split_text_with_pages`。
 - `_ingest` 中 `chunks_with_pages = _split_with_pages(pages)` 改为 `chunks_with_pages = split_text_with_pages(pages)`。
 - 删除占位函数 `_split_with_pages`。
 
-- [ ] **Step 6: 回归 worker 测试**
+- [x] **Step 6: 回归 worker 测试**
 
 Run: `python -m pytest tests/test_ingestion_worker.py -v`
 Expected: PASS（worker 测试用 `split_text` mock，不受影响）
 
-- [ ] **Step 7: 提交**
+- [x] **Step 7: 提交**
 
 ```bash
 git add framework/upload/chunker.py framework/upload/ingestion_worker.py tests/test_chunker_pages.py
@@ -1015,7 +1015,7 @@ git commit -m "feat(kb): chunker 新增 split_text_with_pages 按页切分"
   - `_table_to_markdown(rows) -> str`：`List[List[str]]` → Markdown 表格。
   - `_parse_pdf_ocr(file_path, page_aware=False)`：OCR 主路径，`page_aware=True` 返回 `List[(page_num, text)]`。
 
-- [ ] **Step 1: 编写失败测试** `tests/test_document_parser_pdf.py`
+- [x] **Step 1: 编写失败测试** `tests/test_document_parser_pdf.py`
 
 ```python
 """测试 PDF 解析：图片型检测、表格 Markdown、page_aware 返回结构。"""
@@ -1075,12 +1075,12 @@ def test_parse_document_page_aware_non_pdf_returns_str(tmp_path):
     assert isinstance(result, str)
 ```
 
-- [ ] **Step 2: 运行测试确认失败**
+- [x] **Step 2: 运行测试确认失败**
 
 Run: `python -m pytest tests/test_document_parser_pdf.py -v`
 Expected: FAIL，`ImportError: cannot import name '_detect_avg_chars'` / `page_aware` 参数不存在
 
-- [ ] **Step 3: Config 新增阈值**
+- [x] **Step 3: Config 新增阈值**
 
 修改 `framework/config.py`，在 `Config` 类中（建议紧跟 `CHUNK_OVERLAP` 之后）新增：
 
@@ -1088,7 +1088,7 @@ Expected: FAIL，`ImportError: cannot import name '_detect_avg_chars'` / `page_a
     PDF_OCR_THRESHOLD = 50  # 平均字符/页阈值，低于则触发 OCR 主路径
 ```
 
-- [ ] **Step 4: 重写 `_parse_pdf` 与扩展 `parse_document`**
+- [x] **Step 4: 重写 `_parse_pdf` 与扩展 `parse_document`**
 
 修改 `framework/upload/document_parser.py`：
 
@@ -1248,17 +1248,17 @@ def _parse_pdf_ocr(file_path: str, page_aware: bool = False):
 
 > 注意：`clean_text` 已在 Task 2 导入；保持顶部 `from framework.upload.text_cleaner import clean_text`。
 
-- [ ] **Step 5: 运行测试确认通过**
+- [x] **Step 5: 运行测试确认通过**
 
 Run: `python -m pytest tests/test_document_parser_pdf.py -v`
 Expected: PASS（6 项全通过）
 
-- [ ] **Step 6: 回归现有解析测试**
+- [x] **Step 6: 回归现有解析测试**
 
 Run: `python -m pytest tests/test_document_parser.py tests/test_document_parser_clean.py -v 2>/dev/null || echo "检查失败项"`
 Expected: 无新增失败（`_parse_pdf` 签名增了 `page_aware=False` 默认参数，向后兼容）
 
-- [ ] **Step 7: 提交**
+- [x] **Step 7: 提交**
 
 ```bash
 git add framework/upload/document_parser.py framework/config.py tests/test_document_parser_pdf.py
@@ -1276,7 +1276,7 @@ git commit -m "feat(kb): PDF 图片型检测主路径 + 表格 Markdown + page_a
 - Consumes: Task 8 的 `_parse_pdf` / `_parse_pdf_ocr` / `_table_to_markdown` / `parse_document(page_aware=True)`。
 - Produces: 覆盖 spec `Image-type PDF Detection` / `Table Structure Preservation` / `Page-aware Parsing` 三个场景的保真测试。
 
-- [ ] **Step 1: 编写保真测试** `tests/test_document_parser_pdf_fidelity.py`
+- [x] **Step 1: 编写保真测试** `tests/test_document_parser_pdf_fidelity.py`
 
 ```python
 """扫描件与含表格 PDF 信息保真集成测试（mock pdfplumber/pdf2image）。"""
@@ -1408,12 +1408,12 @@ def test_empty_page_ocr_fallback(monkeypatch):
     assert result[0][1] == "OCR兜底文本"
 ```
 
-- [ ] **Step 2: 运行测试确认通过**
+- [x] **Step 2: 运行测试确认通过**
 
 Run: `python -m pytest tests/test_document_parser_pdf_fidelity.py -v`
 Expected: PASS（4 项全通过；若失败检查 mock 注入是否完整）
 
-- [ ] **Step 3: 提交**
+- [x] **Step 3: 提交**
 
 ```bash
 git add tests/test_document_parser_pdf_fidelity.py
@@ -1424,14 +1424,14 @@ git commit -m "test(kb): 扫描件与含表格 PDF 信息保真集成测试"
 
 ### 📋 审查检查点 #3（Task 7-9 完成后，thorough 模式分段审查）
 
-- [ ] 运行 `python -m pytest tests/test_chunker_pages.py tests/test_document_parser_pdf.py tests/test_document_parser_pdf_fidelity.py -v` 全绿
-- [ ] 确认 `split_text_with_pages` 跨页不拼接，page 字段精确（spec `Cross-page chunk boundary`）
-- [ ] 确认图片型 PDF（avg_chars < 50）走 OCR 主路径而非兜底（spec `Detect image-type PDF and trigger OCR as primary path`）
-- [ ] 确认表格输出 Markdown 含表头分隔行（spec `Extract tables as Markdown`）
-- [ ] 确认 `page_aware=True` 时 PDF 返回 `List[Tuple[int, str]]`，page_num 从 1 开始（spec `PDF parsed with page metadata`）
-- [ ] 确认 `parse_document(page_aware=True)` 对非 PDF 格式仍返回 str（spec `Page-aware Parsing`）
-- [ ] 确认 worker 已切换到真实 `split_text_with_pages`，占位函数已删除
-- [ ] Comet Classic：Build 阶段写入放行
+- [x] 运行 `python -m pytest tests/test_chunker_pages.py tests/test_document_parser_pdf.py tests/test_document_parser_pdf_fidelity.py -v` 全绿
+- [x] 确认 `split_text_with_pages` 跨页不拼接，page 字段精确（spec `Cross-page chunk boundary`）
+- [x] 确认图片型 PDF（avg_chars < 50）走 OCR 主路径而非兜底（spec `Detect image-type PDF and trigger OCR as primary path`）
+- [x] 确认表格输出 Markdown 含表头分隔行（spec `Extract tables as Markdown`）
+- [x] 确认 `page_aware=True` 时 PDF 返回 `List[Tuple[int, str]]`，page_num 从 1 开始（spec `PDF parsed with page metadata`）
+- [x] 确认 `parse_document(page_aware=True)` 对非 PDF 格式仍返回 str（spec `Page-aware Parsing`）
+- [x] 确认 worker 已切换到真实 `split_text_with_pages`，占位函数已删除
+- [x] Comet Classic：Build 阶段写入放行
 
 ---
 
@@ -1447,7 +1447,7 @@ git commit -m "test(kb): 扫描件与含表格 PDF 信息保真集成测试"
 - Consumes: `retrieval_results["results"]` 中每项的 `metadata`（含 `source`/`chunk_index`/`page`，由 ingestion_worker 写入）。
 - Produces: `sources` 列表每项为 `{"doc_name": str, "chunk_index": Optional[int], "page": Optional[int]}`；`chat()` 与 `chat_stream()` 结构一致。
 
-- [ ] **Step 1: 编写失败测试** `tests/test_chain_sources.py`
+- [x] **Step 1: 编写失败测试** `tests/test_chain_sources.py`
 
 ```python
 """测试 chain.py sources 含 chunk_index/page，且流式与非流式一致。"""
@@ -1550,12 +1550,12 @@ def test_chat_no_retrieval_returns_empty_sources(monkeypatch):
     assert result["sources"] == []
 ```
 
-- [ ] **Step 2: 运行测试确认失败**
+- [x] **Step 2: 运行测试确认失败**
 
 Run: `python -m pytest tests/test_chain_sources.py -v`
 Expected: FAIL（当前 sources 只含 `doc_name`，按文档去重，无 `chunk_index`/`page`）
 
-- [ ] **Step 3: 改造 `chat()` sources 构造**
+- [x] **Step 3: 改造 `chat()` sources 构造**
 
 修改 `framework/rag/chain.py` 的 `chat()` 方法中 sources 构造块（约 L55-L68）：
 
@@ -1581,7 +1581,7 @@ Expected: FAIL（当前 sources 只含 `doc_name`，按文档去重，无 `chunk
             })
 ```
 
-- [ ] **Step 4: 改造 `chat_stream()` sources 构造**
+- [x] **Step 4: 改造 `chat_stream()` sources 构造**
 
 修改 `chat_stream()` 中 sources 构造块（约 L96-L112），用与 Step 3 完全相同的逻辑：
 
@@ -1610,17 +1610,17 @@ Expected: FAIL（当前 sources 只含 `doc_name`，按文档去重，无 `chunk
         yield {"type": "meta", "sources": sources}
 ```
 
-- [ ] **Step 5: 运行测试确认通过**
+- [x] **Step 5: 运行测试确认通过**
 
 Run: `python -m pytest tests/test_chain_sources.py -v`
 Expected: PASS（4 项全通过）
 
-- [ ] **Step 6: 回归现有 chain 测试**
+- [x] **Step 6: 回归现有 chain 测试**
 
 Run: `python -m pytest tests/test_rag_chain.py tests/test_hybrid_search.py -v 2>/dev/null || echo "检查失败项"`
 Expected: 若现有测试断言 `sources == [{"doc_name": ...}]`，按 Design Doc 调整为含 `chunk_index`/`page` 字段（旧数据 fixture 补 `chunk_index=None, page=None`）。
 
-- [ ] **Step 7: 提交**
+- [x] **Step 7: 提交**
 
 ```bash
 git add framework/rag/chain.py tests/test_chain_sources.py
@@ -1639,7 +1639,7 @@ git commit -m "feat(kb): chain sources 增 chunk_index/page，按 chunk 输出"
 - Consumes: Task 10 的 sources 改造。
 - Produces: 覆盖 spec `rag-chain` 全部 5 个场景（含 `Cross-page chunk boundary` 说明性边界、`Streaming and non-streaming consistency`）。
 
-- [ ] **Step 1: 编写补充测试**（追加到 `tests/test_chain_sources.py`）
+- [x] **Step 1: 编写补充测试**（追加到 `tests/test_chain_sources.py`）
 
 ```python
 def test_multiple_chunks_same_doc_different_pages(monkeypatch):
@@ -1697,12 +1697,12 @@ def test_metadata_none_entirely(monkeypatch):
     # 不抛异常、不丢弃 source
 ```
 
-- [ ] **Step 2: 运行测试确认通过**
+- [x] **Step 2: 运行测试确认通过**
 
 Run: `python -m pytest tests/test_chain_sources.py -v`
 Expected: PASS（全部 7 项通过）
 
-- [ ] **Step 3: 提交**
+- [x] **Step 3: 提交**
 
 ```bash
 git add tests/test_chain_sources.py
@@ -1729,7 +1729,7 @@ git commit -m "test(kb): chunk 级引用边界与降级测试补充"
     - `main()`：CLI `--queries / --top-k / --out`，输出 JSON + 打印指标。
   - `tests/fixtures/eval_queries.yaml`：约 10 条标注查询，覆盖 `acidification` 与 `organic_matter` 两域。
 
-- [ ] **Step 1: 编写 fixtures** `tests/fixtures/eval_queries.yaml`
+- [x] **Step 1: 编写 fixtures** `tests/fixtures/eval_queries.yaml`
 
 ```yaml
 queries:
@@ -1755,7 +1755,7 @@ queries:
     expected_doc_ids: ["acidification_remediation.pdf", "organic_matter_guide.pdf"]
 ```
 
-- [ ] **Step 2: 编写失败测试** `tests/test_eval_retrieval.py`
+- [x] **Step 2: 编写失败测试** `tests/test_eval_retrieval.py`
 
 ```python
 """测试检索质量评估指标计算（stub vector_store，不依赖真实向量库）。"""
@@ -1849,12 +1849,12 @@ def test_evaluate_empty_expected(monkeypatch):
     assert result["queries"][0]["hit"] is False
 ```
 
-- [ ] **Step 3: 运行测试确认失败**
+- [x] **Step 3: 运行测试确认失败**
 
 Run: `python -m pytest tests/test_eval_retrieval.py -v`
 Expected: FAIL，`ModuleNotFoundError: No module named 'scripts.eval_retrieval'`
 
-- [ ] **Step 4: 编写评估脚本** `scripts/eval_retrieval.py`
+- [x] **Step 4: 编写评估脚本** `scripts/eval_retrieval.py`
 
 ```python
 """检索质量评估：基于标注查询集计算 hit_rate@K 与 MRR。
@@ -1931,12 +1931,12 @@ if __name__ == "__main__":
 
 > 注：`scripts/` 目录可能无 `__init__.py`；若测试 import 失败，在 `scripts/__init__.py` 建空文件或在测试中改用 `importlib`。本计划默认 `scripts/` 已可作为包导入（项目既有脚本惯例）。
 
-- [ ] **Step 5: 运行测试确认通过**
+- [x] **Step 5: 运行测试确认通过**
 
 Run: `python -m pytest tests/test_eval_retrieval.py -v`
 Expected: PASS（4 项全通过）
 
-- [ ] **Step 6: 提交**
+- [x] **Step 6: 提交**
 
 ```bash
 git add scripts/eval_retrieval.py tests/fixtures/eval_queries.yaml tests/test_eval_retrieval.py
@@ -1958,29 +1958,29 @@ git commit -m "feat(kb): 检索质量评估脚本 + 标注查询集 fixtures"
 - Consumes: Task 2/6/10 的接口变更。
 - Produces: 现有测试套件适配新行为，无语义破坏。
 
-- [ ] **Step 1: 识别需调整的现有测试**
+- [x] **Step 1: 识别需调整的现有测试**
 
 Run: `python -m pytest tests/ -v --co -q 2>&1 | findstr /R "test_upload test_document_parser test_rag_chain test_hybrid_search"`
 Expected: 列出现有相关测试节点
 
-- [ ] **Step 2: 运行现有测试套件定位失败**
+- [x] **Step 2: 运行现有测试套件定位失败**
 
 Run: `python -m pytest tests/test_upload.py tests/test_document_parser.py tests/test_rag_chain.py tests/test_hybrid_search.py -v 2>&1 | tail -50`
 Expected: 标记因本变更导致断言不匹配的失败项（非真实回归）
 
-- [ ] **Step 3: 调整断言（不破坏语义）**
+- [x] **Step 3: 调整断言（不破坏语义）**
 
 对每个失败测试，按 Design Doc 第 7 节策略调整：
 - 上传测试：`assert resp.status_code == 200` → `== 202`；`assert data["status"] == 1` → `== Document.STATUS_PENDING`(0)，并补 worker 完成后的等价断言（mock worker 或直接断言提交调用）。
 - 解析测试：断言原文 → 断言清洗后等价文本（如全角 `Ａ` → 半角 `A`）。
 - sources 测试：`[{"doc_name": "x"}]` → `[{"doc_name": "x", "chunk_index": None, "page": None}]`（旧 fixture）或补真实 chunk_index/page。
 
-- [ ] **Step 4: 运行调整后测试确认通过**
+- [x] **Step 4: 运行调整后测试确认通过**
 
 Run: `python -m pytest tests/test_upload.py tests/test_document_parser.py tests/test_rag_chain.py tests/test_hybrid_search.py -v`
 Expected: PASS（调整后的断言全通过）
 
-- [ ] **Step 5: 提交**
+- [x] **Step 5: 提交**
 
 ```bash
 git add tests/test_upload.py tests/test_document_parser.py tests/test_rag_chain.py tests/test_hybrid_search.py
@@ -1998,23 +1998,23 @@ git commit -m "test(kb): 现有测试适配异步上传与清洗后断言"
 - Consumes: Task 1-13 全部实现。
 - Produces: P0+P1+P2 改动无回归的完整测试通过证明。
 
-- [ ] **Step 1: 运行完整测试套件**
+- [x] **Step 1: 运行完整测试套件**
 
 Run: `python -m pytest tests/ -v`
 Expected: 全部 PASS（或仅剩与本变更无关的既存已知失败，需在报告中列明）
 
-- [ ] **Step 2: 运行评估脚本冒烟（可选，需向量库与 fixtures 就绪）**
+- [x] **Step 2: 运行评估脚本冒烟（可选，需向量库与 fixtures 就绪）**
 
 Run: `python scripts/eval_retrieval.py --queries tests/fixtures/eval_queries.yaml --top-k 5 --out eval.json`
 Expected: 输出 `[eval] hit_rate=XX% mrr=XX%`，生成 `eval.json`（若向量库为空，hit_rate/mrr 可能为 0，属正常；脚本不抛异常即通过）
 
-- [ ] **Step 3: 失败项分类与修复**
+- [x] **Step 3: 失败项分类与修复**
 
 若 Step 1 有失败：
 - 本变更引入的回归 → 修复实现或测试断言
 - 既存无关失败 → 在最终报告中列明，不修复
 
-- [ ] **Step 4: 提交（如有修复）**
+- [x] **Step 4: 提交（如有修复）**
 
 ```bash
 git add -A
@@ -2027,26 +2027,26 @@ git commit -m "test(kb): P2 完整测试套件回归验证通过"
 
 ### 📋 最终审查检查点（Task 10-14 完成后，thorough 模式完整审查）
 
-- [ ] 运行 `python -m pytest tests/ -v` 全绿（或仅剩既存无关失败）
-- [ ] **Spec 覆盖核对**：
+- [x] 运行 `python -m pytest tests/ -v` 全绿（或仅剩既存无关失败）
+- [x] **Spec 覆盖核对**：
   - `file-upload-management/spec.md`：
-    - [ ] Text Cleaning → `test_text_cleaner.py` 全过
-    - [ ] Asynchronous Document Processing → `test_upload_async.py` 验证 202 + 状态流转
-    - [ ] Status Enum Definition → `test_document_status_enum.py` 验证 0/1/2/3
-    - [ ] Image-type PDF Detection → `test_document_parser_pdf.py` + `test_document_parser_pdf_fidelity.py` 验证阈值触发 OCR 主路径
-    - [ ] Table Structure Preservation → `test_document_parser_pdf.py` 验证 Markdown 表格
-    - [ ] Page-aware Parsing → `test_document_parser_pdf_fidelity.py` 验证 `List[(page, text)]`
+    - [x] Text Cleaning → `test_text_cleaner.py` 全过
+    - [x] Asynchronous Document Processing → `test_upload_async.py` 验证 202 + 状态流转
+    - [x] Status Enum Definition → `test_document_status_enum.py` 验证 0/1/2/3
+    - [x] Image-type PDF Detection → `test_document_parser_pdf.py` + `test_document_parser_pdf_fidelity.py` 验证阈值触发 OCR 主路径
+    - [x] Table Structure Preservation → `test_document_parser_pdf.py` 验证 Markdown 表格
+    - [x] Page-aware Parsing → `test_document_parser_pdf_fidelity.py` 验证 `List[(page, text)]`
   - `rag-chain/spec.md`：
-    - [ ] Chunk-level Source Citation → `test_chain_sources.py` 验证 sources 含 chunk_index/page + 流式一致 + metadata 缺失降级
+    - [x] Chunk-level Source Citation → `test_chain_sources.py` 验证 sources 含 chunk_index/page + 流式一致 + metadata 缺失降级
   - `kb-retrieval-evaluation/spec.md`：
-    - [ ] Retrieval quality evaluation → `test_eval_retrieval.py` + `scripts/eval_retrieval.py` 输出 JSON 指标
-- [ ] **tasks.md 14 项全部勾选**：1.1-1.3 / 2.1-2.3 / 3.1-3.3 / 4.1-4.2 / 5.1-5.2 / 6.1
-- [ ] **Design Doc 第 3 节文件改动清单全部落地**（16 项：2 新增模块 + 1 新增脚本 + 1 fixtures + 6 新测试 + 6 修改）
-- [ ] **无数据迁移**：status 列类型与默认值未变；现有 status=1 数据语义不变
-- [ ] **无依赖新增**：pdfplumber/pytesseract/pdf2image/Pillow/PyYAML 均已在环境
-- [ ] **流式与非流式 sources 一致**：`chat()` 与 `chat_stream()` 结构相同
-- [ ] **跨页 chunk 不拼接**：page 字段精确，无跨页拼接 chunk
-- [ ] Comet Classic Build 阶段写入全程放行；准备进入 Verify 阶段
+    - [x] Retrieval quality evaluation → `test_eval_retrieval.py` + `scripts/eval_retrieval.py` 输出 JSON 指标
+- [x] **tasks.md 14 项全部勾选**：1.1-1.3 / 2.1-2.3 / 3.1-3.3 / 4.1-4.2 / 5.1-5.2 / 6.1
+- [x] **Design Doc 第 3 节文件改动清单全部落地**（16 项：2 新增模块 + 1 新增脚本 + 1 fixtures + 6 新测试 + 6 修改）
+- [x] **无数据迁移**：status 列类型与默认值未变；现有 status=1 数据语义不变
+- [x] **无依赖新增**：pdfplumber/pytesseract/pdf2image/Pillow/PyYAML 均已在环境
+- [x] **流式与非流式 sources 一致**：`chat()` 与 `chat_stream()` 结构相同
+- [x] **跨页 chunk 不拼接**：page 字段精确，无跨页拼接 chunk
+- [x] Comet Classic Build 阶段写入全程放行；准备进入 Verify 阶段
 
 ---
 
