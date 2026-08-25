@@ -10,9 +10,8 @@ import traceback
 from framework.models.user import db
 from framework.models.document import Document
 from framework.upload.document_parser import parse_document
-from framework.upload.chunker import split_text
+from framework.upload.chunker import split_text, split_text_with_pages
 from framework.vector_store.chroma_store import vector_store
-from framework.api.app import create_app
 
 # 模块级 worker：与 data_trigger.py 的 ThreadPoolExecutor 模式同源
 _WORKER = concurrent.futures.ThreadPoolExecutor(
@@ -34,6 +33,8 @@ def submit_ingest(document_id, file_path, file_type, doc_name, category, treatme
 def _ingest(document_id, file_path, file_type, doc_name, category, treatment_type):
     """入库 worker 主体。异常时记录 traceback 并推进到 failed，避免文档永久停留 processing。"""
     # 在 worker 线程内推送 app context（Flask-SQLAlchemy 需要）
+    # 延迟导入避免循环依赖：docs.py → ingestion_worker → app.py → docs.py
+    from framework.api.app import create_app
     app = create_app()
     with app.app_context():
         try:
@@ -42,7 +43,7 @@ def _ingest(document_id, file_path, file_type, doc_name, category, treatment_typ
             pages = parse_document(file_path, file_type, page_aware=True)
             # 切分：page_aware 返回 List[(chunk, page)]；其他格式返回 str
             if isinstance(pages, list) and pages and isinstance(pages[0], tuple):
-                chunks_with_pages = _split_with_pages(pages)
+                chunks_with_pages = split_text_with_pages(pages)
                 chunks = [c for c, _ in chunks_with_pages]
                 pages_meta = [p for _, p in chunks_with_pages]
             else:
@@ -77,19 +78,6 @@ def _ingest(document_id, file_path, file_type, doc_name, category, treatment_typ
                     db.session.commit()
             except Exception:
                 traceback.print_exc()
-
-
-def _split_with_pages(pages):
-    """临时包装：Task 7 完成后改为直接调用 chunker.split_text_with_pages。
-
-    本函数在 Task 5 阶段返回 [(chunk, page)] 占位，Task 7 替换为真实切分。
-    """
-    # 占位：每页整体作为一个 chunk（Task 7 替换为 split_text_with_pages）
-    result = []
-    for page_num, page_text in pages:
-        for c in split_text(page_text or ""):
-            result.append((c, page_num))
-    return result
 
 
 def _set_status(document_id, status):

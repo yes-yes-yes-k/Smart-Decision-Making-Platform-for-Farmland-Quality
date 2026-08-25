@@ -1,0 +1,21 @@
+queries:
+  - query: 土壤交换性氢含量如何影响酸度
+    expected_doc_ids: ["acidification_overview.pdf"]
+  - query: 交换性铝在酸化过程中的作用
+    expected_doc_ids: ["acidification_overview.pdf"]
+  - query: pH 值下降对作物根系的影响
+    expected_doc_ids: ["acidification_overview.pdf"]
+  - query: 石灰改良酸性土壤的用量
+    expected_doc_ids: ["acidification_remediation.pdf"]
+  - query: 有机质提升对土壤团聚体的作用
+    expected_doc_ids: ["organic_matter_guide.pdf"]
+  - query: 秸秆还田增加有机质的原理
+    expected_doc_ids: ["organic_matter_guide.pdf"]
+  - query: 腐殖质与土壤保水保肥能力
+    expected_doc_ids: ["organic_matter_guide.pdf"]
+  - query: 绿肥作物对有机质的贡献
+    expected_doc_ids: ["organic_matter_guide.pdf"]
+  - query: 土壤板结与有机质缺乏的关系
+    expected_doc_ids: ["organic_matter_guide.pdf"]
+  - query: 酸化土壤种什么绿肥合适
+    expected_doc_ids: ["acidification_remediation.pdf", "organic_matter_guide.pdf"]

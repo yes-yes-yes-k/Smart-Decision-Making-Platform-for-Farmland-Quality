@@ -31,7 +31,8 @@ def _patch_app_context(monkeypatch):
         def app_context(self):
             return self._app.app_context()
 
-    monkeypatch.setattr(ingestion_worker, "create_app", lambda: _StubApp())
+    # create_app 在 _ingest 内延迟导入，mock 源模块而非 ingestion_worker 命名空间
+    monkeypatch.setattr("framework.api.app.create_app", lambda: _StubApp())
 
 
 def test_ingest_success_transitions_pending_to_completed(monkeypatch):

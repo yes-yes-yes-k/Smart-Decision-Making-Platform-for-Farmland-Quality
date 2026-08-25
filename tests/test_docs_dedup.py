@@ -50,6 +50,8 @@ def client(monkeypatch):
 
     mock_vs = MockVectorStore()
     monkeypatch.setattr('framework.api.routes.docs.vector_store', mock_vs)
+    # 异步 worker 适配：阻止后台 worker 运行（测试关注查重/删除逻辑，不关注入库）
+    monkeypatch.setattr('framework.upload.ingestion_worker.submit_ingest', lambda **kw: None)
 
     with app.app_context():
         db.drop_all()
@@ -117,7 +119,7 @@ def test_upload_first_occurrence_stores_hash(client):
     token = _login(client, 'admin', 'admin123')
     resp = _upload(client, token, 'first.txt', b'unique content for first upload')
 
-    assert resp.status_code == 200
+    assert resp.status_code == 202
     data = resp.get_json()
     assert data['status'] == 'ok'
     assert data['data']['file_hash'] is not None
@@ -131,7 +133,7 @@ def test_upload_duplicate_same_user_returns_409(client):
 
     # 首次上传
     resp1 = _upload(client, token, 'original.txt', b'duplicate detection test content')
-    assert resp1.status_code == 200
+    assert resp1.status_code == 202
     existing_id = resp1.get_json()['data']['id']
 
     # 同用户再次上传相同内容，不同文件名
@@ -150,10 +152,10 @@ def test_upload_same_content_different_users_succeeds(client):
     token2 = _login(client, 'user2', 'user1234')
 
     resp1 = _upload(client, token1, 'user1_doc.txt', b'shared content across users')
-    assert resp1.status_code == 200
+    assert resp1.status_code == 202
 
     resp2 = _upload(client, token2, 'user2_doc.txt', b'shared content across users')
-    assert resp2.status_code == 200
+    assert resp2.status_code == 202
     assert resp2.get_json()['data']['id'] != resp1.get_json()['data']['id']
     print("✓ 跨用户相同内容上传成功")
 
@@ -180,7 +182,7 @@ def test_upload_skips_historical_null_hash_documents(client):
 
     # 上传不同内容的新文档，应成功（不被历史 NULL hash 文档干扰）
     resp = _upload(client, token, 'new_content.txt', b'brand new content different from legacy')
-    assert resp.status_code == 200
+    assert resp.status_code == 202
     assert resp.get_json()['data']['file_hash'] is not None
     print("✓ 历史文档 file_hash=NULL 不参与查重")
 
@@ -203,7 +205,7 @@ def test_delete_removes_db_vector_and_file(client):
     """正常删除：数据库记录、向量库数据、物理文件全删"""
     token = _login(client, 'admin', 'admin123')
     resp = _upload(client, token, 'to_delete.txt', b'content to be deleted')
-    assert resp.status_code == 200
+    assert resp.status_code == 202
     doc_id = resp.get_json()['data']['id']
     file_path_relative = resp.get_json()['data'].get('file_path')
 
@@ -234,7 +236,7 @@ def test_delete_when_physical_file_missing(client):
     """物理文件已不存在时，DB 和向量库正常删除，返回 200"""
     token = _login(client, 'admin', 'admin123')
     resp = _upload(client, token, 'file_will_be_missing.txt', b'content for missing file test')
-    assert resp.status_code == 200
+    assert resp.status_code == 202
     doc_id = resp.get_json()['data']['id']
 
     # 手动删除物理文件模拟文件已不存在
@@ -259,7 +261,7 @@ def test_delete_when_physical_file_deletion_fails(client, monkeypatch):
     """物理文件删除失败（权限错误）时，DB 和向量库正常删除，返回 200"""
     token = _login(client, 'admin', 'admin123')
     resp = _upload(client, token, 'protected.txt', b'content for deletion failure test')
-    assert resp.status_code == 200
+    assert resp.status_code == 202
     doc_id = resp.get_json()['data']['id']
 
     # mock os.remove 抛出权限异常
@@ -288,7 +290,7 @@ def test_delete_when_vector_store_fails(client):
     """向量库删除失败时，DB 和物理文件正常删除，返回 200"""
     token = _login(client, 'admin', 'admin123')
     resp = _upload(client, token, 'vector_fail_test.txt', b'content for vector store failure test')
-    assert resp.status_code == 200
+    assert resp.status_code == 202
     doc_id = resp.get_json()['data']['id']
 
     # 配置 mock 向量库删除时抛异常

@@ -4,14 +4,17 @@ from typing import Optional
 
 from framework.upload.text_cleaner import clean_text
 
-def parse_document(file_path: str, file_type: str) -> Optional[str]:
-    """解析文档，返回纯文本。失败时抛出异常，由调用方捕获并打印日志。"""
+def parse_document(file_path: str, file_type: str, page_aware: bool = False):
+    """解析文档。page_aware=True 时 PDF 返回 List[(page_num, text)]；其他格式始终返回 str。
+
+    失败时抛出异常，由调用方捕获并打印日志。
+    """
     if file_type == 'txt':
         return _parse_txt(file_path)
     elif file_type == 'md':
         return _parse_txt(file_path)
     elif file_type == 'pdf':
-        return _parse_pdf(file_path)
+        return _parse_pdf(file_path, page_aware=page_aware)
     elif file_type == 'docx':
         return _parse_docx(file_path)
     elif file_type == 'xlsx':
@@ -23,133 +26,107 @@ def _parse_txt(file_path: str) -> str:
     with open(file_path, 'r', encoding='utf-8', errors='ignore') as f:
         return clean_text(f.read())
 
-def _parse_pdf(file_path: str) -> str:
-    """PDF 解析：优先 pdfplumber（中文支持好、自动处理加密），失败时回退 PyPDF2。"""
+def _parse_pdf(file_path: str, page_aware: bool = False):
+    """PDF 解析：先做图片型检测，命中则全本 OCR；否则逐页提取文本+表格。
 
-    # ---- 方案一：pdfplumber（推荐，中文支持好）----
+    page_aware=True 返回 List[(page_num, text)]；False 返回 str（向后兼容）。
+    """
     try:
         import pdfplumber
-    except ImportError:
-        pdfplumber = None
-
-    if pdfplumber:
-        try:
-            text_parts = []
-            with pdfplumber.open(file_path) as pdf:
-                total_pages = len(pdf.pages)
-                for i, page in enumerate(pdf.pages):
-                    try:
-                        page_text = page.extract_text() or ""
-                    except Exception as e:
-                        print(f"[Parser] pdfplumber 第 {i+1}/{total_pages} 页解析失败：{e}")
-                        page_text = ""
-                    text_parts.append(page_text)
-
-            text = "\n".join(text_parts).strip()
-            if text:
-                return clean_text(text)
-            # pdfplumber 解析出空内容，回退 PyPDF2
-            print("[Parser] pdfplumber 解析结果为空，回退 PyPDF2")
-        except Exception as e:
-            print(f"[Parser] pdfplumber 解析异常，回退 PyPDF2：{e}")
-
-    # ---- 方案二：PyPDF2 兜底 ----
-    try:
-        from PyPDF2 import PdfReader
     except ImportError as e:
         raise ImportError(
-            f"PDF 解析失败：pdfplumber 不可用且 PyPDF2 也未安装。"
-            f"请执行 pip install pdfplumber PyPDF2 pycryptodome  错误: {e}"
+            f"pdfplumber 未安装，无法解析 PDF。请执行 pip install pdfplumber 错误: {e}"
         )
 
-    reader = PdfReader(file_path)
-    total_pages = len(reader.pages)
+    from framework.config import Config
 
-    # 先用第一页探测加密问题，避免全量跑完才发现
-    if total_pages > 0:
-        try:
-            reader.pages[0].extract_text()
-        except Exception as e:
-            err_msg = str(e)
-            if 'PyCryptodome' in err_msg:
-                raise ImportError(
-                    f"PDF 使用了 AES 加密，缺少 pycryptodome 库。"
-                    f"请执行: pip install pycryptodome  错误详情: {e}"
-                )
-            if 'is encrypted' in err_msg.lower() or 'encrypt' in err_msg.lower():
-                raise ValueError(f"PDF 已加密且无法解密（可能需要密码）：{e}")
+    pages_text = []  # List[(page_num, text)]
+    with pdfplumber.open(file_path) as pdf:
+        total_pages = len(pdf.pages)
+        # 1. 图片型检测：平均字符数 < 阈值则全本 OCR
+        avg_chars = _detect_avg_chars(pdf)
+        if avg_chars < Config.PDF_OCR_THRESHOLD:
+            print(f"[Parser] 图片型 PDF 检测命中（avg_chars={avg_chars:.1f} < {Config.PDF_OCR_THRESHOLD}），走 OCR 主路径", flush=True)
+            return _parse_pdf_ocr(file_path, page_aware=page_aware)
 
-    text_parts = []
-    empty_pages = 0
-    for i, page in enumerate(reader.pages):
-        try:
-            page_text = page.extract_text() or ""
-        except Exception as e:
-            print(f"[Parser] PyPDF2 第 {i+1}/{total_pages} 页解析失败，跳过：{e}")
-            page_text = ""
-        if not page_text.strip():
-            empty_pages += 1
-        text_parts.append(page_text)
-
-    text = "\n".join(text_parts).strip()
-
-    if not text:
-        if total_pages == 0:
-            raise ValueError("PDF 无任何页面")
-        if empty_pages == total_pages:
-            print(f"[Parser] PDF 共 {total_pages} 页均未提取到文本，触发 OCR 识别", flush=True)
+        # 2. 混合解析：逐页提取文本+表格
+        for i, page in enumerate(pdf.pages, start=1):
             try:
-                ocr_text = _parse_pdf_ocr(file_path)
-                if ocr_text:
-                    return clean_text(ocr_text)
+                page_text = page.extract_text() or ""
             except Exception as e:
-                print(f"[Parser] OCR 识别失败：{e}", flush=True)
-                raise ValueError(
-                    f"PDF 共 {total_pages} 页均未提取到文本，且 OCR 识别失败。"
-                    f"可能是中文字体编码问题、或 PDF 内容为空。OCR 错误：{e}"
-                )
+                print(f"[Parser] pdfplumber 第 {i}/{total_pages} 页解析失败：{e}")
+                page_text = ""
+            tables_md = [_table_to_markdown(t) for t in (page.extract_tables() or [])]
+            if tables_md:
+                page_text = page_text + "\n\n" + "\n\n".join(tables_md)
+            # 单页空文本 → 该页 OCR 兜底
+            if not page_text.strip():
+                try:
+                    from pdf2image import convert_from_path
+                    import pytesseract
+                    images = convert_from_path(file_path, first_page=i, last_page=i)
+                    if images:
+                        page_text = pytesseract.image_to_string(images[0], lang="chi_sim+eng")
+                except Exception as e:
+                    print(f"[Parser] 第 {i} 页 OCR 兜底失败: {e}")
+            pages_text.append((i, page_text))
 
-    return clean_text(text)
+    if page_aware:
+        return pages_text
+    return clean_text("\n".join(t for _, t in pages_text))
 
 
-def _parse_pdf_ocr(file_path: str) -> str:
-    """使用 OCR 识别扫描件/图片型 PDF 中的文字。"""
+def _detect_avg_chars(pdf) -> float:
+    """采样前 5 页（或全部，若不足 5 页）的字符数取平均，避免全本扫描成本。"""
+    sample = pdf.pages[:5] if len(pdf.pages) > 5 else pdf.pages
+    total = 0
+    for page in sample:
+        try:
+            total += len((page.extract_text() or "").strip())
+        except Exception:
+            pass
+    return total / max(len(sample), 1)
+
+
+def _table_to_markdown(rows) -> str:
+    """pdfplumber.extract_tables() 返回的 List[List[str]] 转 Markdown 表格语法。"""
+    if not rows or not rows[0]:
+        return ""
+    header = rows[0]
+    body = rows[1:] if len(rows) > 1 else []
+    lines = ["| " + " | ".join((c or "") for c in header) + " |",
+             "| " + " | ".join("---" for _ in header) + " |"]
+    for row in body:
+        lines.append("| " + " | ".join((c or "") for c in row) + " |")
+    return "\n".join(lines)
+
+
+def _parse_pdf_ocr(file_path: str, page_aware: bool = False):
+    """使用 OCR 识别扫描件/图片型 PDF 中的文字。
+
+    page_aware=True 返回 List[(page_num, text)]；False 返回 str。
+    """
     print(f"[Parser] 开始 OCR 识别：{file_path}", flush=True)
 
     try:
         from pdf2image import convert_from_path
     except ImportError as e:
         raise ImportError(
-            f"pdf2image 未安装，无法进行 OCR 识别。"
-            f"请执行: pip install pdf2image  错误: {e}"
+            f"pdf2image 未安装，无法进行 OCR 识别。请执行: pip install pdf2image  错误: {e}"
         )
-
     try:
         import pytesseract
     except ImportError as e:
         raise ImportError(
-            f"pytesseract 未安装，无法进行 OCR 识别。"
-            f"请执行: pip install pytesseract  错误: {e}"
+            f"pytesseract 未安装，无法进行 OCR 识别。请执行: pip install pytesseract  错误: {e}"
         )
-
-    # 探测 Tesseract 可执行文件
     try:
         pytesseract.get_tesseract_version()
     except Exception as e:
         raise RuntimeError(
-            f"未找到 Tesseract OCR 引擎。"
-            f"请先安装 Tesseract：https://github.com/tesseract-ocr/tesseract  错误: {e}"
+            f"未找到 Tesseract OCR 引擎。请先安装 Tesseract：https://github.com/tesseract-ocr/tesseract  错误: {e}"
         )
 
-    try:
-        from PIL import Image
-    except ImportError as e:
-        raise ImportError(
-            f"Pillow 未安装，无法进行 OCR 识别。"
-            f"请执行: pip install Pillow  错误: {e}"
-        )
-
-    # 将 PDF 转为图片
     print("[Parser] 正在将 PDF 转换为图片...", flush=True)
     try:
         images = convert_from_path(file_path)
@@ -159,19 +136,20 @@ def _parse_pdf_ocr(file_path: str) -> str:
     total_pages = len(images)
     print(f"[Parser] PDF 共 {total_pages} 页，开始 OCR 识别...", flush=True)
 
-    text_parts = []
-    for i, image in enumerate(images):
+    pages_text = []  # List[(page_num, text)]
+    for i, image in enumerate(images, start=1):
         try:
-            print(f"[Parser] OCR 识别第 {i+1}/{total_pages} 页...", flush=True)
-            page_text = pytesseract.image_to_string(image, lang='chi_sim+eng')
-            text_parts.append(page_text.strip())
+            print(f"[Parser] OCR 识别第 {i}/{total_pages} 页...", flush=True)
+            page_text = pytesseract.image_to_string(image, lang='chi_sim+eng').strip()
         except Exception as e:
-            print(f"[Parser] OCR 第 {i+1}/{total_pages} 页识别失败：{e}", flush=True)
-            text_parts.append("")
+            print(f"[Parser] OCR 第 {i}/{total_pages} 页识别失败：{e}", flush=True)
+            page_text = ""
+        pages_text.append((i, page_text))
 
-    text = "\n".join(text_parts).strip()
-    print(f"[Parser] OCR 识别完成，提取到 {len(text)} 个字符", flush=True)
-    return clean_text(text)
+    print(f"[Parser] OCR 识别完成，共 {total_pages} 页", flush=True)
+    if page_aware:
+        return pages_text
+    return clean_text("\n".join(t for _, t in pages_text))
 
 def _parse_docx(file_path: str) -> str:
     try:
