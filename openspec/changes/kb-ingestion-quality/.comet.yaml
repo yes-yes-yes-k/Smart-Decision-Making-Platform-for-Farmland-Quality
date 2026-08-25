@@ -1,6 +1,6 @@
 workflow: full
 language: zh-CN
-phase: verify
+phase: archive
 context_compression: off
 build_mode: executing-plans
 build_pause: null
@@ -13,13 +13,13 @@ auto_transition: true
 base_ref: 71c072c2bba09f18fded4c113d6125a80eeb8af4
 design_doc: docs/superpowers/specs/2026-08-25-kb-ingestion-quality-design.md
 plan: docs/superpowers/plans/2026-08-25-kb-ingestion-quality.md
-verify_result: pending
+verify_result: pass
 verify_failures: 0
-verification_report: null
+verification_report: docs/superpowers/reports/2026-08-25-kb-ingestion-quality-verify.md
 branch_status: pending
 created_at: 2026-08-24
-verified_at: null
-archive_confirmation: null
+verified_at: 2026-08-25
+archive_confirmation: pending
 archived: false
 bound_branch: feature/20260825/kb-ingestion-quality
 direct_override: null
