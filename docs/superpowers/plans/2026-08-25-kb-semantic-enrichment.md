@@ -47,7 +47,7 @@ base-ref: 1470acdcd1a52bffacfd1ff94fed44e039293a68
   - `normalize_query(text: str) -> str`：整词同义词替换（同义词 → 规范词），未命中原样保留；词表为空或文本为空 → 原样返回。
   - 模块级常量 `_SYNONYM_PATH`、`_cache`（供测试 monkeypatch 复位缓存）。
 
-- [ ] **Step 1: 编写失败测试** `tests/test_synonyms.py`
+- [x] **Step 1: 编写失败测试** `tests/test_synonyms.py`
 
 ```python
 """测试耕地领域同义词整词替换。"""
@@ -109,12 +109,12 @@ def test_load_synonyms_missing_file_returns_empty(monkeypatch):
     assert syn.load_synonyms() == {}
 ```
 
-- [ ] **Step 2: 运行测试确认失败**
+- [x] **Step 2: 运行测试确认失败**
 
 Run: `python -m pytest tests/test_synonyms.py -v`
 Expected: FAIL（`ModuleNotFoundError: No module named 'framework.rag.synonyms'`）
 
-- [ ] **Step 3: 编写词表** `framework/rag/soil_synonyms.json`
+- [x] **Step 3: 编写词表** `framework/rag/soil_synonyms.json`
 
 ```json
 {
@@ -151,7 +151,7 @@ Expected: FAIL（`ModuleNotFoundError: No module named 'framework.rag.synonyms'`
 }
 ```
 
-- [ ] **Step 4: 编写最小实现** `framework/rag/synonyms.py`
+- [x] **Step 4: 编写最小实现** `framework/rag/synonyms.py`
 
 ```python
 """耕地领域同义词预处理：查询整词替换为规范术语。"""
@@ -224,12 +224,12 @@ def normalize_query(text: str) -> str:
     return result
 ```
 
-- [ ] **Step 5: 运行测试确认通过**
+- [x] **Step 5: 运行测试确认通过**
 
 Run: `python -m pytest tests/test_synonyms.py -v`
 Expected: PASS（8 个用例全绿）
 
-- [ ] **Step 6: 提交**
+- [x] **Step 6: 提交**
 
 ```bash
 git add framework/rag/soil_synonyms.json framework/rag/synonyms.py tests/test_synonyms.py
