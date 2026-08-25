@@ -42,15 +42,35 @@ class EmbeddingService:
     def embed_query(self, text: str) -> List[float]:
         if not self.is_available():
             return []
-        return self._call_api([text])[0] if self._call_api([text]) else []
+        if not isinstance(text, str):
+            return []
+        vectors = self._call_api([text])
+        return vectors[0] if vectors else []
 
     def embed_documents(self, texts: List[str]) -> List[List[float]]:
         if not self.is_available():
             return [[] for _ in texts]
-        return self._call_api(texts)
+        if texts is None or len(texts) == 0:
+            return []
+        total = len(texts)
+        valid: List[tuple] = []
+        for idx, t in enumerate(texts):
+            if isinstance(t, str):
+                valid.append((idx, t))
+        if not valid:
+            return [[] for _ in range(total)]
+        indices = [i for i, _ in valid]
+        cleaned = [t for _, t in valid]
+        api_result = self._call_api(cleaned)
+        result: List[List[float]] = [[] for _ in range(total)]
+        for slot, vec in zip(indices, api_result):
+            result[slot] = vec
+        return result
 
     def _call_api(self, texts: List[str]) -> List[List[float]]:
-        """调用 SiliconFlow /v1/embeddings 接口"""
+        """调用 SiliconFlow /v1/embeddings 接口，texts 必须全为非空字符串列表。"""
+        if not texts:
+            return []
         try:
             resp = requests.post(
                 f"{self._api_base}/embeddings",
