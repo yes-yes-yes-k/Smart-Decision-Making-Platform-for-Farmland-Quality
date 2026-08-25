@@ -510,7 +510,7 @@ git commit -m "feat(kb): store chunk-level category/treatment_type/chunk_index m
   - 实例方法 `_get_collection(category)` / `_targeted_collection(category)` / `_bm25_for(category)` / `_bm25_search(query, n_results, filters, category)` / `_search_in(collection, query, n_results, filters)`。
   - 保持 `hybrid_search` 关闭分支 `return self.search(query, n_results, filters)`（3 位置参数）以兼容 `tests/test_hybrid_search.py`；保持 `_rrf_fuse` 为静态方法、`search()` 返回 `{"results": [...], "count": N}` 与 `results[*].content/.metadata/.distance` 结构不变。
 
-- [ ] **Step 1: 编写失败测试** `tests/test_collection_routing.py`
+- [x] **Step 1: 编写失败测试** `tests/test_collection_routing.py`
 
 ```python
 """测试分领域 collection 路由（离线，不触发 Chroma 初始化）。"""
@@ -596,12 +596,12 @@ def test_targeted_collection_hit_and_miss():
     assert store._targeted_collection("other") is None
 ```
 
-- [ ] **Step 2: 运行测试确认失败**
+- [x] **Step 2: 运行测试确认失败**
 
 Run: `python -m pytest tests/test_collection_routing.py -v`
 Expected: FAIL（`ImportError: cannot import name 'slugify' from 'framework.vector_store.chroma_store'`）
 
-- [ ] **Step 3: 编写实现** `framework/vector_store/chroma_store.py`
+- [x] **Step 3: 编写实现** `framework/vector_store/chroma_store.py`
 
 （1）import 区加入 `import re`（在 `import shutil` 之后）：
 
@@ -869,12 +869,12 @@ def collection_name_for(category: Optional[str]) -> str:
 
 （`_rrf_fuse` 静态方法保持不变；`delete_by_source` 改为遍历所有 collection 以覆盖未记录 category 的存量数据。）
 
-- [ ] **Step 4: 运行测试确认通过**
+- [x] **Step 4: 运行测试确认通过**
 
 Run: `python -m pytest tests/test_collection_routing.py tests/test_hybrid_search.py -v`
 Expected: PASS（`test_collection_routing.py` 6 个用例 + `test_hybrid_search.py` 3 个用例全绿；`hybrid_search` 关闭分支调用形态未变，`_rrf_fuse` 未受影响）
 
-- [ ] **Step 5: 提交**
+- [x] **Step 5: 提交**
 
 ```bash
 git add framework/vector_store/chroma_store.py tests/test_collection_routing.py
