@@ -16,11 +16,11 @@ plan: docs/superpowers/plans/2026-08-25-kb-ingestion-quality.md
 verify_result: pass
 verify_failures: 0
 verification_report: docs/superpowers/reports/2026-08-25-kb-ingestion-quality-verify.md
-branch_status: pending
+branch_status: handled
 created_at: 2026-08-24
 verified_at: 2026-08-25
-archive_confirmation: pending
-archived: false
+archive_confirmation: confirmed
+archived: true
 bound_branch: feature/20260825/kb-ingestion-quality
 direct_override: null
 handoff_context: null

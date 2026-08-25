@@ -2,6 +2,7 @@
 change: kb-ingestion-quality
 design-doc: docs/superpowers/specs/2026-08-25-kb-ingestion-quality-design.md
 base-ref: 51adad01597cc00b44c8715cec047247dae7e794
+archived-with: 2026-08-25-kb-ingestion-quality
 ---
 
 # kb-ingestion-quality 实施计划
