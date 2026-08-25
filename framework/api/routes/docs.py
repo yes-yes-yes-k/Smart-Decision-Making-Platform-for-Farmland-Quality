@@ -117,7 +117,12 @@ def upload_document():
         chunks = []
         if content:
             chunks = split_text(content)
-            metadatas = [{"source": file.filename} for _ in chunks]
+            metadatas = [{
+                "source": file.filename,
+                "category": category,
+                "treatment_type": treatment_type,
+                "chunk_index": i,
+            } for i in range(len(chunks))]
             added_count = vector_store.add_documents(chunks, metadatas)
             print(f"[上传接口] 向量库添加完成 - 分块数: {len(chunks)}, 成功添加: {added_count}", flush=True)
         else:
