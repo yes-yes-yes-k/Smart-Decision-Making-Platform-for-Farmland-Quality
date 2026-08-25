@@ -1166,7 +1166,7 @@ git commit -m "feat(kb): wire category routing into retrieval and upload"
 - Consumes: `ChromaVectorStore.add_documents(texts, metadatas, ids, category)`（Task 4）、`Config.CHROMA_PERSIST_DIR` / `Config.CHROMA_COLLECTION_NAME`（已存在）。
 - Produces: 脚本 `rebuild_collections()`：读取 `kb_document` 表构建 `source → category` 映射，将旧 `enterprise_kb` 中的 chunk 按 category 迁移到分领域 collection；category 为空/other 的 chunk 仍留在默认库，不重复写入。
 
-- [ ] **Step 1: 编写脚本** `scripts/rebuild_collections.py`
+- [x] **Step 1: 编写脚本** `scripts/rebuild_collections.py`
 
 ```python
 """按 category 将 enterprise_kb 旧 chunk 迁移到分领域 collection。
@@ -1250,12 +1250,12 @@ if __name__ == "__main__":
     rebuild_collections()
 ```
 
-- [ ] **Step 2: 语法自检**
+- [x] **Step 2: 语法自检**
 
 Run: `python -c "import ast; ast.parse(open('scripts/rebuild_collections.py', encoding='utf-8').read()); print('OK')"`
 Expected: `OK`
 
-- [ ] **Step 3: 提交**
+- [x] **Step 3: 提交**
 
 ```bash
 git add scripts/rebuild_collections.py

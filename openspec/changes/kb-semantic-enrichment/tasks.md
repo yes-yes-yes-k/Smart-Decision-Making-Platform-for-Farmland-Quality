@@ -14,7 +14,7 @@
 ## 3. 分领域 collection
 
 - [x] 3.1 扩展 `chroma_store` 支持按 category 路由到分领域 collection
-- [ ] 3.2 提供 collection 重建脚本，按 category 迁移现有文档
+- [x] 3.2 提供 collection 重建脚本，按 category 迁移现有文档
 - [x] 3.3 为领域路由与回退逻辑编写测试
 
 ## 4. 验证与回归
