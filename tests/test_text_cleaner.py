@@ -48,3 +48,37 @@ def test_short_text_passthrough():
 
 def test_strip_leading_trailing_whitespace():
     assert clean_text("  hello  ") == "hello"
+
+
+def test_nfkc_compatibility_chars():
+    # 兼容字符归一（如 ﾊ 半角片假名场景的兼容分解，此处用常见全角符号）
+    assert clean_text("１２３") == "123"
+
+
+def test_mixed_whitespace_and_control():
+    text = "a\x00   b\n\n\n\nc"
+    result = clean_text(text)
+    assert "\x00" not in result
+    assert "a  b" in result
+    assert "b\n\nc" in result
+
+
+def test_only_whitespace_returns_empty():
+    assert clean_text("   \n\n\n\t\t") == ""
+
+
+def test_single_page_repeated_line_not_removed():
+    # 行数 < 6 不去重，即使某行重复 ≥ 3 次
+    text = "重复\n重复\n重复\n重复\n重复"
+    # 行数 5 < 6，不去重
+    result = clean_text(text)
+    assert result.count("重复") == 5
+
+
+def test_header_footer_threshold_exactly_three():
+    # 恰好 3 次重复且行数 ≥ 6 → 去除
+    header = "页眉行"
+    text = "\n".join([header, "正文一", header, "正文二", header, "正文三"])
+    result = clean_text(text)
+    assert "页眉行" not in result
+

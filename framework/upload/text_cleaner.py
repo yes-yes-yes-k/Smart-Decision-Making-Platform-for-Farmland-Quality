@@ -27,7 +27,9 @@ def clean_text(text: str) -> str:
     text = _MULTI_NL_RE.sub("\n\n", text)
     # 4. 去重复页眉页脚
     text = _strip_repeated_header_footer(text)
-    # 只去除首尾空格（保留 \t \n \r，符合规格）
+    # 纯空白输入（含 \t \n \r）返回空；否则只去除首尾空格，保留 \t \n \r
+    if not text.strip():
+        return ""
     return text.strip(" ")
 
 
