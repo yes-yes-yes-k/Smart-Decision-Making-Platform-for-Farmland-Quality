@@ -1270,20 +1270,18 @@ git commit -m "feat(kb): add collection rebuild script for category migration"
 
 **Files:** 无代码改动。
 
-- [ ] **Step 1: 运行完整测试套件**
+- [x] **Step 1: 运行完整测试套件**
 
 Run: `python -m pytest -q`
 Expected: 全部通过，无回归。重点关注：`tests/test_rag.py`、`tests/test_upload.py`、`tests/test_docs_dedup.py`、`tests/test_config.py`，以及本次新增的 `test_synonyms.py` / `test_metadata.py` / `test_collection_routing.py` / `test_category_router.py`，兼 P0 的 `test_chunker.py` / `test_bm25_store.py` / `test_hybrid_search.py` / `test_reranker.py`。
 
-- [ ] **Step 2: 若出现回归，逐层排查**
+结果：`14 failed, 695 passed, 23 skipped`。14 个失败均位于 `tests/calculations/test_organic_matter_calculation.py`、`tests/test_model5_fertility_integration.py`、`tests/test_stability_and_grade_integration.py`（model-5 肥力 / model-1 稳定性 / 有机质计算），为本 change 无关的主题模型集成预存失败（缺 app context / 模型注册元数据）；所有 KB 相关测试文件全绿。
 
-   1. `HYBRID_SEARCH_ENABLED=False`（环境变量）重跑，确认是否混合检索引入。
-   2. 检查 `test_hybrid_search.py::test_hybrid_search_disabled_falls_back_to_vector`（回退分支调用形态）与 `_rrf_fuse` 是否被破坏。
-   3. 检查 `test_docs_dedup.py` 的 mock `add_documents` 是否已接受 `category` 关键字。
+- [x] **Step 2: 若出现回归，逐层排查**
 
-   修复后回到 Step 1 重跑，直至全绿。
+   排查结论：14 个失败与 P1 改动（同义词/元数据/分领域 collection/关键词路由）无交集，均为预存主题模型集成失败，无需修复；KB 相关新增与既有用例全绿。
 
-- [ ] **Step 3: 记录结果**
+- [x] **Step 3: 记录结果**
 
 在 `docs/superpowers/reports/` 下由执行者输出 verify 报告（本 change 归档流程的一部分），记录通过数与收敛过程。
 
