@@ -1291,22 +1291,22 @@ Expected: 全部通过，无回归。重点关注：`tests/test_rag.py`、`tests
 
 **Files:** 无代码改动（手动验证）。
 
-- [ ] **Step 1: 准备含术语与 category 的文档**
+- [x] **Step 1: 准备含术语与 category 的文档**
 
 准备两份含「可交换氢」「速效钾」等耕地术语的 txt/md 文档，分别以 `category=acidification`、`category=organic_matter` 上传（走 `/api/v1/docs/upload`，新入库才走新元数据 + 分领域 collection；旧 chunk 不受影响）。
 
-- [ ] **Step 2: 上传并查询**
+- [x] **Step 2: 上传并查询**
 
    1. 上传文档 A（category=acidification，含「可交换氢」）。
    2. 上传文档 B（category=organic_matter，含「速效钾」）。
    3. 通过问答接口查询「可交换氢含量如何影响酸度」「速效钾有什么养分意义」。
 
-- [ ] **Step 3: 验证同义词替换与领域路由**
+- [x] **Step 3: 验证同义词替换与领域路由**
 
    1. 确认「可交换氢」查询经 `normalize_query` 改写为「交换性氢」后命中文档 A 的 chunk，且 `sources` 正确。
    2. 确认「酸化严重」类查询经 `route_category` 路由到 `kb_acidification`；「有机质」类查询路由到 `kb_organic_matter`；无法判定的查询回退全库仍能返回结果。
    3. 对 P0 前未迁移的旧 chunk，确认走全库回退后检索不受影响（旧 `enterprise_kb` 保留为 fallback）。
 
-- [ ] **Step 4: 记录结论**
+- [x] **Step 4: 记录结论**
 
 在 verify 报告注明「可交换氢 / 速效钾 命中率提升、领域路由命中，符合预期」；若某术语因 jieba 默认词典切分不当而未命中，记录为已知边界（术语词库优化留待后续 change）。
