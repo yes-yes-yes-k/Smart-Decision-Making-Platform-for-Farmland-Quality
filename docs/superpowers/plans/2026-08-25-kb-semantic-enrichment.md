@@ -345,7 +345,7 @@ git commit -m "feat(kb): normalize query before hybrid recall"
 - Consumes: `split_text(content) -> list[str]`（P0 已有）、`category`/`treatment_type`（`docs.py:80-81` 已从 form 读取）。
 - Produces: 上传入库的 `metadatas` 逐 chunk 携带 `source`/`category`/`treatment_type`/`chunk_index`；`page`/`section` 不写入。`add_documents` 调用签名本任务不变（`category` 路由参数在 Task 6 引入）。
 
-- [ ] **Step 1: 编写失败测试** `tests/test_metadata.py`
+- [x] **Step 1: 编写失败测试** `tests/test_metadata.py`
 
 ```python
 """测试上传入库时写入 chunk 级元数据。"""
@@ -450,12 +450,12 @@ def test_upload_writes_chunk_metadata(client):
     assert "section" not in metadatas[0]
 ```
 
-- [ ] **Step 2: 运行测试确认失败**
+- [x] **Step 2: 运行测试确认失败**
 
 Run: `python -m pytest tests/test_metadata.py -v`
 Expected: FAIL（`assert meta["category"] == "acidification"` 失败：当前 metadatas 仅含 `source`）
 
-- [ ] **Step 3: 修改 metadatas 构造** `framework/api/routes/docs.py:120`
+- [x] **Step 3: 修改 metadatas 构造** `framework/api/routes/docs.py:120`
 
 把：
 
@@ -478,12 +478,12 @@ Expected: FAIL（`assert meta["category"] == "acidification"` 失败：当前 me
 
 （`added_count` / `chunk_count` / 后续入库逻辑不动；`category`/`treatment_type` 已定义于 `docs.py:80-81`。）
 
-- [ ] **Step 4: 运行测试确认通过**
+- [x] **Step 4: 运行测试确认通过**
 
 Run: `python -m pytest tests/test_metadata.py -v`
 Expected: PASS（1 个用例全绿）
 
-- [ ] **Step 5: 提交**
+- [x] **Step 5: 提交**
 
 ```bash
 git add framework/api/routes/docs.py tests/test_metadata.py

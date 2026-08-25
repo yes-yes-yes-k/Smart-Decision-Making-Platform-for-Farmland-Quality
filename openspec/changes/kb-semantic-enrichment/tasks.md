@@ -7,9 +7,9 @@
 
 ## 2. chunk 元数据增强
 
-- [ ] 2.1 扩展 `chroma_store` 元数据写入，支持 chunk 级字段
-- [ ] 2.2 更新 `docs.py` 入库时计算并写入 category/treatment_type/chunk_index（page/section 本阶段不写入，留后续）
-- [ ] 2.3 为元数据写入编写测试
+- [x] 2.1 扩展 `chroma_store` 元数据写入，支持 chunk 级字段
+- [x] 2.2 更新 `docs.py` 入库时计算并写入 category/treatment_type/chunk_index（page/section 本阶段不写入，留后续）
+- [x] 2.3 为元数据写入编写测试
 
 ## 3. 分领域 collection
 
