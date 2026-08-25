@@ -123,7 +123,7 @@ def upload_document():
                 "treatment_type": treatment_type,
                 "chunk_index": i,
             } for i in range(len(chunks))]
-            added_count = vector_store.add_documents(chunks, metadatas)
+            added_count = vector_store.add_documents(chunks, metadatas, category=category)
             print(f"[上传接口] 向量库添加完成 - 分块数: {len(chunks)}, 成功添加: {added_count}", flush=True)
         else:
             print(f"[上传接口] 文档解析结果为空", flush=True)

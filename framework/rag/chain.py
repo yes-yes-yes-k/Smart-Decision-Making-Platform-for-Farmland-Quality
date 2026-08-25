@@ -6,6 +6,7 @@ from framework.llm.service import llm_service
 from framework.vector_store.chroma_store import vector_store
 from framework.rag.reranker import rerank_service
 from framework.rag.synonyms import normalize_query
+from framework.rag.category_router import route_category
 from framework.config import Config
 
 class RAGChain:
@@ -116,9 +117,11 @@ class RAGChain:
 
     def _retrieve_documents(self, query: str, valid_doc_names: Optional[set]) -> Dict[str, Any]:
         normalized_query = normalize_query(query)
+        category = route_category(normalized_query)
         filters = {"source": {"$in": list(valid_doc_names)}} if valid_doc_names else None
         recalled = self.vector_store.hybrid_search(
-            query=normalized_query, n_results=Config.RECALL_TOP_K, filters=filters)
+            query=normalized_query, n_results=Config.RECALL_TOP_K, filters=filters,
+            category=category)
         results = recalled["results"]
         if Config.RERANK_ENABLED and len(results) > Config.RETRIEVAL_TOP_K:
             results = rerank_service.rerank(query, results)

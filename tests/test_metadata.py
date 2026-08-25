@@ -18,8 +18,8 @@ class CaptureVectorStore:
     def __init__(self):
         self.captured = None
 
-    def add_documents(self, texts, metadatas=None, ids=None):
-        self.captured = {"texts": texts, "metadatas": metadatas, "ids": ids}
+    def add_documents(self, texts, metadatas=None, ids=None, category=None):
+        self.captured = {"texts": texts, "metadatas": metadatas, "ids": ids, "category": category}
         return len(texts) if texts else 0
 
     def delete_by_source(self, source_doc_name):
@@ -99,3 +99,20 @@ def test_upload_writes_chunk_metadata(client):
     # page / section 本阶段不写入
     assert "page" not in metadatas[0]
     assert "section" not in metadatas[0]
+
+
+def test_upload_passes_category_to_vector_store(client):
+    token = _login(client)
+    content = "土壤" * 1000
+    resp = client.post(
+        "/api/v1/docs/upload",
+        headers={"Authorization": f"Bearer {token}"},
+        data={
+            "file": (io.BytesIO(content.encode("utf-8")), "meta2.txt"),
+            "category": "acidification",
+            "treatment_type": "regulation",
+        },
+        content_type="multipart/form-data",
+    )
+    assert resp.status_code == 200
+    assert client._capture_vs.captured["category"] == "acidification"
