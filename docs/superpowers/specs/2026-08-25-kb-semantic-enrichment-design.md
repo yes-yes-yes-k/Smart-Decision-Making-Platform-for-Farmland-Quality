@@ -2,6 +2,8 @@
 comet_change: kb-semantic-enrichment
 role: technical-design
 canonical_spec: openspec
+archived-with: 2026-08-25-kb-semantic-enrichment
+status: final
 ---
 
 # kb-semantic-enrichment 技术设计
