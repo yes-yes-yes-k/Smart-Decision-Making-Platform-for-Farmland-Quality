@@ -2,6 +2,8 @@ from __future__ import annotations
 import os
 from typing import Optional
 
+from framework.upload.text_cleaner import clean_text
+
 def parse_document(file_path: str, file_type: str) -> Optional[str]:
     """解析文档，返回纯文本。失败时抛出异常，由调用方捕获并打印日志。"""
     if file_type == 'txt':
@@ -19,7 +21,7 @@ def parse_document(file_path: str, file_type: str) -> Optional[str]:
 
 def _parse_txt(file_path: str) -> str:
     with open(file_path, 'r', encoding='utf-8', errors='ignore') as f:
-        return f.read()
+        return clean_text(f.read())
 
 def _parse_pdf(file_path: str) -> str:
     """PDF 解析：优先 pdfplumber（中文支持好、自动处理加密），失败时回退 PyPDF2。"""
@@ -45,7 +47,7 @@ def _parse_pdf(file_path: str) -> str:
 
             text = "\n".join(text_parts).strip()
             if text:
-                return text
+                return clean_text(text)
             # pdfplumber 解析出空内容，回退 PyPDF2
             print("[Parser] pdfplumber 解析结果为空，回退 PyPDF2")
         except Exception as e:
@@ -99,7 +101,7 @@ def _parse_pdf(file_path: str) -> str:
             try:
                 ocr_text = _parse_pdf_ocr(file_path)
                 if ocr_text:
-                    return ocr_text
+                    return clean_text(ocr_text)
             except Exception as e:
                 print(f"[Parser] OCR 识别失败：{e}", flush=True)
                 raise ValueError(
@@ -107,7 +109,7 @@ def _parse_pdf(file_path: str) -> str:
                     f"可能是中文字体编码问题、或 PDF 内容为空。OCR 错误：{e}"
                 )
 
-    return text
+    return clean_text(text)
 
 
 def _parse_pdf_ocr(file_path: str) -> str:
@@ -169,7 +171,7 @@ def _parse_pdf_ocr(file_path: str) -> str:
 
     text = "\n".join(text_parts).strip()
     print(f"[Parser] OCR 识别完成，提取到 {len(text)} 个字符", flush=True)
-    return text
+    return clean_text(text)
 
 def _parse_docx(file_path: str) -> str:
     try:
@@ -188,7 +190,7 @@ def _parse_docx(file_path: str) -> str:
                     if cell.text:
                         table_text.append(cell.text)
         text = "\n".join(table_text).strip()
-    return text
+    return clean_text(text)
 
 def _parse_excel(file_path: str) -> str:
     try:
@@ -197,4 +199,4 @@ def _parse_excel(file_path: str) -> str:
         raise ImportError(f"pandas 未安装，无法解析 Excel：{e}。请执行 pip install pandas openpyxl")
 
     df = pd.read_excel(file_path)
-    return df.to_string()
+    return clean_text(df.to_string())
