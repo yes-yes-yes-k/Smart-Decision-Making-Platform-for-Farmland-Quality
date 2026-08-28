@@ -1,6 +1,6 @@
 """PostgreSQL 数据库导入脚本。
 
-将 db_enterprise_qa_20260818_225332.dump 导入到 PostgreSQL 数据库。
+将 db_enterprise_qa_20260827_183450.dump 导入到 PostgreSQL 数据库。
 导入前请确保:
 1. PostgreSQL 已安装并运行
 2. PostGIS 扩展已安装
@@ -22,10 +22,10 @@ from pathlib import Path
 DB_HOST = "localhost"
 DB_PORT = "5432"
 DB_USER = "postgres"
-DB_PASSWORD = "scau2025"
+DB_PASSWORD = "123456"
 DB_NAME = "db_enterprise_qa"
 
-DUMP_FILE = Path(__file__).parent / "db_enterprise_qa_20260818_225332.dump"
+DUMP_FILE = Path(__file__).parent / "db_enterprise_qa_20260827_183450.dump"
 
 
 def run_psql(sql: str, dbname: str = "postgres", host: str = DB_HOST, port: str = DB_PORT, user: str = DB_USER, password: str = DB_PASSWORD):

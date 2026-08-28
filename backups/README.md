@@ -1,6 +1,6 @@
 # 数据库备份说明
 
-**导出时间**: 2026-08-18 22:53:37
+**导出时间**: 2026-08-27 18:34:54
 **数据库**: db_enterprise_qa
 **PostgreSQL**: 17.4 + PostGIS 3.4
 
@@ -8,7 +8,7 @@
 
 | 文件 | 说明 |
 |------|------|
-| `db_enterprise_qa_20260818_225332.dump` | 压缩备份文件 (pg_dump custom format, 19.2 MB) |
+| `db_enterprise_qa_20260827_183450.dump` | 压缩备份文件 (pg_dump custom format, 19.4 MB) |
 | `import_database.py` | 导入脚本 |
 | `schema.sql` | 纯文本 schema (参考用) |
 
@@ -39,7 +39,7 @@ createdb -U postgres db_enterprise_qa
 psql -U postgres -d db_enterprise_qa -c "CREATE EXTENSION IF NOT EXISTS postgis;"
 
 # 2. 导入备份
-pg_restore -U postgres -d db_enterprise_qa --no-owner --no-privileges -v db_enterprise_qa_20260818_225332.dump
+pg_restore -U postgres -d db_enterprise_qa --no-owner --no-privileges -v db_enterprise_qa_20260827_183450.dump
 ```
 
 ### 方式 3: Docker 导入
@@ -54,7 +54,7 @@ docker run -d --name pg-gis \
 
 # 2. 等待容器就绪后导入
 pg_restore -h localhost -U postgres -d db_enterprise_qa \
-  --no-owner --no-privileges -v db_enterprise_qa_20260818_225332.dump
+  --no-owner --no-privileges -v db_enterprise_qa_20260827_183450.dump
 ```
 
 ## 数据概览
@@ -63,13 +63,13 @@ pg_restore -h localhost -U postgres -d db_enterprise_qa \
 |------|------|------|
 | parcel_info | 5,491 | 关键数据 |
 | parcel_history_snapshot | 16,464 | 关键数据 |
-| stability_risk_result | 13 | 关键数据 |
-| quality_grade_result | 15 | 关键数据 |
-| obstacle_diagnosis_result | 15 | 关键数据 |
-| acidification_remediation_result | 14 | 关键数据 |
-| organic_matter_result | 16 | 关键数据 |
+| stability_risk_result | 16 | 关键数据 |
+| quality_grade_result | 17 | 关键数据 |
+| obstacle_diagnosis_result | 17 | 关键数据 |
+| acidification_remediation_result | 16 | 关键数据 |
+| organic_matter_result | 17 | 关键数据 |
 | thematic_model_registry | 6 | 关键数据 |
-| model_execution_log | 74 | 关键数据 |
+| model_execution_log | 84 | 关键数据 |
 
 ## 环境要求
 
