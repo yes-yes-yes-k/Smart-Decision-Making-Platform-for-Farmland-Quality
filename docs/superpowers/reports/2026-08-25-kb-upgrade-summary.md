@@ -1,9 +1,9 @@
 # 知识库升级工作汇报
 
-- **汇报日期**：2026-08-25
-- **工作范围**：知识库检索与入库链路三阶段升级（P0/P1/P2）
+- **汇报日期**：2026-08-26（含归档后 embedding service 修复）
+- **工作范围**：知识库检索与入库链路三阶段升级（P0/P1/P2）+ embedding service 健壮性修复
 - **工作流**：Comet Classic（OpenSpec + Superpowers）
-- **状态**：三阶段全部归档交付完成
+- **状态**：三阶段全部归档交付完成；embedding service 输入校验缺陷已修复
 
 ---
 
@@ -69,7 +69,7 @@
 
 **验证证据**：定向测试 53 passed；端到端验证同义词替换、领域路由、分领域存储、全库回退均通过。
 
-**已知边界**：真实 SILICONFLOW embedding API 当前返回 400（环境波动），端到端以确定性桩向量验证 routing/collection 管道，同义词与路由走真实词表/规则。
+**已知边界**：P1 端到端验证期间观察到 embedding API 返回 400，当时归因为"环境波动"。经后续排查确认根因为 `EmbeddingService.embed_documents/embed_query` 缺少输入校验，调用方传入 `None`/非字符串触发 SiliconFlow `code:20015 parameter invalid`，已在归档后修复（见第十章）。
 
 **归档位置**：`openspec/changes/archive/2026-08-25-kb-semantic-enrichment/`
 
@@ -153,14 +153,15 @@
 | P0 | 51 passed | 670 passed / 15 pre-existing failed |
 | P1 | 53 passed | 695 passed / 14 pre-existing failed |
 | P2 | 53 passed | 754 passed / 4 pre-existing failed / 22 skipped |
+| 补充修复（embedding）| 11 passed | 765 passed / 4 pre-existing failed / 22 skipped |
 
 ### 预存失败说明
 
 全量回归中的失败项均属主题模型集成环境问题（stability/grade 返回 degraded、exclusive_rules 维度回溯、organic_matter/model5 DB app context），与知识库升级无关，已在各阶段 base-ref 复现佐证。P0→P2 过程中预存失败数从 15 降至 4，部分环境问题在后续工作中自然修复。
 
-### 环境备注
+### embedding API 400 根因澄清
 
-真实 SILICONFLOW embedding API 在 P0 期间返回 200、P1/P2 期间出现 400 波动，属环境侧波动非代码缺陷。各阶段端到端验证以确定性桩向量跑通 ChromaVectorStore 管道，同义词/路由/清洗/分页等逻辑走真实词表与规则。
+P1/P2 验证报告曾记录"真实 SILICONFLOW embedding API 返回 400 波动"，经归档后逐项排查确认：**API 本身完全正常**，400 仅在 `input` 字段传入 `None`/数字/布尔等非字符串类型时触发（SiliconFlow 返回 `code:20015 "The parameter is invalid"`，属合理参数校验）。根因为 `EmbeddingService` 缺少输入校验，单个非法元素污染整批请求，已在归档后修复（见第十章）。
 
 ---
 
@@ -179,11 +180,11 @@
 
 ## 八、后续建议
 
-1. **embedding API 稳定性**：关注 SILICONFLOW embedding API 波动，必要时增加重试或本地 fallback 模型。
-2. **历史数据迁移**：P0/P1 改动仅影响新入库文档，建议用 `scripts/rebuild_collections.py` 对历史文档重建分领域 collection 与 BM25 索引。
-3. **page/section 元数据补全**：P1 proposal 曾提及 page/section，P2 已实现 page（PDF 保真解析产出），section 字段留待后续按需扩展。
-4. **检索评估常态化**：建议将 `scripts/eval_retrieval.py` 纳入 CI 或定期运行，建立检索质量基线监控优化效果。
-5. **预存测试失败清理**：4 项主题模型集成环境失败建议单独 change 处理，与知识库升级解耦。
+1. **历史数据迁移**：P0/P1 改动仅影响新入库文档，建议用 `scripts/rebuild_collections.py` 对历史文档重建分领域 collection 与 BM25 索引。
+2. **page/section 元数据补全**：P1 proposal 曾提及 page/section，P2 已实现 page（PDF 保真解析产出），section 字段留待后续按需扩展。
+3. **检索评估常态化**：建议将 `scripts/eval_retrieval.py` 纳入 CI 或定期运行，建立检索质量基线监控优化效果。
+4. **预存测试失败清理**：4 项主题模型集成环境失败建议单独 change 处理，与知识库升级解耦。
+5. **embedding service 增强**（可选）：当前已修复输入校验，如需进一步增强可考虑批量失败时拆分单条重试、网络抖动重试机制。
 
 ---
 
@@ -196,3 +197,50 @@
 | P2 | `openspec/changes/archive/2026-08-25-kb-ingestion-quality/` | `docs/superpowers/reports/2026-08-25-kb-ingestion-quality-verify.md` | `docs/superpowers/specs/2026-08-25-kb-ingestion-quality-design.md` |
 
 所有归档 change 均已推送至 origin 对应分支，Comet Classic 工作流完整闭环。
+
+---
+
+## 十、补充修复：embedding service 输入校验（2026-08-26）
+
+三阶段归档后，对 P1/P2 验证报告记录的"embedding API 400 波动"进行根因排查，确认 API 本身正常，根因为 `EmbeddingService` 代码缺陷，按 TDD 修复。
+
+### 根因排查
+
+直接调用 SiliconFlow `/v1/embeddings` 逐项验证：
+
+| 测试场景 | 状态码 | 结论 |
+|----------|--------|------|
+| 普通中文文本（5 个术语） | 200 | 1024 维向量正常 |
+| 空字符串 `""` / 纯空白 | 200 | 正常返回 |
+| 批量 `["土壤酸化",""]` | 200 | 2 个向量正常 |
+| 超长文本（5000 字符） | 200 | 正常返回 |
+| **`None` / 数字 123 / 布尔** | **400** | `code:20015 parameter invalid` |
+
+**根因**：`EmbeddingService.embed_documents/embed_query` 未校验输入类型，调用方传入 `None`/非字符串时，整批请求被 SiliconFlow 拒绝（400），异常处理静默返回全批空向量 —— 一个坏元素污染整批。
+
+### 修复内容（[service.py](file:///d:/17417/Documents/agent_culti_demo/.worktrees/kb-ingestion-quality/framework/embedding/service.py#L42-L93)）
+
+| 问题 | 修复前 | 修复后 |
+|------|--------|--------|
+| **embed_query 重复调 API** | 三元表达式 `_call_api([text])` 调用两次 | 调用一次存变量 |
+| **None/非字符串 → 400** | 原样传给 API → 整批失败 | `isinstance(text, str)` 校验，非 str 返回空向量 |
+| **批量含 None → 全批污染** | None 进入 input → 400 → 全空 | 过滤合法元素保留索引，非法位置空向量 |
+| **空列表仍调 API** | `_call_api([])` 发空请求 | 空列表直接 `return []` |
+
+### 测试覆盖（[test_embedding_service.py](file:///d:/17417/Documents/agent_culti_demo/.worktrees/kb-ingestion-quality/tests/test_embedding_service.py)）
+
+新增 11 项用例（TDD：先 RED 8 failed → GREEN 全 passed）：
+- 批量 None 过滤 / 批量非字符串过滤 / 全非法降级 / 空列表短路
+- 空字符串合法 / query None / query 非字符串 / query 空串 / query 正常
+- 未初始化文档查询 / 未初始化单条查询
+
+**全量回归**：765 passed / 22 skipped / 4 deselected（预存环境失败）。
+
+### 提交
+
+- `b73453f fix(embedding): 输入校验 None/非字符串，修复 embed_query 重复调用 + 空列表短路`
+- 已推送 origin `feature/20260825/kb-ingestion-quality`
+
+### 修正结论
+
+此前验证报告中"embedding API 400 环境波动"的表述不准确。**SiliconFlow embedding API 一直正常工作**，问题在调用方代码缺陷，现已修复。
