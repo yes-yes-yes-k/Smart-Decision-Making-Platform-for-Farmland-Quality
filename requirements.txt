@@ -1,0 +1,27 @@
+# Web 框架
+flask
+flask-cors
+flask-jwt-extended
+
+# LLM / LangChain
+langchain-openai
+langchain-core
+langchain-community
+
+# 向量库
+chromadb
+
+# 数据校验
+pydantic
+
+# HTTP 请求
+requests
+
+# PDF 生成
+reportlab
+
+# 生产 WSGI 服务器
+waitress
+
+# 环境变量管理
+python-dotenv

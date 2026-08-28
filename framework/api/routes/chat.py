@@ -233,7 +233,12 @@ def chat_stream():
             yield f"data: {json.dumps({'event': 'error', 'message': str(e)})}\n\n"
 
     resp = Response(event_stream(), mimetype='text/event-stream')
-    resp.headers['Cache-Control'] = 'no-cache'
+    resp.headers['Cache-Control'] = 'no-cache, no-transform, must-revalidate, max-age=0'
     resp.headers['X-Accel-Buffering'] = 'no'
     resp.headers['Connection'] = 'keep-alive'
+    resp.headers['X-Accel-Buffering'] = 'no'
+    resp.headers['Pragma'] = 'no-cache'
+    resp.headers['Expires'] = '0'
+    # 关闭 Gzip 压缩，防止压缩导致 SSE 被缓冲
+    resp.headers['Content-Encoding'] = 'identity'
     return resp

@@ -198,19 +198,31 @@ def generate_pdf(html_content: str) -> bytes:
         from reportlab.pdfbase.ttfonts import TTFont
         from html.parser import HTMLParser
 
-        # 注册中文字体（Windows 系统自带宋体）
+        # 注册中文字体：兼容 Windows / Linux
         _chinese_font = "ChineseFont"
-        try:
-            pdfmetrics.registerFont(TTFont(_chinese_font, "C:/Windows/Fonts/simsun.ttc"))
-            print("[PDF] 已注册中文字体: 宋体", flush=True)
-        except Exception:
-            # 尝试黑体
+        _font_paths = [
+            # Windows
+            "C:/Windows/Fonts/simsun.ttc",
+            "C:/Windows/Fonts/simhei.ttf",
+            # Linux 常见中文字体路径
+            "/usr/share/fonts/truetype/wqy/wqy-zenhei.ttc",
+            "/usr/share/fonts/truetype/wqy/wqy-microhei.ttc",
+            "/usr/share/fonts/opentype/noto/NotoSansCJK-Regular.ttc",
+            "/usr/share/fonts/noto-cjk/NotoSansCJK-Regular.ttc",
+            "/usr/share/fonts/google-noto-cjk/NotoSansCJK-Regular.ttc",
+        ]
+        _font_registered = False
+        for fp in _font_paths:
             try:
-                pdfmetrics.registerFont(TTFont(_chinese_font, "C:/Windows/Fonts/simhei.ttf"))
-                print("[PDF] 已注册中文字体: 黑体", flush=True)
+                pdfmetrics.registerFont(TTFont(_chinese_font, fp))
+                print(f"[PDF] 已注册中文字体: {fp}", flush=True)
+                _font_registered = True
+                break
             except Exception:
-                _chinese_font = "Helvetica"
-                print("[PDF] 未找到中文字体，使用 Helvetica", flush=True)
+                continue
+        if not _font_registered:
+            _chinese_font = "Helvetica"
+            print("[PDF] 未找到中文字体，使用 Helvetica（中文可能无法显示）", flush=True)
 
         class _TextExtractor(HTMLParser):
             """从 HTML 中提取纯文本内容。"""
