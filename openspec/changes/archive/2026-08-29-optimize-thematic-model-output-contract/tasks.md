@@ -16,7 +16,7 @@
 - [x] 2.5 迁移 Model-4 的数据库与 Legacy 路径到酸化改良结果 Schema，将来源缩写统一映射为有业务含义的 snake_case 字段
 - [x] 2.6 迁移 Model-5 的数据库快速路径、全局 ETR 和韶关 RF 路径到有机质提升结果 Schema，保留两个真实置信度并对缺失预测返回明确降级
 - [x] 2.7 将当前 `_StubAgent` 提供的 Model-6 占位调用改为 `unavailable`、`result=null` 和 `MODEL_NOT_IMPLEMENTED`，禁止返回成功桩结果
-- [ ] 2.8 为六个模型分别补充成功、降级、拒绝、不可用和多数据源字段一致性测试
+- [x] 2.8 为六个模型分别补充成功、降级、拒绝、不可用和多数据源字段一致性测试
 - [x] 2.9 验证 Function Calling、关键词回退两条路径对同一模型输出相同的规范字段集合和状态语义
 
 ## 3. 改造专题模型 API 与兼容层
@@ -24,7 +24,7 @@
 - [x] 3.1 修改 `src/ai_culti_demo/thematic_models.py` 和 CoreEngine 调用边界，使正式能力直接传递规范模型结果且不再提升 Model-5 特例字段
 - [x] 3.2 修改 `POST /api/v1/models/run`，默认返回带 `schema_version=2.0`、`trace_id` 和 `public_full` 数据的传输包络
 - [x] 3.3 实现 `response_schema="1.0"` 兼容投影和弃用提示，确保旧响应完全由规范结果单向生成
-- [ ] 3.4 为专题模型 API 补充 Schema 2.0、Schema 1.0 兼容、业务失败与 HTTP 参数错误的集成测试
+- [x] 3.4 为专题模型 API 补充 Schema 2.0、Schema 1.0 兼容、业务失败与 HTTP 参数错误的集成测试
 
 ## 4. 精简聊天编排与 LLM 上下文
 
@@ -33,14 +33,14 @@
 - [x] 4.3 提取聊天公共响应序列化器，统一生成 `message_id/answer/sources/recommendations/routing`，默认省略模型详情
 - [x] 4.4 支持 `include_model_results=true` 时返回 `models` 的 `chat_compact` 投影，并移除可推导的 `agents_invoked` 及重复路由字段
 - [x] 4.5 让 `/api/v1/chat/stream` 的 `done.data` 复用非流式响应序列化器，确保 RAG 和专业模型路径的字段省略规则一致
-- [ ] 4.6 为 RAG、各专业模型、边界待确认、LLM 成功/失败、显式模型详情及流式/非流式一致性补充集成测试
-- [ ] 4.7 覆盖 Function Calling 成功、无 tool call、工具失败和关键词回退场景，验证公共响应均不暴露 `data/details`
+- [x] 4.6 为 RAG、各专业模型、边界待确认、LLM 成功/失败、显式模型详情及流式/非流式一致性补充集成测试
+- [x] 4.7 覆盖 Function Calling 成功、无 tool call、工具失败和关键词回退场景，验证公共响应均不暴露 `data/details`
 
 ## 5. 持久化、可观测性与调用方迁移
 
 - [x] 5.1 调整模型执行日志和结果持久化边界，将规范输出用于公共快照，将完整输入与内部诊断限制在 audit/trace 中
 - [x] 5.2 增加 Schema 1.0 兼容调用计数和规范状态监控映射，确保弃用情况与 `ok/degraded/rejected/unavailable/error` 可观测
-- [ ] 5.3 更新项目内前端和其他调用方，改用 `data.result`、`data.issues`、聊天 `data.routing` 及可选 `data.models`
+- [x] 5.3 更新项目内前端和其他调用方，改用 `data.result`、`data.issues`、聊天 `data.routing` 及可选 `data.models`
 - [x] 5.4 更新 OpenAPI、接口示例和迁移文档，列明旧字段到新字段的映射、兼容请求方式和计划下线条件
 
 ## 6. 回归与验收

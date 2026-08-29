@@ -27,8 +27,11 @@ def _serialize_chat_response(
     if response_schema not in {SCHEMA_VERSION, LEGACY_SCHEMA_VERSION}:
         response_schema = SCHEMA_VERSION
     models = result.get("models", {}) if isinstance(result, dict) else {}
-    question_type = result.get("question_type", 0) if isinstance(result, dict) else 0
-    routing_status = result.get("routing_status", "normal") if isinstance(result, dict) else "normal"
+    routing = result.get("routing", {}) if isinstance(result, dict) else {}
+    if not isinstance(routing, dict):
+        routing = {}
+    question_type = result.get("question_type", routing.get("question_type", 0)) if isinstance(result, dict) else 0
+    routing_status = result.get("routing_status", routing.get("status", "normal")) if isinstance(result, dict) else "normal"
     data = {
         "message_id": message_id,
         "answer": result.get("answer", "") if isinstance(result, dict) else "",

@@ -4,7 +4,7 @@
 
 系统 SHALL 确保 `/api/v1/chat/` 和 `/api/v1/chat/stream` 只返回调用方所需的公共聊天数据，禁止暴露 Orchestrator 或 AgentManager 的内部 `data/details`、完整分析包、执行上下文或审计字段。公共响应必须包含 `schema_version`、`trace_id` 和 `status`；其 `data` 必须包含 `message_id`、`answer`、`sources`、`recommendations` 和 `routing`。
 
-#### Scenario: RAG 问题不返回模型结果
+#### Scenario: RAG question returns no model_results
 - **WHEN** 问题被路由到 RAG 链路（`question_type == 0`）
 - **THEN** 响应 `data` 必须省略 `models`
 - **AND** 禁止返回空的 `model_results` 或 AgentManager 内部结构作为占位
@@ -14,7 +14,7 @@
 - **THEN** 响应 `data` 必须返回最终 `answer` 和路由元数据
 - **AND** 响应 `data` 必须省略 `models`
 
-#### Scenario: 显式请求精简模型结果
+#### Scenario: Multi-agent question returns simplified model_results
 - **WHEN** 问题被路由到专业模型且请求设置 `include_model_results=true`
 - **THEN** 响应 `data.models` 必须以 Agent ID 或规范模型 ID 为键返回每模型 `chat_compact` 投影
 - **AND** `models` 禁止包含 AgentManager 的原始 `data` 或 `details`
@@ -46,4 +46,3 @@
 - **WHEN** 最终 LLM 调用超时、失败或返回空内容
 - **THEN** 系统必须直接根据规范模型结果生成确定性自然语言答复
 - **AND** 系统禁止为了生成降级答复重新执行专业模型
-
