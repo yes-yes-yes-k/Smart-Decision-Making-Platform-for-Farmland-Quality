@@ -64,7 +64,7 @@ def test_stability_risk_agent_answer_question_risk():
 def test_problem_agent_execute():
     from framework.agents.specialized.problem_agent import ProblemIdentificationAgent
     agent = ProblemIdentificationAgent()
-    assert agent.model_id == "model-3"
+    assert agent.model_id == "obstacle-diagnosis"
     assert agent.dependencies == ["model-2"]
     # 缺 parcel_id 时返回统一降级响应（移除 mock 数据）
     result = agent.execute({"area_code": "lechang"})
@@ -188,7 +188,7 @@ def test_acidification_agent_execute(monkeypatch):
         }
     )
     agent = AcidificationRemediationAgent()
-    assert agent.model_id == "model-4"
+    assert agent.model_id == "acidification-remediation"
     result = agent.execute({"SJD":4.31,"JHX":1.56,"JLA":4.08})
     assert result["status"] == "success"
     assert result["result"]["ytk"] == 1234.5
@@ -233,7 +233,7 @@ def test_acidification_agent_answer_no_gb_standard(monkeypatch):
 def test_organic_matter_agent_execute():
     from framework.agents.specialized.organic_matter_agent import OrganicMatterAgent
     agent = OrganicMatterAgent()
-    assert agent.model_id == "model-5"
+    assert agent.model_id == "organic-matter-improvement"
     assert agent.dependencies == []
     result = agent.execute({"area_code": "lechang"})
     assert result["status"] == "degraded"
@@ -495,7 +495,7 @@ def test_acidification_agent_db_path(monkeypatch):
 
 
 def test_acidification_agent_fallback_path(monkeypatch):
-    """DB 未命中时 data_source="fallback"。"""
+    """DB 未命中时使用旧过程模型数据源。"""
     from framework.agents.specialized.acidification_agent import AcidificationRemediationAgent
     from framework.domain.data.parcel_data_accessor import ParcelDataAccessor
 
@@ -513,7 +513,7 @@ def test_acidification_agent_fallback_path(monkeypatch):
     )
     agent = AcidificationRemediationAgent()
     result = agent.execute({"parcel_id": "NOT_IN_DB"})
-    assert result["data_source"] == "fallback"
+    assert result["data_source"] == "legacy_process"
 
 
 def test_acidification_agent_persist_success(monkeypatch):
@@ -627,7 +627,7 @@ def test_organic_matter_agent_db_path(monkeypatch):
 
 
 def test_organic_matter_agent_fallback_path(monkeypatch):
-    """DB 未命中时 data_source="fallback"。"""
+    """DB 未命中且缺少模型特征时使用规则降级。"""
     from framework.agents.specialized.organic_matter_agent import OrganicMatterAgent
     from framework.domain.data.parcel_data_accessor import ParcelDataAccessor
 
@@ -637,7 +637,7 @@ def test_organic_matter_agent_fallback_path(monkeypatch):
     )
     agent = OrganicMatterAgent()
     result = agent.execute({"parcel_id": "NOT_IN_DB"})
-    assert result["data_source"] == "fallback"
+    assert result["data_source"] == "rule_fallback"
 
 
 def test_organic_matter_agent_no_parcel_id_uses_fallback():
@@ -645,7 +645,7 @@ def test_organic_matter_agent_no_parcel_id_uses_fallback():
     from framework.agents.specialized.organic_matter_agent import OrganicMatterAgent
     agent = OrganicMatterAgent()
     result = agent.execute({"area_code": "lechang"})
-    assert result["data_source"] == "fallback"
+    assert result["data_source"] == "rule_fallback"
 
 
 def test_organic_matter_agent_persist_success(monkeypatch):
@@ -680,7 +680,7 @@ def test_organic_matter_agent_persist_failure(monkeypatch):
 
 
 def test_organic_matter_agent_degraded_logs_status(monkeypatch):
-    """降级路径执行日志 status="degraded"，且返回 data_source="fallback"（补 B3 场景断言）。"""
+    """规则降级路径记录 degraded 状态及明确数据来源。"""
     from framework.agents.specialized.organic_matter_agent import OrganicMatterAgent
     from framework.domain.data.parcel_data_accessor import ParcelDataAccessor
 
@@ -699,7 +699,7 @@ def test_organic_matter_agent_degraded_logs_status(monkeypatch):
     monkeypatch.setattr(agent, "_persist_result", capture_persist)
     result = agent.execute({"parcel_id": "NOT_IN_DB"})
     assert result["status"] == "degraded"
-    assert result["data_source"] == "fallback"
+    assert result["data_source"] == "rule_fallback"
     assert len(persist_calls) == 1
     assert persist_calls[0]["status"] == "degraded"
 

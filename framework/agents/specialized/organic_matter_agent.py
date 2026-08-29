@@ -48,7 +48,7 @@ class OrganicMatterAgent(BaseAgent):
         super().__init__(
             name="OrganicMatterAgent",
             description="基于韶关 RF/全局 ETR 的有机质培肥提升与施用量预测",
-            model_id="model-5",
+            model_id="organic-matter-improvement",
             domain="organic_matter",
         )
 
@@ -148,6 +148,7 @@ class OrganicMatterAgent(BaseAgent):
                 outputs = self._rule_fallback(inputs)
                 status = "degraded"
                 simulated = True
+                data_source = "rule_fallback"
             elif data_source == "db":
                 # DB 路径：调用 predict_dose 预测推荐施用量
                 from framework.domain.calculations.organic_matter_calculation import predict_dose
@@ -177,11 +178,15 @@ class OrganicMatterAgent(BaseAgent):
                 status = result.get("status", "degraded")
                 # ML 成功执行时 simulated=False；fallback/rejected 沿用模型自身判定
                 simulated = bool(result.get("simulated", status != "success"))
+                if status == "success":
+                    data_source = "shaoguan_rf" if result.get("region") == "shaoguan" else "global_etr"
+                elif status == "fallback":
+                    data_source = "ml_fallback"
 
             persisted = self._persist_result(
                 agent_id=self.agent_id,
                 parcel_id=task.get("parcel_id") if isinstance(task, dict) else None,
-                inputs=inputs,
+                inputs={**inputs, "data_source": data_source},
                 outputs=outputs,
                 status=status,
             )
@@ -201,7 +206,7 @@ class OrganicMatterAgent(BaseAgent):
             self._persist_result(
                 agent_id=self.agent_id,
                 parcel_id=task.get("parcel_id") if isinstance(task, dict) else None,
-                inputs=inputs,
+                inputs={**inputs, "data_source": data_source},
                 outputs={"error": str(e)},
                 status="error",
             )

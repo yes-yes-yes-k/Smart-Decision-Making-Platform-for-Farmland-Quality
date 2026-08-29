@@ -12,6 +12,7 @@ from flask_jwt_extended import jwt_required
 from framework.observability import routing_log
 from framework.observability.dashboard import compute_log_metrics
 from framework.observability.traceability import trace_result
+from framework.observability.schema_metrics import snapshot_schema_metrics
 
 observability_bp = Blueprint('observability', __name__)
 
@@ -53,5 +54,6 @@ def dashboard():
         "data": {
             "log_metrics": log_metrics,
             "confusion_matrices": matrices,
+            "schema_metrics": snapshot_schema_metrics(),
         },
     })

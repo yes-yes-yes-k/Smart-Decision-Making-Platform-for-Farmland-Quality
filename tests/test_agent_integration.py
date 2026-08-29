@@ -69,9 +69,8 @@ def test_execute_models_invokes_agent_manager_type1():
     assert result["status"] == "model_completed"
     mr = result["model_results"]
     assert mr.get("status") == "ok"
-    data = mr.get("data", {})
-    assert data.get("question_type") == 1
-    assert data.get("agents_invoked") == ["model-1"]
+    assert mr["question_type"] == 1
+    assert list(mr["models"]) == ["model-1"]
     print("✓ execute_models 通过 AgentManager 路由到 type 1 (model-1 稳定性)")
 
 
@@ -84,23 +83,22 @@ def test_execute_models_invokes_agent_manager_type4():
     state = _make_state("全省耕地酸化程度如何？", question_type=4)
     result = execute_models(state)
     assert result["status"] == "model_completed"
-    data = result["model_results"].get("data", {})
-    assert data.get("question_type") == 4
-    assert data.get("agents_invoked") == ["model-4"]
+    model_results = result["model_results"]
+    assert model_results["question_type"] == 4
+    assert list(model_results["models"]) == ["model-4"]
     print("✓ execute_models 通过 AgentManager 路由到 type 4 (model-4 酸化改良)")
 
 
 def test_execute_models_writes_structured_result():
     state = _make_state("我的田质量怎么样？")
     result = execute_models(state)
-    data = result["model_results"].get("data", {})
-    assert "summary" in data
-    assert "details" in data
-    assert "recommendations" in data
-    # 每个智能体详情应携带 simulated 标记（真实/降级路径下为 False）
-    for aid, payload in data["details"].items():
-        assert "simulated" in payload
-        assert payload.get("simulated") is False
+    model_results = result["model_results"]
+    assert isinstance(model_results["answer"], str)
+    assert isinstance(model_results["models"], dict)
+    assert isinstance(model_results["recommendations"], list)
+    for payload in model_results["models"].values():
+        assert set(payload) == {"model_id", "status", "subject", "result", "meta", "issues"}
+        assert isinstance(payload["meta"]["simulated"], bool)
     print("✓ execute_models 写入结构化多智能体结果")
 
 
@@ -130,25 +128,22 @@ def test_chat_api_returns_structured_multi_agent_result():
         resp = client.post(
             "/api/v1/chat/",
             json={"message": "我的田耕地质量等级是多少",
-                  "parcel_id": "1", "parcel_code": "A0001"},
+                  "parcel_id": "1", "parcel_code": "A0001",
+                  "include_model_results": True},
             headers={"Authorization": f"Bearer {access_token}"},
         )
     assert resp.status_code == 200
     payload = resp.get_json()
     assert payload["status"] == "ok"
     data = payload["data"]
-    # 多智能体结构化字段（question_type-based 1:1 路由）
-    assert "role" not in data, f"响应不应含 role 字段: {data}"
-    assert "question_type" in data
-    qt = data.get("question_type")
-    agents_invoked = data.get("agents_invoked", [])
-    # 1:1 映射：agents_invoked 应仅含单一 agent
-    assert len(agents_invoked) == 1, f"1:1 路由应仅调 1 个 agent，实际: {agents_invoked}"
-    # recommendations 字段仅在非空时写入响应
-    assert isinstance(data.get("recommendations", []), list)
-    assert "answer" in data
+    assert payload["schema_version"] == "2.0"
+    assert set(data) == {"message_id", "answer", "sources", "recommendations", "routing", "models"}
+    qt = data["routing"]["question_type"]
+    assert list(data["models"]) == ["model-2"]
+    assert "data" not in data["models"]["model-2"]
+    assert "details" not in data["models"]["model-2"]
 
-    print(f"✓ /api/v1/chat/ 返回多智能体结构化结果 (type={qt}, agents={agents_invoked})")
+    print(f"✓ /api/v1/chat/ 返回 Schema 2.0 精简模型结果 (type={qt})")
 
 
 def test_e2e_type1_stability_routing():
@@ -159,11 +154,10 @@ def test_e2e_type1_stability_routing():
     """
     state = _make_state("全省耕地质量整体稳定吗？哪些县区有退化风险？", question_type=1)
     result = execute_models(state)
-    data = result["model_results"]["data"]
-    assert data["question_type"] == 1
-    assert data["agents_invoked"] == ["model-1"]
-    assert "model-1" in data["details"]
-    assert data["details"]["model-1"]["simulated"] is False
+    model_results = result["model_results"]
+    assert model_results["question_type"] == 1
+    assert list(model_results["models"]) == ["model-1"]
+    assert isinstance(model_results["models"]["model-1"]["meta"]["simulated"], bool)
     print("✓ type=1 稳定性路由正确（model-1）")
 
 
@@ -171,9 +165,9 @@ def test_e2e_type1_county_stability_routing():
     """type=1 县域稳定性问题也路由到 model-1（1:1 映射）"""
     state = _make_state("本县乡镇任务如何分配？县域耕地质量如何？", question_type=1)
     result = execute_models(state)
-    data = result["model_results"]["data"]
-    assert data["question_type"] == 1
-    assert data["agents_invoked"] == ["model-1"]
+    model_results = result["model_results"]
+    assert model_results["question_type"] == 1
+    assert list(model_results["models"]) == ["model-1"]
     print("✓ type=1 县域稳定性路由正确（model-1，1:1 映射）")
 
 
@@ -185,58 +179,48 @@ def test_e2e_type4_acidification_routing():
     """
     state = _make_state("我的田酸化严重吗？", question_type=4)
     result = execute_models(state)
-    data = result["model_results"]["data"]
-    assert data["question_type"] == 4
-    assert data["agents_invoked"] == ["model-4"]
-    assert "model-4" in data["details"]
-    assert data["details"]["model-4"]["simulated"] is False
+    model_results = result["model_results"]
+    assert model_results["question_type"] == 4
+    assert list(model_results["models"]) == ["model-4"]
+    assert isinstance(model_results["models"]["model-4"]["meta"]["simulated"], bool)
     print("✓ type=4 酸化改良路由正确（model-4）")
 
 
-def test_e2e_recommendations_aggregated():
-    """汇总的 recommendations 应来自智能体 evidence 中的 recommendation/source。
-
-    1:1 路由后，type 4 仅调 model-4（酸化改良），其 evidence 为 metric/value 格式，
-    不含 recommendation/source。使用 mock 验证：当 agent evidence 含
-    recommendation/source 时，_summarize 能正确聚合并去重；metric/value 不混入。
-    """
+def test_e2e_uses_canonical_result_without_legacy_answer_adapter():
+    """AgentManager 只消费规范结果，不再调用旧展示适配器。"""
     from framework.agents.manager import agent_manager
 
     real_agent = agent_manager.agents["model-4"]
 
     class _FakeAgent:
         dependencies: list = []
+        model_id = "acidification-remediation"
+        agent_id = "model-4"
 
         def analyze(self, payload):
-            return {"status": "ok", "result": {}}
+            return {
+                "model_id": self.model_id,
+                "status": "ok",
+                "subject": {"type": "unknown", "id": None},
+                "result": {"acidification_level": "轻度"},
+                "meta": {"data_source": "test", "simulated": False, "model_version": None},
+                "issues": [],
+            }
 
         def answer_from_analysis(self, analysis):
-            return {
-                "answer": "测试回复",
-                "evidence": [
-                    {"recommendation": "增施有机肥 2 t/亩"},
-                    {"source": "农业农村部指南"},
-                    {"metric": "soc_prediction", "value": 12.0},  # 不应进入 recommendations
-                ],
-                "confidence": 0.8,
-                "simulated": True,
-            }
+            raise AssertionError("Schema 2.0 不应调用旧 answer_from_analysis")
 
     try:
         agent_manager.agents["model-4"] = _FakeAgent()
         state = _make_state("我的田酸化严重吗？", question_type=4)
         result = execute_models(state)
-        data = result["model_results"]["data"]
-        assert isinstance(data["recommendations"], list)
-        # 应收集 recommendation 和 source 两条，去重
-        assert len(data["recommendations"]) >= 2, f"应至少聚合 2 条建议: {data['recommendations']}"
-        assert "增施有机肥 2 t/亩" in data["recommendations"]
-        assert "农业农村部指南" in data["recommendations"]
-        # metric/value 格式的 evidence 不应出现在 recommendations
-        assert "soc_prediction" not in data["recommendations"]
+        model_results = result["model_results"]
+        assert model_results["models"]["model-4"]["result"]["acidification_level"] == "轻度"
+        assert model_results["recommendations"] == []
+        assert "酸化程度：轻度" in model_results["answer"]
     finally:
         agent_manager.agents["model-4"] = real_agent
-    print("✓ recommendations 字段已聚合智能体建议（mock 验证）")
+    print("✓ AgentManager 仅使用规范模型结果生成回答")
 
 
 def test_chat_api_passes_top_level_parcel_id_and_code():
@@ -266,15 +250,8 @@ def test_chat_api_passes_top_level_parcel_id_and_code():
         return {
             "answer": "ok",
             "question_type": 5,
-            "model_results": {
-                "data": {
-                    "question_type": 5,
-                    "agents_invoked": ["model-5"],
-                    "summary": "",
-                    "details": {},
-                    "recommendations": [],
-                }
-            },
+            "models": {},
+            "recommendations": [],
         }
 
     real_run = multi_agent_orchestrator.run
@@ -329,7 +306,8 @@ def test_chat_api_top_level_parcel_overrides_context():
         return {
             "answer": "ok",
             "question_type": 5,
-            "model_results": {"data": {"question_type": 5, "agents_invoked": [], "summary": "", "details": {}, "recommendations": []}},
+            "models": {},
+            "recommendations": [],
         }
 
     real_run = multi_agent_orchestrator.run
@@ -382,7 +360,8 @@ def test_chat_api_no_parcel_when_absent():
         return {
             "answer": "ok",
             "question_type": 0,
-            "model_results": {},
+            "models": {},
+            "recommendations": [],
         }
 
     real_run = multi_agent_orchestrator.run
@@ -405,8 +384,8 @@ def test_chat_api_no_parcel_when_absent():
     print("✓ body 无 parcel 标识符时 orchestrator request 不含")
 
 
-def test_chat_api_type5_routes_to_model5_only():
-    """Task 6.2: 质量等级问题经 API 路由后 agents_invoked 仅含 model-2，无 role 字段"""
+def test_chat_api_type2_routes_to_model2_only():
+    """质量等级问题经 API 路由后，精简 models 仅包含 model-2。"""
     from framework.api.app import create_app
 
     app = create_app("sqlite")
@@ -432,6 +411,7 @@ def test_chat_api_type5_routes_to_model5_only():
                 "message": "我的田耕地质量等级是多少",
                 "parcel_id": "1",
                 "parcel_code": "A0001",
+                "include_model_results": True,
             },
             headers={"Authorization": f"Bearer {access_token}"},
         )
@@ -439,14 +419,14 @@ def test_chat_api_type5_routes_to_model5_only():
     payload = resp.get_json()
     assert payload["status"] == "ok"
     data = payload["data"]
-    # spec 验证：无 role 字段
-    assert "role" not in data, f"响应不应含 role 字段: {data}"
-    # type 2 路由到 model-2（1:1 直接映射，质量等级）
-    qt = data.get("question_type")
-    agents_invoked = data.get("agents_invoked", [])
+    assert payload["schema_version"] == "2.0"
+    assert "role" not in data
+    assert "question_type" not in data
+    assert "agents_invoked" not in data
+    qt = data["routing"]["question_type"]
     assert qt == 2, f"质量等级问题期望 type 2，实际 type {qt}"
-    assert agents_invoked == ["model-2"], f"type 2 应仅调 model-2: {agents_invoked}"
-    print(f"✓ Task 6.2: type 2 API 路由正确 (type={qt}, agents={agents_invoked}, 无 role)")
+    assert list(data["models"]) == ["model-2"]
+    print(f"✓ Schema 2.0: type 2 API 路由正确 (type={qt}, models={list(data['models'])})")
 
 
 def test_chat_api_knowledge_question_routes_to_rag():
@@ -480,13 +460,10 @@ def test_chat_api_knowledge_question_routes_to_rag():
     assert payload["status"] == "ok"
     data = payload["data"]
     # 知识性问题应返回 type 0（走 RAG），不路由到专业模型
-    qt = data.get("question_type")
+    qt = data["routing"]["question_type"]
     assert qt == 0, f"知识性问题「什么是土壤酸化」期望 type 0，实际 type {qt}"
-    # type 0 不应有 agents_invoked（走 RAG 而非 execute_models）
-    agents_invoked = data.get("agents_invoked", [])
-    assert agents_invoked == [] or "agents_invoked" not in data, (
-        f"知识性问题不应调用专业模型: {agents_invoked}"
-    )
+    assert "models" not in data
+    assert "agents_invoked" not in data
     print(f"✓ Task 6.3: 知识性问题走 RAG (type={qt}, 无专业模型调用)")
 
 
@@ -519,7 +496,7 @@ def test_chat_api_knowledge_question_概念_pattern():
     assert resp.status_code == 200
     payload = resp.get_json()
     data = payload["data"]
-    qt = data.get("question_type")
+    qt = data["routing"]["question_type"]
     assert qt == 0, f"知识性问题期望 type 0，实际 type {qt}"
     print(f"✓ Task 6.3: 「耕地质量等级是什么意思」走 RAG (type={qt})")
 
@@ -536,7 +513,7 @@ if __name__ == "__main__":
     test_chat_api_passes_top_level_parcel_id_and_code()
     test_chat_api_top_level_parcel_overrides_context()
     test_chat_api_no_parcel_when_absent()
-    test_chat_api_type5_routes_to_model5_only()
+    test_chat_api_type2_routes_to_model2_only()
     test_chat_api_knowledge_question_routes_to_rag()
     test_chat_api_knowledge_question_概念_pattern()
     print("\n所有端到端验证与集成测试通过！")

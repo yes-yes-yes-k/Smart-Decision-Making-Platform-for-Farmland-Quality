@@ -145,11 +145,10 @@ def test_model5_thematic_api_exposes_ml_metadata():
         **PYTHON_FEATURES,
     })
     assert result["status"] == "ok"
-    assert result["model"]["model_id"] == "organic-matter-improvement"
-    assert result["model_id"] == "model-5"
-    assert result["model_version"] == "SG_RF_v2_20260804"
-    assert result["simulated"] is False
-    assert result["dose_prediction"] is not None
+    assert result["model_id"] == "organic-matter-improvement"
+    assert result["meta"]["model_version"] == "SG_RF_v2_20260804"
+    assert result["meta"]["simulated"] is False
+    assert result["result"]["dose_prediction"] is not None
 
 
 def _authenticated_client():
@@ -182,11 +181,13 @@ def test_model5_run_api_returns_public_model_and_version():
     }
     response = app.test_client().post("/api/v1/models/run", json=payload, headers=headers)
     assert response.status_code == 200
-    data = response.get_json()["data"]
-    assert data["model_id"] == "model-5"
-    assert data["model_version"] == "SG_RF_v2_20260804"
-    assert data["simulated"] is False
-    assert data["dose_prediction"] is not None
+    body = response.get_json()
+    assert body["schema_version"] == "2.0"
+    data = body["data"]
+    assert data["model_id"] == "organic-matter-improvement"
+    assert data["meta"]["model_version"] == "SG_RF_v2_20260804"
+    assert data["meta"]["simulated"] is False
+    assert data["result"]["dose_prediction"] is not None
 
 
 def test_model5_run_api_exposes_input_conflict():
@@ -200,10 +201,13 @@ def test_model5_run_api_exposes_input_conflict():
     }
     response = app.test_client().post("/api/v1/models/run", json=payload, headers=headers)
     assert response.status_code == 200
-    data = response.get_json()
+    body = response.get_json()
+    assert body["status"] == "ok"
+    data = body["data"]
     assert data["status"] == "rejected"
-    assert data["reason"] == "input_conflict"
-    assert data["model_id"] == "model-5"
+    assert data["result"] is None
+    assert data["issues"][0]["code"] == "INPUT_CONFLICT"
+    assert data["model_id"] == "organic-matter-improvement"
 
 
 def test_chat_api_type5_transmits_top_level_fertility_fields():
@@ -212,18 +216,18 @@ def test_chat_api_type5_transmits_top_level_fertility_fields():
         "message": "有机肥每亩施用量多少？",
         "area_code": "lechang",
         "land_type": "upland",
+        "include_model_results": True,
         **EXTERNAL_FEATURES,
     }
     response = app.test_client().post("/api/v1/chat/", json=payload, headers=headers)
     assert response.status_code == 200
     data = response.get_json()["data"]
-    assert data["question_type"] == 5
-    assert data["agents_invoked"] == ["model-5"]
-    details = data["model_results"]["data"]["details"]["model-5"]
-    evidence = {item["metric"]: item["value"] for item in details["evidence"]}
-    assert evidence["model_id"] == "model-5"
-    assert evidence["model_version"] == "SG_RF_v2_20260804"
-    assert details["simulated"] is False
+    assert data["routing"]["question_type"] == 5
+    assert list(data["models"]) == ["model-5"]
+    model_result = data["models"]["model-5"]
+    assert model_result["model_id"] == "organic-matter-improvement"
+    assert model_result["meta"]["model_version"] == "SG_RF_v2_20260804"
+    assert model_result["meta"]["simulated"] is False
 
 
 def test_type5_routes_model5_and_type6_routes_placeholder():
@@ -236,11 +240,15 @@ def test_type5_routes_model5_and_type6_routes_placeholder():
     )
     type6 = manager.process("显式占位模型请求", {"question_type": 6})
 
-    assert type5["data"]["agents_invoked"] == ["model-5"]
-    evidence = type5["data"]["details"]["model-5"]["evidence"]
-    assert {item["metric"]: item["value"] for item in evidence}["model_id"] == "model-5"
-    assert type6["data"]["agents_invoked"] == ["model-6"]
-    assert type6["data"]["details"]["model-6"]["simulated"] is True
+    assert list(type5["models"]) == ["model-5"]
+    assert type5["models"]["model-5"]["model_id"] == "organic-matter-improvement"
+    assert type5["models"]["model-5"]["result"]["dose_prediction"] is not None
+    assert list(type6["models"]) == ["model-6"]
+    placeholder = type6["models"]["model-6"]
+    assert placeholder["status"] == "unavailable"
+    assert placeholder["result"] is None
+    assert placeholder["meta"]["simulated"] is True
+    assert placeholder["issues"][0]["code"] == "MODEL_NOT_IMPLEMENTED"
 
 
 @pytest.mark.parametrize("source", [EXTERNAL_FEATURES, PYTHON_FEATURES])
