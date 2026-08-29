@@ -2,6 +2,8 @@
 comet_change: kb-ingestion-quality
 role: technical-design
 canonical_spec: openspec
+archived-with: 2026-08-25-kb-ingestion-quality
+status: final
 ---
 
 # kb-ingestion-quality — Technical Design Doc

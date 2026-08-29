@@ -6,8 +6,7 @@ from framework.models.document import Document
 from framework.models.data_file import DataFile
 from framework.models.user import db
 from framework.upload.file_upload import allowed_file, save_uploaded_file, get_file_type
-from framework.upload.document_parser import parse_document
-from framework.upload.chunker import split_text
+from framework.upload import ingestion_worker
 from framework.vector_store.chroma_store import vector_store
 
 docs_bp = Blueprint('docs', __name__)
@@ -111,30 +110,16 @@ def upload_document():
             db.session.add(data_file)
             db.session.commit()
             print(f"[上传接口] 数据文件保存成功 - 文件ID: {data_file.id}, 文件名: {file.filename}", flush=True)
-            return jsonify({"status": "ok", "data": data_file.to_dict(), "message": "数据文件上传成功"})
+            return jsonify({"status": "ok", "data": data_file.to_dict(), "message": "数据文件上传成功"}), 200
 
-        content = parse_document(file_path, file_type)
-        chunks = []
-        if content:
-            chunks = split_text(content)
-            metadatas = [{
-                "source": file.filename,
-                "category": category,
-                "treatment_type": treatment_type,
-                "chunk_index": i,
-            } for i in range(len(chunks))]
-            added_count = vector_store.add_documents(chunks, metadatas, category=category)
-            print(f"[上传接口] 向量库添加完成 - 分块数: {len(chunks)}, 成功添加: {added_count}", flush=True)
-        else:
-            print(f"[上传接口] 文档解析结果为空", flush=True)
-
+        # 文档类：异步 fire-and-forget —— 立即落库 status=PENDING，提交 worker，返回 202
         document = Document(
             doc_name=file.filename,
             file_path=new_filename,
             file_type=file_type,
             file_size=os.path.getsize(file_path),
-            chunk_count=len(chunks) if content else 0,
-            status=1,
+            chunk_count=0,
+            status=Document.STATUS_PENDING,
             file_hash=file_hash,
             category=category,
             treatment_type=treatment_type,
@@ -142,9 +127,18 @@ def upload_document():
         )
         db.session.add(document)
         db.session.commit()
-        print(f"[上传接口] 成功 - 文档ID: {document.id}, 文件名: {file.filename}", flush=True)
+        print(f"[上传接口] 文档已入库（待处理） - 文档ID: {document.id}, 文件名: {file.filename}", flush=True)
 
-        return jsonify({"status": "ok", "data": document.to_dict(), "message": "文档上传成功"})
+        ingestion_worker.submit_ingest(
+            document_id=document.id,
+            file_path=file_path,
+            file_type=file_type,
+            doc_name=file.filename,
+            category=category,
+            treatment_type=treatment_type,
+        )
+
+        return jsonify({"status": "ok", "data": document.to_dict(), "message": "文档上传成功，正在后台处理"}), 202
 
     except Exception as e:
         print(f"[上传接口] 异常 - {type(e).__name__}: {str(e)}", flush=True)

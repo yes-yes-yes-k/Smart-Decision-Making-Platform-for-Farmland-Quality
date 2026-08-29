@@ -43,6 +43,16 @@ def client(monkeypatch):
     capture_vs = CaptureVectorStore()
     monkeypatch.setattr("framework.api.routes.docs.vector_store", capture_vs)
 
+    # 异步 worker 适配：同步运行 _ingest 以验证元数据写入
+    from framework.upload import ingestion_worker
+    monkeypatch.setattr(ingestion_worker, "vector_store", capture_vs)
+    monkeypatch.setattr("framework.api.app.create_app", lambda: app)
+
+    def _sync_submit(**kwargs):
+        with app.app_context():
+            ingestion_worker._ingest(**kwargs)
+    monkeypatch.setattr(ingestion_worker, "submit_ingest", _sync_submit)
+
     with app.app_context():
         db.drop_all()
         db.create_all()
@@ -84,7 +94,7 @@ def test_upload_writes_chunk_metadata(client):
         },
         content_type="multipart/form-data",
     )
-    assert resp.status_code == 200
+    assert resp.status_code == 202
 
     captured = client._capture_vs.captured
     assert captured is not None
@@ -96,8 +106,8 @@ def test_upload_writes_chunk_metadata(client):
         assert meta["category"] == "acidification"
         assert meta["treatment_type"] == "regulation"
         assert meta["chunk_index"] == i
-    # page / section 本阶段不写入
-    assert "page" not in metadatas[0]
+    # page 字段由 worker 写入（txt 无页码，值为 None）；section 不写入
+    assert metadatas[0].get("page") is None
     assert "section" not in metadatas[0]
 
 
@@ -114,5 +124,5 @@ def test_upload_passes_category_to_vector_store(client):
         },
         content_type="multipart/form-data",
     )
-    assert resp.status_code == 200
+    assert resp.status_code == 202
     assert client._capture_vs.captured["category"] == "acidification"

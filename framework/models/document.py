@@ -4,6 +4,12 @@ from .user import db
 class Document(db.Model):
     __tablename__ = 'kb_document'
 
+    # 入库生命周期状态：现有 status=1 数据语义不变（表"已完成"），无需迁移
+    STATUS_PENDING = 0      # 待处理（新上传，worker 未启动）
+    STATUS_COMPLETED = 1    # 已完成（保留现有语义）
+    STATUS_PROCESSING = 2   # 处理中（worker 已开始解析/切分/向量化）
+    STATUS_FAILED = 3       # 失败（worker 抛异常）
+
     id = db.Column(db.Integer, primary_key=True, autoincrement=True, comment='文档ID')
     doc_name = db.Column(db.String(255), nullable=False, comment='文档原始文件名')
     file_path = db.Column(db.String(500), nullable=False, comment='文件存储相对路径')

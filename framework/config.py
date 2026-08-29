@@ -48,6 +48,7 @@ class Config:
 
     CHUNK_SIZE = 800
     CHUNK_OVERLAP = 150
+    PDF_OCR_THRESHOLD = 50  # 平均字符/页阈值，低于则触发 OCR 主路径
     RETRIEVAL_TOP_K = 5
     RECALL_TOP_K = int(os.environ.get("RECALL_TOP_K") or 20)      # 混合召回阶段候选数
     RRF_K = int(os.environ.get("RRF_K") or 60)                    # RRF 平滑常数

@@ -62,10 +62,15 @@ class RAGChain:
         name_mapping = self._query_doc_names(uuid_names)
 
         sources = []
-        for uuid_name in uuid_names:
-            doc_name = name_mapping.get(uuid_name, uuid_name)
-            if not any(s["doc_name"] == doc_name for s in sources):
-                sources.append({"doc_name": doc_name})
+        for result in retrieval_results["results"]:
+            metadata = result.get("metadata") or {}
+            source = metadata.get("source", "unknown")
+            doc_name = name_mapping.get(source, source)
+            sources.append({
+                "doc_name": doc_name,
+                "chunk_index": metadata.get("chunk_index"),
+                "page": metadata.get("page"),
+            })
 
         return {
             "success": llm_response.get("success", False),
@@ -103,10 +108,15 @@ class RAGChain:
         name_mapping = self._query_doc_names(uuid_names)
 
         sources = []
-        for uuid_name in uuid_names:
-            doc_name = name_mapping.get(uuid_name, uuid_name)
-            if not any(s["doc_name"] == doc_name for s in sources):
-                sources.append({"doc_name": doc_name})
+        for result in retrieval_results["results"]:
+            metadata = result.get("metadata") or {}
+            source = metadata.get("source", "unknown")
+            doc_name = name_mapping.get(source, source)
+            sources.append({
+                "doc_name": doc_name,
+                "chunk_index": metadata.get("chunk_index"),
+                "page": metadata.get("page"),
+            })
 
         # 先发送来源元数据，前端可立即展示参考来源
         yield {"type": "meta", "sources": sources}
