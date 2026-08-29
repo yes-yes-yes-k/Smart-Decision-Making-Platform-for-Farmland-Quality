@@ -58,10 +58,14 @@ COLUMN_MAPS: Dict[str, Dict[str, str]] = {
         "AP": "ap", "AK": "ak", "SAK": "sak",
         "交换性盐基总量": "exchangeable_base_sum", "交换性钙": "exchangeable_ca",
         "交换性镁": "exchangeable_mg", "交换性钠": "exchangeable_na", "交换性钾": "exchangeable_k",
+        "交换性氢离子": "exchangeable_hydrogen", "交换性铝离子": "exchangeable_aluminum",
+        "交换性酸总量": "exchangeable_acid_total", "水解性总酸度": "hydrolytic_total_acidity",
         "水溶性盐总量": "water_soluble_salt_sum", "电导率": "conductivity",
         "S": "s", "Si": "si", "Fe": "fe", "Mn": "mn", "Cu": "cu", "Zn": "zn",
         "B": "b", "Mu": "mu",
         "Hg": "hg", "As": "as", "Pb": "pb", "Cd": "cd", "Cr": "cr", "Ni": "ni",
+        # Model-5 全氮 V3.0 命名（与 TN 同值，供 parcel_info.soil_indicators 使用）
+        "全氮": "total_n",
     },
     "third_survey_profile": {
         "样品编号": "sample_no", "原样品编号": "original_sample_no", "样点编号": "point_no",
@@ -70,6 +74,8 @@ COLUMN_MAPS: Dict[str, Dict[str, str]] = {
         "pH": "ph", "有机质": "organic_matter", "全氮": "total_n", "全磷": "total_p", "全钾": "total_k",
         "有效磷": "avail_p", "速效钾": "quick_k", "缓效钾": "slow_k",
         "阳离子交换量": "cation_exchange_capacity", "交换性酸总量": "exchangeable_acid_total",
+        "交换性氢离子": "exchangeable_hydrogen", "交换性铝离子": "exchangeable_aluminum",
+        "水解性总酸度": "hydrolytic_total_acidity",
         "土纲": "soil_order", "亚纲": "soil_suborder", "土类": "soil_group",
         "亚类": "soil_subgroup", "土属": "soil_genus", "土种": "soil_species",
         "有效土层厚度": "effective_soil_depth", "耕作层厚度": "plow_layer_depth",

@@ -49,6 +49,12 @@ class ThirdSurveyTopsoil(db.Model):
     cd = db.Column(db.Float, comment="Cd")
     cr = db.Column(db.Float, comment="Cr")
     ni = db.Column(db.Float, comment="Ni（源列名含前导空格）")
+    # Model-4/5 扩展字段（交换性酸系列 + 全氮 V3.0 命名）
+    exchangeable_hydrogen = db.Column(db.Float, comment="交换性氢离子（Model-4 酸化防治）")
+    exchangeable_aluminum = db.Column(db.Float, comment="交换性铝离子（Model-4 酸化防治）")
+    exchangeable_acid_total = db.Column(db.Float, comment="交换性酸总量（Model-4）")
+    hydrolytic_total_acidity = db.Column(db.Float, comment="水解性总酸度（Model-4）")
+    total_n = db.Column(db.Float, comment="全氮（Model-5 肥力评价，V3.0 命名规范）")
 
 
 class ThirdSurveyProfile(db.Model):
@@ -74,6 +80,10 @@ class ThirdSurveyProfile(db.Model):
     slow_k = db.Column(db.Float, comment="缓效钾")
     cation_exchange_capacity = db.Column(db.Float, comment="阳离子交换量")
     exchangeable_acid_total = db.Column(db.Float, comment="交换性酸总量")
+    # Model-4 扩展字段
+    exchangeable_hydrogen = db.Column(db.Float, comment="交换性氢离子（Model-4 酸化防治）")
+    exchangeable_aluminum = db.Column(db.Float, comment="交换性铝离子（Model-4 酸化防治）")
+    hydrolytic_total_acidity = db.Column(db.Float, comment="水解性总酸度（Model-4）")
     soil_order = db.Column(db.String(64), comment="土纲")
     soil_suborder = db.Column(db.String(64), comment="亚纲")
     soil_group = db.Column(db.String(64), comment="土类")

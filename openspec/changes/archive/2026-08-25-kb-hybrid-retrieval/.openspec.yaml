@@ -1,0 +1,3 @@
+schema: spec-driven
+created: 2026-08-24
+goal: 升级知识库检索主链路：修复分块、BM25+向量双路召回、Rerank精排

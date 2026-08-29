@@ -183,10 +183,9 @@ def calculate_stability(parcel_info: Dict, history: List[Dict],
         from framework.domain.calculations.grade_calculation import evaluate_land_quality
         area_code = parcel_info.get("area_code", "440281")
         _, _, memberships = evaluate_land_quality(mapped, area_code)
-        from framework.domain.calculations.coefficients import (
-            AREA_TO_REGION, MODEL2_COEFFICIENTS,
-        )
-        ejnyq_idx = AREA_TO_REGION.get(area_code, {}).get("ejnyq_idx", 0)
+        from framework.domain.calculations.coefficients import MODEL2_COEFFICIENTS
+        from framework.domain.calculations.region_mapping_service import get_region_mapping
+        ejnyq_idx = get_region_mapping(area_code)["ejnyq_idx"]
         weights = MODEL2_COEFFICIENTS[ejnyq_idx]["weights"]
     except Exception:
         memberships = [0.5] * 12

@@ -7,6 +7,7 @@ from framework.models.data_file import DataFile
 from framework.models.user import db
 from framework.upload.file_upload import allowed_file, save_uploaded_file, get_file_type
 from framework.upload.document_parser import parse_document
+from framework.upload.chunker import split_text
 from framework.vector_store.chroma_store import vector_store
 
 docs_bp = Blueprint('docs', __name__)
@@ -115,7 +116,7 @@ def upload_document():
         content = parse_document(file_path, file_type)
         chunks = []
         if content:
-            chunks = [content[i:i+800] for i in range(0, len(content), 800)]
+            chunks = split_text(content)
             metadatas = [{"source": file.filename} for _ in chunks]
             added_count = vector_store.add_documents(chunks, metadatas)
             print(f"[上传接口] 向量库添加完成 - 分块数: {len(chunks)}, 成功添加: {added_count}", flush=True)
