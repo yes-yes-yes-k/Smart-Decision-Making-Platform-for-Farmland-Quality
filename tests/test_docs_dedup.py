@@ -18,7 +18,7 @@ class MockVectorStore:
     def __init__(self):
         self._should_fail = False
 
-    def add_documents(self, texts, metadatas=None, ids=None):
+    def add_documents(self, texts, metadatas=None, ids=None, category=None):
         if self._should_fail:
             raise RuntimeError("mock vector store failure")
         return len(texts) if texts else 0

@@ -85,7 +85,7 @@ def test_rag_chain_retrieve_triggers_rerank(monkeypatch):
     }
 
     class FakeVS:
-        def hybrid_search(self, query, n_results=None, filters=None):
+        def hybrid_search(self, query, n_results=None, filters=None, category=None):
             return recalled
 
     monkeypatch.setattr(rag_chain, "vector_store", FakeVS())
@@ -102,3 +102,53 @@ def test_rag_chain_retrieve_triggers_rerank(monkeypatch):
     assert seen["n"] == 20
     assert result["count"] == 5
     assert len(result["results"]) == 5
+
+
+def test_rag_chain_normalizes_query_before_recall(monkeypatch):
+    from framework.rag.chain import rag_chain
+    from framework.rag import chain as chain_mod
+
+    monkeypatch.setattr(Config, "RECALL_TOP_K", 20)
+    monkeypatch.setattr(Config, "RETRIEVAL_TOP_K", 5)
+    monkeypatch.setattr(Config, "RERANK_ENABLED", False)
+
+    recalled = {"results": [], "count": 0}
+    seen = {}
+
+    def fake_normalize(query):
+        return query.replace("速效钾", "有效钾")
+
+    monkeypatch.setattr(chain_mod, "normalize_query", fake_normalize)
+
+    class FakeVS:
+        def hybrid_search(self, query, n_results=None, filters=None, category=None):
+            seen["query"] = query
+            return recalled
+
+    monkeypatch.setattr(rag_chain, "vector_store", FakeVS())
+
+    rag_chain._retrieve_documents("速效钾含量", None)
+    assert seen["query"] == "有效钾含量"
+
+
+def test_rag_chain_routes_category_and_passes_to_search(monkeypatch):
+    from framework.rag.chain import rag_chain
+    from framework.rag import chain as chain_mod
+
+    monkeypatch.setattr(Config, "RECALL_TOP_K", 20)
+    monkeypatch.setattr(Config, "RETRIEVAL_TOP_K", 5)
+    monkeypatch.setattr(Config, "RERANK_ENABLED", False)
+
+    seen = {}
+    monkeypatch.setattr(chain_mod, "normalize_query", lambda q: q)
+    monkeypatch.setattr(chain_mod, "route_category", lambda q: "acidification")
+
+    class FakeVS:
+        def hybrid_search(self, query, n_results=None, filters=None, category=None):
+            seen["category"] = category
+            return {"results": [], "count": 0}
+
+    monkeypatch.setattr(rag_chain, "vector_store", FakeVS())
+
+    rag_chain._retrieve_documents("土壤酸化严重吗", None)
+    assert seen["category"] == "acidification"
