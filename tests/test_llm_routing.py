@@ -347,6 +347,30 @@ class TestIdentifyQuestionTypeRouting:
         assert qt == 2
         assert routing._last_router_method == "keyword"
 
+    def test_llm_mode_falls_back_when_rag_conflicts_with_keyword_model(self, monkeypatch):
+        """LLM 将明确的模型问题误判为 RAG 时，保留关键词模型路由。"""
+        from framework.agents import routing
+        from framework.llm.service import llm_service
+        from framework.config import Config
+
+        def _fake_generate(prompt, **kwargs):
+            return {
+                "success": True,
+                "content": '{"question_type": 0, "relevance": 0.7, "reason": "知识问答"}',
+                "model": "mock",
+                "type": "llm",
+            }
+
+        monkeypatch.setattr(routing, "LLM_AVAILABLE", True)
+        monkeypatch.setattr(llm_service, "is_available", lambda: True)
+        monkeypatch.setattr(llm_service, "generate", _fake_generate)
+        monkeypatch.setattr(routing, "EMBEDDING_AVAILABLE", False)
+        monkeypatch.setattr(Config, "ROUTING_MODE", "llm")
+
+        qt, _ = routing.identify_question_type("全省耕地土壤有机质含量如何空间分布情况")
+        assert qt == 5
+        assert routing._last_router_method == "keyword"
+
     def test_exclusive_rules_applied_after_llm(self, monkeypatch):
         """LLM 判定后仍叠加排他规则：scale-only context 不触发维度规则，保持 LLM 结果。"""
         from framework.agents import routing
