@@ -88,20 +88,17 @@ for q_type, agent_id, model_name in MODELS:
 
         try:
             response = mgr.process(question, context)
-            status = response.get("status")
-            data = response.get("data", {})
-
-            # 提取回复内容
-            summary = data.get("summary", "")
-            details = data.get("details", {})
-            agent_detail = details.get(agent_id, {})
-            answer = agent_detail.get("answer", "")
-            confidence = agent_detail.get("confidence", 0)
-            simulated = agent_detail.get("simulated", False)
-            evidence = agent_detail.get("evidence", [])
+            model = response.get("models", {}).get(agent_id, {})
+            status = model.get("status", response.get("status"))
+            meta = model.get("meta", {})
+            answer = response.get("answer", "")
+            simulated = meta.get("simulated", False)
+            data_source = meta.get("data_source", "unknown")
+            issues = model.get("issues", [])
+            result = model.get("result")
 
             print(f"\n  [{pid}] {tp['desc']}")
-            print(f"  status={status}, confidence={confidence}, simulated={simulated}")
+            print(f"  status={status}, data_source={data_source}, simulated={simulated}")
             print(f"  answer: {answer[:200]}...")
 
             model_results.append({
@@ -110,10 +107,10 @@ for q_type, agent_id, model_name in MODELS:
                 "question": question,
                 "status": status,
                 "answer": answer,
-                "confidence": confidence,
                 "simulated": simulated,
-                "evidence_count": len(evidence) if isinstance(evidence, list) else 0,
-                "summary": summary,
+                "data_source": data_source,
+                "issues_count": len(issues),
+                "result": result,
             })
 
         except Exception as e:
@@ -124,8 +121,9 @@ for q_type, agent_id, model_name in MODELS:
                 "question": question,
                 "status": "error",
                 "answer": f"执行失败: {e}",
-                "confidence": 0,
                 "simulated": True,
+                "data_source": "error",
+                "issues_count": 1,
                 "error": str(e),
             })
 
@@ -171,21 +169,21 @@ with open(report_path, "w", encoding="utf-8") as f:
             f.write(f"### 地块 {r['parcel_id']} - {r['parcel_desc']}\n\n")
             f.write(f"**用户提问**: {r['question']}\n\n")
             f.write(f"**状态**: {r['status']} | ")
-            f.write(f"**置信度**: {r.get('confidence', 0):.2f} | ")
+            f.write(f"**数据来源**: {r.get('data_source', 'unknown')} | ")
             f.write(f"**降级**: {'是' if r.get('simulated') else '否'} | ")
-            f.write(f"**证据数**: {r.get('evidence_count', 0)}\n\n")
+            f.write(f"**问题项数**: {r.get('issues_count', 0)}\n\n")
             f.write(f"**回复内容**:\n\n")
             f.write(f"> {r.get('answer', '无回复')}\n\n")
             f.write("---\n\n")
 
     # 汇总
     f.write("## 验证汇总\n\n")
-    f.write("| 模型 | 地块 | 状态 | 置信度 | 降级 |\n")
-    f.write("|------|------|------|--------|------|\n")
+    f.write("| 模型 | 地块 | 状态 | 数据来源 | 降级 |\n")
+    f.write("|------|------|------|----------|------|\n")
     for agent_id, model_data in all_results.items():
         for r in model_data["results"]:
             f.write(f"| {agent_id} | {r['parcel_id']} | {r['status']} | "
-                    f"{r.get('confidence', 0):.2f} | "
+                    f"{r.get('data_source', 'unknown')} | "
                     f"{'是' if r.get('simulated') else '否'} |\n")
 
     f.write("\n---\n")

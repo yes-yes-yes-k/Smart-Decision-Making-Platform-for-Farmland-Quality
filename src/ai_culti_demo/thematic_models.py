@@ -284,45 +284,34 @@ def _run_professional_capability(payload: dict[str, Any], requested_model_id: st
         print(f"[Agent执行] agent_id={capability.agent_id}, model_id={requested_model_id}, "
               f"parcel_id={payload.get('parcel_id', '')}, parcel_code={payload.get('parcel_code', '')}")
         result = agent.analyze(payload)
-        # 将 model-5 的关键 ML 元数据提升到专题 API 顶层，便于调用方直接消费。
-        analysis = result.get("analysis", {}) if isinstance(result, dict) else {}
-        if isinstance(analysis, dict):
-            raw_status = analysis.get("status")
-            if raw_status in {"rejected", "fallback"}:
-                result["status"] = raw_status
-            for key in (
-                "model_id", "model_version", "soc_prediction", "soc_confidence",
-                "dose_prediction", "dose_confidence", "simulated", "region", "land_type",
-                "imputation_applied", "imputed_features", "fallback_reason", "reason",
-            ):
-                if key in analysis:
-                    result.setdefault(key, analysis[key])
-        result["model"] = public_capability_descriptor(capability)
-        result["capability"] = public_capability_descriptor(capability)
-        result.setdefault("recommended_layers", [])
-        result.setdefault("area", {"code": payload.get("area_code", "lechang")})
         if requested_model_id in LEGACY_MODEL_ALIASES:
-            result["deprecation"] = {
+            result.setdefault("issues", []).append({
+                "code": "DEPRECATED_MODEL_ID",
+                "severity": "warning",
+                "message": "该模型标识已弃用，请迁移到规范 model_id。",
+                "details": {
                 "deprecated_model_id": requested_model_id,
                 "canonical_model_id": capability.model_id,
-                "message": "该模型标识已弃用，请迁移到 canonical_model_id。",
-            }
+                },
+            })
         print(f"[Agent执行] agent_id={capability.agent_id} → 完成: status={result.get('status')}, "
               f"data_source={result.get('data_source', '')}, simulated={result.get('simulated', '')}")
         return result
     except Exception as exc:
         print(f"[Agent执行] agent_id={capability.agent_id} → 失败: {exc}")
-        return {
-            "status": "error",
-            "model": public_capability_descriptor(capability),
-            "capability": public_capability_descriptor(capability),
-            "error": {
-                "code": "PROFESSIONAL_AGENT_ERROR",
-                "message": f"专业能力执行失败：{exc}",
-            },
-            "reliability": {"level": "unavailable", "message": "专业 Agent 未能完成分析。"},
-            "fallback": {"used": True, "fields": [], "strategy": "不调用其他专业模型。"},
-        }
+        from framework.agents.output_contract import normalize_execution
+        fallback_agent = locals().get("agent")
+        if fallback_agent is None:
+            fallback_agent = type(
+                "_CapabilityAgent",
+                (),
+                {
+                    "model_id": capability.model_id,
+                    "agent_id": capability.agent_id,
+                    "capability": public_capability_descriptor(capability),
+                },
+            )()
+        return normalize_execution(fallback_agent, payload, {"status": "error", "error": str(exc)})
 
 
 def _fallback_for_payload(payload: dict[str, Any], model: ModelSpec) -> dict[str, Any]:

@@ -171,15 +171,13 @@ def run_reference_questions() -> dict:
 
             status = output.get("status")
             question_type = output.get("question_type")
-            answer = output.get("answer") or output.get("llm_response") or ""
-            model_results = output.get("model_results", {}) or {}
-            agent_data = model_results.get("data", {}) if isinstance(model_results, dict) else {}
-            agents_invoked = agent_data.get("agents_invoked", [])
-            role = agent_data.get("role")
-            summary = agent_data.get("summary", "")
+            answer = output.get("answer") or ""
+            models = output.get("models", {}) if isinstance(output.get("models"), dict) else {}
+            agents_invoked = list(models)
+            role = output.get("routing_method")
 
             # 判定是否真的回答了
-            final_answer = answer or summary
+            final_answer = answer
             is_answered = bool(final_answer and final_answer.strip())
             if is_answered:
                 answered += 1
@@ -188,12 +186,12 @@ def run_reference_questions() -> dict:
             if question_type == q_type:
                 type_correct += 1
 
-            # 收集每个 agent 的 simulated 标志
-            agent_simulated = {}
-            details = agent_data.get("details", {}) or {}
-            for aid, detail in details.items():
-                if isinstance(detail, dict):
-                    agent_simulated[aid] = detail.get("simulated")
+            # Schema 2.0 中模拟标志只从每个模型的 meta 读取。
+            agent_simulated = {
+                aid: model.get("meta", {}).get("simulated")
+                for aid, model in models.items()
+                if isinstance(model, dict) and isinstance(model.get("meta"), dict)
+            }
 
             results.append({
                 "expected_type": q_type,

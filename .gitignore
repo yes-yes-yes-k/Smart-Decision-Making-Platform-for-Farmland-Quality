@@ -41,6 +41,7 @@ bin/farmland_quality_eval/*
 # 数据库备份文件（二进制大文件，不入库；脚本和 README 入库）
 backups/*.dump
 backups/*.sql
+backups/*.log
 !bin/farmland_quality_eval/README.md
 !bin/farmland_quality_eval/Farmland_quality_Level_Database.csv
 
@@ -89,3 +90,4 @@ logs/
 
 # Codex 本地配置
 .codex/
+.understand-anything/domain-graph.json

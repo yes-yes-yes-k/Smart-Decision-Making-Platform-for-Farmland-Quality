@@ -46,14 +46,18 @@ class ThematicModelTests(unittest.TestCase):
             }
         )
 
-        self.assertEqual(result["status"], "ok")
-        self.assertEqual(result["model"]["model_id"], "acidification-remediation")
-        self.assertEqual(result["deprecation"]["deprecated_model_id"], "acidification-governance")
-        self.assertIn("findings", result)
-        self.assertIn("recommended_layers", result)
-        # 过程模型用默认输入真实计算 YTK/MBNT，不再走 demo 回退
-        self.assertFalse(result["fallback"]["used"])
-        self.assertEqual(result["reliability"]["level"], "real_model")
+        self.assertEqual(result["status"], "degraded")
+        self.assertEqual(result["model_id"], "acidification-remediation")
+        self.assertEqual(
+            set(result),
+            {"model_id", "status", "subject", "result", "meta", "issues"},
+        )
+        deprecated = next(issue for issue in result["issues"] if issue["code"] == "DEPRECATED_MODEL_ID")
+        self.assertEqual(deprecated["details"]["deprecated_model_id"], "acidification-governance")
+        self.assertEqual(deprecated["details"]["canonical_model_id"], "acidification-remediation")
+        self.assertIsNotNone(result["result"]["soil_conditioner_dosage"])
+        self.assertTrue(result["meta"]["simulated"])
+        self.assertTrue(result["issues"])
 
     def test_run_indicator_model_marks_missing_indicator_fallback(self):
         result = run_thematic_model(
@@ -86,20 +90,22 @@ class ThematicModelTests(unittest.TestCase):
         self.assertEqual(result["status"], "error")
         self.assertEqual(result["error"]["code"], "INVALID_MODEL_ID")
 
-    def test_thematic_models_do_not_require_external_runtime(self):
+    def test_thematic_models_return_canonical_envelope_without_external_runtime(self):
         result = run_thematic_model({"model_id": "organic-matter-improvement"})
 
-        # 无 parcel_id 和用户输入时，Agent 走规则降级返回 "degraded"；
-        # 关键断言是 runtime_dependency == "agent"（不依赖外部微服务）
-        self.assertIn(result["status"], ("ok", "degraded"))
-        self.assertEqual(result["lineage"]["runtime_dependency"], "agent")
+        self.assertEqual(result["model_id"], "organic-matter-improvement")
+        self.assertEqual(
+            set(result),
+            {"model_id", "status", "subject", "result", "meta", "issues"},
+        )
+        self.assertIn(result["status"], ("degraded", "rejected", "unavailable"))
+        self.assertTrue(result["issues"])
 
     def test_run_real_diagnosis_model_uses_standard_fields(self):
         """验证真实诊断路径返回标准码字段（ZALX/ZYZAYS/CYZAYS/GDZLDJ），不回退默认值"""
         import tempfile
         import os
         from ai_culti_demo.farmland_diagnosis import bulk_evaluate, diagnose
-        from ai_culti_demo.thematic_models import _run_real_diagnosis_model, MODEL_SPECS
 
         with tempfile.TemporaryDirectory() as tmpdir:
             csv_path = os.path.join(tmpdir, 'test.csv')
@@ -111,19 +117,20 @@ class ThematicModelTests(unittest.TestCase):
             bulk_evaluate(csv_path, db_path)
             diagnose(db_path)
 
-            model = MODEL_SPECS["obstacle-factor-identification"]
-            result = _run_real_diagnosis_model(
-                {"parcel_id": "0", "db_path": db_path}, model
-            )
+            result = run_thematic_model({
+                "model_id": "obstacle-diagnosis",
+                "parcel_id": "0",
+                "db_path": db_path,
+            })
 
             self.assertEqual(result["status"], "ok")
-            # summary 不应包含默认值"未知"
-            self.assertNotIn("未知", result["summary"])
-            # findings 中障碍类型不应是默认值
-            findings_map = {f["title"]: f["content"] for f in result["findings"]}
-            self.assertNotEqual(findings_map["障碍类型"], "无明显障碍")
-            self.assertNotEqual(findings_map["主要障碍因素"], "无")
-            self.assertNotEqual(findings_map["质量等级"], "综合等级：未知")
+            diagnosis = result["result"]
+            self.assertNotEqual(diagnosis["obstacle_type"], "无明显障碍")
+            self.assertTrue(diagnosis["primary_factors"])
+            self.assertEqual(
+                set(diagnosis),
+                {"obstacle_type", "primary_factors", "secondary_factors", "obstacle_degrees", "obstacle_levels", "obstacle_combination"},
+            )
 
 
 if __name__ == "__main__":

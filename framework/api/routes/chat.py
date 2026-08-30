@@ -6,8 +6,57 @@ from framework.models.conversation import Conversation
 from framework.models.message import Message
 from framework.models.user import db
 from framework.agents.orchestrator import multi_agent_orchestrator
+from framework.agents.output_contract import (
+    LEGACY_SCHEMA_VERSION,
+    SCHEMA_VERSION,
+    chat_compact,
+    legacy_projection,
+)
 
 chat_bp = Blueprint('chat', __name__)
+
+
+def _serialize_chat_response(
+    result: dict,
+    message_id: int | None,
+    *,
+    include_model_results: bool = False,
+    response_schema: str = SCHEMA_VERSION,
+) -> dict:
+    """统一生成非流式和流式完成事件的公共聊天响应。"""
+    if response_schema not in {SCHEMA_VERSION, LEGACY_SCHEMA_VERSION}:
+        response_schema = SCHEMA_VERSION
+    models = result.get("models", {}) if isinstance(result, dict) else {}
+    routing = result.get("routing", {}) if isinstance(result, dict) else {}
+    if not isinstance(routing, dict):
+        routing = {}
+    question_type = result.get("question_type", routing.get("question_type", 0)) if isinstance(result, dict) else 0
+    routing_status = result.get("routing_status", routing.get("status", "normal")) if isinstance(result, dict) else "normal"
+    data = {
+        "message_id": message_id,
+        "answer": result.get("answer", "") if isinstance(result, dict) else "",
+        "sources": result.get("sources", []) if isinstance(result, dict) else [],
+        "recommendations": result.get("recommendations", []) if isinstance(result, dict) else [],
+        "routing": {
+            "question_type": question_type,
+            "status": routing_status,
+        },
+    }
+    if include_model_results and question_type != 0:
+        if response_schema == LEGACY_SCHEMA_VERSION:
+            data["models"] = {
+                aid: legacy_projection(item) for aid, item in models.items()
+            }
+        else:
+            data["models"] = {
+                aid: chat_compact(item) for aid, item in models.items()
+            }
+    return {
+        "schema_version": response_schema,
+        "trace_id": result.get("trace_id") if isinstance(result, dict) else None,
+        "status": "ok",
+        "data": data,
+    }
 
 @chat_bp.route('/conversations', methods=['GET'])
 @jwt_required()
@@ -55,6 +104,14 @@ def chat():
     conversation_id = data.get('conversation_id')
     message = data.get('message', '')
     context = data.get('context', {})
+    include_model_results = bool(data.get("include_model_results", False))
+    response_schema = str(data.get("response_schema", SCHEMA_VERSION))
+    if response_schema not in {SCHEMA_VERSION, LEGACY_SCHEMA_VERSION}:
+        return jsonify({
+            "schema_version": SCHEMA_VERSION,
+            "status": "error",
+            "error": {"code": "INVALID_RESPONSE_SCHEMA", "message": "response_schema 仅支持 1.0 或 2.0"},
+        }), 400
 
     if not message:
         return jsonify({"status": "error", "message": "问题不能为空"}), 400
@@ -85,19 +142,20 @@ def chat():
         if data.get(k) is not None:
             orchestrator_request[k] = data[k]
     result = multi_agent_orchestrator.run(orchestrator_request, conversation_history=history)
+    from framework.observability.schema_metrics import record_schema_call
+    record_schema_call(response_schema, result.get("status", "error"))
 
     answer = result.get("answer", result.get("llm_response", ""))
     sources = result.get("sources", [])
-    model_results = result.get("model_results", {})
-    question_type = result.get("question_type", 0)
-    routing_status = result.get("routing_status", "normal")
+    model_results = result.get("model_results") if isinstance(result.get("model_results"), dict) else result
+    question_type = result.get("question_type", model_results.get("question_type", 0))
+    routing_status = result.get("routing_status", model_results.get("routing_status", "normal"))
     degradation = result.get("degradation")
 
-    # 解析 AgentManager 结构化结果（若存在）
-    agent_data = model_results.get("data", {}) if isinstance(model_results, dict) else {}
-    agents_invoked = agent_data.get("agents_invoked", [])
-    recommendations = agent_data.get("recommendations", [])
-    multi_agent_summary = agent_data.get("summary", "")
+    models = model_results.get("models", {}) if isinstance(model_results, dict) else {}
+    recommendations = result.get("recommendations", model_results.get("recommendations", [])) or []
+    multi_agent_summary = result.get("answer", model_results.get("answer", ""))
+    agents_invoked = list(models.keys())
 
     assistant_message = Message(
         conversation_id=conversation.id,
@@ -110,26 +168,20 @@ def chat():
     db.session.add(assistant_message)
     db.session.commit()
 
-    response_data = {
-        "answer": answer or multi_agent_summary,
-        "sources": sources,
-        "question_type": question_type,
-        "model_results": model_results,
-        "message_id": assistant_message.id,
-        "routing_status": routing_status,
-        "trace_id": result.get("trace_id"),
-    }
-    if agents_invoked:
-        response_data["agents_invoked"] = agents_invoked
-    if recommendations:
-        response_data["recommendations"] = recommendations
+    response = _serialize_chat_response(
+        {**result, "models": models},
+        assistant_message.id,
+        include_model_results=include_model_results,
+        response_schema=response_schema,
+    )
     if degradation:
-        response_data["degradation"] = degradation
-
-    return jsonify({
-        "status": "ok",
-        "data": response_data,
-    })
+        response["data"]["routing"]["degradation"] = degradation
+    if response_schema == LEGACY_SCHEMA_VERSION:
+        response["deprecation"] = {
+            "code": "SCHEMA_1_DEPRECATED",
+            "message": "Schema 1.0 已弃用，请迁移到 Schema 2.0。",
+        }
+    return jsonify(response)
 
 @chat_bp.route('/stream', methods=['POST'])
 @jwt_required()
@@ -139,6 +191,14 @@ def chat_stream():
     conversation_id = data.get('conversation_id')
     message = data.get('message', '')
     context = data.get('context', {})
+    include_model_results = bool(data.get("include_model_results", False))
+    response_schema = str(data.get("response_schema", SCHEMA_VERSION))
+    if response_schema not in {SCHEMA_VERSION, LEGACY_SCHEMA_VERSION}:
+        return jsonify({
+            "schema_version": SCHEMA_VERSION,
+            "status": "error",
+            "error": {"code": "INVALID_RESPONSE_SCHEMA", "message": "response_schema 仅支持 1.0 或 2.0"},
+        }), 400
 
     if not message:
         return jsonify({"status": "error", "message": "问题不能为空"}), 400
@@ -183,13 +243,12 @@ def chat_stream():
                     data_payload = item.get("data", {})
                     answer = data_payload.get("answer", "")
                     sources = data_payload.get("sources", [])
-                    model_results = data_payload.get("model_results", {})
+                    models = data_payload.get("models", {})
                     question_type = data_payload.get("question_type", 0)
 
-                    agent_data = model_results.get("data", {}) if isinstance(model_results, dict) else {}
-                    agents_invoked = agent_data.get("agents_invoked", [])
-                    recommendations = agent_data.get("recommendations", [])
-                    multi_agent_summary = agent_data.get("summary", "")
+                    agents_invoked = list(models.keys()) if isinstance(models, dict) else []
+                    recommendations = data_payload.get("recommendations", [])
+                    multi_agent_summary = answer
 
                     # ✅ 修复：生成器迭代时请求上下文已销毁，需手动推入应用上下文
                     # 否则 db.session.commit() 会报 "Working outside of application context"
@@ -213,20 +272,27 @@ def chat_stream():
                     finally:
                         app_ctx.pop()
 
-                    response_data = {
+                    response_result = {
+                        **data_payload,
                         "answer": answer or multi_agent_summary,
                         "sources": sources,
+                        "models": models,
                         "question_type": question_type,
-                        "model_results": model_results,
-                        "message_id": msg_id,
                         "trace_id": data_payload.get("trace_id"),
+                        "recommendations": recommendations,
                     }
-                    if agents_invoked:
-                        response_data["agents_invoked"] = agents_invoked
-                    if recommendations:
-                        response_data["recommendations"] = recommendations
-
-                    yield f"data: {json.dumps({'event': 'done', 'data': response_data})}\n\n"
+                    response = _serialize_chat_response(
+                        response_result,
+                        msg_id,
+                        include_model_results=include_model_results,
+                        response_schema=response_schema,
+                    )
+                    if response_schema == LEGACY_SCHEMA_VERSION:
+                        response["deprecation"] = {
+                            "code": "SCHEMA_1_DEPRECATED",
+                            "message": "Schema 1.0 已弃用，请迁移到 Schema 2.0。",
+                        }
+                    yield f"data: {json.dumps({'event': 'done', 'data': response['data']}, ensure_ascii=False, allow_nan=False)}\n\n"
                 elif item_type == "error":
                     yield f"data: {json.dumps({'event': 'error', 'message': item.get('message', '')})}\n\n"
         except Exception as e:
