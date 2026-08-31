@@ -1,9 +1,4 @@
-"""测试 execute_models 管道透传 parcel_id/parcel_code 到 context。
-
-通过 monkeypatch agent_manager.process 拦截 context，验证：
-1. request 含 parcel_id/parcel_code 时 context top-level 含这两个字段
-2. request 不含时 context 不含这两个字段（现有行为不变）
-"""
+"""execute_models 只消费中央解析后的规范对象与已验证旧标识。"""
 import sys
 import os
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
@@ -27,6 +22,21 @@ def _make_state(question: str, request_extra: dict | None = None) -> MultiAgentS
         "error": None,
         "question_type": 3,
         "relevance": 0.8,
+        "analysis_context": {"mode": "spatial", "version": 0, "object": None},
+        "calculation_mode": "spatial",
+        "guard_decision": {"allowed": True, "interaction_state": "completed"},
+        "validated_identifiers": {},
+        "scenario_inputs": {},
+        "user_id": 7,
+        "conversation_id": 1,
+    }
+
+
+def _parcel_object(parcel_id="P001", area_code="440281"):
+    return {
+        "type": "parcel", "id": parcel_id, "display_name": f"地块 {parcel_id}",
+        "area_code": area_code, "parent_path": [], "source": "parcel_info",
+        "validated_at": "2026-08-31T00:00:00+00:00",
     }
 
 
@@ -44,8 +54,7 @@ def _stub_process_return():
     }
 
 
-def test_execute_models_passes_parcel_id_and_parcel_code_to_context():
-    """execute_models 应从 state['request'] 提取 parcel_id/parcel_code 到 context top-level。"""
+def test_execute_models_uses_canonical_parcel_and_verified_legacy_code():
     from framework.agents.manager import agent_manager
 
     captured = {}
@@ -58,22 +67,23 @@ def test_execute_models_passes_parcel_id_and_parcel_code_to_context():
     real_process = agent_manager.process
     agent_manager.process = fake_process
     try:
-        state = _make_state("我的田质量等级", {"parcel_id": "1", "parcel_code": "A0001"})
+        state = _make_state("我的田质量等级", {"parcel_id": "UNTRUSTED", "parcel_code": "BAD"})
+        state["analysis_context"] = {"mode": "spatial", "version": 2, "object": _parcel_object()}
+        state["validated_identifiers"] = {"parcel_id": "P001", "parcel_code": "A0001"}
+        state["question_type"] = 2
         execute_models(state)
     finally:
         agent_manager.process = real_process
 
     ctx = captured["context"]
-    assert ctx.get("parcel_id") == "1", f"parcel_id 未透传到 context top-level: {ctx}"
-    assert ctx.get("parcel_code") == "A0001", f"parcel_code 未透传到 context top-level: {ctx}"
-    # area_code 仍应存在（现有行为不变）
-    assert ctx.get("area_code") == "lechang"
-    # question_type 应从 state 透传到 context
-    assert ctx.get("question_type") == 3, f"question_type 未透传到 context: {ctx}"
-    print("✓ execute_models 透传 parcel_id/parcel_code 到 context top-level")
+    assert ctx["parcel_id"] == "P001"
+    assert ctx["parcel_code"] == "A0001"
+    assert ctx["area_code"] == "440281"
+    assert ctx["question_type"] == 2
+    assert ctx["guard_passed"] is True and ctx["execution_channel"] == "chat"
 
 
-def test_execute_models_no_parcel_when_absent():
+def test_execute_models_no_parcel_when_canonical_object_absent():
     """request 不含 parcel_id/parcel_code 时 context 不应包含这两个字段。"""
     from framework.agents.manager import agent_manager
 
@@ -97,8 +107,7 @@ def test_execute_models_no_parcel_when_absent():
     print("✓ request 无 parcel 标识符时 context 不含这两个字段")
 
 
-def test_execute_models_passes_only_parcel_id():
-    """request 仅含 parcel_id 时 context 仅含 parcel_id（model-5 走 mock 回退）。"""
+def test_execute_models_never_reads_unverified_raw_ids():
     from framework.agents.manager import agent_manager
 
     captured = {}
@@ -110,19 +119,19 @@ def test_execute_models_passes_only_parcel_id():
     real_process = agent_manager.process
     agent_manager.process = fake_process
     try:
-        state = _make_state("我的田质量等级", {"parcel_id": "10"})
+        state = _make_state("我的田质量等级", {"parcel_id": "RAW", "parcel_code": "RAW-CODE"})
+        state["analysis_context"] = {"mode": "spatial", "version": 1, "object": _parcel_object("P010")}
         execute_models(state)
     finally:
         agent_manager.process = real_process
 
     ctx = captured["context"]
-    assert ctx.get("parcel_id") == "10"
+    assert ctx.get("parcel_id") == "P010"
     assert "parcel_code" not in ctx
-    print("✓ request 仅含 parcel_id 时 context 仅含 parcel_id")
 
 
 if __name__ == "__main__":
-    test_execute_models_passes_parcel_id_and_parcel_code_to_context()
-    test_execute_models_no_parcel_when_absent()
-    test_execute_models_passes_only_parcel_id()
+    test_execute_models_uses_canonical_parcel_and_verified_legacy_code()
+    test_execute_models_no_parcel_when_canonical_object_absent()
+    test_execute_models_never_reads_unverified_raw_ids()
     print("\n所有 execute_models 管道透传测试通过！")

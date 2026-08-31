@@ -27,11 +27,13 @@ def disable_external_llm(monkeypatch):
     """集成测试只验证本地路由和降级结构，不依赖外部运行时。"""
     from framework.agents import nodes
     from framework.rag import chain
+    from framework.config import Config
 
     llm = _UnavailableLLM()
     monkeypatch.setattr(nodes, "llm_service", llm)
     monkeypatch.setattr(chain, "llm_service", llm)
     monkeypatch.setattr(chain.rag_chain, "llm_service", llm)
+    monkeypatch.setattr(Config, "ROUTING_MODE", "keyword")
     monkeypatch.setattr(
         chain.rag_chain,
         "chat",
@@ -104,8 +106,8 @@ def test_execute_models_writes_structured_result():
     print("✓ execute_models 写入结构化多智能体结果")
 
 
-def test_chat_api_returns_structured_multi_agent_result():
-    """通过 Flask test client 验证 /api/v1/chat/ 返回多智能体结构化结果"""
+def test_chat_api_raw_legacy_ids_do_not_bypass_central_guard():
+    """API 尚未解析的原始旧 ID 不得直接触发专业 Agent。"""
     from framework.api.app import create_app
 
     app = create_app("sqlite")
@@ -137,18 +139,19 @@ def test_chat_api_returns_structured_multi_agent_result():
     payload = resp.get_json()
     assert payload["status"] == "ok"
     data = payload["data"]
-    # 多智能体结构化字段（question_type-based 1:1 路由）
+    # Task 9 接入上下文服务前，旧字段仍是未验证输入；中央守卫必须拒绝执行。
     assert "role" not in data, f"响应不应含 role 字段: {data}"
     assert "question_type" in data
     qt = data.get("question_type")
     agents_invoked = data.get("agents_invoked", [])
-    # 1:1 映射：agents_invoked 应仅含单一 agent
-    assert len(agents_invoked) == 1, f"1:1 路由应仅调 1 个 agent，实际: {agents_invoked}"
+    assert agents_invoked == []
+    assert data["model_results"]["status"] == "needs_analysis_object"
+    assert data["model_results"]["data"]["agents_invoked"] == []
     # recommendations 字段仅在非空时写入响应
     assert isinstance(data.get("recommendations", []), list)
     assert "answer" in data
 
-    print(f"✓ /api/v1/chat/ 返回多智能体结构化结果 (type={qt}, agents={agents_invoked})")
+    print(f"✓ /api/v1/chat/ 未验证旧 ID 被中央守卫拦截 (type={qt})")
 
 
 def test_e2e_type1_stability_routing():
@@ -405,8 +408,8 @@ def test_chat_api_no_parcel_when_absent():
     print("✓ body 无 parcel 标识符时 orchestrator request 不含")
 
 
-def test_chat_api_type5_routes_to_model5_only():
-    """Task 6.2: 质量等级问题经 API 路由后 agents_invoked 仅含 model-2，无 role 字段"""
+def test_chat_api_type5_raw_ids_are_blocked_before_model2():
+    """未经上下文服务验证的旧 ID 不得在 API 路径触发 model-2。"""
     from framework.api.app import create_app
 
     app = create_app("sqlite")
@@ -445,8 +448,9 @@ def test_chat_api_type5_routes_to_model5_only():
     qt = data.get("question_type")
     agents_invoked = data.get("agents_invoked", [])
     assert qt == 2, f"质量等级问题期望 type 2，实际 type {qt}"
-    assert agents_invoked == ["model-2"], f"type 2 应仅调 model-2: {agents_invoked}"
-    print(f"✓ Task 6.2: type 2 API 路由正确 (type={qt}, agents={agents_invoked}, 无 role)")
+    assert agents_invoked == []
+    assert data["model_results"]["status"] == "needs_analysis_object"
+    print(f"✓ Task 6.2: type 2 未验证旧 ID 被拦截 (type={qt}, 无 role)")
 
 
 def test_chat_api_knowledge_question_routes_to_rag():

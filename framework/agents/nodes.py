@@ -21,6 +21,11 @@ from .routing import (
     QUESTION_TYPE_5_KEYWORDS,
     REFERENCE_QUESTIONS,
 )
+from .capabilities import get_capability_by_question_type
+from framework.analysis_context.contracts import AnalysisContext
+from framework.analysis_context.guard import AnalysisRequirementGuard
+
+analysis_requirement_guard = AnalysisRequirementGuard()
 
 try:
     from framework.llm.service import llm_service
@@ -79,6 +84,15 @@ def initialize_state(state: MultiAgentState) -> MultiAgentState:
         "question_type": None,
         "relevance": None,
         "routing_status": "normal",
+        "analysis_context": state.get("analysis_context", {
+            "mode": "spatial", "version": 0, "object": None,
+        }),
+        "calculation_mode": state.get("calculation_mode", "spatial"),
+        "guard_decision": state.get("guard_decision", {}),
+        "validated_identifiers": state.get("validated_identifiers", {}),
+        "scenario_inputs": state.get("scenario_inputs", {}),
+        "user_id": state.get("user_id"),
+        "conversation_id": state.get("conversation_id"),
     }
 
 def identify_question_node(state: MultiAgentState) -> MultiAgentState:
@@ -150,6 +164,51 @@ def route_models(state: MultiAgentState) -> str:
     if question_type == 0:
         return "rag_chat"
     return "execute_models"
+
+
+def analysis_requirement_node(state: MultiAgentState) -> MultiAgentState:
+    capability = get_capability_by_question_type(state.get("question_type"))
+    context = AnalysisContext.from_dict(state["analysis_context"])
+    decision = analysis_requirement_guard.evaluate(
+        capability, context, inputs=state.get("scenario_inputs", {}),
+    )
+    serialized = {
+        "allowed": decision.allowed,
+        "interaction_state": decision.interaction_state,
+        "required_object_types": list(decision.required_object_types),
+        "missing_inputs": list(decision.missing_inputs),
+        "message": decision.message,
+    }
+    return {**state, "guard_decision": serialized}
+
+
+def route_after_requirement(state: MultiAgentState) -> str:
+    if state.get("routing_status") == ROUTING_STATUS_BOUNDARY_PENDING:
+        return "boundary_pending"
+    if state.get("question_type") == 0:
+        return "rag_chat"
+    if not state.get("guard_decision", {}).get("allowed", False):
+        return "needs_input"
+    return "execute_models"
+
+
+def needs_input_node(state: MultiAgentState) -> MultiAgentState:
+    decision = state["guard_decision"]
+    return {
+        **state,
+        "model_results": {
+            "status": decision["interaction_state"],
+            "data": {
+                "question_type": state.get("question_type"),
+                "agents_invoked": [],
+                "details": {},
+                "recommendations": [],
+                "summary": decision["message"],
+            },
+        },
+        "status": "model_completed",
+        "error": None,
+    }
 
 def rag_chat_node(state: MultiAgentState) -> MultiAgentState:
     question = state["request"].get("question", "")
@@ -285,14 +344,7 @@ def execute_models(state: MultiAgentState) -> MultiAgentState:
         from framework.agents.manager import agent_manager
 
         question = state["request"].get("question", "")
-        context = {
-            "area_code": state["request"].get("area_code", "lechang"),
-            "data": state.get("data", {}),
-        }
-        # 透传地块标识符到 context top-level（模型优先从 top-level 读取）
-        for key in ("parcel_id", "parcel_code"):
-            if key in state["request"]:
-                context[key] = state["request"][key]
+        context = _build_verified_execution_context(state)
         print(f"[execute_models] context: parcel_id={context.get('parcel_id')}, "
               f"parcel_code={context.get('parcel_code')}, "
               f"question_type={context.get('question_type')}, "
@@ -300,15 +352,6 @@ def execute_models(state: MultiAgentState) -> MultiAgentState:
         # 透传 question_type 到 context（agent 可能需要）
         if "question_type" in state:
             context["question_type"] = state["question_type"]
-        # 透传可能的土壤参数与区域/土地类型
-        for key in (
-            "longitude", "latitude", "target_ph", "context", "land_type", "fertilizer_type",
-            "db_path", "pH", "SOCbe", "SOMbe", "TN", "TP", "TK", "AP", "AK", "Gap",
-            "Dose", "Fertilizer type", "SJD", "YJZ", "TD", "TL", "TJ", "YXL", "SXJ",
-            "YJZTSZ", "YJFLX",
-        ):
-            if key in state["request"]:
-                context[key] = state["request"][key]
 
         # 优先尝试 function calling 路径
         trace_id = state.get("trace_id")
@@ -350,6 +393,30 @@ def execute_models(state: MultiAgentState) -> MultiAgentState:
             "status": "model_completed",
             "error": None,
         }
+
+
+def _build_verified_execution_context(state: MultiAgentState) -> dict:
+    analysis_context = state.get("analysis_context", {})
+    mode = analysis_context.get("mode", state.get("calculation_mode", "spatial"))
+    if mode == "scenario":
+        context = dict(state.get("scenario_inputs", {}))
+    else:
+        context = {}
+        obj = analysis_context.get("object") or {}
+        if obj.get("type") == "parcel":
+            context["parcel_id"] = obj["id"]
+        if obj.get("area_code") is not None:
+            context["area_code"] = obj["area_code"]
+        parcel_code = state.get("validated_identifiers", {}).get("parcel_code")
+        if parcel_code is not None and state.get("question_type") == 2:
+            context["parcel_code"] = parcel_code
+    context.update({
+        "question_type": state.get("question_type"),
+        "execution_channel": "chat",
+        "guard_passed": True,
+        "execution_context": analysis_context,
+    })
+    return context
 
 def boundary_pending_node(state: MultiAgentState) -> MultiAgentState:
     """模型边界待确认：不调用任一易混淆专业 Agent，返回显式降级。"""
@@ -409,6 +476,8 @@ def aggregate_results(state: MultiAgentState) -> MultiAgentState:
             "question_type": question_type,
             "relevance": relevance,
             "routing_status": routing_status,
+            "analysis_context": state.get("analysis_context"),
+            "interaction_state": state.get("guard_decision", {}).get("interaction_state", "completed"),
         }
 
         if routing_status == ROUTING_STATUS_BOUNDARY_PENDING:
@@ -417,6 +486,14 @@ def aggregate_results(state: MultiAgentState) -> MultiAgentState:
             final_result["model_results"] = model_results
             final_result["llm_response"] = ""
             final_result["degradation"] = BOUNDARY_PENDING_MESSAGE
+        elif not state.get("guard_decision", {}).get("allowed", True):
+            decision = state["guard_decision"]
+            final_result["answer"] = decision["message"]
+            final_result["sources"] = []
+            final_result["model_results"] = model_results
+            final_result["llm_response"] = ""
+            final_result["required_object_types"] = decision["required_object_types"]
+            final_result["missing_inputs"] = decision["missing_inputs"]
         elif question_type == 0:
             final_result["answer"] = rag_response.get("answer", "")
             final_result["sources"] = rag_response.get("sources", [])

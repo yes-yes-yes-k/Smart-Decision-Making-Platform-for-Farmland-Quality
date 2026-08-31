@@ -7,6 +7,9 @@ from .nodes import (
     initialize_state,
     identify_question_node,
     route_models,
+    analysis_requirement_node,
+    route_after_requirement,
+    needs_input_node,
     execute_models,
     llm_generate,
     rag_chat_node,
@@ -14,6 +17,37 @@ from .nodes import (
     aggregate_results,
     finalize,
 )
+
+
+def _new_initial_state(request: Dict[str, Any], conversation_history: list | None) -> MultiAgentState:
+    analysis_context = request.get("analysis_context") or {
+        "mode": request.get("calculation_mode", "spatial"),
+        "version": None if request.get("calculation_mode") == "scenario" else 0,
+        "object": None,
+    }
+    return {
+        "request": request,
+        "data": {}, "model_results": {}, "llm_response": {}, "rag_response": {},
+        "conversation_history": conversation_history or [],
+        "status": "pending", "error": None, "question_type": None,
+        "relevance": None, "routing_status": "normal", "trace_id": None,
+        "analysis_context": analysis_context,
+        "calculation_mode": analysis_context.get("mode", "spatial"),
+        "guard_decision": {},
+        "validated_identifiers": request.get("validated_identifiers", {}),
+        "scenario_inputs": request.get("scenario_inputs", {}),
+        "user_id": request.get("user_id"),
+        "conversation_id": request.get("conversation_id"),
+    }
+
+
+def prepare_routed_state(
+    request: Dict[str, Any], conversation_history: list | None,
+) -> tuple[MultiAgentState, str]:
+    state = initialize_state(_new_initial_state(request, conversation_history))
+    state = identify_question_node(state)
+    state = analysis_requirement_node(state)
+    return state, route_after_requirement(state)
 
 class MultiAgentOrchestrator:
     def __init__(self):
@@ -25,6 +59,8 @@ class MultiAgentOrchestrator:
 
         graph.add_node("initialize", initialize_state)
         graph.add_node("identify_question", identify_question_node)
+        graph.add_node("analysis_requirement", analysis_requirement_node)
+        graph.add_node("needs_input", needs_input_node)
         graph.add_node("execute_models", execute_models)
         graph.add_node("llm_generate", llm_generate)
         graph.add_node("rag_chat", rag_chat_node)
@@ -36,13 +72,15 @@ class MultiAgentOrchestrator:
 
         graph.add_edge("initialize", "identify_question")
 
+        graph.add_edge("identify_question", "analysis_requirement")
         graph.add_conditional_edges(
-            "identify_question",
-            route_models,
+            "analysis_requirement",
+            route_after_requirement,
             {
                 "rag_chat": "rag_chat",
                 "execute_models": "execute_models",
                 "boundary_pending": "boundary_pending",
+                "needs_input": "needs_input",
             },
         )
 
@@ -50,6 +88,7 @@ class MultiAgentOrchestrator:
         graph.add_edge("llm_generate", "aggregate_results")
         graph.add_edge("rag_chat", "aggregate_results")
         graph.add_edge("boundary_pending", "aggregate_results")
+        graph.add_edge("needs_input", "aggregate_results")
         graph.add_edge("aggregate_results", "finalize")
         graph.add_edge("finalize", END)
 
@@ -60,20 +99,7 @@ class MultiAgentOrchestrator:
             self._graph = self.build_graph()
             self._app = self._graph.compile()
 
-        initial_state: MultiAgentState = {
-            "request": request,
-            "data": {},
-            "model_results": {},
-            "llm_response": {},
-            "rag_response": {},
-            "conversation_history": conversation_history or [],
-            "status": "pending",
-            "error": None,
-            "question_type": None,
-            "relevance": None,
-            "routing_status": "normal",
-            "trace_id": None,
-        }
+        initial_state = _new_initial_state(request, conversation_history)
 
         result = self._app.invoke(initial_state)
         trace_id = result.get("trace_id")
@@ -96,31 +122,33 @@ class MultiAgentOrchestrator:
                 self._graph = self.build_graph()
                 self._app = self._graph.compile()
 
-            initial_state: MultiAgentState = {
-                "request": request,
-                "data": {},
-                "model_results": {},
-                "llm_response": {},
-                "rag_response": {},
-                "conversation_history": conversation_history or [],
-                "status": "pending",
-                "error": None,
-                "question_type": None,
-                "relevance": None,
-                "trace_id": None,
-            }
-
-            # 准备阶段：手动执行节点（跳过 llm_generate 和 finalize）
-            state = initialize_state(initial_state)
-            state = identify_question_node(state)
-
-            route = route_models(state)
+            state, route = prepare_routed_state(request, conversation_history)
             question = state["request"].get("question", "")
             question_type = state.get("question_type", 0)
 
             full_answer = ""
             sources = []
 
+            if route == "needs_input":
+                state = needs_input_node(state)
+                decision = state["guard_decision"]
+                meta = {
+                    "interaction_state": decision["interaction_state"],
+                    "required_object_types": decision["required_object_types"],
+                    "missing_inputs": decision["missing_inputs"],
+                    "analysis_context": state["analysis_context"],
+                    "trace_id": state.get("trace_id"),
+                }
+                yield {"type": "meta", "data": meta}
+                yield {"type": "done", "data": {
+                    **meta,
+                    "answer": decision["message"],
+                    "sources": [],
+                    "model_results": state["model_results"],
+                    "question_type": question_type,
+                    "question": question,
+                }}
+                return
             if route == "rag_chat":
                 # ✅ RAG 路径：使用流式检索 + 流式 LLM 生成，替代原来的阻塞式 rag_chat_node
                 from framework.rag.chain import rag_chain
@@ -131,6 +159,9 @@ class MultiAgentOrchestrator:
                     elif item["type"] == "meta":
                         sources = item.get("sources", [])
                         yield {"type": "meta", "data": {"sources": sources}}
+            elif route == "boundary_pending":
+                state = boundary_pending_node(state)
+                full_answer = state["model_results"]["data"]["summary"]
             else:
                 # 模型路径：先执行模型（阻塞），再流式生成
                 state = execute_models(state)
@@ -197,6 +228,9 @@ class MultiAgentOrchestrator:
                     "question_type": question_type,
                     "question": question,
                     "trace_id": state.get("trace_id"),
+                    "analysis_context": state.get("analysis_context"),
+                    "interaction_state": state.get("guard_decision", {}).get("interaction_state", "completed"),
+                    "required_object_types": state.get("guard_decision", {}).get("required_object_types", []),
                 },
             }
         except Exception as e:
