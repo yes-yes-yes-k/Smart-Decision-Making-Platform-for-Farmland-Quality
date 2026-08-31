@@ -16,6 +16,12 @@ from .errors import (
     AnalysisObjectValidationUnavailable,
     LegacyIdentifierAmbiguity,
 )
+from .legacy import LegacyAnalysisContextAdapter, LegacyResolution
+from .resolvers import (
+    AnalysisObjectAccessPolicy,
+    RegisteredDataAccessPolicy,
+    SpatialObjectResolverRegistry,
+)
 
 __all__ = [
     "AnalysisContext",
@@ -28,6 +34,11 @@ __all__ = [
     "ContextAction",
     "GuardDecision",
     "LegacyIdentifierAmbiguity",
+    "LegacyAnalysisContextAdapter",
+    "LegacyResolution",
     "ObjectType",
     "ParentPathItem",
+    "AnalysisObjectAccessPolicy",
+    "RegisteredDataAccessPolicy",
+    "SpatialObjectResolverRegistry",
 ]
