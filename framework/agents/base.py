@@ -8,6 +8,12 @@ from datetime import datetime, timezone
 logger = logging.getLogger(__name__)
 
 
+class ProfessionalInputRejected(ValueError):
+    def __init__(self, code: str, message: str):
+        super().__init__(message)
+        self.code = code
+
+
 class BaseAgent(ABC):
     """智能体抽象基类，定义统一接口。"""
 

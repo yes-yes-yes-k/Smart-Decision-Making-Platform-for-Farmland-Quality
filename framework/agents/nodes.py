@@ -419,6 +419,7 @@ def _build_verified_execution_context(state: MultiAgentState) -> dict:
             context["parcel_code"] = parcel_code
     context.update({
         "question_type": state.get("question_type"),
+        "calculation_mode": mode,
         "execution_channel": "chat",
         "guard_passed": True,
         "execution_context": {

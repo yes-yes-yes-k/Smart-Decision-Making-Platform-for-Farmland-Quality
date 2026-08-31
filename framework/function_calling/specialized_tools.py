@@ -23,7 +23,7 @@ class Model1StabilityArgs(BaseModel):
     """Model-1 稳定性风险评价参数。"""
 
     parcel_id: str = Field(..., description="地块 ID（如图斑编号）")
-    area_code: str = Field(default="lechang", description="区域代码")
+    area_code: Optional[str] = Field(default=None, description="后端验证的区域代码")
     db_path: Optional[str] = Field(default=None, description="legacy 数据库路径（可选）")
     quality_index: Optional[float] = Field(default=None, description="综合质量指数（可选）")
     quality_grade: Optional[str] = Field(default=None, description="质量等级（可选）")
@@ -33,7 +33,8 @@ class Model2QualityGradeArgs(BaseModel):
     """Model-2 质量等级评价参数。"""
 
     parcel_id: str = Field(..., description="地块 ID（DB 路径优先）")
-    area_code: str = Field(default="440281", description="区域代码")
+    parcel_code: Optional[str] = Field(default=None, description="后端验证的旧地块编码")
+    area_code: Optional[str] = Field(default=None, description="后端验证的区域代码")
     exe_path: Optional[str] = Field(default=None, description="评价程序路径（legacy）")
     dat_path: Optional[str] = Field(default=None, description="数据文件路径（legacy）")
 
@@ -42,7 +43,7 @@ class Model3ObstacleArgs(BaseModel):
     """Model-3 障碍诊断参数。"""
 
     parcel_id: str = Field(..., description="地块 ID")
-    area_code: str = Field(default="440281", description="区域代码")
+    area_code: Optional[str] = Field(default=None, description="后端验证的区域代码")
     db_path: Optional[str] = Field(default=None, description="legacy 数据库路径（可选）")
 
 
@@ -61,8 +62,8 @@ class Model4AcidificationArgs(BaseModel):
 class Model5OrganicMatterArgs(BaseModel):
     """Model-5 有机质培肥参数。"""
 
-    parcel_id: Optional[str] = Field(default=None, description="地块 ID（可选）")
-    area_code: str = Field(default="lechang", description="区域代码")
+    parcel_id: str = Field(..., description="后端验证的地块 ID")
+    area_code: Optional[str] = Field(default=None, description="后端验证的区域代码")
     land_type: Literal["upland", "paddy"] = Field(default="upland", description="土地利用类型：upland(旱地)/paddy(水田)")
     indicators: Optional[Dict[str, Any]] = Field(
         default=None, description="土壤指标字典（pH/SOMbe/AK/AP/TN 等 ML 特征）"
@@ -74,7 +75,7 @@ class Model5OrganicMatterArgs(BaseModel):
 
 def _model_1_wrapper(
     parcel_id: str,
-    area_code: str = "lechang",
+    area_code: Optional[str] = None,
     db_path: Optional[str] = None,
     quality_index: Optional[float] = None,
     quality_grade: Optional[str] = None,
@@ -85,7 +86,9 @@ def _model_1_wrapper(
     agent = agent_manager.agents.get("model-1")
     if agent is None:
         return {"status": "error", "agent_id": "model-1", "message": "Agent 未注册"}
-    payload = {"parcel_id": parcel_id, "area_code": area_code}
+    payload = {"parcel_id": parcel_id}
+    if area_code is not None:
+        payload["area_code"] = area_code
     if db_path:
         payload["db_path"] = db_path
     if quality_index is not None:
@@ -97,7 +100,8 @@ def _model_1_wrapper(
 
 def _model_2_wrapper(
     parcel_id: str,
-    area_code: str = "440281",
+    parcel_code: Optional[str] = None,
+    area_code: Optional[str] = None,
     exe_path: Optional[str] = None,
     dat_path: Optional[str] = None,
 ) -> Dict[str, Any]:
@@ -107,7 +111,11 @@ def _model_2_wrapper(
     agent = agent_manager.agents.get("model-2")
     if agent is None:
         return {"status": "error", "agent_id": "model-2", "message": "Agent 未注册"}
-    payload = {"parcel_id": parcel_id, "parcel_code": parcel_id, "area_code": area_code}
+    payload = {"parcel_id": parcel_id}
+    if parcel_code is not None:
+        payload["parcel_code"] = parcel_code
+    if area_code is not None:
+        payload["area_code"] = area_code
     if exe_path:
         payload["exe_path"] = exe_path
     if dat_path:
@@ -117,7 +125,7 @@ def _model_2_wrapper(
 
 def _model_3_wrapper(
     parcel_id: str,
-    area_code: str = "440281",
+    area_code: Optional[str] = None,
     db_path: Optional[str] = None,
 ) -> Dict[str, Any]:
     """包装 Model-3 障碍诊断 Agent。"""
@@ -126,7 +134,9 @@ def _model_3_wrapper(
     agent = agent_manager.agents.get("model-3")
     if agent is None:
         return {"status": "error", "agent_id": "model-3", "message": "Agent 未注册"}
-    payload = {"parcel_id": parcel_id, "area_code": area_code}
+    payload = {"parcel_id": parcel_id}
+    if area_code is not None:
+        payload["area_code"] = area_code
     if db_path:
         payload["db_path"] = db_path
     return agent.execute(task=payload)
@@ -154,8 +164,8 @@ def _model_4_wrapper(
 
 
 def _model_5_wrapper(
-    parcel_id: Optional[str] = None,
-    area_code: str = "lechang",
+    parcel_id: str,
+    area_code: Optional[str] = None,
     land_type: str = "upland",
     indicators: Optional[Dict[str, Any]] = None,
 ) -> Dict[str, Any]:
@@ -165,9 +175,9 @@ def _model_5_wrapper(
     agent = agent_manager.agents.get("model-5")
     if agent is None:
         return {"status": "error", "agent_id": "model-5", "message": "Agent 未注册"}
-    payload = {"area_code": area_code, "land_type": land_type}
-    if parcel_id:
-        payload["parcel_id"] = parcel_id
+    payload = {"parcel_id": parcel_id, "land_type": land_type}
+    if area_code is not None:
+        payload["area_code"] = area_code
     if indicators:
         payload["indicators"] = indicators
     return agent.execute(task=payload)

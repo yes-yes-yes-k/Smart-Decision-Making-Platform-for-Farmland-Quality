@@ -113,14 +113,14 @@ class TestWrapperPayload:
         payload = call_args.kwargs["data"]
         assert payload["parcel_id"] == "1"
 
-    def test_model2_wrapper_includes_parcel_code(self, _mock_agent_manager):
+    def test_model2_wrapper_does_not_invent_parcel_code(self, _mock_agent_manager):
         from framework.function_calling.specialized_tools import _model_2_wrapper
 
         result = _model_2_wrapper(parcel_id="P001", area_code="440281")
         call_args = _mock_agent_manager[1].execute.call_args
         payload = call_args.kwargs["data"]
         assert payload["parcel_id"] == "P001"
-        assert payload["parcel_code"] == "P001"
+        assert "parcel_code" not in payload
 
     def test_model3_wrapper_uses_task_param(self, _mock_agent_manager):
         from framework.function_calling.specialized_tools import _model_3_wrapper
@@ -141,15 +141,11 @@ class TestWrapperPayload:
         assert payload["land_type"] == "paddy"
         assert payload["fertilizer_type"] == "single"
 
-    def test_model5_wrapper_optional_parcel_id(self, _mock_agent_manager):
+    def test_model5_wrapper_requires_verified_parcel_id(self, _mock_agent_manager):
         from framework.function_calling.specialized_tools import _model_5_wrapper
 
-        # 不传 parcel_id 也应正常调用
-        result = _model_5_wrapper(area_code="lechang", land_type="upland")
-        call_args = _mock_agent_manager[1].execute.call_args
-        payload = call_args.kwargs["task"]
-        assert payload["area_code"] == "lechang"
-        assert "parcel_id" not in payload
+        with pytest.raises(TypeError):
+            _model_5_wrapper(area_code="440281", land_type="upland")
 
     def test_wrapper_returns_error_when_agent_missing(self):
         """Agent 未注册时返回 error dict。"""
@@ -337,3 +333,21 @@ class TestToolCallingLoop:
         assert result["success"] is False
         assert result["reason"] == "tool_loop_exhausted"
         assert result["iterations"] == 2
+
+    def test_llm_cannot_override_locked_parcel_id(self):
+        from framework.function_calling.tool_loop import ToolCallingLoop
+
+        mock_llm = MagicMock()
+        response = MagicMock(content="")
+        response.tool_calls = [{
+            "name": "model_1_stability_evaluation",
+            "args": {"parcel_id": "P999"}, "id": "tc-conflict",
+        }]
+        mock_llm.invoke.return_value = response
+        with patch("framework.function_calling.tool_loop.tool_executor") as mock_exec:
+            result = ToolCallingLoop(
+                llm=mock_llm, default_args={"parcel_id": "P001"}
+            ).run("分析当前地块")
+        assert result["success"] is False
+        assert result["reason"] == "analysis_object_conflict"
+        mock_exec.execute.assert_not_called()
