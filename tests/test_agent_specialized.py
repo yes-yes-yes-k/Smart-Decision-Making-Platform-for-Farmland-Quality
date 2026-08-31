@@ -692,7 +692,7 @@ def test_organic_matter_agent_degraded_logs_status(monkeypatch):
     agent = OrganicMatterAgent()
     persist_calls = []
 
-    def capture_persist(agent_id, parcel_id, inputs, outputs, status):
+    def capture_persist(agent_id, parcel_id, inputs, outputs, status, **_kwargs):
         persist_calls.append({"status": status, "inputs": inputs, "outputs": outputs})
         return True
 
@@ -717,7 +717,7 @@ def test_organic_matter_agent_error_logs_status(monkeypatch):
     agent = OrganicMatterAgent()
     persist_calls = []
 
-    def capture_persist(agent_id, parcel_id, inputs, outputs, status):
+    def capture_persist(agent_id, parcel_id, inputs, outputs, status, **_kwargs):
         persist_calls.append({"status": status, "outputs": outputs})
         return True
 

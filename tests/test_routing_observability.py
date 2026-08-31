@@ -342,5 +342,6 @@ class TestPackageExports:
         import framework.observability as obs
         assert set(obs.__all__) == {
             "routing_log", "metrics", "dashboard", "traceability", "observe",
+            "analysis_context_metrics",
         }
 

@@ -210,7 +210,6 @@ def test_chat_api_type5_requires_verified_parcel_before_execution():
     app, headers = _authenticated_client()
     payload = {
         "message": "有机肥每亩施用量多少？",
-        "area_code": "lechang",
         "land_type": "upland",
         **EXTERNAL_FEATURES,
     }
@@ -221,8 +220,9 @@ def test_chat_api_type5_requires_verified_parcel_before_execution():
     # Task 9 will expose the standard interaction_state envelope.  At this
     # boundary, the critical safety rule is already observable: missing parcel
     # input must not invoke Model-5 or expose its numeric result.
+    assert data["interaction_state"] == "needs_analysis_object"
     assert data.get("agents_invoked", []) == []
-    assert "model_results" not in data
+    assert data["model_results"]["data"]["agents_invoked"] == []
 
 
 def test_type5_routes_model5_and_type6_routes_placeholder():
