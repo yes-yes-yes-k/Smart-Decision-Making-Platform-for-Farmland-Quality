@@ -6,6 +6,10 @@ from framework.models.user import db
 from framework.agents.orchestrator import multi_agent_orchestrator
 from framework.analysis_context.errors import AnalysisContextError
 from framework.api.services import chat_request_service
+from framework.observability.analysis_context_metrics import (
+    EVENT_ERROR_409, EVENT_ERROR_422, EVENT_ERROR_503,
+    record_analysis_context_event,
+)
 
 chat_bp = Blueprint('chat', __name__)
 
@@ -55,6 +59,9 @@ def chat():
             user_id=int(get_jwt_identity()), body=request.get_json(silent=True) or {},
         )
     except AnalysisContextError as exc:
+        record_analysis_context_event({
+            409: EVENT_ERROR_409, 422: EVENT_ERROR_422, 503: EVENT_ERROR_503,
+        }.get(exc.http_status, EVENT_ERROR_422), code=exc.code)
         return jsonify({"status": "error", "error": {
             "code": exc.code, "message": exc.message, "details": exc.details,
         }}), exc.http_status
@@ -74,6 +81,9 @@ def chat_stream():
             user_id=int(get_jwt_identity()), body=request.get_json(silent=True) or {},
         )
     except AnalysisContextError as exc:
+        record_analysis_context_event({
+            409: EVENT_ERROR_409, 422: EVENT_ERROR_422, 503: EVENT_ERROR_503,
+        }.get(exc.http_status, EVENT_ERROR_422), code=exc.code)
         return jsonify({"status": "error", "error": {
             "code": exc.code, "message": exc.message, "details": exc.details,
         }}), exc.http_status

@@ -12,6 +12,12 @@ from framework.analysis_context.errors import AnalysisObjectInvalid
 from framework.analysis_context.provenance import ResultProvenanceBuilder
 from framework.analysis_context.service import AnalysisContextService
 from framework.models import Conversation, Message, ParcelInfo, db
+from framework.observability.analysis_context_metrics import (
+    EVENT_LEGACY_FIELD_USED,
+    EVENT_NEEDS_ANALYSIS_OBJECT,
+    EVENT_NEEDS_SCENARIO_INPUTS,
+    record_analysis_context_event,
+)
 
 
 @dataclass(frozen=True)
@@ -46,6 +52,8 @@ class ChatRequestService:
             resolved = self._context_service.resolve(
                 conversation, user_id=user_id, body=body,
             )
+            for field in resolved.deprecations:
+                record_analysis_context_event(EVENT_LEGACY_FIELD_USED, field=field)
             snapshot = deepcopy(resolved.snapshot())
             execution_identifiers = self._execution_identifiers(
                 snapshot, resolved.validated_identifiers,
@@ -92,6 +100,11 @@ class ChatRequestService:
         self, prepared: PreparedChat, result: Mapping[str, Any],
     ) -> Message:
         normalized = self._normalize_result(prepared, result)
+        interaction_state = normalized.get("interaction_state")
+        if interaction_state == "needs_analysis_object":
+            record_analysis_context_event(EVENT_NEEDS_ANALYSIS_OBJECT)
+        elif interaction_state == "needs_scenario_inputs":
+            record_analysis_context_event(EVENT_NEEDS_SCENARIO_INPUTS)
         model_results = normalized.get("model_results", {})
         agent_data = model_results.get("data", {}) if isinstance(model_results, Mapping) else {}
         snapshot = deepcopy(prepared.context_snapshot)

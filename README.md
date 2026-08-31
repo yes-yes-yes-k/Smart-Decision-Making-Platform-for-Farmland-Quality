@@ -135,6 +135,10 @@ python start_production_server.py --host 127.0.0.1 --port 8000 --threads 8
 | GET | `/api/v1/chat/conversations/{id}` | 会话详情 |
 | GET | `/api/v1/chat/conversations/{id}/messages` | 会话消息列表 |
 
+专业计算使用会话级通用空间分析对象，支持 `set`、`inherit`、`clear` 和显式
+`scenario` 情景试算；HTTP 与 SSE 返回相同的上下文和溯源字段。完整请求、可恢复
+状态、错误码及旧字段迁移示例见 [聊天分析对象 API](docs/api.md#聊天分析对象与情景试算)。
+
 ### 模型调用
 
 | 方法 | 路径 | 说明 |
