@@ -20,8 +20,8 @@ EXECUTION_COLUMNS = {
     "context_version": "INTEGER",
     "analysis_context_snapshot": "JSON",
     "model_version": "VARCHAR(32)",
-    "data_as_of": "DATETIME",
-    "data_version": "VARCHAR(64)",
+    "data_as_of": "VARCHAR(32)",
+    "data_version": "VARCHAR(32)",
 }
 
 

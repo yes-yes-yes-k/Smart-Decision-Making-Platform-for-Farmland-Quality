@@ -73,6 +73,11 @@ def test_execution_log_accepts_two_agents_with_one_trace():
             "analysis_object_type", "analysis_object_id", "area_code", "context_version",
             "analysis_context_snapshot", "model_version", "data_as_of", "data_version",
         )) <= columns
+        table = ModelExecutionLog.__table__
+        assert isinstance(table.c.data_as_of.type, sa.String)
+        assert table.c.data_as_of.type.length == 32
+        assert isinstance(table.c.data_version.type, sa.String)
+        assert table.c.data_version.type.length == 32
 
 
 def test_legacy_parcel_code_is_unique():

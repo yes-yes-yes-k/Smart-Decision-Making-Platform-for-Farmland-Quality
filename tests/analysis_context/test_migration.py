@@ -51,6 +51,13 @@ def test_upgrade_is_idempotent_and_downgrade_restores_legacy_schema(tmp_path):
     assert "analysis_object" in _column_names(engine, "kb_conversation")
     assert "analysis_context_snapshot" in _column_names(engine, "kb_message")
     assert "analysis_object_type" in _column_names(engine, "model_execution_log")
+    execution_columns = {
+        column["name"]: column for column in inspector.get_columns("model_execution_log")
+    }
+    assert isinstance(execution_columns["data_as_of"]["type"], sa.String)
+    assert execution_columns["data_as_of"]["type"].length == 32
+    assert isinstance(execution_columns["data_version"]["type"], sa.String)
+    assert execution_columns["data_version"]["type"].length == 32
     assert "idx_model_execution_log_status" in {
         item["name"] for item in inspector.get_indexes("model_execution_log")
     }
