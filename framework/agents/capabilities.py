@@ -22,6 +22,10 @@ class ProfessionalCapability:
     runtime_requirement: str = "无需额外运行时前置条件"
     analysis_scale: str = "地块"        # 分析尺度：省/县/片区/地块
     data_type: str = "指标数据"          # 数据类型：指标数据/评价结果/处方用量
+    supported_object_types: tuple[str, ...] = ("parcel",)
+    requires_spatial_object: bool = True
+    supports_scenario: bool = False
+    required_scenario_inputs: tuple[str, ...] = ()
 
 
 PROFESSIONAL_CAPABILITIES: tuple[ProfessionalCapability, ...] = (
@@ -52,6 +56,8 @@ PROFESSIONAL_CAPABILITIES: tuple[ProfessionalCapability, ...] = (
         "判定酸化程度并给出调理剂和改良措施建议。", "acidification", 4,
         ("parcel_id",), "需完成酸化评估并提供 parcel_id；结构化指标可用于规则降级。",
         "地块", "处方用量",   # model-4 酸化改良：地块级处方用量
+        ("parcel",), True, True,
+        ("SJD", "JHX", "JLA", "land_type", "fertilizer_type"),
     ),
     ProfessionalCapability(
         "model-5", "organic-matter-improvement", "耕地土壤有机质培肥提升",
@@ -111,4 +117,8 @@ def public_capability_descriptor(capability: ProfessionalCapability) -> dict:
         "category": "professional",
         "chat_routable": True,
         "runtime_requirement": capability.runtime_requirement,
+        "supported_object_types": list(capability.supported_object_types),
+        "requires_spatial_object": capability.requires_spatial_object,
+        "supports_scenario": capability.supports_scenario,
+        "required_scenario_inputs": list(capability.required_scenario_inputs),
     }
