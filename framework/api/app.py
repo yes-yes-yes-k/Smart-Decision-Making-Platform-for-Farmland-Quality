@@ -68,6 +68,21 @@ def _ensure_kb_message_columns(app: Flask):
                 conn.execute(sa_text(ddl))
 
 
+def _ensure_analysis_context_compatibility(app: Flask):
+    """启动期只补可空列和新表；约束替换留给正式迁移脚本。"""
+    from scripts.migrate_analysis_context import (
+        ensure_analysis_context_columns,
+        ensure_execution_log_provenance,
+        ensure_spatial_region_catalog,
+    )
+
+    with app.app_context():
+        with db.engine.begin() as connection:
+            ensure_analysis_context_columns(connection)
+            ensure_spatial_region_catalog(connection)
+            ensure_execution_log_provenance(connection)
+
+
 def create_app(config_name: str = 'default') -> Flask:
     app = Flask(__name__)
     app.config.from_object(config_map[config_name])
@@ -78,6 +93,7 @@ def create_app(config_name: str = 'default') -> Flask:
 
     # 注册蓝图之前先把 ORM 需要的列补齐，防止首次请求 SELECT 时爆 no such column
     _ensure_kb_message_columns(app)
+    _ensure_analysis_context_compatibility(app)
 
     app.register_blueprint(auth_bp, url_prefix='/api/v1/auth')
     app.register_blueprint(chat_bp, url_prefix='/api/v1/chat')
