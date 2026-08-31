@@ -10,8 +10,89 @@ from framework.observability.analysis_context_metrics import (
     EVENT_ERROR_409, EVENT_ERROR_422, EVENT_ERROR_503,
     record_analysis_context_event,
 )
+from framework.agents.output_contract import (
+    LEGACY_SCHEMA_VERSION,
+    SCHEMA_VERSION,
+    chat_compact,
+    legacy_projection,
+)
 
 chat_bp = Blueprint('chat', __name__)
+
+
+def _serialize_chat_response(
+    result: dict,
+    message_id: int | None,
+    *,
+    include_model_results: bool = False,
+    response_schema: str = SCHEMA_VERSION,
+) -> dict:
+    """统一生成非流式和流式完成事件的公共聊天响应。"""
+    if response_schema not in {SCHEMA_VERSION, LEGACY_SCHEMA_VERSION}:
+        response_schema = SCHEMA_VERSION
+    models = result.get("models", {}) if isinstance(result, dict) else {}
+    routing = result.get("routing", {}) if isinstance(result, dict) else {}
+    if not isinstance(routing, dict):
+        routing = {}
+    question_type = result.get("question_type", routing.get("question_type", 0)) if isinstance(result, dict) else 0
+    routing_status = result.get("routing_status", routing.get("status", "normal")) if isinstance(result, dict) else "normal"
+    data = {
+        "message_id": message_id,
+        "answer": result.get("answer", "") if isinstance(result, dict) else "",
+        "sources": result.get("sources", []) if isinstance(result, dict) else [],
+        "recommendations": result.get("recommendations", []) if isinstance(result, dict) else [],
+        "routing": {
+            "question_type": question_type,
+            "status": routing_status,
+        },
+    }
+    if include_model_results and question_type != 0:
+        if response_schema == LEGACY_SCHEMA_VERSION:
+            data["models"] = {
+                aid: legacy_projection(item) for aid, item in models.items()
+            }
+        else:
+            data["models"] = {
+                aid: chat_compact(item) for aid, item in models.items()
+            }
+    return {
+        "schema_version": response_schema,
+        "trace_id": result.get("trace_id") if isinstance(result, dict) else None,
+        "status": "ok",
+        "data": data,
+    }
+
+
+def _response_options(body: dict) -> tuple[bool, str]:
+    response_schema = str(body.get("response_schema", SCHEMA_VERSION))
+    if response_schema not in {SCHEMA_VERSION, LEGACY_SCHEMA_VERSION}:
+        raise ValueError("response_schema 仅支持 1.0 或 2.0")
+    return bool(body.get("include_model_results", False)), response_schema
+
+
+def _serialize_prepared_response(prepared, result, message_id, *, include_model_results, response_schema):
+    rich = chat_request_service.build_response(prepared, result, message_id=message_id)
+    model_results = rich.get("model_results", {})
+    models = rich.get("models") or (
+        model_results.get("models", {}) if isinstance(model_results, dict) else {}
+    )
+    response = _serialize_chat_response(
+        {**rich, "models": models}, message_id,
+        include_model_results=include_model_results,
+        response_schema=response_schema,
+    )
+    for key in (
+        "interaction_state", "analysis_context", "provenance", "scenario_result",
+        "spatial_object", "object_title", "required_object_types", "missing_inputs", "trace_id",
+    ):
+        if key in rich:
+            response["data"][key] = rich[key]
+    if response_schema == LEGACY_SCHEMA_VERSION:
+        response["deprecation"] = {
+            "code": "SCHEMA_1_DEPRECATED",
+            "message": "Schema 1.0 已弃用，请迁移到 Schema 2.0。",
+        }
+    return response
 
 @chat_bp.route('/conversations', methods=['GET'])
 @jwt_required()
@@ -54,9 +135,17 @@ def get_messages(id):
 @chat_bp.route('/', methods=['POST'])
 @jwt_required()
 def chat():
+    body = request.get_json(silent=True) or {}
+    try:
+        include_model_results, response_schema = _response_options(body)
+    except ValueError as exc:
+        return jsonify({
+            "schema_version": SCHEMA_VERSION, "status": "error",
+            "error": {"code": "INVALID_RESPONSE_SCHEMA", "message": str(exc)},
+        }), 400
     try:
         prepared = chat_request_service.prepare(
-            user_id=int(get_jwt_identity()), body=request.get_json(silent=True) or {},
+            user_id=int(get_jwt_identity()), body=body,
         )
     except AnalysisContextError as exc:
         record_analysis_context_event({
@@ -68,17 +157,30 @@ def chat():
     result = multi_agent_orchestrator.run(
         prepared.orchestrator_request, conversation_history=prepared.history,
     )
+    from framework.observability.schema_metrics import record_schema_call
+    record_schema_call(response_schema, result.get("status", "error"))
     assistant = chat_request_service.persist_assistant(prepared, result)
-    return jsonify({"status": "ok", "data": chat_request_service.build_response(
-        prepared, result, message_id=assistant.id,
-    )})
+    response = _serialize_prepared_response(
+        prepared, result, assistant.id,
+        include_model_results=include_model_results,
+        response_schema=response_schema,
+    )
+    return jsonify(response)
 
 @chat_bp.route('/stream', methods=['POST'])
 @jwt_required()
 def chat_stream():
+    body = request.get_json(silent=True) or {}
+    try:
+        include_model_results, response_schema = _response_options(body)
+    except ValueError as exc:
+        return jsonify({
+            "schema_version": SCHEMA_VERSION, "status": "error",
+            "error": {"code": "INVALID_RESPONSE_SCHEMA", "message": str(exc)},
+        }), 400
     try:
         prepared = chat_request_service.prepare(
-            user_id=int(get_jwt_identity()), body=request.get_json(silent=True) or {},
+            user_id=int(get_jwt_identity()), body=body,
         )
     except AnalysisContextError as exc:
         record_analysis_context_event({
@@ -107,16 +209,20 @@ def chat_stream():
                     app_ctx.push()
                     try:
                         assistant = chat_request_service.persist_assistant(prepared, data_payload)
-                        response_data = chat_request_service.build_response(
-                            prepared, data_payload, message_id=assistant.id,
+                        response = _serialize_prepared_response(
+                            prepared, data_payload, assistant.id,
+                            include_model_results=include_model_results,
+                            response_schema=response_schema,
                         )
+                        from framework.observability.schema_metrics import record_schema_call
+                        record_schema_call(response_schema, data_payload.get("status", "ok"))
                     except Exception:
                         from framework.models import db
                         db.session.rollback()
                         raise
                     finally:
                         app_ctx.pop()
-                    yield f"data: {json.dumps({'event': 'done', 'data': response_data})}\n\n"
+                    yield f"data: {json.dumps({'event': 'done', 'data': response['data']}, ensure_ascii=False, allow_nan=False)}\n\n"
                 elif item_type == "error":
                     yield f"data: {json.dumps({'event': 'error', 'message': item.get('message', '')})}\n\n"
         except Exception as e:

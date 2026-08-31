@@ -18,6 +18,7 @@ from framework.observability.analysis_context_metrics import (
     query_execution_statistics,
     summarize_analysis_context_events,
 )
+from framework.observability.schema_metrics import snapshot_schema_metrics
 
 observability_bp = Blueprint('observability', __name__)
 
@@ -75,5 +76,6 @@ def dashboard():
             "analysis_context_metrics": interaction_metrics,
             "execution_statistics": execution_statistics,
             "confusion_matrices": matrices,
+            "schema_metrics": snapshot_schema_metrics(),
         },
     })

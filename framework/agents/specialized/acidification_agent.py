@@ -25,7 +25,7 @@ class AcidificationRemediationAgent(BaseAgent):
         super().__init__(
             name="AcidificationRemediationAgent",
             description="基于过程模型计算酸化改良剂需求量（YTK/MBNT）",
-            model_id="model-4",
+            model_id="acidification-remediation",
             domain="acidification",
         )
 
@@ -136,12 +136,13 @@ class AcidificationRemediationAgent(BaseAgent):
                         "reason": result.get("reason"),
                     },
                 }
-                status = "degraded"
+                status = result["status"]
+                data_source = "legacy_process"
 
             persisted = self._persist_result(
                 agent_id=self.agent_id,
                 parcel_id=task.get("parcel_id") or inputs.get("parcel_id"),
-                inputs=inputs,
+                inputs={**inputs, "data_source": data_source},
                 outputs=outputs,
                 status=status,
                 execution_context=task.get("execution_context"),
@@ -158,7 +159,8 @@ class AcidificationRemediationAgent(BaseAgent):
                 }
             return {
                 "status": result["status"],
-                "simulated": False,
+                # legacy 路径使用默认输入或文件数据，公共契约将其标记为降级。
+                "simulated": True,
                 "result": outputs["result"],
                 "metadata": outputs["metadata"],
                 "data_source": data_source,
@@ -168,7 +170,7 @@ class AcidificationRemediationAgent(BaseAgent):
             self._persist_result(
                 agent_id=self.agent_id,
                 parcel_id=task.get("parcel_id"),
-                inputs=inputs,
+                inputs={**inputs, "data_source": data_source},
                 outputs={"error": str(e)},
                 status="error",
                 execution_context=task.get("execution_context"),

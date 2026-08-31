@@ -16,6 +16,13 @@ from .registry import tool_registry
 logger = logging.getLogger(__name__)
 
 
+def _normalize_tool_result(agent: Any, payload: Dict[str, Any], execution: Dict[str, Any]) -> Dict[str, Any]:
+    """保留工具的 execute 调用契约，同时统一工具返回值。"""
+    from framework.agents.output_contract import normalize_execution
+
+    return normalize_execution(agent, payload, execution)
+
+
 # ── pydantic args_schema ──────────────────────────────────────────────
 
 
@@ -95,7 +102,7 @@ def _model_1_wrapper(
         payload["quality_index"] = quality_index
     if quality_grade is not None:
         payload["quality_grade"] = quality_grade
-    return agent.execute(data=payload)
+    return _normalize_tool_result(agent, payload, agent.execute(data=payload))
 
 
 def _model_2_wrapper(
@@ -120,7 +127,7 @@ def _model_2_wrapper(
         payload["exe_path"] = exe_path
     if dat_path:
         payload["dat_path"] = dat_path
-    return agent.execute(data=payload)
+    return _normalize_tool_result(agent, payload, agent.execute(data=payload))
 
 
 def _model_3_wrapper(
@@ -139,7 +146,7 @@ def _model_3_wrapper(
         payload["area_code"] = area_code
     if db_path:
         payload["db_path"] = db_path
-    return agent.execute(task=payload)
+    return _normalize_tool_result(agent, payload, agent.execute(task=payload))
 
 
 def _model_4_wrapper(
@@ -160,7 +167,7 @@ def _model_4_wrapper(
         payload["target_ph"] = target_ph
     if SJD is not None:
         payload["SJD"] = SJD
-    return agent.execute(task=payload)
+    return _normalize_tool_result(agent, payload, agent.execute(task=payload))
 
 
 def _model_5_wrapper(
@@ -180,7 +187,7 @@ def _model_5_wrapper(
         payload["area_code"] = area_code
     if indicators:
         payload["indicators"] = indicators
-    return agent.execute(task=payload)
+    return _normalize_tool_result(agent, payload, agent.execute(task=payload))
 
 
 # ── Tool 构造与注册 ───────────────────────────────────────────────────

@@ -169,25 +169,13 @@ class MultiAgentOrchestrator:
                 rag_response = state.get("rag_response", {})
 
                 # 收集 sources（复刻 aggregate_results 的逻辑）
-                agent_data = model_results.get("data", {}) if isinstance(model_results, dict) else {}
-                agent_details = agent_data.get("details", {}) if isinstance(agent_data, dict) else {}
-                if isinstance(agent_details, dict):
-                    for _agent_id, detail in agent_details.items():
-                        if isinstance(detail, dict):
-                            detail_sources = detail.get("sources", [])
-                            if detail_sources:
-                                sources.extend(detail_sources)
-                            evidence = detail.get("evidence", [])
-                            if evidence and not detail_sources:
-                                for ev in evidence:
-                                    if isinstance(ev, dict) and ev.get("doc_name"):
-                                        sources.append(ev)
+                agent_data = model_results if isinstance(model_results, dict) else {}
                 if not sources and rag_response.get("sources"):
                     sources = rag_response.get("sources", [])
 
                 if question:
                     # function calling 已生成答复时直接使用，避免重复调 LLM
-                    fc_summary = agent_data.get("summary", "") if isinstance(agent_data, dict) else ""
+                    fc_summary = agent_data.get("answer", "") if isinstance(agent_data, dict) else ""
                     routing_method = agent_data.get("routing_method", "") if isinstance(agent_data, dict) else ""
                     if routing_method == "function_calling" and fc_summary:
                         full_answer = fc_summary
@@ -195,42 +183,55 @@ class MultiAgentOrchestrator:
                     else:
                         # 复刻 llm_generate 节点的 prompt 构造逻辑
                         # 提取关键模型结果摘要，便于排查
-                        summary = agent_data.get("summary", "") if isinstance(agent_data, dict) else ""
-                        details = agent_data.get("details", {}) if isinstance(agent_data, dict) else {}
-                        for aid, detail in (details.items() if isinstance(details, dict) else []):
-                            if isinstance(detail, dict):
-                                evidence = detail.get("evidence", [])
-                                simulated = detail.get("simulated")
-                                print(f"[LLM-Prompt] agent={aid}, simulated={simulated}, "
-                                      f"evidence_count={len(evidence) if evidence else 0}, "
-                                      f"answer_preview={str(detail.get('answer', ''))[:80]}")
-                        print(f"[LLM-Prompt] summary_preview={str(summary)[:120]}")
+                        from .output_contract import llm_context
+                        contexts = {
+                            aid: llm_context(item)
+                            for aid, item in agent_data.get("models", {}).items()
+                        }
                         prompt = (
                             "你是耕地质量与土壤改良领域的助手。请基于专业智能体结果，"
                             "整合成一份准确、简洁、可执行的中文答复。不要编造未提供的数据，"
                             "保留明确的数值、单位和建议。\n"
                             f"用户问题：{question}\n"
-                            f"专业智能体结果：{model_results}"
+                            f"专业模型紧凑结果：{contexts}"
                         )
                         from framework.llm.service import llm_service
-                        for chunk in llm_service.generate_stream(prompt, messages=conversation_history):
-                            full_answer += chunk
-                            yield {"type": "token", "content": chunk}
+                        try:
+                            for chunk in llm_service.generate_stream(prompt, messages=conversation_history):
+                                full_answer += chunk
+                                yield {"type": "token", "content": chunk}
+                        except Exception:
+                            # LLM 失败时直接根据同一份规范模型结果生成答复，
+                            # 不重新执行任何专业 Agent。
+                            from .output_contract import deterministic_answer
+                            full_answer = "\n".join(
+                                deterministic_answer(item) for item in agent_data.get("models", {}).values()
+                            ) or "暂无可用结果"
+                            yield {"type": "token", "content": full_answer}
 
             # 最终结果
-            done_model_results = {} if question_type == 0 else state.get("model_results", {})
+            done_models = {} if question_type == 0 else state.get("model_results", {}).get("models", {})
+            if not full_answer and question_type != 0:
+                from .output_contract import deterministic_answer
+                full_answer = "\n".join(
+                    deterministic_answer(item) for item in done_models.values()
+                ) or "暂无可用结果"
             yield {
                 "type": "done",
                 "data": {
                     "answer": full_answer,
                     "sources": sources,
-                    "model_results": done_model_results,
                     "question_type": question_type,
                     "question": question,
                     "trace_id": state.get("trace_id"),
                     "analysis_context": state.get("analysis_context"),
                     "interaction_state": state.get("guard_decision", {}).get("interaction_state", "completed"),
                     "required_object_types": state.get("guard_decision", {}).get("required_object_types", []),
+                    "models": done_models,
+                    "routing": {
+                        "question_type": question_type,
+                        "status": state.get("routing_status", "normal"),
+                    },
                 },
             }
         except Exception as e:

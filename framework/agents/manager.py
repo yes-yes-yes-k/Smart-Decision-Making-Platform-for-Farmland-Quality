@@ -37,7 +37,7 @@ class AgentManager:
         self._register_agents()
 
     def _register_agents(self) -> None:
-        """注册所有 5 个专业智能体；若专业实现尚未就绪，回退到桩智能体。"""
+        """注册六个专业智能体；Model-6 保留显式不可用占位。"""
         real_agents = self._load_real_agents()
         for capability in PROFESSIONAL_CAPABILITIES:
             if capability.agent_id in real_agents:
@@ -52,12 +52,9 @@ class AgentManager:
             agent.capability = public_capability_descriptor(capability)
             self.agents[capability.agent_id] = agent
 
-        # 显式声明依赖关系
-        self.agents["model-1"].dependencies = []
-        self.agents["model-2"].dependencies = []
-        self.agents["model-3"].dependencies = []
-        self.agents["model-4"].dependencies = []
-        self.agents["model-5"].dependencies = []
+        # 任务要求各模型输出独立规范结果；依赖只影响执行顺序，不复制结果。
+        for agent_id in self.agents:
+            self.agents[agent_id].dependencies = []
 
     def _load_real_agents(self) -> Dict[str, BaseAgent]:
         """尝试加载专业智能体实现，失败时返回空字典。"""
@@ -121,16 +118,13 @@ class AgentManager:
         agent_ids = self.router.get_agents_for_type(question_type)
 
         if not agent_ids:
-            # 防御性：question_type 为 None/0/未知时返回 no_routing
             return {
                 "status": "no_routing",
-                "data": {
-                    "question_type": question_type,
-                    "agents_invoked": [],
-                    "summary": "未识别问题类型",
-                    "details": {},
-                    "recommendations": [],
-                },
+                "question_type": question_type,
+                "models": {},
+                "answer": "未识别问题类型",
+                "recommendations": [],
+                "routing_method": "keyword_fallback",
             }
 
         if context.get("execution_channel") == "chat":
@@ -155,10 +149,7 @@ class AgentManager:
                 )
 
         results = self._execute_with_dependencies(agent_ids, question, context)
-        return {
-            "status": "ok",
-            "data": self._summarize(question_type, agent_ids, results),
-        }
+        return {"status": "ok", **self._summarize(question_type, agent_ids, results)}
 
     def _execute_with_dependencies(
         self, agent_ids: List[str], question: str, context: Dict[str, Any]
@@ -173,15 +164,10 @@ class AgentManager:
             try:
                 payload = self._analysis_payload(accumulated)
                 analysis = agent.analyze(payload)
-                result = agent.answer_from_analysis(analysis)
+                result = analysis
             except Exception as exc:
-                result = {
-                    "answer": f"智能体执行失败: {exc}",
-                    "evidence": [],
-                    "confidence": 0.0,
-                    "simulated": True,
-                    "error": str(exc),
-                }
+                from .output_contract import normalize_execution
+                result = normalize_execution(agent, payload, {"status": "error", "error": str(exc)})
             results[agent_id] = result
             accumulated[agent_id] = result
 
@@ -255,36 +241,23 @@ class AgentManager:
     ) -> Dict[str, Any]:
         """汇总各智能体结果为 API 响应结构。"""
         ordered_invoked = self._topological_sort(agent_ids)
-        details = {aid: results[aid] for aid in ordered_invoked if aid in results}
+        from .output_contract import deterministic_answer
 
-        # 摘要：拼接各智能体的 answer
+        models = {aid: results[aid] for aid in ordered_invoked if aid in results}
         answer_parts = [
-            f"[{aid}] {results[aid].get('answer', '')}"
+            f"[{aid}] {deterministic_answer(results[aid])}"
             for aid in ordered_invoked
             if aid in results
         ]
         summary = "\n".join(answer_parts) if answer_parts else "暂无可用结果"
-
-        # 推荐建议：从各智能体的 evidence 中收集去重条目
         recommendations: List[str] = []
-        seen = set()
-        for aid in ordered_invoked:
-            payload = results.get(aid, {})
-            for ev in payload.get("evidence", []):
-                if isinstance(ev, dict):
-                    text = ev.get("recommendation") or ev.get("source")
-                else:
-                    text = str(ev)
-                if text and text not in seen:
-                    seen.add(text)
-                    recommendations.append(text)
 
         return {
             "question_type": question_type,
-            "agents_invoked": ordered_invoked,
-            "summary": summary,
-            "details": details,
+            "models": models,
+            "answer": summary,
             "recommendations": recommendations,
+            "routing_method": "keyword_fallback",
         }
 
 

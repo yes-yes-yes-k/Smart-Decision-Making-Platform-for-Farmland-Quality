@@ -891,3 +891,7 @@ curl -X POST http://localhost:5000/api/v1/docs/upload \
   -H "Authorization: Bearer <token>" \
   -F "file=@/path/to/document.pdf"
 ```
+# 专题模型输出契约
+
+专题模型和聊天接口的 Schema 2.0 结构、兼容请求及旧字段映射见
+[`thematic-model-output-contract.md`](thematic-model-output-contract.md)。

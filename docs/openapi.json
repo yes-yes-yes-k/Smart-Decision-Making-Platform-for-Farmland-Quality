@@ -2,8 +2,8 @@
   "openapi": "3.0.1",
   "info": {
     "title": "耕地土壤酸化治理智能问答系统 API",
-    "description": "集成 RAG、Function Calling 和多智能体架构的统一框架 API，底层引擎基于 ai_culti_demo",
-    "version": "1.5.0"
+    "description": "集成 RAG、Function Calling 和多智能体架构的统一框架 API，底层引擎基于 ai_culti_demo。专题模型默认使用 Schema 2.0：模型业务结果位于 data.result，状态位于 data.status，运行元数据位于 data.meta，问题位于 data.issues。请求可通过 response_schema=1.0 获取带弃用提示的兼容投影；聊天模型摘要需显式设置 include_model_results=true。",
+    "version": "2.0.0"
   },
   "servers": [
     {

@@ -168,9 +168,8 @@ def test_type2_routes_to_model2_end_to_end(monkeypatch):
 
     # question_type 应已透传到 context
     assert captured["context"].get("question_type") == 2
-    # agents_invoked 应仅含 model-2
-    agents_invoked = captured["real_result"]["data"]["agents_invoked"]
-    assert agents_invoked == ["model-2"], f"type 2 应仅调 model-2: {agents_invoked}"
+    # Schema 2.0 使用 models 的键表达被调用的 Agent。
+    assert list(captured["real_result"]["models"]) == ["model-2"]
     print("✓ type=2 端到端路由到 model-2")
 
 

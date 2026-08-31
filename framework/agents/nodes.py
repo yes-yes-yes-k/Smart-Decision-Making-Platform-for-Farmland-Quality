@@ -294,7 +294,7 @@ def _execute_via_function_calling(
             )
             return None
 
-        # 标准化为 model_results 结构（兼容 agent_manager.process 返回格式）
+        # 工具已经通过 BaseAgent.analyze 返回规范结果。
         tool_results: dict = result.get("tool_results", {})
         # LLM 未调用任何工具（直接给出文本答复）→ 降级走关键词路由。
         # 对齐方案设计："无 tool_calls → 降级走旧 agent_manager.process 路径"，
@@ -309,36 +309,16 @@ def _execute_via_function_calling(
         seen = set()
         agents_invoked = [a for a in agents_invoked if not (a in seen or seen.add(a))]
 
-        details: dict = {}
-        for agent_id, tool_result in tool_results.items():
-            details[agent_id] = {
-                "answer": result.get("content", ""),
-                "result": tool_result.get("result", {}),
-                "simulated": tool_result.get("simulated", False),
-                "data_source": tool_result.get("data_source", "unknown"),
-                "persisted": tool_result.get("persisted", False),
-                "status": tool_result.get("status", "ok"),
-                "confidence": 0.9,
-                "evidence": [],
-                "model_version": tool_result.get("model_version") or "unknown",
-                "data_as_of": tool_result.get("data_as_of"),
-                "data_version": tool_result.get("data_version"),
-                "actual_inputs": tool_result.get("actual_inputs") or {},
-            }
-
         question_type = context.get("question_type")
         return {
             "status": "ok",
-            "data": {
-                "question_type": question_type,
-                "agents_invoked": agents_invoked,
-                "summary": result.get("content", ""),
-                "details": details,
-                "recommendations": [],
-                "routing_method": "function_calling",
-                "tool_calls_trace": result.get("tool_calls_trace", []),
-                "iterations": result.get("iterations", 0),
-            },
+            "question_type": question_type,
+            "models": {aid: tool_results[aid] for aid in agents_invoked if aid in tool_results},
+            "answer": result.get("content", ""),
+            "recommendations": [],
+            "routing_method": "function_calling",
+            "tool_calls_trace": result.get("tool_calls_trace", []),
+            "iterations": result.get("iterations", 0),
         }
     except Exception as exc:
         print(f"[FC] _execute_via_function_calling 异常: {exc}，回退到关键词路由", flush=True)
@@ -373,9 +353,6 @@ def execute_models(state: MultiAgentState) -> MultiAgentState:
 
         # fallback: 原有关键词路由路径
         result = agent_manager.process(question, context)
-        # 标注 routing_method 便于 observability 区分
-        if isinstance(result, dict) and isinstance(result.get("data"), dict):
-            result["data"]["routing_method"] = "keyword_fallback"
         return {
             **state,
             "model_results": result,
@@ -388,14 +365,11 @@ def execute_models(state: MultiAgentState) -> MultiAgentState:
             **state,
             "model_results": {
                 "status": "error",
-                "data": {
-                    "question_type": question_type,
-                    "agents_invoked": [],
-                    "summary": "专业能力执行失败，未调用其他专业模型。",
-                    "details": {},
-                    "recommendations": [],
-                    "error": str(exc),
-                },
+                "question_type": question_type,
+                "models": {},
+                "answer": "专业能力执行失败，未调用其他专业模型。",
+                "recommendations": [],
+                "routing_method": "keyword_fallback",
             },
             "status": "model_completed",
             "error": None,
@@ -437,19 +411,20 @@ def boundary_pending_node(state: MultiAgentState) -> MultiAgentState:
         **state,
         "model_results": {
             "status": "boundary_pending",
-            "data": {
-                "question_type": state.get("question_type"),
-                "agents_invoked": [],
-                "summary": BOUNDARY_PENDING_MESSAGE,
-                "details": {},
-                "recommendations": [],
-            },
+            "question_type": state.get("question_type"),
+            "models": {},
+            "answer": BOUNDARY_PENDING_MESSAGE,
+            "recommendations": [],
+            "routing_method": "boundary_pending",
         },
         "status": "model_completed",
         "error": None,
     }
 
 def llm_generate(state: MultiAgentState) -> MultiAgentState:
+    model_results = state.get("model_results", {})
+    if model_results.get("routing_method") == "function_calling" and model_results.get("answer"):
+        return {**state, "llm_response": {"success": True, "content": model_results["answer"]}, "error": None}
     if not LLM_AVAILABLE or not llm_service.is_available():
         return {**state, "llm_response": {}, "error": None}
 
@@ -460,13 +435,18 @@ def llm_generate(state: MultiAgentState) -> MultiAgentState:
         return {**state, "llm_response": {}, "error": None}
 
     try:
-        # 专业智能体不再各自调用 LLM；此处是模型路线唯一的 LLM 总结调用。
+        from .output_contract import llm_context
+
+        contexts = {
+            agent_id: llm_context(model_result)
+            for agent_id, model_result in model_results.get("models", {}).items()
+        }
         prompt = (
             "你是耕地质量与土壤改良领域的助手。请基于专业智能体结果，"
             "整合成一份准确、简洁、可执行的中文答复。不要编造未提供的数据，"
             "保留明确的数值、单位和建议。\n"
             f"用户问题：{question}\n"
-            f"专业智能体结果：{state.get('model_results', {})}"
+            f"专业模型紧凑结果：{contexts}"
         )
         llm_result = llm_service.generate(prompt)
         return {**state, "llm_response": llm_result, "error": None}
@@ -491,12 +471,13 @@ def aggregate_results(state: MultiAgentState) -> MultiAgentState:
             "routing_status": routing_status,
             "analysis_context": state.get("analysis_context"),
             "interaction_state": state.get("guard_decision", {}).get("interaction_state", "completed"),
+            "routing": {"question_type": question_type, "status": routing_status},
         }
 
         if routing_status == ROUTING_STATUS_BOUNDARY_PENDING:
             final_result["answer"] = BOUNDARY_PENDING_MESSAGE
             final_result["sources"] = []
-            final_result["model_results"] = model_results
+            final_result["models"] = model_results.get("models", {}) if isinstance(model_results, dict) else {}
             final_result["llm_response"] = ""
             final_result["degradation"] = BOUNDARY_PENDING_MESSAGE
         elif not state.get("guard_decision", {}).get("allowed", True):
@@ -510,28 +491,18 @@ def aggregate_results(state: MultiAgentState) -> MultiAgentState:
         elif question_type == 0:
             final_result["answer"] = rag_response.get("answer", "")
             final_result["sources"] = rag_response.get("sources", [])
-            final_result["model_results"] = {}
+            final_result["models"] = {}
             final_result["llm_response"] = ""
         else:
-            final_result["model_results"] = model_results
+            final_result["models"] = model_results.get("models", {}) if isinstance(model_results, dict) else {}
             final_result["llm_response"] = llm_response.get("content", "")
 
-            agent_data = model_results.get("data", {}) if isinstance(model_results, dict) else {}
-            agent_summary = agent_data.get("summary", "")
-            agent_details = agent_data.get("details", {}) if isinstance(agent_data, dict) else {}
-
-            all_sources = []
-            if isinstance(agent_details, dict):
-                for agent_id, detail in agent_details.items():
-                    if isinstance(detail, dict):
-                        sources = detail.get("sources", [])
-                        if sources:
-                            all_sources.extend(sources)
-                        evidence = detail.get("evidence", [])
-                        if evidence and not sources:
-                            for ev in evidence:
-                                if isinstance(ev, dict) and ev.get("doc_name"):
-                                    all_sources.append(ev)
+            agent_summary = model_results.get("answer", "") if isinstance(model_results, dict) else ""
+            # 迁移窗口内兼容旧的 AgentManager 包络，但不再向新结果写入该结构。
+            if not agent_summary and isinstance(model_results, dict):
+                legacy_data = model_results.get("data", {})
+                if isinstance(legacy_data, dict):
+                    agent_summary = legacy_data.get("summary", "")
 
             if llm_response.get("success") and llm_response.get("content"):
                 answer_body = llm_response.get("content", "")
@@ -544,12 +515,19 @@ def aggregate_results(state: MultiAgentState) -> MultiAgentState:
             context_data = state.get("analysis_context")
             if capability is not None and context_data:
                 analysis_context = AnalysisContext.from_dict(context_data)
-                first_agent = next(iter(agent_details.values()), {}) if isinstance(agent_details, dict) else {}
+                first_agent = next(iter(final_result["models"].values()), {})
+                meta = first_agent.get("meta", {}) if isinstance(first_agent, dict) else {}
+                provenance_input = {
+                    "model_version": meta.get("model_version"),
+                    "data_as_of": meta.get("data_as_of"),
+                    "data_version": meta.get("data_version"),
+                    "actual_inputs": first_agent.get("actual_inputs", {}),
+                }
                 provenance = result_provenance_builder.build(
                     trace_id=state.get("trace_id") or "unknown",
                     analysis_context=analysis_context,
                     capability=capability,
-                    agent_result=first_agent if isinstance(first_agent, dict) else {},
+                    agent_result=provenance_input,
                     calculated_at=datetime.now(timezone.utc),
                 )
                 final_result["provenance"] = provenance
@@ -557,7 +535,7 @@ def aggregate_results(state: MultiAgentState) -> MultiAgentState:
             else:
                 final_result["answer"] = answer_body
 
-            final_result["sources"] = all_sources if all_sources else []
+            final_result["sources"] = []
             if not final_result["sources"] and rag_response.get("sources"):
                 final_result["sources"] = rag_response.get("sources", [])
 

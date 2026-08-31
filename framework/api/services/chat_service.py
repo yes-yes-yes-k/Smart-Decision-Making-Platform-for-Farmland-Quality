@@ -107,6 +107,12 @@ class ChatRequestService:
             record_analysis_context_event(EVENT_NEEDS_SCENARIO_INPUTS)
         model_results = normalized.get("model_results", {})
         agent_data = model_results.get("data", {}) if isinstance(model_results, Mapping) else {}
+        models = normalized.get("models") or (
+            model_results.get("models", {}) if isinstance(model_results, Mapping) else {}
+        )
+        agents_invoked = agent_data.get("agents_invoked") or (
+            list(models) if isinstance(models, Mapping) else []
+        )
         snapshot = deepcopy(prepared.context_snapshot)
         snapshot["trace_id"] = normalized.get("trace_id")
         snapshot["provenance"] = deepcopy(normalized.get("provenance") or {})
@@ -115,7 +121,7 @@ class ChatRequestService:
             role="assistant",
             content=normalized.get("answer", ""),
             sources=deepcopy(normalized.get("sources") or None),
-            agents_invoked=deepcopy(agent_data.get("agents_invoked") or None),
+            agents_invoked=deepcopy(agents_invoked or None),
             recommendations=deepcopy(agent_data.get("recommendations") or None),
             analysis_context_snapshot=snapshot,
         )
@@ -192,6 +198,10 @@ class ChatRequestService:
         normalized.setdefault("analysis_context", deepcopy(prepared.context_snapshot))
         normalized.setdefault("sources", [])
         normalized.setdefault("model_results", {})
+        if "models" not in normalized:
+            model_results = normalized.get("model_results", {})
+            if isinstance(model_results, Mapping):
+                normalized["models"] = deepcopy(model_results.get("models", {}))
         normalized.setdefault("required_object_types", [])
         normalized.setdefault("missing_inputs", [])
         if normalized.get("provenance") is None:
@@ -213,15 +223,30 @@ class ChatRequestService:
         trace_id = result.get("trace_id")
         if capability is None or not trace_id:
             return None
+        analysis_context = AnalysisContext.from_dict(prepared.context_snapshot)
+        if analysis_context.mode.value == "spatial" and analysis_context.object is None:
+            return None
         model_results = result.get("model_results", {})
         agent_data = model_results.get("data", {}) if isinstance(model_results, Mapping) else {}
         details = agent_data.get("details", {}) if isinstance(agent_data, Mapping) else {}
-        first_agent = next(iter(details.values()), {}) if isinstance(details, Mapping) else {}
+        models = result.get("models") or (
+            model_results.get("models", {}) if isinstance(model_results, Mapping) else {}
+        )
+        first_agent = next(iter(models.values()), {}) if isinstance(models, Mapping) else {}
+        if not first_agent and isinstance(details, Mapping):
+            first_agent = next(iter(details.values()), {})
+        meta = first_agent.get("meta", {}) if isinstance(first_agent, Mapping) else {}
+        provenance_input = {
+            "model_version": first_agent.get("model_version") or meta.get("model_version"),
+            "data_as_of": first_agent.get("data_as_of") or meta.get("data_as_of"),
+            "data_version": first_agent.get("data_version") or meta.get("data_version"),
+            "actual_inputs": first_agent.get("actual_inputs", {}),
+        } if isinstance(first_agent, Mapping) else {}
         return self._provenance_builder.build(
             trace_id=trace_id,
-            analysis_context=AnalysisContext.from_dict(prepared.context_snapshot),
+            analysis_context=analysis_context,
             capability=capability,
-            agent_result=first_agent if isinstance(first_agent, Mapping) else {},
+            agent_result=provenance_input,
             calculated_at=datetime.now(timezone.utc),
         )
 

@@ -237,13 +237,13 @@ def _infer_model_from_question(question: str, context: dict) -> int:
     优先级：问题关键词 → 默认 model-1（稳定性退化分析，最通用的地块分析模型）。
     """
     # 尝试从问题中找线索
-    if any(w in question for w in ("等级", "评价", "质量")):
+    if any(w in question for w in ("等级", "评价", "质量", "这块地怎么样", "肥力如何")):
         return 2
     if any(w in question for w in ("障碍", "问题", "毛病", "诊断")):
         return 3
     if any(w in question for w in ("酸化", "pH", "酸性", "石灰")):
         return 4
-    if any(w in question for w in ("有机质", "有机肥", "培肥", "秸秆")):
+    if any(w in question for w in ("有机质", "有机肥", "培肥", "秸秆", "施肥方案")):
         return 5
     # 默认：model-1 稳定性退化分析（最通用的地块分析）
     return 1

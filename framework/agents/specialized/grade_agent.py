@@ -139,20 +139,21 @@ class FarmlandGradeAgent(BaseAgent):
                         "persisted": False,
                     }
                 outputs = result
-                status = "degraded"
+                status = "ok"
+                data_source = "csv"
 
             persisted = self._persist_result(
                 agent_id=self.agent_id,
                 parcel_id=data.get("parcel_id") or data.get("parcel_code"),
-                inputs=inputs,
+                inputs={**inputs, "data_source": data_source},
                 outputs=outputs,
                 status=status,
                 execution_context=data.get("execution_context"),
             )
 
             return {
-                "status": "ok",
-                "simulated": data_source != "db",
+                "status": status,
+                "simulated": False,
                 "result": outputs,
                 "data_source": data_source,
                 "persisted": persisted,
@@ -161,7 +162,7 @@ class FarmlandGradeAgent(BaseAgent):
             self._persist_result(
                 agent_id=self.agent_id,
                 parcel_id=data.get("parcel_id"),
-                inputs=inputs,
+                inputs={**inputs, "data_source": data_source},
                 outputs={"error": str(e)},
                 status="error",
                 execution_context=data.get("execution_context"),
