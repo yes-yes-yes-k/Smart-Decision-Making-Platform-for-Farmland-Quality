@@ -28,8 +28,9 @@ def test_formal_spec_defines_five_professional_capabilities():
 def test_formal_spec_requires_structured_agent_analysis():
     content = _read(PROFESSIONAL_SPEC)
     assert "analyze(payload)" in content
-    assert "reliability" in content
-    assert "fallback" in content
+    assert "meta" in content
+    assert "issues" in content
+    assert "thematic-model-output-contract" in content
 
 
 def test_routing_spec_defines_all_five_professional_types():

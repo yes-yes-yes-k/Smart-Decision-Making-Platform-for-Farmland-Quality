@@ -27,11 +27,13 @@ def disable_external_llm(monkeypatch):
     """集成测试只验证本地路由和降级结构，不依赖外部运行时。"""
     from framework.agents import nodes
     from framework.rag import chain
+    from framework.config import Config
 
     llm = _UnavailableLLM()
     monkeypatch.setattr(nodes, "llm_service", llm)
     monkeypatch.setattr(chain, "llm_service", llm)
     monkeypatch.setattr(chain.rag_chain, "llm_service", llm)
+    monkeypatch.setattr(Config, "ROUTING_MODE", "keyword")
     monkeypatch.setattr(
         chain.rag_chain,
         "chat",
@@ -45,7 +47,7 @@ def disable_external_llm(monkeypatch):
 
 def _make_state(question: str, question_type: int = 1) -> MultiAgentState:
     return {
-        "request": {"question": question, "area_code": "lechang"},
+        "request": {"question": question},
         "data": {},
         "model_results": {},
         "llm_response": {},
@@ -55,6 +57,20 @@ def _make_state(question: str, question_type: int = 1) -> MultiAgentState:
         "error": None,
         "question_type": question_type,
         "relevance": 0.8,
+        "analysis_context": {
+            "mode": "spatial", "version": 1,
+            "object": {
+                "type": "parcel", "id": "P001", "display_name": "地块 P001",
+                "area_code": "440281", "parent_path": [], "source": "test",
+                "validated_at": "2026-08-30T00:00:00+00:00",
+            },
+        },
+        "validated_identifiers": {"parcel_id": "P001", "parcel_code": "A0001"},
+        "scenario_inputs": {},
+        "calculation_mode": "spatial",
+        "trace_id": "integration-trace",
+        "user_id": 1,
+        "conversation_id": 1,
     }
 
 
@@ -102,8 +118,8 @@ def test_execute_models_writes_structured_result():
     print("✓ execute_models 写入结构化多智能体结果")
 
 
-def test_chat_api_returns_structured_multi_agent_result():
-    """通过 Flask test client 验证 /api/v1/chat/ 返回多智能体结构化结果"""
+def test_chat_api_raw_legacy_ids_do_not_bypass_central_guard():
+    """API 尚未解析的原始旧 ID 不得直接触发专业 Agent。"""
     from framework.api.app import create_app
 
     app = create_app("sqlite")
@@ -128,22 +144,14 @@ def test_chat_api_returns_structured_multi_agent_result():
         resp = client.post(
             "/api/v1/chat/",
             json={"message": "我的田耕地质量等级是多少",
-                  "parcel_id": "1", "parcel_code": "A0001",
-                  "include_model_results": True},
+                  "parcel_id": "UNKNOWN-RAW-ID", "parcel_code": "UNKNOWN-RAW-CODE"},
             headers={"Authorization": f"Bearer {access_token}"},
         )
-    assert resp.status_code == 200
+    assert resp.status_code == 422
     payload = resp.get_json()
-    assert payload["status"] == "ok"
-    data = payload["data"]
-    assert payload["schema_version"] == "2.0"
-    assert set(data) == {"message_id", "answer", "sources", "recommendations", "routing", "models"}
-    qt = data["routing"]["question_type"]
-    assert list(data["models"]) == ["model-2"]
-    assert "data" not in data["models"]["model-2"]
-    assert "details" not in data["models"]["model-2"]
-
-    print(f"✓ /api/v1/chat/ 返回 Schema 2.0 精简模型结果 (type={qt})")
+    assert payload["error"]["code"] in {
+        "analysis_object_invalid", "legacy_identifier_ambiguity",
+    }
 
 
 def test_e2e_type1_stability_routing():
@@ -232,7 +240,7 @@ def test_chat_api_passes_top_level_parcel_id_and_code():
     app.config["TESTING"] = True
 
     with app.app_context():
-        from framework.models.user import db, User
+        from framework.models import db, User, ParcelInfo
         db.create_all()
         user = User.query.filter_by(username="tester").first()
         if not user:
@@ -240,6 +248,9 @@ def test_chat_api_passes_top_level_parcel_id_and_code():
             db.session.add(user)
             db.session.commit()
         user_id = user.id
+        if not ParcelInfo.query.filter_by(parcel_id="1").first():
+            db.session.add(ParcelInfo(parcel_id="1", legacy_parcel_code="A0001", area_code="440281"))
+            db.session.commit()
         from flask_jwt_extended import create_access_token
         access_token = create_access_token(identity=str(user_id))
 
@@ -288,7 +299,7 @@ def test_chat_api_top_level_parcel_overrides_context():
     app.config["TESTING"] = True
 
     with app.app_context():
-        from framework.models.user import db, User
+        from framework.models import db, User, ParcelInfo
         db.create_all()
         user = User.query.filter_by(username="tester").first()
         if not user:
@@ -296,6 +307,9 @@ def test_chat_api_top_level_parcel_overrides_context():
             db.session.add(user)
             db.session.commit()
         user_id = user.id
+        if not ParcelInfo.query.filter_by(parcel_id="1").first():
+            db.session.add(ParcelInfo(parcel_id="1", legacy_parcel_code="A0001", area_code="440281"))
+            db.session.commit()
         from flask_jwt_extended import create_access_token
         access_token = create_access_token(identity=str(user_id))
 
@@ -384,8 +398,8 @@ def test_chat_api_no_parcel_when_absent():
     print("✓ body 无 parcel 标识符时 orchestrator request 不含")
 
 
-def test_chat_api_type2_routes_to_model2_only():
-    """质量等级问题经 API 路由后，精简 models 仅包含 model-2。"""
+def test_chat_api_type5_raw_ids_are_blocked_before_model2():
+    """未经上下文服务验证的旧 ID 不得在 API 路径触发 model-2。"""
     from framework.api.app import create_app
 
     app = create_app("sqlite")
@@ -409,24 +423,16 @@ def test_chat_api_type2_routes_to_model2_only():
             "/api/v1/chat/",
             json={
                 "message": "我的田耕地质量等级是多少",
-                "parcel_id": "1",
-                "parcel_code": "A0001",
-                "include_model_results": True,
+                "parcel_id": "UNKNOWN-PARCEL",
+                "parcel_code": "UNKNOWN-CODE",
             },
             headers={"Authorization": f"Bearer {access_token}"},
         )
-    assert resp.status_code == 200
+    assert resp.status_code == 422
     payload = resp.get_json()
-    assert payload["status"] == "ok"
-    data = payload["data"]
-    assert payload["schema_version"] == "2.0"
-    assert "role" not in data
-    assert "question_type" not in data
-    assert "agents_invoked" not in data
-    qt = data["routing"]["question_type"]
-    assert qt == 2, f"质量等级问题期望 type 2，实际 type {qt}"
-    assert list(data["models"]) == ["model-2"]
-    print(f"✓ Schema 2.0: type 2 API 路由正确 (type={qt}, models={list(data['models'])})")
+    assert payload["error"]["code"] in {
+        "analysis_object_invalid", "legacy_identifier_ambiguity",
+    }
 
 
 def test_chat_api_knowledge_question_routes_to_rag():

@@ -182,14 +182,21 @@ def identify_question_type(question: str, context: Optional[dict] = None) -> tup
         print(f"[路由] 知识性问题 → RAG (type=0)")
         return 0, 1.0
 
-    base_type, base_rel = _identify_question_type_keyword(question)
+    keyword_type, keyword_rel = _identify_question_type_keyword(question)
+    base_type, base_rel = keyword_type, keyword_rel
 
     # ROUTING_MODE=llm 且 LLM 可用：优先 LLM 初判
     if Config.ROUTING_MODE == "llm" and LLM_AVAILABLE and llm_service.is_available():
         llm_result = _identify_question_type_llm(question, context)
         if llm_result is not None:
-            base_type, base_rel = llm_result[0], llm_result[1]
-            _last_router_method = "llm"
+            llm_type, llm_rel = llm_result[0], llm_result[1]
+            if llm_type == 0 and keyword_type != 0:
+                # 明确领域关键词优先于 LLM 的 RAG 误判，避免专业模型被跳过。
+                base_type, base_rel = keyword_type, keyword_rel
+                _last_router_method = "keyword"
+            else:
+                base_type, base_rel = llm_type, llm_rel
+                _last_router_method = "llm"
         else:
             # LLM 失败：回退关键词/向量，router_method 保持 keyword
             _last_router_method = "keyword"

@@ -112,6 +112,14 @@ CREATE TABLE model_execution_log (
   user_id INTEGER,
   conversation_id INTEGER,
   parcel_id VARCHAR(64),
+  analysis_object_type VARCHAR(16),
+  analysis_object_id VARCHAR(64),
+  area_code VARCHAR(32),
+  context_version INTEGER,
+  analysis_context_snapshot JSONB,
+  model_version VARCHAR(32),
+  data_as_of VARCHAR(32),
+  data_version VARCHAR(32),
   layer_id BIGINT,
   input_params JSONB,
   output_result JSONB,
@@ -155,9 +163,11 @@ COMMENT ON COLUMN model_execution_log.duration_ms IS '执行耗时（毫秒）';
 COMMENT ON COLUMN model_execution_log.error_message IS '错误信息';
 COMMENT ON COLUMN model_execution_log.created_at IS '记录创建时间';
 
-CREATE UNIQUE INDEX uk_model_execution_log_trace_id ON model_execution_log (trace_id);
+CREATE INDEX idx_model_execution_log_trace_id ON model_execution_log (trace_id);
 CREATE INDEX idx_model_execution_log_agent_id ON model_execution_log (agent_id);
 CREATE INDEX idx_model_execution_log_parcel_id ON model_execution_log (parcel_id);
+CREATE INDEX idx_model_execution_log_object ON model_execution_log (analysis_object_type, analysis_object_id);
+CREATE INDEX idx_model_execution_log_area_agent_status ON model_execution_log (area_code, agent_id, status);
 CREATE INDEX idx_model_execution_log_layer_id ON model_execution_log (layer_id);
 CREATE INDEX idx_model_execution_log_started_at ON model_execution_log (started_at);
 
@@ -710,6 +720,7 @@ CREATE INDEX idx_exclusive_rule_config_enabled ON exclusive_rule_config (enabled
 CREATE TABLE parcel_info (
   id BIGSERIAL,
   parcel_id VARCHAR(64) NOT NULL,
+  legacy_parcel_code VARCHAR(64),
   geom geometry(Polygon,4326),
   area_code VARCHAR(32),
   centroid_lon DOUBLE PRECISION,
@@ -737,6 +748,8 @@ COMMENT ON COLUMN parcel_info.created_at IS '创建时间';
 COMMENT ON COLUMN parcel_info.updated_at IS '更新时间';
 
 CREATE UNIQUE INDEX uk_parcel_info_parcel_id ON parcel_info (parcel_id);
+CREATE UNIQUE INDEX uk_parcel_info_legacy_parcel_code ON parcel_info (legacy_parcel_code);
+CREATE INDEX idx_parcel_info_legacy_parcel_code ON parcel_info (legacy_parcel_code);
 CREATE INDEX idx_parcel_info_area_code ON parcel_info (area_code);
 CREATE INDEX idx_parcel_info_geom ON parcel_info USING GIST (geom);
 

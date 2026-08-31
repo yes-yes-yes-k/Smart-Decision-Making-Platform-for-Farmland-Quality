@@ -3,7 +3,7 @@ from __future__ import annotations
 from typing import Any, Dict
 import logging
 
-from ..base import BaseAgent
+from ..base import BaseAgent, ProfessionalInputRejected
 from ..mock_data import MockDataLoader
 from ...domain.data.parcel_data_accessor import ParcelDataAccessor
 from ...domain.other_models.model_5 import EXTERNAL_FIELD_MAP, model_5_execution
@@ -139,8 +139,14 @@ class OrganicMatterAgent(BaseAgent):
         }
 
     def execute(self, task: Dict[str, Any]) -> Dict[str, Any]:
+        task = task or {}
+        chat = task.get("execution_channel") == "chat"
+        if chat and (not task.get("guard_passed") or not task.get("parcel_id")):
+            raise ProfessionalInputRejected("verified_parcel_required", "有机质聊天计算需要已验证地块")
         inputs = self._collect_inputs(task)
         data_source = inputs.pop("data_source", "unknown")
+        if chat and data_source != "db":
+            raise ProfessionalInputRejected("verified_parcel_required", "已验证地块未命中权威数据")
 
         try:
             if not self._has_model_features(inputs) and data_source != "db":
@@ -189,6 +195,7 @@ class OrganicMatterAgent(BaseAgent):
                 inputs={**inputs, "data_source": data_source},
                 outputs=outputs,
                 status=status,
+                execution_context=task.get("execution_context") if isinstance(task, dict) else None,
             )
 
             return {
@@ -209,6 +216,7 @@ class OrganicMatterAgent(BaseAgent):
                 inputs={**inputs, "data_source": data_source},
                 outputs={"error": str(e)},
                 status="error",
+                execution_context=task.get("execution_context") if isinstance(task, dict) else None,
             )
             return {
                 "status": "error",

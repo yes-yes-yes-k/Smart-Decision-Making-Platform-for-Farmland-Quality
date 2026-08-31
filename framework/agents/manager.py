@@ -1,8 +1,8 @@
 from __future__ import annotations
 from typing import Any, Dict, List
 
-from .base import BaseAgent
-from .capabilities import PROFESSIONAL_CAPABILITIES, public_capability_descriptor
+from .base import BaseAgent, ProfessionalInputRejected
+from .capabilities import CAPABILITY_BY_AGENT_ID, PROFESSIONAL_CAPABILITIES, public_capability_descriptor
 from .router import QuestionTypeRouter
 
 
@@ -126,6 +126,27 @@ class AgentManager:
                 "recommendations": [],
                 "routing_method": "keyword_fallback",
             }
+
+        if context.get("execution_channel") == "chat":
+            if not context.get("guard_passed"):
+                raise ProfessionalInputRejected(
+                    "analysis_guard_required", "专业聊天执行必须先通过中央守卫"
+                )
+            mode = context.get("calculation_mode", "spatial")
+            object_type = (
+                (context.get("execution_context") or {})
+                .get("analysis_context", {})
+                .get("object", {}) or {}
+            ).get("type")
+            allowed_types = {
+                object_type_name
+                for agent_id in agent_ids
+                for object_type_name in CAPABILITY_BY_AGENT_ID[agent_id].supported_object_types
+            }
+            if mode == "spatial" and object_type not in allowed_types:
+                raise ProfessionalInputRejected(
+                    "verified_spatial_object_required", "专业聊天空间计算需要匹配能力的已验证对象"
+                )
 
         results = self._execute_with_dependencies(agent_ids, question, context)
         return {"status": "ok", **self._summarize(question_type, agent_ids, results)}

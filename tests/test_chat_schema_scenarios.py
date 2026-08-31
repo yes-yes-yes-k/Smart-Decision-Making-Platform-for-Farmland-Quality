@@ -111,7 +111,8 @@ def test_professional_models_omit_details_by_default(chat_client, monkeypatch, q
     assert response.status_code == 200
     body = response.get_json()
     assert body["schema_version"] == "2.0"
-    assert set(body["data"]) == {"message_id", "answer", "sources", "recommendations", "routing"}
+    assert {"message_id", "answer", "sources", "recommendations", "routing"} <= set(body["data"])
+    assert "models" not in body["data"]
     assert body["data"]["routing"]["question_type"] == question_type
 
 

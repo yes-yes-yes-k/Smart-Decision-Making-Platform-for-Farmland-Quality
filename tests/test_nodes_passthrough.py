@@ -4,8 +4,8 @@ import sys, os
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 
-def test_execute_models_passes_fertilizer_type(monkeypatch):
-    """execute_models 应将顶层 fertilizer_type 注入 context（与 land_type 并列）。"""
+def test_execute_models_does_not_pass_unvalidated_request_inputs(monkeypatch):
+    """空间执行只使用规范上下文，不扫描原始 request 的业务字段。"""
     from framework.agents import nodes
     import framework.agents.manager as manager_mod
 
@@ -31,8 +31,8 @@ def test_execute_models_passes_fertilizer_type(monkeypatch):
     }
     nodes.execute_models(state)
 
-    assert captured["context"].get("fertilizer_type") == "urea"
-    assert captured["context"].get("land_type") == "paddy"
+    assert "fertilizer_type" not in captured["context"]
+    assert "land_type" not in captured["context"]
 
 
 def test_question_type_4_routes_to_model_4():

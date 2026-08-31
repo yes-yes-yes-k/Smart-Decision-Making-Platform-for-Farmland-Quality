@@ -210,11 +210,10 @@ def test_model5_run_api_exposes_input_conflict():
     assert data["model_id"] == "organic-matter-improvement"
 
 
-def test_chat_api_type5_transmits_top_level_fertility_fields():
+def test_chat_api_type5_requires_verified_parcel_before_execution():
     app, headers = _authenticated_client()
     payload = {
         "message": "有机肥每亩施用量多少？",
-        "area_code": "lechang",
         "land_type": "upland",
         "include_model_results": True,
         **EXTERNAL_FEATURES,
@@ -223,11 +222,8 @@ def test_chat_api_type5_transmits_top_level_fertility_fields():
     assert response.status_code == 200
     data = response.get_json()["data"]
     assert data["routing"]["question_type"] == 5
-    assert list(data["models"]) == ["model-5"]
-    model_result = data["models"]["model-5"]
-    assert model_result["model_id"] == "organic-matter-improvement"
-    assert model_result["meta"]["model_version"] == "SG_RF_v2_20260804"
-    assert model_result["meta"]["simulated"] is False
+    assert data["interaction_state"] == "needs_analysis_object"
+    assert data.get("models", {}) == {}
 
 
 def test_type5_routes_model5_and_type6_routes_placeholder():

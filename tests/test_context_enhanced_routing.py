@@ -7,13 +7,37 @@
 """
 import sys
 import os
+import pytest
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from framework.config import Config
 # 确保使用 LLM 模式
 setattr(Config, "ROUTING_MODE", "llm")
 
+from framework.agents import routing
 from framework.agents.routing import identify_question_type
+
+
+@pytest.fixture(autouse=True)
+def deterministic_context_routing(monkeypatch):
+    """隔离外部 LLM/向量服务，只验证本文件声明的 context 路由规则。"""
+    def fake_llm_route(question, context):
+        has_parcel = context and (
+            context.get("parcel_id") or context.get("parcel_code")
+        )
+        if has_parcel and "施肥方案" in question:
+            question_type = 5
+        elif has_parcel and "这块地怎么样" in question:
+            question_type = 2
+        else:
+            question_type = 0
+        return question_type, 0.9, "context routing test"
+
+    monkeypatch.setattr(Config, "ROUTING_MODE", "llm")
+    monkeypatch.setattr(routing, "LLM_AVAILABLE", True)
+    monkeypatch.setattr(routing, "EMBEDDING_AVAILABLE", False)
+    monkeypatch.setattr(routing.llm_service, "is_available", lambda: True)
+    monkeypatch.setattr(routing, "_identify_question_type_llm", fake_llm_route)
 
 
 def test_no_parcel_施肥方案_routes_to_rag():

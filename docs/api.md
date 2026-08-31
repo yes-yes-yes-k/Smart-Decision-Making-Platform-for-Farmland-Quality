@@ -474,6 +474,60 @@ context 参数说明：
 
 ---
 
+### 聊天分析对象与情景试算
+
+专业问题不再相信客户端传入的名称或区域属性，只接受对象引用并由后端权威目录解析。
+会话保存当前对象和递增版本；历史消息保存创建时的不可变快照。
+
+设置对象（首次会话版本为 `0`）：
+
+```bash
+curl -X POST http://localhost:5000/api/v1/chat/ \
+  -H "Authorization: Bearer $TOKEN" -H "Content-Type: application/json" \
+  -d '{"message":"分析这块地的质量等级","conversation_id":1,"analysis_context":{"action":"set","expected_version":0,"object":{"type":"parcel","id":"P001"}}}'
+```
+
+后续请求使用 `{"analysis_context":{"action":"inherit"}}` 继承；清除时使用
+`{"analysis_context":{"action":"clear","expected_version":1}}`。`expected_version`
+不匹配返回 `409 analysis_context_conflict`，且不会保存消息。
+
+Model-4 无空间对象情景试算：
+
+```json
+{
+  "message": "试算酸化改良",
+  "calculation_mode": "scenario",
+  "SJD": 5.2,
+  "JHX": 0.8,
+  "JLA": 1.1,
+  "land_type": "upland",
+  "fertilizer_type": "urea"
+}
+```
+
+缺少对象或情景参数是可恢复交互，返回 HTTP 200，`interaction_state` 分别为
+`needs_analysis_object` 或 `needs_scenario_inputs`；服务会保存用户消息和确定性助手提示，
+但不执行专业模型。SSE 仅发送 `meta`、`done`，不发送 `token`。
+
+完成响应中的 `analysis_context`、`provenance`、`scenario_result`、`spatial_object`
+和 `object_title` 为后端结构化字段。`provenance` 包含同一次执行的 `trace_id`、模型和
+数据版本、计算时间及实际关键输入。
+
+错误响应统一为：
+
+```json
+{"status":"error","error":{"code":"analysis_object_invalid","message":"地块不存在","details":{}}}
+```
+
+| HTTP | code | 含义与持久化 |
+|---|---|---|
+| 422 | `analysis_object_invalid` / `legacy_identifier_ambiguity` | 对象非法；不保存消息 |
+| 409 | `analysis_context_conflict` | 版本冲突；不保存消息 |
+| 503 | `analysis_object_validation_unavailable` | 权威验证不可用；旧对象保持不变，不保存消息 |
+
+旧 `parcel_id`、`parcel_code`、`area_code` 仅用于迁移兼容并已弃用。双地块 ID 只有在
+`parcel_info` 权威映射中指向同一对象时才会接受；无法映射时拒绝，绝不猜测或补默认对象。
+
 ## 模型接口
 
 ### 获取可用模型列表

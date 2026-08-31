@@ -8,6 +8,12 @@ from datetime import datetime, timezone
 logger = logging.getLogger(__name__)
 
 
+class ProfessionalInputRejected(ValueError):
+    def __init__(self, code: str, message: str):
+        super().__init__(message)
+        self.code = code
+
+
 class BaseAgent(ABC):
     """智能体抽象基类，定义统一接口。"""
 
@@ -159,6 +165,8 @@ class BaseAgent(ABC):
         inputs: dict,
         outputs: dict,
         status: str,
+        *,
+        execution_context: dict | None = None,
     ) -> bool:
         """同步持久化执行日志和结果表。
 
@@ -189,10 +197,18 @@ class BaseAgent(ABC):
 
             try:
                 now = datetime.now(timezone.utc)
+                execution_context = execution_context or {}
+                snapshot = execution_context.get("analysis_context")
+                obj = (snapshot or {}).get("object") or {}
                 # 普通执行日志只保存规范公共快照；完整输入仍作为审计输入保留，
                 # 不把 execute() 的旧展示包络写入 output_result。
                 from .output_contract import normalize_execution, public_full, sanitize_json
                 execution = dict(outputs or {}) if isinstance(outputs, dict) else {"result": outputs}
+                persisted_outputs = dict(outputs or {}) if isinstance(outputs, dict) else {"result": outputs}
+                persisted_outputs.setdefault("model_version", "unknown")
+                persisted_outputs.setdefault("data_as_of", None)
+                persisted_outputs.setdefault("data_version", None)
+                persisted_outputs.setdefault("actual_inputs", dict(inputs or {}))
                 execution["status"] = status
                 if "result" not in execution:
                     execution["result"] = outputs
@@ -200,25 +216,35 @@ class BaseAgent(ABC):
                 execution.setdefault("simulated", bool(inputs.get("simulated", False)))
                 normalized = normalize_execution(self, inputs, execution)
                 audit_inputs = sanitize_json(dict(inputs or {}))
-
+                meta = normalized.get("meta", {})
                 log = ModelExecutionLog(
-                    trace_id=str(uuid.uuid4()),
+                    trace_id=execution_context.get("trace_id") or uuid.uuid4().hex,
                     agent_id=agent_id,
                     question_type=self._get_question_type(),
+                    user_id=execution_context.get("user_id"),
+                    conversation_id=execution_context.get("conversation_id"),
                     parcel_id=parcel_id,
+                    analysis_object_type=obj.get("type"),
+                    analysis_object_id=obj.get("id"),
+                    area_code=obj.get("area_code"),
+                    context_version=(snapshot or {}).get("version"),
+                    analysis_context_snapshot=snapshot,
                     input_params=audit_inputs,
                     output_result=public_full(normalized),
                     evidence=normalized.get("issues", []),
                     status=normalized.get("status", status),
                     simulated=bool(normalized.get("meta", {}).get("simulated", False)),
                     error_message=(normalized.get("issues") or [{}])[0].get("message") if normalized.get("status") in {"error", "rejected", "unavailable"} else None,
+                    model_version=meta.get("model_version") or "unknown",
+                    data_as_of=meta.get("data_as_of"),
+                    data_version=meta.get("data_version"),
                     started_at=now,
                     completed_at=now,
                 )
                 db.session.add(log)
                 db.session.flush()
 
-                result_record = self._build_result_record(log.id, outputs)
+                result_record = self._build_result_record(log.id, persisted_outputs)
                 if result_record is not None:
                     db.session.add(result_record)
 

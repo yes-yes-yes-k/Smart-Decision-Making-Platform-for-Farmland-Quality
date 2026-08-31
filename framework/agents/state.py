@@ -14,3 +14,10 @@ class MultiAgentState(TypedDict):
     relevance: Optional[float]
     routing_status: Optional[str]
     trace_id: Optional[str]
+    analysis_context: dict[str, Any]
+    calculation_mode: str
+    guard_decision: dict[str, Any]
+    validated_identifiers: dict[str, str]
+    scenario_inputs: dict[str, Any]
+    user_id: int | None
+    conversation_id: int | None

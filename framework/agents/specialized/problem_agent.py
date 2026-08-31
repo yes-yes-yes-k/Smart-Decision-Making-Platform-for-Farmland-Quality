@@ -149,6 +149,7 @@ class ProblemIdentificationAgent(BaseAgent):
                 inputs={**inputs, "data_source": data_source},
                 outputs=outputs,
                 status=status,
+                execution_context=task.get("execution_context"),
             )
 
             return {
@@ -165,6 +166,7 @@ class ProblemIdentificationAgent(BaseAgent):
                 inputs={**inputs, "data_source": data_source},
                 outputs={"error": str(e)},
                 status="error",
+                execution_context=task.get("execution_context"),
             )
             return {
                 "status": "degraded",
