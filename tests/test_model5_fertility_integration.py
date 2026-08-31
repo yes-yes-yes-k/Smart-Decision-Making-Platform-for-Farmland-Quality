@@ -206,7 +206,7 @@ def test_model5_run_api_exposes_input_conflict():
     assert data["model_id"] == "model-5"
 
 
-def test_chat_api_type5_transmits_top_level_fertility_fields():
+def test_chat_api_type5_requires_verified_parcel_before_execution():
     app, headers = _authenticated_client()
     payload = {
         "message": "有机肥每亩施用量多少？",
@@ -218,12 +218,11 @@ def test_chat_api_type5_transmits_top_level_fertility_fields():
     assert response.status_code == 200
     data = response.get_json()["data"]
     assert data["question_type"] == 5
-    assert data["agents_invoked"] == ["model-5"]
-    details = data["model_results"]["data"]["details"]["model-5"]
-    evidence = {item["metric"]: item["value"] for item in details["evidence"]}
-    assert evidence["model_id"] == "model-5"
-    assert evidence["model_version"] == "SG_RF_v2_20260804"
-    assert details["simulated"] is False
+    # Task 9 will expose the standard interaction_state envelope.  At this
+    # boundary, the critical safety rule is already observable: missing parcel
+    # input must not invoke Model-5 or expose its numeric result.
+    assert data.get("agents_invoked", []) == []
+    assert "model_results" not in data
 
 
 def test_type5_routes_model5_and_type6_routes_placeholder():

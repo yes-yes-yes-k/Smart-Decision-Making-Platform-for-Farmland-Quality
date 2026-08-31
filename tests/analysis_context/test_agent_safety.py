@@ -1,6 +1,7 @@
 import pytest
 
 from framework.agents.base import ProfessionalInputRejected
+from framework.agents.manager import AgentManager
 from framework.agents.specialized.acidification_agent import AcidificationRemediationAgent
 from framework.agents.specialized.organic_matter_agent import OrganicMatterAgent
 
@@ -34,3 +35,23 @@ def test_model4_scenario_uses_only_supplied_values(monkeypatch):
     })
     assert result["status"] != "rejected"
     assert result["result"]
+
+
+def test_agent_manager_rejects_unguarded_or_wrong_scale_chat(monkeypatch):
+    manager = AgentManager()
+    monkeypatch.setattr(
+        manager, "_execute_with_dependencies",
+        lambda *args, **kwargs: pytest.fail("professional agent must not execute"),
+    )
+    with pytest.raises(ProfessionalInputRejected, match="中央守卫"):
+        manager.process("稳定性", {"question_type": 1, "execution_channel": "chat"})
+    with pytest.raises(ProfessionalInputRejected, match="已验证对象"):
+        manager.process("稳定性", {
+            "question_type": 1,
+            "execution_channel": "chat",
+            "guard_passed": True,
+            "calculation_mode": "spatial",
+            "execution_context": {
+                "analysis_context": {"object": {"type": "county", "id": "440281"}}
+            },
+        })
