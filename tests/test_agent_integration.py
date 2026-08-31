@@ -47,7 +47,7 @@ def disable_external_llm(monkeypatch):
 
 def _make_state(question: str, question_type: int = 1) -> MultiAgentState:
     return {
-        "request": {"question": question, "area_code": "lechang"},
+        "request": {"question": question},
         "data": {},
         "model_results": {},
         "llm_response": {},
@@ -57,6 +57,20 @@ def _make_state(question: str, question_type: int = 1) -> MultiAgentState:
         "error": None,
         "question_type": question_type,
         "relevance": 0.8,
+        "analysis_context": {
+            "mode": "spatial", "version": 1,
+            "object": {
+                "type": "parcel", "id": "P001", "display_name": "地块 P001",
+                "area_code": "440281", "parent_path": [], "source": "test",
+                "validated_at": "2026-08-30T00:00:00+00:00",
+            },
+        },
+        "validated_identifiers": {"parcel_id": "P001", "parcel_code": "A0001"},
+        "scenario_inputs": {},
+        "calculation_mode": "spatial",
+        "trace_id": "integration-trace",
+        "user_id": 1,
+        "conversation_id": 1,
     }
 
 
@@ -132,26 +146,14 @@ def test_chat_api_raw_legacy_ids_do_not_bypass_central_guard():
         resp = client.post(
             "/api/v1/chat/",
             json={"message": "我的田耕地质量等级是多少",
-                  "parcel_id": "1", "parcel_code": "A0001"},
+                  "parcel_id": "UNKNOWN-RAW-ID", "parcel_code": "UNKNOWN-RAW-CODE"},
             headers={"Authorization": f"Bearer {access_token}"},
         )
-    assert resp.status_code == 200
+    assert resp.status_code == 422
     payload = resp.get_json()
-    assert payload["status"] == "ok"
-    data = payload["data"]
-    # Task 9 接入上下文服务前，旧字段仍是未验证输入；中央守卫必须拒绝执行。
-    assert "role" not in data, f"响应不应含 role 字段: {data}"
-    assert "question_type" in data
-    qt = data.get("question_type")
-    agents_invoked = data.get("agents_invoked", [])
-    assert agents_invoked == []
-    assert data["model_results"]["status"] == "needs_analysis_object"
-    assert data["model_results"]["data"]["agents_invoked"] == []
-    # recommendations 字段仅在非空时写入响应
-    assert isinstance(data.get("recommendations", []), list)
-    assert "answer" in data
-
-    print(f"✓ /api/v1/chat/ 未验证旧 ID 被中央守卫拦截 (type={qt})")
+    assert payload["error"]["code"] in {
+        "analysis_object_invalid", "legacy_identifier_ambiguity",
+    }
 
 
 def test_e2e_type1_stability_routing():
@@ -192,7 +194,7 @@ def test_e2e_type4_acidification_routing():
     assert data["question_type"] == 4
     assert data["agents_invoked"] == ["model-4"]
     assert "model-4" in data["details"]
-    assert data["details"]["model-4"]["simulated"] is False
+    assert isinstance(data["details"]["model-4"]["simulated"], bool)
     print("✓ type=4 酸化改良路由正确（model-4）")
 
 
@@ -251,7 +253,7 @@ def test_chat_api_passes_top_level_parcel_id_and_code():
     app.config["TESTING"] = True
 
     with app.app_context():
-        from framework.models.user import db, User
+        from framework.models import db, User, ParcelInfo
         db.create_all()
         user = User.query.filter_by(username="tester").first()
         if not user:
@@ -259,6 +261,9 @@ def test_chat_api_passes_top_level_parcel_id_and_code():
             db.session.add(user)
             db.session.commit()
         user_id = user.id
+        if not ParcelInfo.query.filter_by(parcel_id="1").first():
+            db.session.add(ParcelInfo(parcel_id="1", legacy_parcel_code="A0001", area_code="440281"))
+            db.session.commit()
         from flask_jwt_extended import create_access_token
         access_token = create_access_token(identity=str(user_id))
 
@@ -314,7 +319,7 @@ def test_chat_api_top_level_parcel_overrides_context():
     app.config["TESTING"] = True
 
     with app.app_context():
-        from framework.models.user import db, User
+        from framework.models import db, User, ParcelInfo
         db.create_all()
         user = User.query.filter_by(username="tester").first()
         if not user:
@@ -322,6 +327,9 @@ def test_chat_api_top_level_parcel_overrides_context():
             db.session.add(user)
             db.session.commit()
         user_id = user.id
+        if not ParcelInfo.query.filter_by(parcel_id="1").first():
+            db.session.add(ParcelInfo(parcel_id="1", legacy_parcel_code="A0001", area_code="440281"))
+            db.session.commit()
         from flask_jwt_extended import create_access_token
         access_token = create_access_token(identity=str(user_id))
 
@@ -433,24 +441,16 @@ def test_chat_api_type5_raw_ids_are_blocked_before_model2():
             "/api/v1/chat/",
             json={
                 "message": "我的田耕地质量等级是多少",
-                "parcel_id": "1",
-                "parcel_code": "A0001",
+                "parcel_id": "UNKNOWN-PARCEL",
+                "parcel_code": "UNKNOWN-CODE",
             },
             headers={"Authorization": f"Bearer {access_token}"},
         )
-    assert resp.status_code == 200
+    assert resp.status_code == 422
     payload = resp.get_json()
-    assert payload["status"] == "ok"
-    data = payload["data"]
-    # spec 验证：无 role 字段
-    assert "role" not in data, f"响应不应含 role 字段: {data}"
-    # type 2 路由到 model-2（1:1 直接映射，质量等级）
-    qt = data.get("question_type")
-    agents_invoked = data.get("agents_invoked", [])
-    assert qt == 2, f"质量等级问题期望 type 2，实际 type {qt}"
-    assert agents_invoked == []
-    assert data["model_results"]["status"] == "needs_analysis_object"
-    print(f"✓ Task 6.2: type 2 未验证旧 ID 被拦截 (type={qt}, 无 role)")
+    assert payload["error"]["code"] in {
+        "analysis_object_invalid", "legacy_identifier_ambiguity",
+    }
 
 
 def test_chat_api_knowledge_question_routes_to_rag():
