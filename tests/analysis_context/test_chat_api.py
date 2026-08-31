@@ -6,7 +6,7 @@ from framework.analysis_context.errors import (
     AnalysisObjectValidationUnavailable,
 )
 from framework.api.routes import chat as chat_routes
-from framework.models import Message, db
+from framework.models import Conversation, Message, db
 
 
 class _ContextService:
@@ -101,6 +101,11 @@ def test_message_snapshots_remain_immutable_after_later_request(
     assert first.status_code == 200
     with chat_app.app_context():
         first_snapshot = db.session.get(Message, 1).analysis_context_snapshot.copy()
-    parcel_context.context.object.to_dict()["id"] = "P002"
-    with chat_app.app_context():
+        conversation = Conversation.query.one()
+        updated_object = dict(conversation.analysis_object or parcel_context.snapshot()["object"])
+        updated_object["id"] = "P002"
+        updated_object["display_name"] = "地块 P002"
+        conversation.analysis_object = updated_object
+        conversation.context_version = (conversation.context_version or 0) + 1
+        db.session.commit()
         assert db.session.get(Message, 1).analysis_context_snapshot == first_snapshot
