@@ -1,5 +1,6 @@
 from __future__ import annotations
 from typing import Dict, Optional, Tuple
+from datetime import datetime, timezone
 from .state import MultiAgentState
 from .exclusive_rules import (
     apply_exclusive_rules,
@@ -24,8 +25,10 @@ from .routing import (
 from .capabilities import get_capability_by_question_type
 from framework.analysis_context.contracts import AnalysisContext
 from framework.analysis_context.guard import AnalysisRequirementGuard
+from framework.analysis_context.provenance import ResultProvenanceBuilder
 
 analysis_requirement_guard = AnalysisRequirementGuard()
+result_provenance_builder = ResultProvenanceBuilder()
 
 try:
     from framework.llm.service import llm_service
@@ -317,6 +320,10 @@ def _execute_via_function_calling(
                 "status": tool_result.get("status", "ok"),
                 "confidence": 0.9,
                 "evidence": [],
+                "model_version": tool_result.get("model_version") or "unknown",
+                "data_as_of": tool_result.get("data_as_of"),
+                "data_version": tool_result.get("data_version"),
+                "actual_inputs": tool_result.get("actual_inputs") or {},
             }
 
         question_type = context.get("question_type")
@@ -414,7 +421,12 @@ def _build_verified_execution_context(state: MultiAgentState) -> dict:
         "question_type": state.get("question_type"),
         "execution_channel": "chat",
         "guard_passed": True,
-        "execution_context": analysis_context,
+        "execution_context": {
+            "trace_id": state.get("trace_id"),
+            "analysis_context": analysis_context,
+            "user_id": state.get("user_id"),
+            "conversation_id": state.get("conversation_id"),
+        },
     })
     return context
 
@@ -521,11 +533,28 @@ def aggregate_results(state: MultiAgentState) -> MultiAgentState:
                                     all_sources.append(ev)
 
             if llm_response.get("success") and llm_response.get("content"):
-                final_result["answer"] = llm_response.get("content", "")
+                answer_body = llm_response.get("content", "")
             elif agent_summary:
-                final_result["answer"] = agent_summary
+                answer_body = agent_summary
             else:
-                final_result["answer"] = llm_response.get("content", "")
+                answer_body = llm_response.get("content", "")
+
+            capability = get_capability_by_question_type(question_type)
+            context_data = state.get("analysis_context")
+            if capability is not None and context_data:
+                analysis_context = AnalysisContext.from_dict(context_data)
+                first_agent = next(iter(agent_details.values()), {}) if isinstance(agent_details, dict) else {}
+                provenance = result_provenance_builder.build(
+                    trace_id=state.get("trace_id") or "unknown",
+                    analysis_context=analysis_context,
+                    capability=capability,
+                    agent_result=first_agent if isinstance(first_agent, dict) else {},
+                    calculated_at=datetime.now(timezone.utc),
+                )
+                final_result["provenance"] = provenance
+                final_result["answer"] = provenance["object_title"] + "\n\n" + answer_body
+            else:
+                final_result["answer"] = answer_body
 
             final_result["sources"] = all_sources if all_sources else []
             if not final_result["sources"] and rag_response.get("sources"):

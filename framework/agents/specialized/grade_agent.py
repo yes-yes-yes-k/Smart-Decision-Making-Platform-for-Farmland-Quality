@@ -147,6 +147,7 @@ class FarmlandGradeAgent(BaseAgent):
                 inputs=inputs,
                 outputs=outputs,
                 status=status,
+                execution_context=data.get("execution_context"),
             )
 
             return {
@@ -163,6 +164,7 @@ class FarmlandGradeAgent(BaseAgent):
                 inputs=inputs,
                 outputs={"error": str(e)},
                 status="error",
+                execution_context=data.get("execution_context"),
             )
             return {
                 "status": "degraded",

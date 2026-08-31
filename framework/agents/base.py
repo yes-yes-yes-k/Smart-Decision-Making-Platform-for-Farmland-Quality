@@ -159,6 +159,8 @@ class BaseAgent(ABC):
         inputs: dict,
         outputs: dict,
         status: str,
+        *,
+        execution_context: dict | None = None,
     ) -> bool:
         """同步持久化执行日志和结果表。
 
@@ -189,13 +191,31 @@ class BaseAgent(ABC):
 
             try:
                 now = datetime.now(timezone.utc)
+                execution_context = execution_context or {}
+                snapshot = execution_context.get("analysis_context")
+                obj = (snapshot or {}).get("object") or {}
+                persisted_outputs = dict(outputs)
+                persisted_outputs.setdefault("model_version", "unknown")
+                persisted_outputs.setdefault("data_as_of", None)
+                persisted_outputs.setdefault("data_version", None)
+                persisted_outputs.setdefault("actual_inputs", dict(inputs))
                 log = ModelExecutionLog(
-                    trace_id=str(uuid.uuid4()),
+                    trace_id=execution_context.get("trace_id") or uuid.uuid4().hex,
                     agent_id=agent_id,
                     question_type=self._get_question_type(),
+                    user_id=execution_context.get("user_id"),
+                    conversation_id=execution_context.get("conversation_id"),
                     parcel_id=parcel_id,
+                    analysis_object_type=obj.get("type"),
+                    analysis_object_id=obj.get("id"),
+                    area_code=obj.get("area_code"),
+                    context_version=(snapshot or {}).get("version"),
+                    analysis_context_snapshot=snapshot,
                     input_params=inputs,
-                    output_result=outputs,
+                    output_result=persisted_outputs,
+                    model_version=persisted_outputs.get("model_version") or "unknown",
+                    data_as_of=persisted_outputs.get("data_as_of"),
+                    data_version=persisted_outputs.get("data_version"),
                     status=status,
                     started_at=now,
                     completed_at=now,
@@ -203,7 +223,7 @@ class BaseAgent(ABC):
                 db.session.add(log)
                 db.session.flush()
 
-                result_record = self._build_result_record(log.id, outputs)
+                result_record = self._build_result_record(log.id, persisted_outputs)
                 if result_record is not None:
                     db.session.add(result_record)
 
@@ -297,6 +317,10 @@ class BaseAgent(ABC):
             },
             "analysis": result,
             "degraded": degraded,
+            "model_version": result.get("model_version") or metadata.get("model_version") or "unknown",
+            "data_as_of": result.get("data_as_of") or metadata.get("data_as_of"),
+            "data_version": result.get("data_version") or metadata.get("data_version"),
+            "actual_inputs": result.get("actual_inputs") or dict(payload or {}),
         }
 
     def answer_from_analysis(self, analysis: Dict[str, Any]) -> Dict[str, Any]:
@@ -335,6 +359,10 @@ class BaseAgent(ABC):
             "simulated": reliability.get("level") == "demo_stub",
             "analysis": analysis,
             "sources": [],
+            "model_version": analysis.get("model_version") or "unknown",
+            "data_as_of": analysis.get("data_as_of"),
+            "data_version": analysis.get("data_version"),
+            "actual_inputs": analysis.get("actual_inputs") or {},
         }
 
     @abstractmethod

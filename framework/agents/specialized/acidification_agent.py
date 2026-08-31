@@ -130,6 +130,7 @@ class AcidificationRemediationAgent(BaseAgent):
                 inputs=inputs,
                 outputs=outputs,
                 status=status,
+                execution_context=task.get("execution_context"),
             )
 
             if data_source == "db":
@@ -156,6 +157,7 @@ class AcidificationRemediationAgent(BaseAgent):
                 inputs=inputs,
                 outputs={"error": str(e)},
                 status="error",
+                execution_context=task.get("execution_context"),
             )
             raise
 

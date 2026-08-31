@@ -184,6 +184,7 @@ class OrganicMatterAgent(BaseAgent):
                 inputs=inputs,
                 outputs=outputs,
                 status=status,
+                execution_context=task.get("execution_context") if isinstance(task, dict) else None,
             )
 
             return {
@@ -204,6 +205,7 @@ class OrganicMatterAgent(BaseAgent):
                 inputs=inputs,
                 outputs={"error": str(e)},
                 status="error",
+                execution_context=task.get("execution_context") if isinstance(task, dict) else None,
             )
             return {
                 "status": "error",
