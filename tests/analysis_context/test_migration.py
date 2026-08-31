@@ -7,6 +7,10 @@ from scripts.migrate_analysis_context import downgrade_schema, upgrade_schema
 def _create_legacy_schema(engine):
     metadata = sa.MetaData()
     sa.Table(
+        "thematic_model_registry", metadata,
+        sa.Column("agent_id", sa.String(32), primary_key=True),
+    )
+    sa.Table(
         "kb_conversation", metadata,
         sa.Column("id", sa.Integer, primary_key=True),
     )
@@ -23,9 +27,12 @@ def _create_legacy_schema(engine):
         "model_execution_log", metadata,
         sa.Column("id", sa.Integer, primary_key=True),
         sa.Column("trace_id", sa.String(64), nullable=False),
-        sa.Column("agent_id", sa.String(32), nullable=False),
+        sa.Column("agent_id", sa.String(32), sa.ForeignKey(
+            "thematic_model_registry.agent_id", name="fk_model_execution_log_agent_id"
+        ), nullable=False),
         sa.Column("status", sa.String(16), nullable=False),
         sa.UniqueConstraint("trace_id", name="uk_model_execution_log_trace_id"),
+        sa.Index("idx_model_execution_log_status", "status"),
     )
     metadata.create_all(engine)
 
@@ -44,7 +51,14 @@ def test_upgrade_is_idempotent_and_downgrade_restores_legacy_schema(tmp_path):
     assert "analysis_object" in _column_names(engine, "kb_conversation")
     assert "analysis_context_snapshot" in _column_names(engine, "kb_message")
     assert "analysis_object_type" in _column_names(engine, "model_execution_log")
+    assert "idx_model_execution_log_status" in {
+        item["name"] for item in inspector.get_indexes("model_execution_log")
+    }
+    foreign_key = inspector.get_foreign_keys("model_execution_log")[0]
+    assert foreign_key["name"] == "fk_model_execution_log_agent_id"
+    assert foreign_key["referred_table"] == "thematic_model_registry"
     with engine.begin() as connection:
+        connection.execute(sa.text("INSERT INTO thematic_model_registry (agent_id) VALUES ('model-1'), ('model-3')"))
         connection.execute(sa.text(
             "INSERT INTO model_execution_log (trace_id, agent_id, status) VALUES "
             "('trace-1', 'model-1', 'ok'), ('trace-1', 'model-3', 'ok')"
@@ -54,6 +68,12 @@ def test_upgrade_is_idempotent_and_downgrade_restores_legacy_schema(tmp_path):
     inspector = sa.inspect(engine)
     assert not inspector.has_table("spatial_region_catalog")
     assert "analysis_object" not in _column_names(engine, "kb_conversation")
+    assert "idx_model_execution_log_status" in {
+        item["name"] for item in inspector.get_indexes("model_execution_log")
+    }
+    foreign_key = inspector.get_foreign_keys("model_execution_log")[0]
+    assert foreign_key["name"] == "fk_model_execution_log_agent_id"
+    assert foreign_key["referred_table"] == "thematic_model_registry"
     with pytest.raises(sa.exc.IntegrityError):
         with engine.begin() as connection:
             connection.execute(sa.text(

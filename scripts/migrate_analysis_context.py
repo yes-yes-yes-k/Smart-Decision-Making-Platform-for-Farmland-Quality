@@ -116,27 +116,72 @@ def _sqlite_rebuild_execution_log(connection, *, unique_trace: bool) -> None:
     inspector = sa.inspect(connection)
     old_columns = inspector.get_columns("model_execution_log")
     old_names = [column["name"] for column in old_columns]
-    metadata = sa.MetaData()
-    source = sa.Table("model_execution_log", metadata, autoload_with=connection)
-    temp_metadata = sa.MetaData()
-    copied_columns = []
-    for column in source.columns:
-        copied_columns.append(sa.Column(
-            column.name, column.type, primary_key=column.primary_key,
-            nullable=column.nullable, server_default=column.server_default,
-        ))
-    constraints = []
+    preparer = connection.dialect.identifier_preparer
+
+    # SQLite cannot drop a UNIQUE constraint. Rebuild the table while retaining
+    # every unrelated index/constraint/FK, changing only trace_id uniqueness.
+    indexes = [
+        item for item in inspector.get_indexes("model_execution_log")
+        if item.get("column_names") != ["trace_id"]
+    ]
+    uniques = [
+        item for item in inspector.get_unique_constraints("model_execution_log")
+        if item.get("column_names") != ["trace_id"]
+    ]
+    foreign_keys = inspector.get_foreign_keys("model_execution_log")
+    checks = inspector.get_check_constraints("model_execution_log")
+    primary_key = inspector.get_pk_constraint("model_execution_log").get("constrained_columns") or []
+
+    definitions = []
+    for column in old_columns:
+        definition = f"{preparer.quote(column['name'])} {column['type'].compile(connection.dialect)}"
+        if not column.get("nullable", True):
+            definition += " NOT NULL"
+        if column.get("default") is not None:
+            definition += f" DEFAULT {column['default']}"
+        definitions.append(definition)
+    if primary_key:
+        definitions.append("PRIMARY KEY (" + ", ".join(preparer.quote(name) for name in primary_key) + ")")
+    for unique in uniques:
+        columns = ", ".join(preparer.quote(name) for name in unique["column_names"])
+        prefix = f"CONSTRAINT {preparer.quote(unique['name'])} " if unique.get("name") else ""
+        definitions.append(f"{prefix}UNIQUE ({columns})")
     if unique_trace:
-        constraints.append(sa.UniqueConstraint("trace_id", name="uk_model_execution_log_trace_id"))
-    temp = sa.Table("model_execution_log__migration", temp_metadata, *copied_columns, *constraints)
-    temp.create(connection)
-    quoted = ", ".join(connection.dialect.identifier_preparer.quote(name) for name in old_names)
+        definitions.append("CONSTRAINT uk_model_execution_log_trace_id UNIQUE (trace_id)")
+    for fk in foreign_keys:
+        local = ", ".join(preparer.quote(name) for name in fk["constrained_columns"])
+        remote = ", ".join(preparer.quote(name) for name in fk["referred_columns"])
+        prefix = f"CONSTRAINT {preparer.quote(fk['name'])} " if fk.get("name") else ""
+        clause = prefix + (
+            f"FOREIGN KEY ({local}) REFERENCES {preparer.quote(fk['referred_table'])} ({remote})"
+        )
+        options = fk.get("options") or {}
+        if options.get("ondelete"):
+            clause += f" ON DELETE {options['ondelete']}"
+        if options.get("onupdate"):
+            clause += f" ON UPDATE {options['onupdate']}"
+        definitions.append(clause)
+    for check in checks:
+        if check.get("sqltext"):
+            prefix = f"CONSTRAINT {preparer.quote(check['name'])} " if check.get("name") else ""
+            definitions.append(f"{prefix}CHECK ({check['sqltext']})")
+    connection.execute(sa.text(
+        "CREATE TABLE model_execution_log__migration (" + ", ".join(definitions) + ")"
+    ))
+    quoted = ", ".join(preparer.quote(name) for name in old_names)
     connection.execute(sa.text(
         f"INSERT INTO model_execution_log__migration ({quoted}) "
         f"SELECT {quoted} FROM model_execution_log"
     ))
-    source.drop(connection)
+    connection.execute(sa.text("DROP TABLE model_execution_log"))
     connection.execute(sa.text("ALTER TABLE model_execution_log__migration RENAME TO model_execution_log"))
+    for index in indexes:
+        unique_sql = "UNIQUE " if index.get("unique") else ""
+        columns = ", ".join(preparer.quote(name) for name in index["column_names"])
+        connection.execute(sa.text(
+            f"CREATE {unique_sql}INDEX {preparer.quote(index['name'])} "
+            f"ON model_execution_log ({columns})"
+        ))
 
 
 def replace_unique_trace_constraint_with_index(connection) -> None:
@@ -205,12 +250,23 @@ def assert_context_columns_empty(engine) -> None:
                 raise RuntimeError("refusing to discard non-empty spatial_region_catalog")
 
 
-def _sqlite_drop_columns(connection, table: str, names: set[str]) -> None:
+def _drop_index(connection, table: str, index_name: str) -> None:
+    preparer = connection.dialect.identifier_preparer
+    quoted_name = preparer.quote(index_name)
+    if connection.dialect.name == "mysql":
+        connection.execute(sa.text(
+            f"DROP INDEX {quoted_name} ON {preparer.quote(table)}"
+        ))
+    else:
+        connection.execute(sa.text(f"DROP INDEX IF EXISTS {quoted_name}"))
+
+
+def _drop_columns(connection, table: str, names: set[str]) -> None:
     if not sa.inspect(connection).has_table(table):
         return
     for index in sa.inspect(connection).get_indexes(table):
         if names.intersection(index.get("column_names") or ()):
-            connection.execute(sa.text(f"DROP INDEX IF EXISTS {index['name']}"))
+            _drop_index(connection, table, index["name"])
     for name in names & _columns(connection, table):
         connection.execute(sa.text(f"ALTER TABLE {table} DROP COLUMN {name}"))
 
@@ -222,7 +278,13 @@ def restore_unique_trace_constraint(connection) -> None:
         if not _sqlite_trace_is_unique(connection):
             _sqlite_rebuild_execution_log(connection, unique_trace=True)
         return
-    connection.execute(sa.text("DROP INDEX IF EXISTS idx_model_execution_log_trace_id"))
+    inspector = sa.inspect(connection)
+    indexes = {item["name"] for item in inspector.get_indexes("model_execution_log")}
+    if "idx_model_execution_log_trace_id" in indexes:
+        _drop_index(connection, "model_execution_log", "idx_model_execution_log_trace_id")
+    unique_names = {item.get("name") for item in inspector.get_unique_constraints("model_execution_log")}
+    if "uk_model_execution_log_trace_id" in unique_names:
+        return
     if connection.dialect.name == "postgresql":
         connection.execute(sa.text(
             "ALTER TABLE model_execution_log ADD CONSTRAINT uk_model_execution_log_trace_id UNIQUE (trace_id)"
@@ -242,7 +304,7 @@ def drop_analysis_context_objects(connection) -> None:
         ("model_execution_log", set(EXECUTION_COLUMNS)),
         ("parcel_info", {"legacy_parcel_code"}),
     ):
-        _sqlite_drop_columns(connection, table, columns)
+        _drop_columns(connection, table, columns)
 
 
 def downgrade_schema(engine, *, force: bool = False) -> None:
