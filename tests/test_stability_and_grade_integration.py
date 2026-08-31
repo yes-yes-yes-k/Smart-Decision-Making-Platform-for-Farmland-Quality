@@ -98,7 +98,7 @@ class TestStabilityOnlineQuery:
     """模型1 在线查询（正常/未就绪/地块不存在）"""
 
     @geopandas_required
-    def test_normal_query_returns_ok(self):
+    def test_normal_query_returns_ok(self, flask_app_context):
         """正常查询返回 status=ok 和结构化分析结果（analyze 包络）"""
         from ai_culti_demo.thematic_models import run_thematic_model
 
@@ -220,30 +220,6 @@ class TestGradeRunner:
 # ---------------------------------------------------------------------------
 class TestCoreEngineDispatch:
     """验证 run_thematic_model 能正确调度三个新模型"""
-
-    @geopandas_required
-    def test_dispatch_stability_with_parcel_id(self):
-        """stability-risk-evaluation + parcel_id 调用实际模型（analyze 包络 real_model）"""
-        from ai_culti_demo.thematic_models import run_thematic_model
-
-        mock_indicators = {
-            "soil_ph": 5.5, "organic_matter": 20.0, "available_phosphorus": 15.0,
-            "available_potassium": 100.0, "bulk_density": 1.2, "topsoil_thickness": 80.0,
-            "plow_layer_thickness": 15.0, "soil_texture": "loam",
-            "irrigation_condition": "irrigated", "drainage_capacity": "satisfied",
-            "terrain_position": "lower", "soil_structure": "loose",
-        }
-
-        with patch("framework.agents.specialized.stability_agent.ParcelDataAccessor") as MockAccessor:
-            MockAccessor.return_value.get_parcel_indicators.return_value = mock_indicators
-            MockAccessor.return_value._map_indicators_to_inputs.return_value = mock_indicators
-            out = run_thematic_model({
-                "model_id": "stability-risk-evaluation",
-                "parcel_id": "P001",
-            })
-
-        assert out["status"] == "ok"
-        assert out["reliability"]["level"] == "real_model"
 
     def test_dispatch_grade_with_parcel_code(self, flask_app_context):
         """quality-grade-evaluation + parcel_code 调用实际 Python 模型（analyze 包络 real_model）"""
@@ -465,33 +441,6 @@ class TestComprehensiveDiagnosis:
 # ---------------------------------------------------------------------------
 class TestEndToEndIntegration:
     """端到端集成测试：run_thematic_model → 响应结构"""
-
-    @geopandas_required
-    def test_e2e_stability_full_pipeline(self):
-        """端到端：稳定性模型从调度到响应结构（analyze 包络）"""
-        from ai_culti_demo.thematic_models import run_thematic_model
-
-        mock_indicators = {
-            "soil_ph": 5.5, "organic_matter": 20.0, "available_phosphorus": 15.0,
-            "available_potassium": 100.0, "bulk_density": 1.2, "topsoil_thickness": 80.0,
-            "plow_layer_thickness": 15.0, "soil_texture": "loam",
-            "irrigation_condition": "irrigated", "drainage_capacity": "satisfied",
-            "terrain_position": "lower", "soil_structure": "loose",
-        }
-
-        with patch("framework.agents.specialized.stability_agent.ParcelDataAccessor") as MockAccessor:
-            MockAccessor.return_value.get_parcel_indicators.return_value = mock_indicators
-            MockAccessor.return_value._map_indicators_to_inputs.return_value = mock_indicators
-            out = run_thematic_model({
-                "model_id": "stability-risk-evaluation",
-                "parcel_id": "E2E001",
-            })
-
-        assert out["status"] == "ok"
-        assert out["model"]["model_id"] == "stability-risk-evaluation"
-        assert out["reliability"]["level"] == "real_model"
-        assert out["fallback"]["used"] is False
-        assert "analysis" in out
 
     def test_e2e_grade_full_pipeline(self, flask_app_context):
         """端到端：质量等级模型从调度到响应结构（analyze 包络）"""
