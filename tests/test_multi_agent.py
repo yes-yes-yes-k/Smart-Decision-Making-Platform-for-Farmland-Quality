@@ -12,7 +12,6 @@ from framework.agents.nodes import (
     execute_models,
     aggregate_results,
     check_relevance,
-    identify_question_type,
 )
 
 def test_state_initialization():
@@ -34,22 +33,6 @@ def test_state_initialization():
     assert result["rag_response"] == {}
     assert result["conversation_history"] == []
     print("✓ 状态初始化成功")
-
-def test_question_type_identification():
-    """测试问题类型识别"""
-    # 测试通用问题
-    q_type, relevance = identify_question_type("今天天气怎么样？")
-    print(f"  通用问题: type={q_type}, relevance={relevance:.2f}")
-
-    # 测试酸化评估问题
-    q_type, relevance = identify_question_type("全省耕地酸化程度如何？")
-    print(f"  酸化评估: type={q_type}, relevance={relevance:.2f}")
-
-    # 测试治理方案问题
-    q_type, relevance = identify_question_type("如何治理强酸性耕地？")
-    print(f"  治理方案: type={q_type}, relevance={relevance:.2f}")
-
-    print("✓ 问题类型识别成功")
 
 def test_route_models():
     """测试路由函数"""
@@ -162,7 +145,6 @@ def test_type2_routes_to_model2_end_to_end():
 
 if __name__ == "__main__":
     test_state_initialization()
-    test_question_type_identification()
     test_route_models()
     test_rag_chat_node()
     test_aggregate_results_rag()
