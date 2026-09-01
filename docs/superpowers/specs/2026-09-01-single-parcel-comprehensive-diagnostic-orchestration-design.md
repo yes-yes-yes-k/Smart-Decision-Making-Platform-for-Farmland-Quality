@@ -67,7 +67,7 @@
             -> ExecutionScheduler（两波执行）
             -> ResultValidator
             -> EvidenceResearcher
-            -> ReportComposer
+            -> Reporter
             -> 发布确认 / 最多 3 次修订
             -> FinalResponse + Provenance
 ```
@@ -85,7 +85,7 @@
 | EvidenceResearcher | 为已验证结论检索并绑定证据 | `EvidenceBundle` | 重新解释模型数值、制造结论 |
 | Reporter | 按固定结构组织用户可读报告 | `ReportPayload` | 修改数值、删除降级说明、生成溯源字段 |
 
-所有角色 Prompt 均有显式版本号。结构化输出解析失败时只允许一次 schema 修复调用；第二次失败进入对应失败状态，不执行未经校验的文本。
+所有角色 Prompt 均有显式版本号。Coordinator、EvidenceResearcher 和 Reporter 的结构化输出最多调用 2 次：初次生成失败后允许一次 schema 修复。Planner 从初次生成到 schema 修复或语义重生成同样总计最多 2 次；第二次仍不合法时进入失败状态。任何未经校验的文本都不能执行。
 
 ### 7.2 确定性组件
 
@@ -127,6 +127,8 @@
 - `unsupported`：超出系统能力。
 
 为保持兼容，只有明确表达“综合诊断”“综合报告”“整体问题及改良方案”等意图时才进入任务路径。其余专业问题继续使用现有 `QuestionTypeRouter` 一对一路由。Coordinator 输出无效时先执行一次 schema 修复；仍无效则回退到现有确定性识别逻辑，但该回退不得把请求升级为综合任务。
+
+本阶段的 `comprehensive_analysis` 只接受 `calculation_mode=spatial` 且对象类型为 `parcel`。情景试算和省、市、县、片区级综合请求不进入该子图；前者继续使用已有单模型能力，后者返回明确的能力范围说明。
 
 ## 9. 核心数据契约
 
@@ -185,11 +187,11 @@
 - 所有依赖必须存在且无环；
 - 工具别名、输入键和触发谓词必须来自能力目录。
 
-Validator 不静默修补非法计划。规划失败只允许一次重新生成；再次失败返回 `FAILED_PLANNING`。
+Validator 不静默修补非法计划。Planner 的初次生成和唯一一次修复或重生成总计最多 2 次；仍失败时返回 `failed_planning`。
 
 ### 9.3 ComprehensiveDiagnosticState
 
-状态至少包含：
+状态包含：
 
 ```text
 标识与控制
@@ -216,15 +218,20 @@ Validator 不静默修补非法计划。规划失败只允许一次重新生成�
 `interaction_state` 只允许按下列方向前进：
 
 ```text
-received -> planned
-planned -> needs_analysis_object | needs_input | needs_confirmation | executing
-needs_* -> planned | needs_confirmation | executing
-executing -> validating
-validating -> executing | researching | partial_complete | failed
-researching -> draft_ready
+received -> needs_analysis_object | planned | failed_planning
+needs_analysis_object -> received | canceled
+planned -> needs_input | needs_confirmation | executing
+needs_input -> planned | needs_confirmation | executing | canceled
+needs_confirmation -> executing | canceled
+executing -> validating | failed
+validating -> executing | researching | reporting | failed_validation
+researching -> reporting
+reporting -> draft_ready | failed_reporting
 draft_ready -> awaiting_release
-awaiting_release -> draft_ready | completed
+awaiting_release -> reporting | completed | partial_complete | canceled
 ```
+
+`partial_complete` 只在用户发布带降级说明的报告后成为最终状态。可选任务或 RAG 失败时先写入 `degradations`，随后继续 Reporter 和发布确认，不从 `validating` 提前结束。
 
 恢复请求必须携带 `run_id` 和 `expected_checkpoint_version`。版本过期返回 HTTP 409，不合并到新状态。
 
@@ -254,7 +261,7 @@ awaiting_release -> draft_ready | completed
 ### 10.1 请求与对象解析
 
 1. 归一化消息、会话、计算模式和交互响应。
-2. 通过 `AnalysisContextGuard` 获取不可变地块快照和 `object_version`。
+2. 确认 `calculation_mode=spatial`，再通过 `AnalysisContextGuard` 获取不可变地块快照和 `object_version`。
 3. 对象缺失时进入 `needs_analysis_object`；对象不存在、越权或冲突时按既有分析对象规范返回错误。
 4. 对象未通过验证时不得调用 Planner、模型工具或报告 LLM。
 
@@ -292,7 +299,7 @@ awaiting_release -> draft_ready | completed
 1. 只有已验证的 `TaskResult` 能生成证据查询和报告主张。
 2. EvidenceResearcher 为解释性主张检索 RAG 证据，返回 `source_id`、文档元数据、关联主张和检索分数。
 3. Reporter 按固定结构输出：分析对象、执行摘要、质量评价、障碍诊断、条件专项结果、优先改良措施、数据缺口/降级说明和溯源。
-4. `ReportPolicyValidator` 将报告数值与 `TaskResult` 做精确对照，并检查所有关键主张的来源引用。
+4. `ReportPolicyValidator` 将报告数值与 `TaskResult` 做精确对照，并检查所有关键主张的来源引用。单个报告版本校验失败时允许一次内部重生成，总生成次数最多 2 次；内部校验重生成不计入用户修订次数。
 5. 首稿进入 `awaiting_release`。用户可以发布、终止或请求修改；首稿不计入修订次数，每次重新生成加 1，最多 3 次。
 6. 达到 3 次后不再调用 Reporter；用户只能发布当前稿或结束任务。
 
@@ -327,6 +334,7 @@ Reporter 只生成报告正文和结构，`ProvenanceBuilder` 用代码写入对
 - `awaiting_release`；
 - `completed`；
 - `partial_complete`。
+- `canceled`。
 
 过期 checkpoint 返回 HTTP 409；对象或输入非法返回 HTTP 422；依赖服务不可用且没有安全降级时返回 HTTP 503。
 
@@ -336,20 +344,21 @@ Reporter 只生成报告正文和结构，`ProvenanceBuilder` 用代码写入对
 
 | 情况 | 动作 | 最终语义 |
 |---|---|---|
-| 缺对象、关键输入或确认 | 保存 checkpoint，等待补齐 | `needs_*`，可恢复 |
-| Planner schema/计划非法 | 修复或重生成一次，仍失败则停止 | `failed_planning` |
+| 缺对象、关键输入或确认 | 保存 checkpoint，等待补齐 | `needs_analysis_object`、`needs_input` 或 `needs_confirmation`，均可恢复 |
+| Planner schema/计划非法 | 总计最多生成 2 次，仍失败则停止 | `failed_planning` |
 | 瞬时超时、临时服务不可用 | 同一任务最多重试 2 次 | `retrying` 或后续失败语义 |
-| 对象不一致、数据/schema 非法、来源缺失 | 立即停止该任务，不重试 | `failed_validation` |
-| 可选 `model-1/4/5` 不可用 | 记录缺口，继续核心链路 | `partial_complete`，报告显式降级 |
+| 对象不一致，或核心任务的数据/schema/来源非法 | 立即停止，不重试 | `failed_validation` |
+| 可选任务的数据/schema/来源非法 | 停止该任务，记录验证缺口，不重试 | 发布后为 `partial_complete` |
+| 可选 `model-1/4/5` 不可用 | 记录缺口并继续报告链路 | 发布后为 `partial_complete`，报告显式降级 |
 | 核心 `model-2/3` 重试后失败 | 终止正式报告 | `failed`，只返回失败说明 |
-| RAG 不可用 | 保留已验证模型事实，不生成外部解释性主张 | `partial_complete`，标明证据检索缺口 |
-| Report 校验失败 | 重生成一次；再次失败停止 | `failed_reporting`，不发布未验证报告 |
+| RAG 不可用 | 跳过外部解释性主张，以已验证模型事实生成报告 | 发布后为 `partial_complete`，标明证据检索缺口 |
+| Report 校验失败 | 当前版本总计最多生成 2 次；仍失败则停止 | `failed_reporting`，不发布未验证报告 |
 
 所有异常记录 `run_id`、`trace_id`、节点、任务、错误类别、尝试次数和是否可重试。用户可见信息不包含堆栈或内部 Prompt。
 
 ## 13. 代码组织与现有模块适配
 
-建议新增独立目录，避免继续扩大 `nodes.py`：
+实现新增独立目录，避免继续扩大 `nodes.py`：
 
 ```text
 framework/agents/workflows/comprehensive/
@@ -478,7 +487,7 @@ framework/agents/workflows/comprehensive/
 
 ## 17. 验收标准
 
-- 既有快路径回归集的路由与响应契约 100% 保持；P95 延迟不高于基线 10%。
+- 既有快路径回归集的路由与响应契约 100% 保持；在同一环境、同一数据集、完成预热并使用固定并发的基准测试中，P95 延迟不高于基线 10%。
 - 未知 Agent、非法依赖、缺输入和超 5 个任务的计划 100% 被拒绝。
 - 对象缺失、错配、越权或版本冲突时没有模型工具调用。
 - `model-2`、`model-3` 在合法综合任务中始终执行；`model-1/4/5` 与触发决策表完全一致。
