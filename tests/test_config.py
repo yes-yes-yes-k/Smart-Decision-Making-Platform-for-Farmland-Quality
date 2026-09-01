@@ -54,6 +54,35 @@ class TestEnvironmentOverride:
         assert result.returncode == 0
         assert result.stdout.strip() == 'postgresql+psycopg2://app:secret@pg.example.com:6543/prod_db'
 
+    def test_invalid_comprehensive_workflow_mode_is_rejected(self):
+        env = {
+            **os.environ,
+            'COMPREHENSIVE_WORKFLOW_MODE': 'invalid',
+        }
+        result = subprocess.run(
+            [sys.executable, '-c', 'from framework.config import Config'],
+            env=env, capture_output=True, text=True, cwd=os.getcwd()
+        )
+        assert result.returncode != 0
+        assert (
+            'COMPREHENSIVE_WORKFLOW_MODE must be off, shadow, or enabled'
+            in result.stderr
+        )
+
+    def test_comprehensive_allowed_user_ids_are_parsed(self):
+        env = {
+            **os.environ,
+            'COMPREHENSIVE_ALLOWED_USER_IDS': '17, 23,42',
+        }
+        result = subprocess.run(
+            [sys.executable, '-c',
+             'from framework.config import Config; '
+             'print(Config.COMPREHENSIVE_ALLOWED_USER_IDS)'],
+            env=env, capture_output=True, text=True, cwd=os.getcwd()
+        )
+        assert result.returncode == 0
+        assert result.stdout.strip() == '(17, 23, 42)'
+
 
 class TestSQLiteConfig:
     """SQLiteConfig 降级路径测试"""

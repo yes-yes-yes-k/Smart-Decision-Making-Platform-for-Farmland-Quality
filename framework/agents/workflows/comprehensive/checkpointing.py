@@ -44,8 +44,12 @@ class PostgresCheckpointerRuntime:
             return self._saver
         self._context_manager = PostgresSaver.from_conn_string(self._uri)
         self._saver = self._context_manager.__enter__()
-        if self._auto_setup:
-            self._saver.setup()
+        try:
+            if self._auto_setup:
+                self._saver.setup()
+        except BaseException:
+            self.close()
+            raise
         return self._saver
 
     def close(self) -> None:

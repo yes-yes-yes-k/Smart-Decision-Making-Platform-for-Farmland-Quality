@@ -78,6 +78,48 @@ def test_checkpointer_runtime_reuses_saver_and_closes_once(monkeypatch):
     assert context_manager.exit_calls == 1
 
 
+def test_checkpointer_runtime_closes_and_resets_when_setup_fails(monkeypatch):
+    from framework.agents.workflows.comprehensive import checkpointing
+    import pytest
+
+    class FakeSaver:
+        def setup(self):
+            raise RuntimeError("setup failed")
+
+    class FakeContextManager:
+        def __init__(self):
+            self.saver = FakeSaver()
+            self.enter_calls = 0
+            self.exit_calls = 0
+
+        def __enter__(self):
+            self.enter_calls += 1
+            return self.saver
+
+        def __exit__(self, exc_type, exc_value, traceback):
+            self.exit_calls += 1
+
+    context_manager = FakeContextManager()
+
+    class FakePostgresSaver:
+        @staticmethod
+        def from_conn_string(uri):
+            return context_manager
+
+    monkeypatch.setattr(checkpointing, "PostgresSaver", FakePostgresSaver)
+    runtime = checkpointing.PostgresCheckpointerRuntime(
+        "postgresql://u:p@db:5432/app", auto_setup=True
+    )
+
+    with pytest.raises(RuntimeError, match="setup failed"):
+        runtime.start()
+
+    assert context_manager.enter_calls == 1
+    assert context_manager.exit_calls == 1
+    assert runtime._context_manager is None
+    assert runtime._saver is None
+
+
 def test_enabled_app_initializes_checkpointer_and_allows_repeated_close(monkeypatch):
     from flask import Flask
     from framework.agents.workflows.comprehensive import checkpointing
