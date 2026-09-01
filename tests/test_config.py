@@ -24,6 +24,10 @@ class TestConfigBase:
         from framework.config import Config
         assert Config.DB_PORT == 5432
 
+    def test_comprehensive_workflow_defaults_off(self):
+        from framework.config import Config
+        assert Config.COMPREHENSIVE_WORKFLOW_MODE == 'off'
+
 
 class TestEnvironmentOverride:
     """DB_* 环境变量覆盖测试

@@ -1,3 +1,5 @@
+import atexit
+
 from flask import Flask
 from flask_cors import CORS
 from flask_jwt_extended import JWTManager
@@ -11,6 +13,22 @@ from framework.api.routes.county import county_bp
 from framework.api.routes.report import report_bp
 from framework.api.routes.data_import import data_import_bp
 from framework.api.routes.observability import observability_bp
+from framework.agents.workflows.comprehensive.checkpointing import (
+    PostgresCheckpointerRuntime,
+)
+
+
+def init_comprehensive_checkpointer(app: Flask) -> None:
+    if app.config["COMPREHENSIVE_WORKFLOW_MODE"] != "enabled":
+        return
+    runtime = PostgresCheckpointerRuntime(
+        app.config["LANGGRAPH_CHECKPOINT_URI"],
+        auto_setup=app.config["LANGGRAPH_CHECKPOINT_AUTO_SETUP"],
+    )
+    saver = runtime.start()
+    app.extensions["comprehensive_checkpointer_runtime"] = runtime
+    app.extensions["comprehensive_checkpointer"] = saver
+    atexit.register(runtime.close)
 
 
 def _ensure_kb_message_columns(app: Flask):
@@ -90,6 +108,7 @@ def create_app(config_name: str = 'default') -> Flask:
     CORS(app)
     JWTManager(app)
     db.init_app(app)
+    init_comprehensive_checkpointer(app)
 
     # 注册蓝图之前先把 ORM 需要的列补齐，防止首次请求 SELECT 时爆 no such column
     _ensure_kb_message_columns(app)
