@@ -9,6 +9,55 @@ FACT_TOKEN=re.compile(r"\[\[fact:([a-z0-9_.-]+)\]\]")
 RAW_NUMBER=re.compile(r"(?<![a-zA-Z\[])\d+(?:\.\d+)?")
 REQUIRED_SECTION_IDS=("object-summary","execution-summary","quality","obstacles","conditional-specialty-results","priority-remediation","limitations","provenance")
 
+PUBLIC_TERM_LABELS={
+    "YTK":"土壤调理剂（亿土康）",
+    "MBNT":"木本泥炭",
+    "YXL":"有效磷",
+    "DXBW":"地形部位",
+    "SXJ":"速效钾",
+    "GGNL":"灌溉能力",
+    "SJD":"土壤酸碱度",
+    "PSNL":"排水能力",
+    "ZDGX":"质地构型",
+    "YJZ":"有机质",
+    "TRRZ":"土壤容重",
+    "YXTCHD":"有效土层厚度",
+    "GCHD":"耕层厚度",
+    "GCZD":"耕层质地",
+    "model-2":"耕地质量评价",
+    "model-3":"障碍因素诊断",
+    "model-4":"酸化改良测算",
+    "model-5":"有机质培肥测算",
+}
+PUBLIC_TITLE_LABELS={
+    "条件专项结果":"改良用量建议",
+    "限制与降级":"使用说明",
+    "数据与模型溯源":"数据说明",
+}
+PRIVATE_WORKFLOW_LINE=re.compile(
+    r"节点状态|执行节点|trace(?:_id)?|checkpoint|Coordinator|TrafficGate|InputResolver|"
+    r"PlanValidator|Wave\s*[12]|TriggerEvaluator|EvidenceResearcher|Reporter|Release",
+    re.IGNORECASE,
+)
+STATUS_MARKER=re.compile(
+    r"[（(\[]\s*(?:ok|succeeded|done|released|approved|drafted|resolved|completed)\s*[)）\]]",
+    re.IGNORECASE,
+)
+
+
+def user_facing_text(text:str,*,fallback:str="相关分析已完成，以下结果可供地块管理参考。")->str:
+    """Remove workflow internals and translate model codes in report-only text."""
+    visible=[]
+    for line in str(text).splitlines():
+        if PRIVATE_WORKFLOW_LINE.search(line):
+            continue
+        line=STATUS_MARKER.sub("",line)
+        for technical,label in PUBLIC_TERM_LABELS.items():
+            line=re.sub(rf"(?<![A-Za-z0-9_-]){re.escape(technical)}(?![A-Za-z0-9_-])",label,line,flags=re.IGNORECASE)
+        visible.append(line.rstrip())
+    rendered="\n".join(visible).strip()
+    return rendered or fallback
+
 
 def flatten_scalar_payload(value:Any,*,prefix:str=""):
     out={}
@@ -46,8 +95,9 @@ class ReportPolicyValidator:
             if RAW_NUMBER.search(without_tokens): raise ReportPolicyError("raw_number_forbidden")
             if any(source not in sources for source in section.source_ids): raise ReportPolicyError("unknown_source")
             text=FACT_TOKEN.sub(lambda m:facts[m.group(1)],text)
-            rendered.append(f"## {section.title}\n\n{text}")
-        return f"# {payload.title}\n\n"+"\n\n".join(rendered)
+            title=PUBLIC_TITLE_LABELS.get(section.title,section.title)
+            rendered.append(f"## {user_facing_text(title,fallback='诊断结果')}\n\n{user_facing_text(text)}")
+        return f"# {user_facing_text(payload.title,fallback='地块综合诊断与改良建议')}\n\n"+"\n\n".join(rendered)
 
 
 class Reporter:

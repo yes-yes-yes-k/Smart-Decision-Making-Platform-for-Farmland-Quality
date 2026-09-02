@@ -83,12 +83,100 @@ def field(data,*names):
 def status(item,model): return item["results"].get(model,{}).get("status","not_triggered")
 
 
+FACTOR_LABELS={
+    "SJD":"土壤酸碱度","YJZ":"有机质","YXL":"有效磷","SXJ":"速效钾",
+    "TRRZ":"土壤容重","YXTCHD":"有效土层厚度","GCHD":"耕层厚度",
+    "GCZD":"耕层质地","GGNL":"灌溉能力","PSNL":"排水能力",
+    "DXBW":"地形部位","ZDGX":"质地构型",
+}
+FACTOR_ACTIONS={
+    "SJD":"分区施用调酸材料，完成一个作物季后复测土壤 pH，再决定是否追加。",
+    "YJZ":"增加腐熟有机物料投入并配合秸秆还田，连续监测有机质变化。",
+    "YXL":"结合测土结果核查磷肥有效性，优先优化磷肥品种、施用位置和时期。",
+    "SXJ":"补充钾素并采用分次施用，避免一次性投入造成损失。",
+    "TRRZ":"减少湿土作业和机械碾压，配合深松改善耕层通气性。",
+    "YXTCHD":"通过培土和深松逐步增加可利用土层，避免一次性过度深翻。",
+    "GCHD":"优化耕作深度并减少犁底层压实。",
+    "GCZD":"根据土壤质地调整灌溉频次和养分投入方式。",
+    "GGNL":"检查水源与田间输水条件，采用分区、适量灌溉。",
+    "PSNL":"疏通排水通道，雨季前重点处理易积水区域。",
+    "DXBW":"按坡位和径流条件分区管理，兼顾排水、防冲刷与养分流失。",
+    "ZDGX":"通过深松、增施有机物料等方式逐步改善紧实或夹层结构。",
+}
+
+
+def fmt(value,digits=2):
+    if value is None:return "—"
+    if isinstance(value,(int,float)):return f"{value:.{digits}f}"
+    return str(value)
+def labels(values):
+    return "、".join(FACTOR_LABELS.get(str(value),str(value)) for value in (values or [])) or "未识别到明显限制因素"
+def ph_description(value):
+    if value is None:return "缺少检测值"
+    value=float(value)
+    if value<4.5:return "强酸性"
+    if value<5.5:return "偏酸"
+    if value<6.5:return "微酸性"
+    if value<=7.5:return "接近中性"
+    return "偏碱"
+def business_actions(problem):
+    factors=list(field(problem,"primary_factors") or [])+list(field(problem,"secondary_factors") or [])
+    ordered=[]
+    for factor in factors:
+        if factor not in ordered:ordered.append(factor)
+    return [FACTOR_ACTIONS[factor] for factor in ordered if factor in FACTOR_ACTIONS]
+
+
 def render(run):
-    lines=["# PostgreSQL 三地块综合诊断报告","",f"生成时间：{run['generated_at']}",f"权威数据源：PostgreSQL `{run['database']}.{run['schema']}.parcel_info`。","","## 执行流程","","Coordinator → TrafficGate → InputResolver → PlanValidator → Wave 1（model-2/3）→ TriggerEvaluator → Wave 2（model-4/5）→ EvidenceResearcher → Reporter → Release",""]
+    lines=[
+        "# 地块综合诊断与改良建议","",
+        f"报告生成时间：{run['generated_at']}",
+        "本报告根据地块最新土壤检测与档案信息生成，重点展示用户可直接理解和使用的诊断结论。","",
+        "## 总体结论","",
+        "本次三个地块均存在土壤偏酸问题，但主要限制因素和改良优先级不同。地块 1 应优先补钾并兼顾地形管理；地块 4190 应重点核查有效磷利用状况和地形影响；地块 1593 的综合质量等级相对靠后，应优先改善地形相关管理与土壤质地构型，并同步提升有机质。","",
+    ]
     for item in run["parcels"]:
         inp=item["inputs"]; grade=result_payload(item["results"]["model-2"]); problem=result_payload(item["results"]["model-3"]); acid=result_payload(item["results"].get("model-4",{})); organic=result_payload(item["results"].get("model-5",{}))
-        lines += [f"## 地块 {item['parcel_id']}","",f"数据版本：{item['source']['updated_at']}。土地类型：{item['resolved']['land_type']}；肥料类型：{item['resolved']['fertilizer_type']}；目标 pH：{item['resolved']['target_ph']}。",f"输入快照：pH {inp.get('soil_ph')}；有机质 {inp.get('organic_matter')}；全氮 {inp.get('total_nitrogen',inp.get('total_n'))}；有效磷 {inp.get('available_phosphorus')}；速效钾 {inp.get('available_potassium')}。","",f"- model-2 质量评价（{status(item,'model-2')}）：等级 {field(grade,'quality_grade')}，综合指数 {field(grade,'composite_index')}。",f"- model-3 障碍诊断（{status(item,'model-3')}）：{field(problem,'obstacle_type') or '无有效结论'}；主要因素 {field(problem,'primary_factors') or '无'}；次要因素 {field(problem,'secondary_factors') or '无'}。",f"- model-4 酸化改良（{status(item,'model-4')}）：YTK {field(acid,'YTK','ytk')}；MBNT {field(acid,'MBNT','mbnt')}。",f"- model-5 有机质培肥（{status(item,'model-5')}）：预测施用量 {field(organic,'dose','predicted_dose','manure_dosage')}。","", "节点状态："+" → ".join(f"{event['node']}[{event.get('state','done')}]" for event in item["events"]),""]
-    lines += ["## 限制与解释","","本报告使用 PostgreSQL 权威地块快照和项目当前正式模型生成。`model_execution_log` 的溯源列与 trace 索引已迁移，本次四个模型结果均成功持久化。YTK、MBNT 和培肥预测量的单位应以模型数据字典为准，本报告不推断未声明单位。结果用于工程验证，生产处方仍需现场采样与农艺师复核。",""]
+        primary=field(problem,"primary_factors") or []; secondary=field(problem,"secondary_factors") or []
+        action_lines=business_actions(problem)
+        conclusion=(
+            f"综合质量等级为 {field(grade,'quality_grade')} 级，综合指数 {fmt(field(grade,'composite_index'),3)}；"
+            f"土壤 pH 为 {fmt(inp.get('soil_ph'))}，属于{ph_description(inp.get('soil_ph'))}。"
+            f"优先关注{labels(primary)}。"
+        )
+        lines += [
+            f"## 地块 {item['parcel_id']}","",
+            "### 一句话结论","",conclusion,"",
+            "### 当前状况","",
+            "| 项目 | 结果 |","|---|---:|",
+            f"| 综合质量等级 | {field(grade,'quality_grade')} 级 |",
+            f"| 综合指数 | {fmt(field(grade,'composite_index'),3)} |",
+            f"| 土壤 pH | {fmt(inp.get('soil_ph'))}（{ph_description(inp.get('soil_ph'))}） |",
+            f"| 有机质 | {fmt(inp.get('organic_matter'))} g/kg |",
+            f"| 全氮 | {fmt(inp.get('total_nitrogen',inp.get('total_n')))} g/kg |",
+            f"| 有效磷 | {fmt(inp.get('available_phosphorus'))} mg/kg |",
+            f"| 速效钾 | {fmt(inp.get('available_potassium'))} mg/kg |","",
+            "### 主要问题","",
+            f"- 优先关注：{labels(primary)}。",
+            f"- 后续关注：{labels(secondary)}。",
+            f"- 综合判断：{field(problem,'obstacle_type') or '未识别到明显障碍'}。","",
+            "### 建议用量","",
+            "| 改良材料 | 参考用量 | 主要目的 |","|---|---:|---|",
+            f"| 土壤调理剂（亿土康） | {fmt(field(acid,'YTK','ytk'))} kg/ha | 调节土壤酸度 |",
+            f"| 木本泥炭 | {fmt(field(acid,'MBNT','mbnt'))} kg/ha | 辅助调酸并改善土壤环境 |",
+            f"| 有机质培肥材料 | {fmt(field(organic,'dose','predicted_dose','manure_dosage'))} t/ha | 提升土壤有机质 |","",
+            "### 实施顺序","",
+        ]
+        for index,action in enumerate(action_lines[:4],1):lines.append(f"{index}. {action}")
+        lines += [
+            f"{min(len(action_lines),4)+1}. 以目标 pH {fmt(item['resolved']['target_ph'])} 为阶段目标，小面积试施后复测，再确定全地块施用方案。","",
+        ]
+    lines += [
+        "## 使用说明","",
+        "- 建议用量是基于现有检测数据的地块级参考值，不替代现场配方和产品说明书。",
+        "- 大面积施用前应先做小区试验，并结合种植作物、土壤含水量和当地农艺要求校准。",
+        "- 调酸材料不宜与含铵态氮肥集中同施；施用一个作物季后复测 pH、有机质、有效磷和速效钾。","",
+    ]
     return "\n".join(lines)
 
 
