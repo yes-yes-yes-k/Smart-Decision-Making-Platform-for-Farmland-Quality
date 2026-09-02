@@ -80,6 +80,10 @@ class RAGChain:
             "retrieved_count": retrieval_results["count"],
         }
 
+    def search_documents(self, query: str, *, valid_doc_names: Optional[set] = None) -> List[Dict[str, Any]]:
+        """Return raw local retrieval results; never invoke an LLM fallback."""
+        return list(self._retrieve_documents(query, valid_doc_names)["results"])
+
     def chat_stream(self, query: str, conversation_history: Optional[List[Dict]] = None, valid_doc_names: Optional[set] = None):
         """流式版本的 chat：检索文档后，使用流式 LLM 生成回答，逐 token yield"""
         retrieval_results = self._retrieve_documents(query, valid_doc_names)

@@ -1,5 +1,8 @@
 from __future__ import annotations
 from typing import Any, Dict
+from uuid import uuid4
+from flask import current_app, has_app_context
+from framework.config import Config
 from langgraph.graph import StateGraph
 from langgraph.constants import END
 from .state import MultiAgentState
@@ -95,6 +98,13 @@ class MultiAgentOrchestrator:
         return graph
 
     def run(self, request: Dict[str, Any], conversation_history: list = None) -> Dict[str, Any]:
+        routed = self.prepare_top_level_route(request, conversation_history)
+        if routed["path"] == "comprehensive":
+            runtime = runtime_from_current_app()
+            payload = dict(request)
+            payload.setdefault("run_id", uuid4().hex)
+            payload.setdefault("trace_id", uuid4().hex)
+            return runtime.run_initial(payload).model_dump(mode="json")
         if self._app is None:
             self._graph = self.build_graph()
             self._app = self._graph.compile()
@@ -115,6 +125,17 @@ class MultiAgentOrchestrator:
                 },
                 "trace_id": trace_id,
             }
+
+    def prepare_top_level_route(self, request: Dict[str, Any], history: list | None = None) -> dict[str, Any]:
+        mode = comprehensive_mode_for_user(request.get("user_id"))
+        message = str(request.get("question") or "")
+        explicit = any(x in message for x in ("综合诊断", "综合报告", "全面诊断", "诊断与改良报告"))
+        context = request.get("analysis_context") or {}
+        obj = context.get("object") or {}
+        eligible = context.get("mode", request.get("calculation_mode")) == "spatial" and obj.get("type") == "parcel"
+        if mode == "enabled" and explicit and eligible:
+            return {"path":"comprehensive","intent":{"kind":"comprehensive_analysis"},"request":request}
+        return {"path":"fast","intent":{"kind":"comprehensive_analysis"} if explicit and mode=="shadow" else None,"request":request}
 
     def run_stream(self, request: Dict[str, Any], conversation_history: list = None):
         try:
@@ -238,3 +259,20 @@ class MultiAgentOrchestrator:
             yield {"type": "error", "message": str(e)}
 
 multi_agent_orchestrator = MultiAgentOrchestrator()
+
+
+def comprehensive_mode_for_user(user_id: int | None) -> str:
+    mode=Config.COMPREHENSIVE_WORKFLOW_MODE
+    allowed=Config.COMPREHENSIVE_ALLOWED_USER_IDS
+    return "off" if mode=="enabled" and allowed and user_id not in allowed else mode
+
+
+def runtime_from_current_app():
+    if not has_app_context():
+        from framework.agents.workflows.comprehensive.runtime import CheckpointerUnavailable
+        raise CheckpointerUnavailable("application_context_required")
+    runtime=current_app.extensions.get("comprehensive_runtime")
+    if runtime is None:
+        from framework.agents.workflows.comprehensive.runtime import CheckpointerUnavailable
+        raise CheckpointerUnavailable("comprehensive_runtime_not_initialized")
+    return runtime

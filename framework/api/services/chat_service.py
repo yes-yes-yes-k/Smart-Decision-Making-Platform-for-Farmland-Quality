@@ -5,6 +5,7 @@ from copy import deepcopy
 from dataclasses import dataclass
 from datetime import datetime, timezone
 from typing import Any, Mapping
+from framework.agents.workflows.comprehensive.contracts import InteractionResponse
 
 from framework.agents.capabilities import get_capability_by_question_type
 from framework.analysis_context.contracts import AnalysisContext
@@ -23,10 +24,11 @@ from framework.observability.analysis_context_metrics import (
 @dataclass(frozen=True)
 class PreparedChat:
     conversation: Conversation
-    user_message: Message
+    user_message: Message | None
     history: list[dict[str, str]]
     orchestrator_request: dict[str, Any]
     context_snapshot: dict[str, Any]
+    interaction_response: InteractionResponse | None = None
 
 
 class ChatRequestService:
@@ -39,6 +41,13 @@ class ChatRequestService:
     def prepare(self, *, user_id: int, body: Mapping[str, Any]) -> PreparedChat:
         if not isinstance(body, Mapping):
             raise AnalysisObjectInvalid("请求体必须为对象")
+        response_payload = body.get("interaction_response")
+        if response_payload is not None:
+            response = InteractionResponse.model_validate(response_payload)
+            conversation = self._get_or_create_owned_conversation(user_id, body, "综合诊断恢复")
+            history=[{"role":item.role,"content":item.content} for item in conversation.messages]
+            snapshot={"mode":"spatial","version":conversation.context_version or 0,"object":deepcopy(conversation.analysis_object)}
+            return PreparedChat(conversation,None,history,{"conversation_id":conversation.id,"user_id":user_id},snapshot,response)
         question = body.get("message", "")
         if not isinstance(question, str) or not question.strip():
             raise AnalysisObjectInvalid("问题不能为空", details={"field": "message"})

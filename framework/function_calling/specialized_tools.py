@@ -278,3 +278,20 @@ def get_specialized_tools() -> List[Tool]:
         for name in SPECIALIZED_TOOL_NAMES
         if tool_registry.get(name) is not None
     ]
+
+
+AGENT_ID_TO_TOOL_NAME: Dict[str, str] = {
+    agent_id: tool_name for tool_name, agent_id in TOOL_NAME_TO_AGENT_ID.items()
+}
+
+
+def get_specialized_tools_for(agent_ids: set[str]) -> Dict[str, Tool]:
+    """Return the exact validated tool allow-list keyed by agent id."""
+    result: Dict[str, Tool] = {}
+    for agent_id in sorted(agent_ids):
+        tool_name = AGENT_ID_TO_TOOL_NAME.get(agent_id)
+        tool = tool_registry.get(tool_name) if tool_name else None
+        if tool is None:
+            raise ValueError(f"tool_not_registered:{agent_id}")
+        result[agent_id] = tool
+    return result

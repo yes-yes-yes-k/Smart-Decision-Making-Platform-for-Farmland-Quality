@@ -4,6 +4,8 @@ from flask_jwt_extended import jwt_required, get_jwt_identity
 from framework.models.conversation import Conversation
 from framework.models.user import db
 from framework.agents.orchestrator import multi_agent_orchestrator
+from framework.agents.orchestrator import runtime_from_current_app
+from framework.agents.workflows.comprehensive.runtime import WorkflowConflict, WorkflowNotFound, CheckpointerUnavailable
 from framework.analysis_context.errors import AnalysisContextError
 from framework.api.services import chat_request_service
 from framework.observability.analysis_context_metrics import (
@@ -154,9 +156,10 @@ def chat():
         return jsonify({"status": "error", "error": {
             "code": exc.code, "message": exc.message, "details": exc.details,
         }}), exc.http_status
-    result = multi_agent_orchestrator.run(
-        prepared.orchestrator_request, conversation_history=prepared.history,
-    )
+    try:
+        result = (runtime_from_current_app().resume(conversation_id=prepared.conversation.id,response=prepared.interaction_response).model_dump(mode="json") if prepared.interaction_response else multi_agent_orchestrator.run(prepared.orchestrator_request, conversation_history=prepared.history))
+    except (WorkflowConflict, WorkflowNotFound, CheckpointerUnavailable) as exc:
+        return jsonify({"status":"error","error":{"code":str(exc)}}), exc.http_status
     from framework.observability.schema_metrics import record_schema_call
     record_schema_call(response_schema, result.get("status", "error"))
     assistant = chat_request_service.persist_assistant(prepared, result)
