@@ -1,19 +1,31 @@
 """耕地质量报告模板定义。
 
-为四类耕地质量专题报告提供结构化章节模板，
-每个模板包含标题和章节列表，每章配有 AI 生成提示词。
-"""
+为四类耕地质量专题报告提供结构化章节模板。
+每个模板包含标题和章节列表；章节支持三种渲染模式（kind）：
+- "llm"     注入上下文的 AI 生成（默认，prompt_hint 作为回退）
+- "data"    纯数据表渲染，不经 LLM（data_renderer(ctx) -> HTML）
+- "summary" 计算结论 + AI 润色（prompt_builder(ctx) 注入真实用量）
 
+治理类模板（酸化治理/有机质提升）已接入 model-4/5 真实用量；
+方案类模板（保护与提升/补充耕地）暂不开放生成，保持原结构不动。
+"""
 from __future__ import annotations
 
-from typing import TypedDict
+from typing import Any, Callable, Optional, TypedDict
 
 
-class Section(TypedDict):
+# ---------------------------------------------------------------------------
+# 结构定义
+# ---------------------------------------------------------------------------
+
+class Section(TypedDict, total=False):
     """报告章节结构。"""
 
     heading: str
-    prompt_hint: str
+    kind: str                       # "llm" | "data" | "summary"，缺省按 "llm"
+    prompt_hint: str                # 回退提示词（无 prompt_builder 时用）
+    prompt_builder: Callable[[dict[str, Any]], str]   # 注入真实数据的 prompt 构造器
+    data_renderer: Callable[[dict[str, Any]], str]    # data 章节：直接返回 HTML，不调 LLM
 
 
 class ReportTemplate(TypedDict):
@@ -24,7 +36,309 @@ class ReportTemplate(TypedDict):
 
 
 # ---------------------------------------------------------------------------
-# 1. 耕地质量保护与提升方案
+# 公共渲染辅助
+# ---------------------------------------------------------------------------
+
+def _fmt(v: Any) -> str:
+    """数值格式化。None → '—'，float 保留两位。"""
+    if v is None:
+        return "—"
+    if isinstance(v, bool):
+        return "是" if v else "否"
+    if isinstance(v, (int, float)):
+        try:
+            return f"{float(v):.2f}"
+        except (TypeError, ValueError):
+            return str(v)
+    return str(v)
+
+
+def _scope_label(scope: Optional[dict]) -> str:
+    if not scope:
+        return "未指定"
+    return f"{scope.get('type', '?')}={scope.get('id', '?')}"
+
+
+def _model4_rows(ctx: dict[str, Any]) -> list[dict]:
+    m4 = ctx.get("model_results", {}).get("model-4")
+    if not m4:
+        return []
+    return m4 if isinstance(m4, list) else [m4]
+
+
+def _model5_data(ctx: dict[str, Any]) -> Optional[dict]:
+    return ctx.get("model_results", {}).get("model-5")
+
+
+# 地块指标中文名映射
+_INDICATOR_LABELS: dict[str, str] = {
+    "soil_ph": "土壤 pH",
+    "organic_matter": "有机质 (g/kg)",
+    "available_potassium": "速效钾 (mg/kg)",
+    "available_phosphorus": "有效磷 (mg/kg)",
+    "total_nitrogen": "全氮 (g/kg)",
+    "bulk_density": "容重 (g/cm³)",
+    "topsoil_thickness": "表土厚度 (cm)",
+    "terrain_position": "地形部位",
+    "soil_structure": "土壤结构",
+    "soil_texture": "质地",
+    "irrigation_condition": "灌溉能力",
+    "drainage_capacity": "排水能力",
+}
+
+
+def render_parcel_indicators_table(ctx: dict[str, Any]) -> str:
+    """地块土壤指标概览（data 章节，不经 LLM）。
+
+    单地块范围：从 indicators_snapshot 渲染该地块的 soil_indicators 指标表。
+    区域范围：渲染 region_stats 聚合表（均值/最小/最大/样本数）。
+    指标全空时显示降级提示。
+    """
+    scope = ctx.get("scope", {})
+    region = ctx.get("region_stats")
+
+    # 区域范围 → 渲染聚合统计
+    if scope.get("type") == "region" and region:
+        parts: list[str] = ["<table><thead><tr><th>指标</th><th>均值</th><th>最小</th><th>最大</th><th>样本数</th></tr></thead><tbody>"]
+        for key in ("soil_ph", "organic_matter", "available_potassium", "available_phosphorus", "total_nitrogen"):
+            s = region.get(key)
+            if s:
+                label = _INDICATOR_LABELS.get(key, key)
+                parts.append(
+                    f"<tr><td>{label}</td><td>{_fmt(s.get('mean'))}</td>"
+                    f"<td>{_fmt(s.get('min'))}</td><td>{_fmt(s.get('max'))}</td>"
+                    f"<td>{s.get('count', '—')}</td></tr>"
+                )
+        parts.append("</tbody></table>")
+        if len(parts) <= 2:
+            return "<p>（区域内暂无有效土壤指标统计数据）</p>"
+        return "".join(parts)
+
+    # 单地块范围 → 渲染该地块指标
+    snapshot = ctx.get("indicators_snapshot") or []
+    if not snapshot:
+        return "<p>该地块土壤指标数据缺失，建议补充检测后重新生成。</p>"
+
+    rec = snapshot[0]
+    indicators = rec.get("soil_indicators") or {}
+    if not indicators or not any(v is not None for v in indicators.values()):
+        return "<p>该地块土壤指标数据缺失，建议补充检测后重新生成。</p>"
+
+    parts = ["<table><thead><tr><th>指标</th><th>数值</th></tr></thead><tbody>"]
+    for key, label in _INDICATOR_LABELS.items():
+        if key in indicators:
+            parts.append(f"<tr><td>{label}</td><td>{_fmt(indicators.get(key))}</td></tr>")
+    parts.append("</tbody></table>")
+    return "".join(parts)
+
+
+# ---------------------------------------------------------------------------
+# 酸化治理（model-4）：数据表 + prompt 注入
+# ---------------------------------------------------------------------------
+
+def render_acidification_dosage_table(ctx: dict[str, Any]) -> str:
+    """model-4 用量表（data 章节，不经 LLM）。"""
+    rows = _model4_rows(ctx)
+    region = ctx.get("region_stats")
+    if not rows and not region:
+        return "<p>（暂无 model-4 酸化改良用量数据）</p>"
+
+    parts: list[str] = []
+    if rows:
+        parts.append(
+            "<table><thead><tr>"
+            "<th>地块编号</th><th>土壤 pH</th><th>交换性氢</th><th>交换性铝</th>"
+            "<th>石灰/调理剂用量 (kg/亩)</th><th>有机肥/泥炭用量 (kg/亩)</th>"
+            "<th>来源</th>"
+            "</tr></thead><tbody>"
+        )
+        for r in rows:
+            pid = r.get("parcel_id", "—")
+            ph = _fmt(r.get("soil_ph"))
+            hex_ = _fmt(r.get("exchangeable_hydrogen"))
+            alex = _fmt(r.get("exchangeable_aluminum"))
+            lime = _fmt(r.get("lime_dosage") if r.get("lime_dosage") is not None else r.get("soil_conditioner_dosage"))
+            of = _fmt(r.get("organic_fertilizer_dosage") if r.get("organic_fertilizer_dosage") is not None else r.get("woody_peat_dosage"))
+            src = "已落库" if r.get("source") == "db" else "现场补算"
+            parts.append(
+                f"<tr><td>{pid}</td><td>{ph}</td><td>{hex_}</td><td>{alex}</td>"
+                f"<td>{lime}</td><td>{of}</td><td>{src}</td></tr>"
+            )
+        parts.append("</tbody></table>")
+
+    if region:
+        parts.append("<p>区域统计：</p><ul>")
+        for key in ("soil_ph", "lime_dosage", "soil_conditioner_dosage", "woody_peat_dosage"):
+            s = region.get(key)
+            if s:
+                parts.append(
+                    f"<li>{key}：均值 {_fmt(s.get('mean'))}，最小 {_fmt(s.get('min'))}，"
+                    f"最大 {_fmt(s.get('max'))}（n={s.get('count')}）</li>"
+                )
+        parts.append("</ul>")
+
+    return "".join(parts)
+
+
+def _acid_data_brief(ctx: dict[str, Any]) -> str:
+    """供 prompt 注入的 model-4 用量简报（限制条数防撑爆）。"""
+    rows = _model4_rows(ctx)
+    if not rows:
+        return "（无 model-4 用量数据）"
+    lines: list[str] = []
+    for r in rows[:50]:
+        pid = r.get("parcel_id", "?")
+        ph = _fmt(r.get("soil_ph"))
+        lime = _fmt(r.get("lime_dosage") if r.get("lime_dosage") is not None else r.get("soil_conditioner_dosage"))
+        of = _fmt(r.get("organic_fertilizer_dosage") if r.get("organic_fertilizer_dosage") is not None else r.get("woody_peat_dosage"))
+        lines.append(f"- 地块 {pid}: pH={ph}, 石灰/调理剂={lime} kg/亩, 有机肥/泥炭={of} kg/亩")
+    if len(rows) > 50:
+        lines.append(f"- …（共 {len(rows)} 个地块，已截断展示前 50 个）")
+    return "\n".join(lines)
+
+
+def acid_treatment_prompt(ctx: dict[str, Any]) -> str:
+    """治理技术与措施章节：注入真实用量，约束不得编造。"""
+    return (
+        f"范围：{_scope_label(ctx.get('scope'))}\n"
+        f"以下为 model-4 酸化改良用量计算结果（仅依据提供的数据，不得编造未给出的数值）：\n"
+        f"{_acid_data_brief(ctx)}\n\n"
+        "围绕上述用量，提出石灰类改良剂的酸化治理技术与措施，说明该技术的适用条件、施用量与方法。"
+        "以 HTML 输出，使用 <h3> 小标题、<ul>/<li> 列表、<table> 表格。"
+    )
+
+
+def acid_summary_prompt(ctx: dict[str, Any]) -> str:
+    """结论章节：用量结论前置 + AI 润色。"""
+    return (
+        "计算结论（model-4，须基于此润色，不得编造数值）：\n"
+        f"{_acid_data_brief(ctx)}\n\n"
+        "总结酸化治理方案的核心结论：酸化现状、推荐治理技术路线、"
+        "预期 pH 提升目标与增产潜力、投资规模与效益。"
+        "以 HTML 输出，<ul>/<li> 列出核心结论，<p> 呈现展望。"
+    )
+
+
+# ---------------------------------------------------------------------------
+# 有机质提升（model-5）：数据表 + prompt 注入
+# ---------------------------------------------------------------------------
+
+def render_organic_matter_dosage_table(ctx: dict[str, Any]) -> str:
+    """model-5 用量与有机质分布（data 章节，不经 LLM）。"""
+    m5 = _model5_data(ctx)
+    region = ctx.get("region_stats")
+    if not m5 and not region:
+        return "<p>该地块有机肥用量需现场补算（model-5 暂无有效结果）。</p>"
+
+    parts: list[str] = []
+    if m5:
+        parts.append("<table><thead><tr>")
+        if m5.get("organic_matter") is not None:
+            parts.append("<th>有机质 (g/kg)</th>")
+        parts.append("<th>有机肥施用量 (kg/亩)</th><th>等级</th>")
+        if m5.get("potential_increase") is not None:
+            parts.append("<th>预期提升量 (g/kg)</th>")
+        if m5.get("organic_fertilizer_type"):
+            parts.append("<th>肥料类型</th>")
+        parts.append("<th>来源</th></tr></thead><tbody><tr>")
+        if m5.get("organic_matter") is not None:
+            parts.append(f"<td>{_fmt(m5.get('organic_matter'))}</td>")
+        parts.append(f"<td>{_fmt(m5.get('organic_fertilizer_dosage'))}</td>")
+        parts.append(f"<td>{_fmt(m5.get('level'))}</td>")
+        if m5.get("potential_increase") is not None:
+            parts.append(f"<td>{_fmt(m5.get('potential_increase'))}</td>")
+        if m5.get("organic_fertilizer_type"):
+            parts.append(f"<td>{_fmt(m5.get('organic_fertilizer_type'))}</td>")
+        parts.append(
+            f"<td>{'已落库' if m5.get('source') == 'db' else '现场补算'}</td>"
+        )
+        parts.append("</tr></tbody></table>")
+
+    if region:
+        parts.append("<p>区域统计：</p><ul>")
+        for key in ("soil_ph", "organic_matter", "m5_organic_fertilizer_dosage"):
+            s = region.get(key)
+            if s:
+                parts.append(
+                    f"<li>{key}：均值 {_fmt(s.get('mean'))}"
+                    + (f"，最小 {_fmt(s.get('min'))}，最大 {_fmt(s.get('max'))}" if s.get('min') is not None else "")
+                    + f"（n={s.get('count')}）</li>"
+                )
+        parts.append("</ul>")
+
+    return "".join(parts)
+
+
+def _parcel_indicators_brief(ctx: dict[str, Any]) -> str:
+    """从 indicators_snapshot 提取地块实际指标摘要（pH、有机质）。"""
+    snapshot = ctx.get("indicators_snapshot") or []
+    if not snapshot:
+        return ""
+    ind = snapshot[0].get("soil_indicators") or {}
+    parts: list[str] = []
+    if ind.get("soil_ph") is not None:
+        parts.append(f"pH={_fmt(ind.get('soil_ph'))}")
+    if ind.get("organic_matter") is not None:
+        parts.append(f"有机质={_fmt(ind.get('organic_matter'))} g/kg")
+    return "；".join(parts)
+
+
+def _organic_data_brief(ctx: dict[str, Any]) -> str:
+    m5 = _model5_data(ctx)
+    parcel_ind = _parcel_indicators_brief(ctx)
+    if not m5:
+        brief = "（无 model-5 用量数据，该地块有机肥用量需现场补算）"
+        if parcel_ind:
+            brief = f"地块实测指标：{parcel_ind}\n{brief}"
+        return brief
+    brief = (
+        f"- 有机肥施用量: {_fmt(m5.get('organic_fertilizer_dosage'))} kg/亩"
+        f"（等级 {m5.get('level', '未知')}）"
+        + (f"；有机质: {_fmt(m5.get('organic_matter'))} g/kg" if m5.get('organic_matter') is not None else "")
+        + (f"；预期提升量: {_fmt(m5.get('potential_increase'))} g/kg" if m5.get('potential_increase') is not None else "")
+    )
+    if parcel_ind:
+        brief += f"\n- 地块实测指标：{parcel_ind}"
+    return brief
+
+
+def organic_fertilizer_prompt(ctx: dict[str, Any]) -> str:
+    """有机培肥方案章节：注入真实用量与地块指标。"""
+    m5 = _model5_data(ctx)
+    data_brief = _organic_data_brief(ctx)
+    if not m5:
+        return (
+            f"范围：{_scope_label(ctx.get('scope'))}\n"
+            f"{data_brief}\n\n"
+            "该地块有机肥用量需现场补算（model-5 暂无有效结果），"
+            "请基于地块实测指标给出一般性有机培肥建议："
+            "推荐有机肥源（腐熟农家肥/堆肥/商品有机肥）、秸秆还田常规用量、"
+            "绿肥种植品种与翻压量，并说明需补充土壤检测后确定精确用量。"
+            "以 HTML 输出，<h3> 小标题、<table> 表格、<ul>/<li> 列表。"
+        )
+    return (
+        f"范围：{_scope_label(ctx.get('scope'))}\n"
+        f"以下为 model-5 有机质培肥用量计算结果与地块实测指标（仅依据提供的数据，不得编造未给出的数值）：\n"
+        f"{data_brief}\n\n"
+        "基于该用量与地块指标制定有机培肥方案：有机肥源规划、秸秆还田、绿肥种植、"
+        "差异化培肥方案，说明用量测算与来源保障。"
+        "以 HTML 输出，<h3> 小标题、<table> 表格、<ul>/<li> 列表。"
+    )
+
+
+def organic_summary_prompt(ctx: dict[str, Any]) -> str:
+    """结论章节：用量结论前置 + AI 润色。"""
+    return (
+        "计算结论（model-5，须基于此润色，不得编造数值）：\n"
+        f"{_organic_data_brief(ctx)}\n\n"
+        "总结有机质提升方案的核心结论：现状评估、提升目标、推荐技术路线、"
+        "预期效果（有机质提升幅度、增产潜力、生态效益）。"
+        "以 HTML 输出，<ul>/<li> 列出核心结论，<p> 呈现展望。"
+    )
+
+
+# ---------------------------------------------------------------------------
+# 1. 耕地质量保护与提升方案（暂不开放生成，保持原结构）
 # ---------------------------------------------------------------------------
 
 FARMLAND_PROTECTION_UPGRADE: ReportTemplate = {
@@ -119,7 +433,7 @@ FARMLAND_PROTECTION_UPGRADE: ReportTemplate = {
 }
 
 # ---------------------------------------------------------------------------
-# 2. 补充耕地方案
+# 2. 补充耕地方案（暂不开放生成，保持原结构）
 # ---------------------------------------------------------------------------
 
 SUPPLEMENTARY_FARMLAND: ReportTemplate = {
@@ -223,7 +537,7 @@ SUPPLEMENTARY_FARMLAND: ReportTemplate = {
 }
 
 # ---------------------------------------------------------------------------
-# 3. 地块酸化治理方案
+# 3. 地块酸化治理方案（接入 model-4 用量）
 # ---------------------------------------------------------------------------
 
 ACIDIFICATION_TREATMENT: ReportTemplate = {
@@ -231,109 +545,96 @@ ACIDIFICATION_TREATMENT: ReportTemplate = {
     "sections": [
         {
             "heading": "前言/背景",
+            "kind": "llm",
             "prompt_hint": (
-                "围绕 area_code 对应区域，阐述土壤酸化的概念、危害和治理意义，"
-                "说明区域土壤酸化问题的严峻性和治理的紧迫性。介绍国家关于土壤酸化"
-                "治理的政策要求和行动部署，以及编制本方案的目的和总体思路。"
-                "以 HTML 格式输出，使用 <h2>、<h3> 作为层级标题，<p> 作为段落，"
+                "阐述土壤酸化的概念、危害和治理意义，说明区域土壤酸化问题的严峻性"
+                "和治理的紧迫性。介绍国家关于土壤酸化治理的政策要求和行动部署，"
+                "以及编制本方案的目的和总体思路。"
+                "以 HTML 格式输出，使用 <h3> 作为层级标题，<p> 作为段落，"
                 "政策背景使用 <ul>/<li> 列表呈现。"
             ),
         },
         {
             "heading": "酸化现状与分布",
-            "prompt_hint": (
-                "针对 area_code 区域，详细分析土壤酸化现状，包括："
-                "土壤 pH 值空间分布特征、不同酸化等级（微酸性、酸性、强酸性）的面积"
-                "与占比、酸化耕地的行政区划分布和土壤类型分布、酸化深度剖面特征、"
-                "酸化程度与作物产量的关系等。配合数据说明酸化演变的时空趋势。"
-                "使用 <h2>/<h3> 标题层级，pH 分布数据以 <table> 表格呈现，"
-                "酸化等级以 <ul>/<li> 列表呈现，空间分布描述使用 <p> 段落。"
+            "kind": "llm",
+            "prompt_builder": lambda ctx: (
+                f"范围：{_scope_label(ctx.get('scope'))}\n"
+                f"地块土壤 pH 与酸化指标快照（仅依据提供的数据，不得编造未给出的数值）：\n{_acid_data_brief(ctx)}\n\n"
+                "基于上述 pH/交换性氢/交换性铝数据，分析土壤酸化现状：pH 空间分布、"
+                "不同酸化等级面积与占比、酸化深度剖面特征。"
+                "使用 <h3> 标题，pH 分布以 <table> 表格呈现，酸化等级以 <ul>/<li> 呈现。"
             ),
         },
         {
             "heading": "酸化成因分析",
+            "kind": "llm",
             "prompt_hint": (
-                "围绕 area_code 区域，深入分析土壤酸化的成因，包括自然因素"
-                "（成土母质、气候条件、地形地貌）和人为因素（长期过量施用化肥、"
-                "酸沉降、不合理的耕作制度、作物连作障碍等）。"
-                "分析钙镁等盐基离子的淋失规律、铝的活化机制，以及酸化对土壤养分"
-                "有效性和微生物群落的影响。"
-                "使用 <h2>/<h3> 标题层级，成因分类以 <ul>/<li> 列表呈现，"
-                "机理分析以 <p> 段落说明，相关数据以 <table> 表格呈现。"
+                "深入分析土壤酸化的成因，包括自然因素（成土母质、气候、地形）"
+                "和人为因素（过量施用化肥、酸沉降、不合理耕作、连作障碍）。"
+                "分析钙镁盐基离子淋失规律、铝活化机制及酸化对养分有效性的影响。"
+                "使用 <h3> 标题，成因以 <ul>/<li> 呈现，机理以 <p> 说明。"
             ),
+        },
+        {
+            "heading": "治理用量测算（model-4）",
+            "kind": "data",
+            "data_renderer": render_acidification_dosage_table,
         },
         {
             "heading": "治理技术与措施",
-            "prompt_hint": (
-                "针对 area_code 区域酸化耕地的不同类型和程度，提出分级分类的治理技术"
-                "与措施体系，包括：施用石灰类改良剂（生石灰、熟石灰、石灰石粉）、"
-                "施用碱性工业副产品（钢渣、粉煤灰等，需安全性评估）、"
-                "增施有机肥和生物有机肥、种植绿肥、测土配方施肥、"
-                "水肥一体化管理、轮作休耕等农艺措施。"
-                "说明各技术的适用条件、施用量、施用方法和注意事项。"
-                "使用 <h2>/<h3> 标题层级，技术措施以 <table> 表格呈现，"
-                "分类方案以 <ul>/<li> 列表呈现，技术说明使用 <p> 段落。"
-            ),
+            "kind": "summary",
+            "prompt_builder": acid_treatment_prompt,
         },
-        {
-            "heading": "改良材料选择",
-            "prompt_hint": (
-                "围绕 area_code 区域，基于酸化程度和土壤类型，推荐适宜的改良材料"
-                "种类、规格和用量。比较不同改良材料（石灰石粉、白云石粉、钙镁磷肥、"
-                "生物炭、腐殖酸类等）的改良效果、成本、来源可获得性和环境影响。"
-                "制定改良材料的采购、运输、储存和使用规范。"
-                "使用 <h2>/<h3> 标题层级，材料对比以 <table> 表格呈现，"
-                "选择依据以 <ul>/<li> 列表呈现，使用规范以 <p> 段落说明。"
-            ),
-        },
-        {
-            "heading": "实施计划",
-            "prompt_hint": (
-                "针对 area_code 区域，制定酸化治理的分阶段实施计划，包括："
-                "治理区域划分与优先序安排、年度治理任务分解、技术培训与示范推广、"
-                "物资采购与调配、施工组织与质量管控、进度安排与里程碑节点。"
-                "明确近期（1-2年）、中期（3-5年）的治理目标和验收标准。"
-                "使用 <h2>/<h3> 标题层级，实施计划以 <table> 表格呈现，"
-                "阶段任务以 <ul>/<li> 列表呈现，组织方案使用 <p> 段落。"
-            ),
-        },
+        # {
+        #     "heading": "改良材料选择",
+        #     "kind": "summary",
+        #     "prompt_builder": lambda ctx: (
+        #         f"范围：{_scope_label(ctx.get('scope'))}\n"
+        #         f"model-4 推荐用量（须基于此润色，不得编造数值）：\n{_acid_data_brief(ctx)}\n\n"
+        #         "基于上述用量推荐适宜改良材料（石灰石粉、白云石粉、钙镁磷肥、"
+        #         "生物炭、腐殖酸类、木本泥炭等）的种类、规格与用量，比较改良效果、"
+        #         "可获得性。使用 <h3> 标题，材料对比以 <table> 呈现。"
+        #     ),
+        # },
+        # {
+        #     "heading": "实施计划",
+        #     "kind": "llm",
+        #     "prompt_hint": (
+        #         "制定酸化治理分阶段实施计划：治理区域划分与优先序、年度任务分解、"
+        #         "技术培训与示范、物资采购调配、施工质量管控、进度里程碑。"
+        #         "明确近期（1-2年）、中期（3-5年）目标与验收标准。"
+        #         "使用 <h3> 标题，实施计划以 <table> 呈现，阶段任务以 <ul>/<li> 呈现。"
+        #     ),
+        # },
         {
             "heading": "效果评估方案",
+            "kind": "llm",
             "prompt_hint": (
-                "围绕 area_code 区域，设计酸化治理效果的科学评估方案，包括："
-                "监测点位布设方案、监测指标体系（土壤 pH、交换性酸、交换性铝、"
-                "盐基饱和度、阳离子交换量、有机质、作物产量与品质等）、"
-                "监测频率与周期、数据采集与分析方法、效果评价标准与等级划分。"
-                "明确治理前后对比评估方法和持续跟踪机制。"
-                "使用 <h2>/<h3> 标题层级，监测指标以 <table> 表格呈现，"
-                "评估标准以 <ul>/<li> 列表呈现，方案说明使用 <p> 段落。"
+                "设计酸化治理效果评估方案：监测点位布设、监测指标（pH、交换性酸、"
+                "交换性铝、盐基饱和度、CEC、有机质、产量品质）、监测频率、"
+                "评价标准、前后对比与跟踪机制。"
+                "使用 <h3> 标题，监测指标以 <table> 呈现，评估标准以 <ul>/<li> 呈现。"
             ),
         },
         {
             "heading": "保障措施",
+            "kind": "llm",
             "prompt_hint": (
-                "围绕 area_code 区域，提出确保酸化治理方案顺利实施的保障措施，包括："
-                "组织保障与责任落实、资金筹措与投入使用、技术支撑与服务体系建设、"
-                "政策支持与激励机制、宣传引导与农户参与、质量监管与考核评估。"
-                "使用 <h2>/<h3> 标题层级，保障措施以 <ul>/<li> 列表呈现，"
-                "责任分工以 <table> 表格呈现，详细说明使用 <p> 段落。"
+                "提出保障措施：组织保障与责任、资金筹措与投入、技术支撑与服务、"
+                "政策支持与激励、宣传引导与农户参与、质量监管与考核。"
+                "使用 <h3> 标题，保障措施以 <ul>/<li> 呈现，责任分工以 <table> 呈现。"
             ),
         },
         {
             "heading": "结论",
-            "prompt_hint": (
-                "总结 area_code 区域酸化治理方案的核心结论，包括酸化现状评估结果、"
-                "推荐的主要治理技术路线、预期治理效果（pH 提升目标、作物增产潜力等）、"
-                "投资规模和效益分析。展望治理后的耕地质量提升前景和可持续发展意义。"
-                "使用 <h2>/<h3> 标题层级，核心结论以 <ul>/<li> 列表呈现，"
-                "展望以 <p> 段落呈现。"
-            ),
+            "kind": "summary",
+            "prompt_builder": acid_summary_prompt,
         },
     ],
 }
 
 # ---------------------------------------------------------------------------
-# 4. 地块有机质提升方案
+# 4. 地块有机质提升方案（接入 model-5 用量）
 # ---------------------------------------------------------------------------
 
 ORGANIC_MATTER_IMPROVEMENT: ReportTemplate = {
@@ -341,109 +642,93 @@ ORGANIC_MATTER_IMPROVEMENT: ReportTemplate = {
     "sections": [
         {
             "heading": "前言/背景",
+            "kind": "llm",
             "prompt_hint": (
-                "围绕 area_code 对应区域，阐述土壤有机质的重要功能（养分供给、"
-                "结构改良、保水保肥、生物活性维持等），说明区域耕地有机质提升的"
-                "紧迫性和战略意义。介绍国家关于耕地质量保护与有机质提升的政策要求，"
-                "以及编制本方案的目的和总体思路。"
-                "以 HTML 格式输出，使用 <h2>、<h3> 作为层级标题，<p> 作为段落，"
-                "政策背景使用 <ul>/<li> 列表呈现。"
+                "阐述土壤有机质的重要功能（养分供给、结构改良、保水保肥、生物活性），"
+                "说明区域耕地有机质提升的紧迫性和战略意义。介绍国家关于耕地质量保护"
+                "与有机质提升的政策要求及编制本方案的总体思路。"
+                "以 HTML 输出，<h3> 标题，<p> 段落，政策背景以 <ul>/<li> 呈现。"
             ),
+        },
+        {
+            "heading": "地块土壤指标概览",
+            "kind": "data",
+            "data_renderer": render_parcel_indicators_table,
         },
         {
             "heading": "有机质现状分析",
-            "prompt_hint": (
-                "针对 area_code 区域，详细分析耕地土壤有机质现状，包括："
-                "有机质含量的空间分布特征、不同等级（丰富、中等、缺乏、极缺）"
-                "的面积与占比、有机质与土壤类型和耕作制度的关系、"
-                "有机质含量的历史演变趋势、与全国和区域平均水平的对比分析。"
-                "结合土壤采样数据，分析有机质组分（活性有机质、腐殖质等）特征。"
-                "使用 <h2>/<h3> 标题层级，有机质数据以 <table> 表格呈现，"
-                "等级分布以 <ul>/<li> 列表呈现，趋势分析使用 <p> 段落。"
+            "kind": "llm",
+            "prompt_builder": lambda ctx: (
+                f"范围：{_scope_label(ctx.get('scope'))}\n"
+                f"地块有机质与 pH 等指标快照（仅依据提供的数据，不得编造数值）：\n{_organic_data_brief(ctx)}\n\n"
+                "基于上述数据，分析有机质空间分布、不同等级面积与占比、"
+                "与土壤类型和耕作制度的关系、历史演变趋势。"
+                "使用 <h3> 标题，有机质数据以 <table> 呈现，等级分布以 <ul>/<li> 呈现。"
             ),
         },
+        # {
+        #     "heading": "提升目标",
+        #     "kind": "llm",
+        #     "prompt_hint": (
+        #         "制定有机质提升目标：总体目标（区域平均提升幅度）、分级目标"
+        #         "（不同等级耕地的提升值）、分阶段目标（近期/中期/远期）。"
+        #         "说明依据、可行性论证与考核指标。"
+        #         "使用 <h3> 标题，目标指标以 <table> 呈现，阶段目标以 <ul>/<li> 呈现。"
+        #     ),
+        # },
         {
-            "heading": "提升目标",
-            "prompt_hint": (
-                "围绕 area_code 区域，基于有机质现状和农业生产需求，制定科学合理的"
-                "有机质提升目标。包括总体目标（区域平均有机质含量提升幅度）、"
-                "分级目标（不同等级耕地的提升目标值）、分阶段目标（近期、中期、远期）。"
-                "说明目标制定的依据和可行性论证，以及目标达成的考核指标。"
-                "使用 <h2>/<h3> 标题层级，目标指标以 <table> 表格呈现，"
-                "阶段目标以 <ul>/<li> 列表呈现，论证分析使用 <p> 段落。"
-            ),
-        },
-        {
-            "heading": "技术路线",
-            "prompt_hint": (
-                "针对 area_code 区域，设计有机质提升的总体技术路线，包括："
-                "外源碳投入（秸秆还田、有机肥施用、绿肥种植等）、"
-                "内源碳固定（保护性耕作、少免耕、生物炭施用等）、"
-                "碳损失控制（合理轮作、水土保持、科学施肥等）。"
-                "说明各项技术的原理、适用条件、操作要点和协同效应，"
-                "构建因地制宜的有机质提升技术集成体系。"
-                "使用 <h2>/<h3> 标题层级，技术路线图以 <ul>/<li> 列表呈现，"
-                "技术参数以 <table> 表格呈现，原理说明使用 <p> 段落。"
-            ),
+            "heading": "有机培肥用量测算（model-5）",
+            "kind": "data",
+            "data_renderer": render_organic_matter_dosage_table,
         },
         {
             "heading": "有机培肥方案",
-            "prompt_hint": (
-                "围绕 area_code 区域，制定详细的有机培肥方案，包括："
-                "有机肥源规划（畜禽粪便、商品有机肥、沼渣沼液、绿肥等）的"
-                "种类选择、用量测算、来源保障和资源化利用方案；"
-                "秸秆还田方案（还田方式、还田量、还田时间、配施氮肥等）；"
-                "绿肥种植方案（品种选择、种植模式、翻压技术等）；"
-                "不同作物和土壤类型的差异化培肥方案。"
-                "使用 <h2>/<h3> 标题层级，培肥方案以 <table> 表格呈现，"
-                "技术要点以 <ul>/<li> 列表呈现，方案说明使用 <p> 段落。"
-            ),
+            "kind": "summary",
+            "prompt_builder": organic_fertilizer_prompt,
         },
         {
-            "heading": "实施计划",
+            "heading": "技术路线",
+            "kind": "llm",
             "prompt_hint": (
-                "针对 area_code 区域，制定有机质提升的分阶段实施计划，包括："
-                "示范区建设与推广计划、年度实施任务分解、"
-                "有机肥源建设与供应保障计划、技术培训与推广计划、"
-                "物资采购与调配计划、质量管控与验收计划。"
-                "明确近期（1-2年）、中期（3-5年）和远期（5-10年）的实施重点和里程碑。"
-                "使用 <h2>/<h3> 标题层级，实施计划以 <table> 表格呈现，"
-                "阶段任务以 <ul>/<li> 列表呈现，组织方案使用 <p> 段落。"
+                "设计有机质提升技术路线：外源碳投入（秸秆还田、有机肥、绿肥）、"
+                "内源碳固定（保护性耕作、生物炭）、碳损失控制（合理轮作、水土保持）。"
+                "说明原理、适用条件、操作要点与协同效应。"
+                "使用 <h3> 标题，技术路线以 <ul>/<li> 呈现，参数以 <table> 呈现。"
             ),
         },
+        # {
+        #     "heading": "实施计划",
+        #     "kind": "llm",
+        #     "prompt_hint": (
+        #         "制定有机质提升分阶段实施计划：示范区建设、年度任务分解、"
+        #         "有机肥源建设与供应、技术培训、物资调配、质量管控与验收。"
+        #         "明确近期/中期/远期实施重点与里程碑。"
+        #         "使用 <h3> 标题，实施计划以 <table> 呈现，阶段任务以 <ul>/<li> 呈现。"
+        #     ),
+        # },
         {
             "heading": "效果监测",
+            "kind": "llm",
             "prompt_hint": (
-                "围绕 area_code 区域，设计有机质提升效果的监测方案，包括："
-                "长期定位监测点布局、监测指标体系（有机质含量、有机质组分、"
-                "土壤容重、孔隙度、团聚体、微生物量碳、酶活性、作物产量等）、"
-                "采样与检测方法、监测频率与周期、数据管理与分析平台建设。"
-                "建立有机质变化的预警机制和动态评估体系。"
-                "使用 <h2>/<h3> 标题层级，监测指标以 <table> 表格呈现，"
-                "监测方案以 <ul>/<li> 列表呈现，方法说明使用 <p> 段落。"
+                "设计有机质提升效果监测方案：长期定位监测点布局、监测指标"
+                "（有机质含量与组分、容重、孔隙度、团聚体、微生物量碳、酶活性、产量）、"
+                "采样检测方法、监测频率、数据管理平台、预警机制。"
+                "使用 <h3> 标题，监测指标以 <table> 呈现，方案以 <ul>/<li> 呈现。"
             ),
         },
         {
             "heading": "保障措施",
+            "kind": "llm",
             "prompt_hint": (
-                "围绕 area_code 区域，提出确保有机质提升方案有效实施的保障措施，包括："
-                "组织保障与责任体系、资金投入与补贴机制、技术支撑与服务网络、"
-                "政策激励与长效机制、宣传培训与示范引领、"
-                "监测评估与动态调整机制。"
-                "使用 <h2>/<h3> 标题层级，保障措施以 <ul>/<li> 列表呈现，"
-                "责任分工以 <table> 表格呈现，详细说明使用 <p> 段落。"
+                "提出保障措施：组织保障与责任、资金投入与补贴、技术支撑与服务网络、"
+                "政策激励与长效机制、宣传培训与示范、监测评估与动态调整。"
+                "使用 <h3> 标题，保障措施以 <ul>/<li> 呈现，责任分工以 <table> 呈现。"
             ),
         },
         {
             "heading": "结论",
-            "prompt_hint": (
-                "总结 area_code 区域有机质提升方案的核心结论，包括有机质现状评估、"
-                "提升目标和推荐技术路线、预期效果（有机质含量提升幅度、作物增产潜力、"
-                "生态效益等）、投资规模和效益分析。展望有机质提升对耕地质量、"
-                "粮食安全和农业可持续发展的贡献。"
-                "使用 <h2>/<h3> 标题层级，核心结论以 <ul>/<li> 列表呈现，"
-                "展望以 <p> 段落呈现。"
-            ),
+            "kind": "summary",
+            "prompt_builder": organic_summary_prompt,
         },
     ],
 }
