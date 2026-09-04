@@ -49,15 +49,16 @@ def build_comprehensive_graph(services:ComprehensiveServices,checkpointer):
         return {"planning_facts":facts.__dict__,"request_facts":facts.__dict__,"diagnostic_plan":plan.model_dump(mode="json"),"interaction_state":"resolving_inputs"}
     def input_node(state):
         plan=DiagnosticPlan.model_validate(state["diagnostic_plan"])
-        values=(state.get("confirmation") or {}).get("values",{})
+        values=dict((state.get("confirmation") or {}).get("values",{}))
         resolution=services.input_resolver.resolve(plan,analysis_context=state["analysis_context_snapshot"],user_values=values)
         version=state.get("checkpoint_version",0)
-        if resolution.missing_inputs:
+        while resolution.missing_inputs:
             version+=1
             response=interrupt({"interaction_state":"needs_input","run_id":state["run_id"],"checkpoint_version":version,"missing_inputs":list(resolution.missing_inputs),"proposed_defaults":resolution.proposed_defaults})
             action=InteractionResponse.model_validate(response)
             if action.action=="cancel": return {"interaction_state":"canceled","checkpoint_version":version}
-            values=action.values
+            if action.action!="provide_input": raise ValueError("invalid_interaction_action")
+            values.update(action.values)
             resolution=services.input_resolver.resolve(plan,analysis_context=state["analysis_context_snapshot"],user_values=values)
         return {"resolved_inputs":resolution.model_dump(mode="json"),"missing_inputs":list(resolution.missing_inputs),"proposed_defaults":resolution.proposed_defaults,"confirmation":{"values":values},"interaction_state":"confirming","checkpoint_version":version}
     def confirm_node(state):
