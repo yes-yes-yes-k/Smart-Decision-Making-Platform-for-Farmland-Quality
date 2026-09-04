@@ -3,7 +3,7 @@ from __future__ import annotations
 from typing import Any, Dict
 import logging
 
-from ..base import BaseAgent
+from ..base import BaseAgent, ProfessionalInputRejected
 from ..mock_data import MockDataLoader
 from ...domain.data.parcel_data_accessor import ParcelDataAccessor
 from ...domain.other_models.model_5 import EXTERNAL_FIELD_MAP, model_5_execution
@@ -48,7 +48,7 @@ class OrganicMatterAgent(BaseAgent):
         super().__init__(
             name="OrganicMatterAgent",
             description="基于韶关 RF/全局 ETR 的有机质培肥提升与施用量预测",
-            model_id="model-5",
+            model_id="organic-matter-improvement",
             domain="organic_matter",
         )
 
@@ -139,8 +139,14 @@ class OrganicMatterAgent(BaseAgent):
         }
 
     def execute(self, task: Dict[str, Any]) -> Dict[str, Any]:
+        task = task or {}
+        chat = task.get("execution_channel") == "chat"
+        if chat and (not task.get("guard_passed") or not task.get("parcel_id")):
+            raise ProfessionalInputRejected("verified_parcel_required", "有机质聊天计算需要已验证地块")
         inputs = self._collect_inputs(task)
         data_source = inputs.pop("data_source", "unknown")
+        if chat and data_source != "db":
+            raise ProfessionalInputRejected("verified_parcel_required", "已验证地块未命中权威数据")
 
         try:
             if not self._has_model_features(inputs) and data_source != "db":
@@ -148,6 +154,7 @@ class OrganicMatterAgent(BaseAgent):
                 outputs = self._rule_fallback(inputs)
                 status = "degraded"
                 simulated = True
+                data_source = "rule_fallback"
             elif data_source == "db":
                 # DB 路径：调用 predict_dose 预测推荐施用量
                 from framework.domain.calculations.organic_matter_calculation import predict_dose
@@ -177,13 +184,18 @@ class OrganicMatterAgent(BaseAgent):
                 status = result.get("status", "degraded")
                 # ML 成功执行时 simulated=False；fallback/rejected 沿用模型自身判定
                 simulated = bool(result.get("simulated", status != "success"))
+                if status == "success":
+                    data_source = "shaoguan_rf" if result.get("region") == "shaoguan" else "global_etr"
+                elif status == "fallback":
+                    data_source = "ml_fallback"
 
             persisted = self._persist_result(
                 agent_id=self.agent_id,
                 parcel_id=task.get("parcel_id") if isinstance(task, dict) else None,
-                inputs=inputs,
+                inputs={**inputs, "data_source": data_source},
                 outputs=outputs,
                 status=status,
+                execution_context=task.get("execution_context") if isinstance(task, dict) else None,
             )
 
             return {
@@ -201,9 +213,10 @@ class OrganicMatterAgent(BaseAgent):
             self._persist_result(
                 agent_id=self.agent_id,
                 parcel_id=task.get("parcel_id") if isinstance(task, dict) else None,
-                inputs=inputs,
+                inputs={**inputs, "data_source": data_source},
                 outputs={"error": str(e)},
                 status="error",
+                execution_context=task.get("execution_context") if isinstance(task, dict) else None,
             )
             return {
                 "status": "error",

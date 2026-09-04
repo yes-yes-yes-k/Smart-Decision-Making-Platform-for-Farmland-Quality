@@ -2,7 +2,7 @@ from __future__ import annotations
 from typing import Any, Dict
 import logging
 
-from ..base import BaseAgent
+from ..base import BaseAgent, ProfessionalInputRejected
 from ..mock_data import MockDataLoader
 from ...domain.data.parcel_data_accessor import ParcelDataAccessor
 from ...domain.other_models.model_4 import model_4_execution
@@ -25,7 +25,7 @@ class AcidificationRemediationAgent(BaseAgent):
         super().__init__(
             name="AcidificationRemediationAgent",
             description="基于过程模型计算酸化改良剂需求量（YTK/MBNT）",
-            model_id="model-4",
+            model_id="acidification-remediation",
             domain="acidification",
         )
 
@@ -75,12 +75,25 @@ class AcidificationRemediationAgent(BaseAgent):
 
     def execute(self, task: Dict[str, Any]) -> Dict[str, Any]:
         task = task or {}
+        chat = task.get("execution_channel") == "chat"
+        mode = task.get("calculation_mode") or (task.get("execution_context") or {}).get("analysis_context", {}).get("mode", "spatial")
+        if chat and not task.get("guard_passed"):
+            raise ProfessionalInputRejected("analysis_guard_required", "专业聊天执行必须先通过中央守卫")
+        if chat and mode == "spatial" and not task.get("parcel_id"):
+            raise ProfessionalInputRejected("verified_parcel_required", "空间计算需要已验证地块")
+        if chat and mode == "scenario":
+            required = ("SJD", "JHX", "JLA", "land_type", "fertilizer_type")
+            missing = [name for name in required if task.get(name) is None]
+            if missing:
+                raise ProfessionalInputRejected("scenario_inputs_required", f"情景试算缺少输入: {', '.join(missing)}")
         inputs = self._collect_inputs(task)
         data_source = inputs.pop("data_source", "unknown")
         land_type = task.get("land_type") or inputs.get("land_type")
         fertilizer_type = task.get("fertilizer_type") or inputs.get("fertilizer_type")
 
         try:
+            if chat and mode == "spatial" and data_source != "db":
+                raise ProfessionalInputRejected("verified_parcel_required", "已验证地块未命中权威数据")
             if data_source == "db":
                 # DB 路径：调用 calculate_acidification
                 from framework.domain.calculations.acidification_calculation import calculate_acidification
@@ -103,8 +116,9 @@ class AcidificationRemediationAgent(BaseAgent):
             else:
                 # Legacy 路径：model_4_execution
                 enriched = dict(inputs)
-                for k, v in MOCK_INPUTS.items():
-                    enriched.setdefault(k, v)
+                if not (chat and mode == "scenario"):
+                    for k, v in MOCK_INPUTS.items():
+                        enriched.setdefault(k, v)
 
                 result = model_4_execution(enriched, land_type=land_type, fertilizer_type=fertilizer_type)
                 outputs = {
@@ -122,14 +136,16 @@ class AcidificationRemediationAgent(BaseAgent):
                         "reason": result.get("reason"),
                     },
                 }
-                status = "degraded"
+                status = result["status"]
+                data_source = "legacy_process"
 
             persisted = self._persist_result(
                 agent_id=self.agent_id,
                 parcel_id=task.get("parcel_id") or inputs.get("parcel_id"),
-                inputs=inputs,
+                inputs={**inputs, "data_source": data_source},
                 outputs=outputs,
                 status=status,
+                execution_context=task.get("execution_context"),
             )
 
             if data_source == "db":
@@ -143,7 +159,8 @@ class AcidificationRemediationAgent(BaseAgent):
                 }
             return {
                 "status": result["status"],
-                "simulated": False,
+                # legacy 路径使用默认输入或文件数据，公共契约将其标记为降级。
+                "simulated": True,
                 "result": outputs["result"],
                 "metadata": outputs["metadata"],
                 "data_source": data_source,
@@ -153,9 +170,10 @@ class AcidificationRemediationAgent(BaseAgent):
             self._persist_result(
                 agent_id=self.agent_id,
                 parcel_id=task.get("parcel_id"),
-                inputs=inputs,
+                inputs={**inputs, "data_source": data_source},
                 outputs={"error": str(e)},
                 status="error",
+                execution_context=task.get("execution_context"),
             )
             raise
 

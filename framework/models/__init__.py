@@ -32,4 +32,5 @@ from .thematic_model import (
     ParcelInfo,
     ModelVersionHistory,
     AreaCodeRegionMap,
+    SpatialRegionCatalog,
 )

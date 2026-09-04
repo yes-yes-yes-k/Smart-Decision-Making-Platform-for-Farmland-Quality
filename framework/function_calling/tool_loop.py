@@ -14,6 +14,7 @@ from langchain_core.messages import AIMessage, HumanMessage, SystemMessage, Tool
 from .executor import tool_executor
 from .registry import tool_registry
 from .specialized_tools import TOOL_NAME_TO_AGENT_ID
+from framework.analysis_context.errors import AnalysisContextConflict
 
 logger = logging.getLogger(__name__)
 
@@ -29,8 +30,7 @@ _SYSTEM_PROMPT_TEMPLATE = """你是耕地质量与土壤改良领域的助手。
 
 调用规则：
 - 根据用户问题选择合适的工具，可以组合调用多个工具。
-- 如果用户指定了地块 ID（parcel_id），请直接传入。
-- 如果用户没有指定地块 ID，可以先用默认地块 ID "1" 调用，或询问用户。
+- 空间对象参数由后端提供，不得自行选择、猜测或覆盖。
 - 调用完工具后，基于工具返回的计算结果，给出准确、简洁、可执行的中文答复。
 - 不要编造未提供的数据，保留明确的数值、单位和建议。
 
@@ -136,7 +136,17 @@ class ToolCallingLoop:
                 tc_id = tc.get("id", "") if isinstance(tc, dict) else getattr(tc, "id", "")
 
                 # 合并 default_args（LLM 参数优先）
-                merged_args = self._merge_default_args(tc_name, tc_args)
+                try:
+                    merged_args = self._merge_default_args(tc_name, tc_args)
+                except AnalysisContextConflict as exc:
+                    return {
+                        "success": False,
+                        "reason": "analysis_object_conflict",
+                        "error": exc.message,
+                        "tool_calls_trace": self._trace,
+                        "partial_results": self._tool_results,
+                        "iterations": iteration,
+                    }
 
                 tool_started = time.perf_counter()
                 result = tool_executor.execute(tc_name, merged_args)
@@ -198,7 +208,7 @@ class ToolCallingLoop:
         }
 
     def _merge_default_args(self, tool_name: str, llm_args: Dict[str, Any]) -> Dict[str, Any]:
-        """合并 LLM 返回的参数和 default_args（LLM 参数优先）。
+        """锁定空间字段使用后端值，其他字段仍允许 LLM 提供。
 
         只合并工具实际接受的参数名，避免 TypeError。
         """
@@ -211,16 +221,18 @@ class ToolCallingLoop:
         if not accepted_keys:
             return dict(llm_args)
 
+        locked_keys = frozenset({"parcel_id", "parcel_code", "area_code"})
+        for key in locked_keys:
+            if key in llm_args and key in self._default_args and llm_args[key] != self._default_args[key]:
+                raise AnalysisContextConflict(f"工具参数 {key} 与当前分析对象不一致")
         merged: Dict[str, Any] = {}
         for key in accepted_keys:
-            if key in llm_args:
+            if key in locked_keys and key in self._default_args:
+                merged[key] = self._default_args[key]
+            elif key in llm_args:
                 merged[key] = llm_args[key]
             elif key in self._default_args:
                 merged[key] = self._default_args[key]
-        # 补充 LLM 传入但不在 accepted_keys 中的参数（以防 args_schema 不完整）
-        for key, val in llm_args.items():
-            if key not in merged:
-                merged[key] = val
         return merged
 
     @staticmethod

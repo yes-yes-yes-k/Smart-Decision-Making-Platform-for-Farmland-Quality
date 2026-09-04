@@ -8,5 +8,9 @@ from . import metrics
 from . import dashboard
 from . import traceability
 from . import observe
+from . import analysis_context_metrics
 
-__all__ = ["routing_log", "metrics", "dashboard", "traceability", "observe"]
+__all__ = [
+    "routing_log", "metrics", "dashboard", "traceability", "observe",
+    "analysis_context_metrics",
+]

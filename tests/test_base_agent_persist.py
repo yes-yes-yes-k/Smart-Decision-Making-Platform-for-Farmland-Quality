@@ -61,7 +61,37 @@ class PersistResultSuccessTests(unittest.TestCase):
         mock_log_cls.assert_called_once()
         self.assertEqual(mock_session.add.call_count, 2)
         mock_session.commit.assert_called_once()
-        agent._build_result_record.assert_called_once_with(42, {"out": 2})
+        persisted = agent._build_result_record.call_args.args[1]
+        self.assertEqual(persisted["out"], 2)
+        self.assertEqual(persisted["model_version"], "unknown")
+        self.assertEqual(persisted["actual_inputs"], {"in": 1})
+
+    @patch("framework.models.thematic_model.ModelExecutionLog")
+    @patch("framework.models.user.db")
+    def test_persist_reuses_request_trace_and_canonical_context(self, mock_db, mock_log_cls):
+        mock_db.session = MagicMock()
+        mock_log_cls.return_value = MagicMock(id=7)
+        agent = _make_test_agent("acidification-remediation")
+        execution_context = {
+            "trace_id": "trace-1", "user_id": 7, "conversation_id": 12,
+            "analysis_context": {
+                "mode": "spatial", "version": 3,
+                "object": {"type": "parcel", "id": "P001", "area_code": "440281"},
+            },
+        }
+        self.assertTrue(agent._persist_result(
+            "model-4", "P001", {"SJD": 5.1},
+            {"model_version": "acid-v2", "data_as_of": "2024"}, "ok",
+            execution_context=execution_context,
+        ))
+        values = mock_log_cls.call_args.kwargs
+        self.assertEqual(values["trace_id"], "trace-1")
+        self.assertEqual(values["user_id"], 7)
+        self.assertEqual(values["conversation_id"], 12)
+        self.assertEqual(values["analysis_object_type"], "parcel")
+        self.assertEqual(values["analysis_object_id"], "P001")
+        self.assertEqual(values["context_version"], 3)
+        self.assertEqual(values["model_version"], "acid-v2")
 
     @patch("framework.models.thematic_model.ModelExecutionLog")
     @patch("framework.models.user.db")

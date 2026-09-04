@@ -104,33 +104,26 @@ def run_one_question(q_type: int, q: str,
 
     status = output.get("status")
     question_type = output.get("question_type")
-    answer = output.get("answer") or output.get("llm_response") or ""
-    model_results = output.get("model_results", {}) or {}
-    agent_data = model_results.get("data", {}) if isinstance(model_results, dict) else {}
-    agents_invoked = agent_data.get("agents_invoked", []) or []
-    role = agent_data.get("role")
-    summary = agent_data.get("summary", "") or ""
-    details = agent_data.get("details", {}) or {}
+    answer = output.get("answer") or ""
+    models = output.get("models", {}) if isinstance(output.get("models"), dict) else {}
+    agents_invoked = list(models)
+    routing_method = output.get("routing_method", "")
 
-    final_answer = answer or summary
-
-    # 收集每个 agent 的明细
-    # details[agent_id] 是 agent.answer_question() 的返回，结构为：
-    #   {answer, evidence, confidence, simulated, status?(skipped), reason?, error?}
+    # 收集 Schema 2.0 规范模型信封，不再读取旧的 data/details。
     agent_details: List[Dict[str, Any]] = []
     for aid in agents_invoked:
-        detail = details.get(aid, {}) or {}
+        detail = models.get(aid, {}) or {}
         if not isinstance(detail, dict):
             continue
+        meta = detail.get("meta", {}) if isinstance(detail.get("meta"), dict) else {}
         agent_details.append({
             "agent_id": aid,
-            "simulated": detail.get("simulated"),
+            "model_id": detail.get("model_id"),
+            "simulated": meta.get("simulated"),
+            "data_source": meta.get("data_source"),
             "status": detail.get("status"),
-            "reason": detail.get("reason"),
-            "error": detail.get("error"),
-            "answer": detail.get("answer") or "",
-            "confidence": detail.get("confidence"),
-            "evidence": detail.get("evidence") or [],
+            "result": detail.get("result"),
+            "issues": detail.get("issues") or [],
         })
 
     return {
@@ -139,11 +132,11 @@ def run_one_question(q_type: int, q: str,
         "status": status,
         "identified_type": question_type,
         "type_match": question_type == q_type,
-        "role": role,
+        "role": routing_method,
         "agents_invoked": agents_invoked,
-        "answer_full": final_answer,
-        "summary": summary,
-        "answer_source": "answer" if answer else ("summary" if summary else "none"),
+        "answer_full": answer,
+        "summary": "",
+        "answer_source": "answer" if answer else "none",
         "agent_details": agent_details,
         "elapsed": elapsed,
         "parcel_id": parcel_id,
@@ -302,8 +295,8 @@ def build_markdown(report: Dict[str, Any]) -> str:
         if r["agent_details"]:
             md.append("**【各 agent 调用细节】**")
             md.append("")
-            md.append("| agent_id | simulated | status | confidence | answer 摘要 |")
-            md.append("|---|---|---|---|---|")
+            md.append("| agent_id | model_id | status | data_source | simulated | result 摘要 |")
+            md.append("|---|---|---|---|---|---|")
             for ad in r["agent_details"]:
                 if ad["simulated"] is True:
                     sim_str = "sim（模拟）"
@@ -311,43 +304,29 @@ def build_markdown(report: Dict[str, Any]) -> str:
                     sim_str = "real（真实）"
                 else:
                     sim_str = "-"
-                conf = ad["confidence"]
-                conf_str = f"{conf}" if conf is not None else "-"
-                ans_short = _short(ad["answer"], 120).replace("\n", " ").replace("|", "\\|")
+                result_short = _short(ad["result"], 120).replace("\n", " ").replace("|", "\\|")
                 md.append(
-                    f"| {ad['agent_id']} | {sim_str} | {ad['status'] or '-'} | "
-                    f"{conf_str} | {ans_short} |"
+                    f"| {ad['agent_id']} | {ad['model_id'] or '-'} | {ad['status'] or '-'} | "
+                    f"{ad['data_source'] or '-'} | {sim_str} | {result_short} |"
                 )
             md.append("")
 
-            # 展开每个 agent 的完整 answer + evidence
+            # 展开每个 agent 的规范 result + issues。
             md.append("**【各 agent 完整输出】**")
             md.append("")
             for ad in r["agent_details"]:
                 md.append(f"- **{ad['agent_id']}**")
-                if ad["status"]:
-                    md.append(f"  - status: `{ad['status']}`")
-                    if ad["reason"]:
-                        md.append(f"  - reason: `{ad['reason']}`")
-                if ad["error"]:
-                    md.append(f"  - error: `{ad['error']}`")
-                md.append(f"  - confidence: `{ad['confidence']}`")
+                md.append(f"  - model_id: `{ad['model_id']}`")
+                md.append(f"  - status: `{ad['status']}`")
+                md.append(f"  - data_source: `{ad['data_source']}`")
                 md.append(f"  - simulated: `{ad['simulated']}`")
-                if ad["answer"]:
-                    md.append(f"  - answer:")
-                    md.append("    ```text")
-                    for line in ad["answer"].split("\n"):
-                        md.append(f"    {line}")
-                    md.append("    ```")
-                else:
-                    md.append(f"  - answer: (空)")
-                if ad["evidence"]:
-                    md.append(f"  - evidence ({len(ad['evidence'])} 条):")
-                    md.append("    ```json")
-                    ev_str = _short(ad["evidence"], 1200)
-                    for line in ev_str.split("\n"):
-                        md.append(f"    {line}")
-                    md.append("    ```")
+                md.append("  - result:")
+                md.append("    ```json")
+                for line in _short(ad["result"], 1200).split("\n"):
+                    md.append(f"    {line}")
+                md.append("    ```")
+                if ad["issues"]:
+                    md.append(f"  - issues ({len(ad['issues'])} 条): `{_short(ad['issues'], 600)}`")
                 md.append("")
 
         md.append("---")

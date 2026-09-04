@@ -320,14 +320,18 @@ def test_type2_questions_routed_to_type2():
         assert qt == 2, f"type 2 问题「{q}」期望 TYPE_2，实际 TYPE_{qt}"
 
 
-def test_capability_has_five_dim_fields():
-    """ProfessionalCapability 应含 analysis_scale/data_type 字段且 6 个能力均已填充"""
+def test_capability_has_analysis_and_spatial_requirement_fields():
+    """ProfessionalCapability 应声明展示维度及中央守卫所需字段。"""
     from framework.agents.capabilities import PROFESSIONAL_CAPABILITIES
     for cap in PROFESSIONAL_CAPABILITIES:
         assert hasattr(cap, "analysis_scale"), f"{cap.agent_id} 缺少 analysis_scale"
         assert hasattr(cap, "data_type"), f"{cap.agent_id} 缺少 data_type"
         assert cap.analysis_scale, f"{cap.agent_id} 的 analysis_scale 为空"
         assert cap.data_type, f"{cap.agent_id} 的 data_type 为空"
+        assert cap.supported_object_types, f"{cap.agent_id} 未声明支持的空间对象"
+        assert isinstance(cap.requires_spatial_object, bool)
+        assert isinstance(cap.supports_scenario, bool)
+        assert isinstance(cap.required_scenario_inputs, tuple)
     assert len(PROFESSIONAL_CAPABILITIES) == 6
 
 

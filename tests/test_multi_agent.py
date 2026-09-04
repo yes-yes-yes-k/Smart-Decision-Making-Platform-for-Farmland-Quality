@@ -46,8 +46,13 @@ def test_route_models():
 
     print("✓ 路由函数正确")
 
-def test_rag_chat_node():
+def test_rag_chat_node(monkeypatch):
     """测试 RAG 节点"""
+    from framework.agents import nodes
+    monkeypatch.setattr(
+        nodes.rag_chain, "chat",
+        lambda *args, **kwargs: {"success": True, "answer": "本地测试答案", "sources": []},
+    )
     state: MultiAgentState = {
         "request": {"question": "什么是土壤酸化？"},
         "data": {},
@@ -104,8 +109,9 @@ def test_aggregate_results_model():
     assert result["model_results"]["answer"] == "酸化评估结果"
     print("✓ 专业模型结果聚合成功")
 
-def test_type2_routes_to_model2_end_to_end():
+def test_type2_routes_to_model2_end_to_end(monkeypatch):
     """type=2 的问题通过 execute_models 路由后，agents_invoked 仅含 model-2"""
+    from framework.agents import nodes
     from framework.agents.manager import agent_manager
     captured = {}
 
@@ -117,10 +123,11 @@ def test_type2_routes_to_model2_end_to_end():
         return real
 
     real_process = agent_manager.process
+    monkeypatch.setattr(nodes, "_execute_via_function_calling", lambda *args, **kwargs: None)
     agent_manager.process = fake_process
     try:
         state: MultiAgentState = {
-            "request": {"question": "我的田耕地质量等级是多少", "area_code": "lechang", "parcel_code": "A0001"},
+            "request": {"question": "我的田耕地质量等级是多少"},
             "data": {},
             "model_results": {},
             "llm_response": {},
@@ -130,6 +137,11 @@ def test_type2_routes_to_model2_end_to_end():
             "error": None,
             "question_type": 2,
             "relevance": 0.9,
+            "analysis_context": {
+                "mode": "spatial", "version": 1,
+                "object": {"type": "parcel", "id": "P001", "area_code": "440281"},
+            },
+            "validated_identifiers": {"parcel_id": "P001", "parcel_code": "A0001"},
         }
         execute_models(state)
     finally:
@@ -137,9 +149,8 @@ def test_type2_routes_to_model2_end_to_end():
 
     # question_type 应已透传到 context
     assert captured["context"].get("question_type") == 2
-    # agents_invoked 应仅含 model-2
-    agents_invoked = captured["real_result"]["data"]["agents_invoked"]
-    assert agents_invoked == ["model-2"], f"type 2 应仅调 model-2: {agents_invoked}"
+    # Schema 2.0 使用 models 的键表达被调用的 Agent。
+    assert list(captured["real_result"]["models"]) == ["model-2"]
     print("✓ type=2 端到端路由到 model-2")
 
 

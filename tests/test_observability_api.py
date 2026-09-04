@@ -110,6 +110,9 @@ class TestDashboardEndpoint:
         # 两条日志：一条 boundary_pending → missed_call_rate = 0.5
         _write_log_entry(tmp_path, "a", routing_status="normal")
         _write_log_entry(tmp_path, "b", routing_status="boundary_pending")
+        _write_log_entry(tmp_path, "c", event="analysis_context.needs_analysis_object")
+        _write_log_entry(tmp_path, "d", event="analysis_context.error.409")
+        _write_log_entry(tmp_path, "e", event="analysis_context.legacy_field_used")
         # 混淆矩阵文件（含 .llm.json 变体）
         with open(os.path.join(str(tmp_path), "confusion_matrix.json"), "w", encoding="utf-8") as f:
             json.dump({"model-2-vs-model-3": {"tp": 1, "fp": 0, "fn": 0, "tn": 3, "accuracy": 1.0, "confusion_rate": 0.0}}, f)
@@ -125,6 +128,15 @@ class TestDashboardEndpoint:
         assert data["log_metrics"]["param_completeness_rate"] == 1.0
         assert "confusion_matrix.json" in data["confusion_matrices"]
         assert "confusion_matrix.llm.json" in data["confusion_matrices"]
+        assert data["analysis_context_metrics"] == {
+            "needs_analysis_object": 1,
+            "needs_scenario_inputs": 0,
+            "http_422": 0,
+            "http_409": 1,
+            "http_503": 0,
+            "legacy_field_used": 1,
+        }
+        assert data["execution_statistics"] == []
 
     def test_dashboard_missing_data_returns_defaults(self, client, tmp_path, monkeypatch):
         from framework.observability import routing_log

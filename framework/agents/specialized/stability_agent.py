@@ -2,6 +2,8 @@ from __future__ import annotations
 from typing import Any, Dict, List
 import logging
 
+from flask import has_app_context
+
 from ..base import BaseAgent
 from ..mock_data import MockDataLoader
 from ...domain.data.parcel_data_accessor import ParcelDataAccessor
@@ -82,28 +84,31 @@ class StabilityRiskAgent(BaseAgent):
                 accessor = ParcelDataAccessor()
                 mapped = accessor._map_indicators_to_inputs(inputs, "model-1")
                 parcel_id = str(inputs.get("parcel_id"))
-                # 查询历史快照
-                try:
-                    history = ParcelHistorySnapshot.query.filter_by(parcel_id=parcel_id).all()
-                    history_data = [
-                        {
-                            "survey_year": h.survey_year,
-                            "soil_indicators": h.soil_indicators,
-                            "quality_grade": h.quality_grade,
-                            "composite_index": h.composite_index,
-                        }
-                        for h in history
-                    ]
-                except Exception:
-                    db.session.rollback()
-                    history_data = []
-                # PostGIS 邻域查询
-                try:
-                    parcel = ParcelInfo.query.filter_by(parcel_id=parcel_id).first()
-                except Exception:
-                    db.session.rollback()
-                    parcel = None
+                history_data = []
                 neighbors = []
+
+                # 历史与邻域是增强输入；无 Flask 上下文时不能触发 ORM 查询。
+                # 保留空列表以便纯计算/集成调用仍可返回真实模型结果。
+                parcel = None
+                if has_app_context():
+                    try:
+                        history = ParcelHistorySnapshot.query.filter_by(parcel_id=parcel_id).all()
+                        history_data = [
+                            {
+                                "survey_year": h.survey_year,
+                                "soil_indicators": h.soil_indicators,
+                                "quality_grade": h.quality_grade,
+                                "composite_index": h.composite_index,
+                            }
+                            for h in history
+                        ]
+                    except Exception:
+                        db.session.rollback()
+                    try:
+                        parcel = ParcelInfo.query.filter_by(parcel_id=parcel_id).first()
+                    except Exception:
+                        db.session.rollback()
+
                 if parcel and parcel.geom:
                     try:
                         from sqlalchemy import text as sa_text
@@ -187,18 +192,20 @@ class StabilityRiskAgent(BaseAgent):
                     }
                 outputs = result
                 status = "degraded"
+                data_source = "precomputed"
 
             persisted = self._persist_result(
                 agent_id=self.agent_id,
                 parcel_id=data.get("parcel_id") or inputs.get("parcel_id"),
-                inputs=inputs,
+                inputs={**inputs, "data_source": data_source},
                 outputs=outputs,
                 status=status,
+                execution_context=data.get("execution_context"),
             )
 
             return {
-                "status": "ok",
-                "simulated": data_source != "db",
+                "status": status,
+                "simulated": False,
                 "result": outputs,
                 "data_source": data_source,
                 "persisted": persisted,
@@ -207,9 +214,10 @@ class StabilityRiskAgent(BaseAgent):
             self._persist_result(
                 agent_id=self.agent_id,
                 parcel_id=data.get("parcel_id"),
-                inputs=inputs,
+                inputs={**inputs, "data_source": data_source},
                 outputs={"error": str(e)},
                 status="error",
+                execution_context=data.get("execution_context"),
             )
             return {
                 "status": "degraded",

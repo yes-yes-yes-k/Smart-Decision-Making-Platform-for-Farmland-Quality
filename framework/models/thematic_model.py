@@ -59,6 +59,14 @@ class ModelExecutionLog(db.Model):
     user_id = db.Column(db.Integer, comment="用户ID")
     conversation_id = db.Column(db.Integer, comment="会话ID")
     parcel_id = db.Column(db.String(64), comment="地块唯一编号")
+    analysis_object_type = db.Column(db.String(16), comment="分析对象类型")
+    analysis_object_id = db.Column(db.String(64), comment="分析对象标识")
+    area_code = db.Column(db.String(32), comment="对象所属区域编码")
+    context_version = db.Column(db.Integer, comment="分析上下文版本")
+    analysis_context_snapshot = db.Column(db.JSON, comment="分析上下文快照")
+    model_version = db.Column(db.String(32), comment="实际模型版本")
+    data_as_of = db.Column(db.String(32), comment="输入数据时点（调查年份或 ISO 日期）")
+    data_version = db.Column(db.String(32), comment="输入数据版本")
     layer_id = db.Column(db.BigInteger, db.ForeignKey("spatial_data_layer.id", name="fk_model_execution_log_layer_id"), comment="关联 spatial_data_layer.id")
     input_params = db.Column(db.JSON, comment="输入参数快照")
     output_result = db.Column(db.JSON, comment="输出结果快照")
@@ -76,9 +84,11 @@ class ModelExecutionLog(db.Model):
     created_at = db.Column(db.DateTime(timezone=True), nullable=False, server_default=db.func.current_timestamp(), comment="记录创建时间")
 
     __table_args__ = (
-        db.UniqueConstraint("trace_id", name="uk_model_execution_log_trace_id"),
+        db.Index("idx_model_execution_log_trace_id", "trace_id"),
         db.Index("idx_model_execution_log_agent_id", "agent_id"),
         db.Index("idx_model_execution_log_parcel_id", "parcel_id"),
+        db.Index("idx_model_execution_log_object", "analysis_object_type", "analysis_object_id"),
+        db.Index("idx_model_execution_log_area_agent_status", "area_code", "agent_id", "status"),
         db.Index("idx_model_execution_log_layer_id", "layer_id"),
         db.Index("idx_model_execution_log_started_at", "started_at"),
     )
@@ -450,6 +460,7 @@ class ParcelInfo(db.Model):
 
     id = db.Column(db.Integer, primary_key=True, autoincrement=True, comment="主键")
     parcel_id = db.Column(db.String(64), nullable=False, comment="地块唯一编号")
+    legacy_parcel_code = db.Column(db.String(64), comment="旧系统地块编码")
     geom = db.Column(Geometry("MULTIPOLYGON", srid=4326), comment="地块几何（PostGIS）")
     area_code = db.Column(db.String(32), comment="区域编码")
     centroid_lon = db.Column(db.Float, comment="质心经度")
@@ -463,6 +474,8 @@ class ParcelInfo(db.Model):
 
     __table_args__ = (
         db.UniqueConstraint("parcel_id", name="uk_parcel_info_parcel_id"),
+        db.UniqueConstraint("legacy_parcel_code", name="uk_parcel_info_legacy_parcel_code"),
+        db.Index("idx_parcel_info_legacy_parcel_code", "legacy_parcel_code"),
         db.Index("idx_parcel_info_area_code", "area_code"),
         db.Index("idx_parcel_info_geom", "geom", postgresql_using="gist"),
     )
@@ -526,4 +539,30 @@ class AreaCodeRegionMap(db.Model):
     __table_args__ = (
         db.UniqueConstraint("area_code", name="uk_area_code_region_map_area_code"),
         db.Index("idx_area_code_region_map_enabled", "enabled"),
+    )
+
+
+class SpatialRegionCatalog(db.Model):
+    """可供分析对象解析使用的权威空间区域目录。"""
+    __tablename__ = "spatial_region_catalog"
+
+    id = db.Column(db.BigInteger().with_variant(db.Integer, "sqlite"), primary_key=True, autoincrement=True)
+    object_type = db.Column(db.String(16), nullable=False)
+    object_id = db.Column(db.String(64), nullable=False)
+    display_name = db.Column(db.String(128), nullable=False)
+    area_code = db.Column(db.String(32))
+    parent_object_type = db.Column(db.String(16))
+    parent_object_id = db.Column(db.String(64))
+    layer_id = db.Column(db.BigInteger)
+    source = db.Column(db.String(32), nullable=False)
+    metadata_json = db.Column("metadata", db.JSON)
+    enabled = db.Column(db.Boolean, nullable=False, server_default="true")
+    created_at = db.Column(db.DateTime(timezone=True), nullable=False, server_default=db.func.current_timestamp())
+    updated_at = db.Column(db.DateTime(timezone=True), nullable=False, server_default=db.func.current_timestamp())
+
+    __table_args__ = (
+        db.UniqueConstraint("object_type", "object_id", name="uk_spatial_region_catalog_object"),
+        db.Index("idx_spatial_region_catalog_area_code", "area_code"),
+        db.Index("idx_spatial_region_catalog_parent", "parent_object_type", "parent_object_id"),
+        db.Index("idx_spatial_region_catalog_enabled", "enabled"),
     )

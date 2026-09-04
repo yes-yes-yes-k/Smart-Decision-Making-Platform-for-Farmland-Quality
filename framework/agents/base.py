@@ -8,6 +8,12 @@ from datetime import datetime, timezone
 logger = logging.getLogger(__name__)
 
 
+class ProfessionalInputRejected(ValueError):
+    def __init__(self, code: str, message: str):
+        super().__init__(message)
+        self.code = code
+
+
 class BaseAgent(ABC):
     """智能体抽象基类，定义统一接口。"""
 
@@ -159,6 +165,8 @@ class BaseAgent(ABC):
         inputs: dict,
         outputs: dict,
         status: str,
+        *,
+        execution_context: dict | None = None,
     ) -> bool:
         """同步持久化执行日志和结果表。
 
@@ -180,30 +188,65 @@ class BaseAgent(ABC):
             # 确保在 Flask 应用上下文中执行数据库操作
             app_ctx = None
             try:
-                from framework.api.app import create_app
-                _app = create_app("default")
-                app_ctx = _app.app_context()
-                app_ctx.push()
+                from flask import has_app_context
+                if not has_app_context():
+                    from framework.api.app import create_app
+                    _app = create_app("default")
+                    app_ctx = _app.app_context()
+                    app_ctx.push()
             except Exception:
                 pass
 
             try:
                 now = datetime.now(timezone.utc)
+                execution_context = execution_context or {}
+                snapshot = execution_context.get("analysis_context")
+                obj = (snapshot or {}).get("object") or {}
+                # 普通执行日志只保存规范公共快照；完整输入仍作为审计输入保留，
+                # 不把 execute() 的旧展示包络写入 output_result。
+                from .output_contract import normalize_execution, public_full, sanitize_json
+                execution = dict(outputs or {}) if isinstance(outputs, dict) else {"result": outputs}
+                persisted_outputs = dict(outputs or {}) if isinstance(outputs, dict) else {"result": outputs}
+                persisted_outputs.setdefault("model_version", "unknown")
+                persisted_outputs.setdefault("data_as_of", None)
+                persisted_outputs.setdefault("data_version", None)
+                persisted_outputs.setdefault("actual_inputs", dict(inputs or {}))
+                execution["status"] = status
+                if "result" not in execution:
+                    execution["result"] = outputs
+                execution.setdefault("data_source", inputs.get("data_source", "unknown"))
+                execution.setdefault("simulated", bool(inputs.get("simulated", False)))
+                normalized = normalize_execution(self, inputs, execution)
+                audit_inputs = sanitize_json(dict(inputs or {}))
+                meta = normalized.get("meta", {})
                 log = ModelExecutionLog(
-                    trace_id=str(uuid.uuid4()),
+                    trace_id=execution_context.get("trace_id") or uuid.uuid4().hex,
                     agent_id=agent_id,
                     question_type=self._get_question_type(),
+                    user_id=execution_context.get("user_id"),
+                    conversation_id=execution_context.get("conversation_id"),
                     parcel_id=parcel_id,
-                    input_params=inputs,
-                    output_result=outputs,
-                    status=status,
+                    analysis_object_type=obj.get("type"),
+                    analysis_object_id=obj.get("id"),
+                    area_code=obj.get("area_code"),
+                    context_version=(snapshot or {}).get("version"),
+                    analysis_context_snapshot=snapshot,
+                    input_params=audit_inputs,
+                    output_result=public_full(normalized),
+                    evidence=normalized.get("issues", []),
+                    status=normalized.get("status", status),
+                    simulated=bool(normalized.get("meta", {}).get("simulated", False)),
+                    error_message=(normalized.get("issues") or [{}])[0].get("message") if normalized.get("status") in {"error", "rejected", "unavailable"} else None,
+                    model_version=meta.get("model_version") or "unknown",
+                    data_as_of=meta.get("data_as_of"),
+                    data_version=meta.get("data_version"),
                     started_at=now,
                     completed_at=now,
                 )
                 db.session.add(log)
                 db.session.flush()
 
-                result_record = self._build_result_record(log.id, outputs)
+                result_record = self._build_result_record(log.id, persisted_outputs)
                 if result_record is not None:
                     db.session.add(result_record)
 
@@ -236,105 +279,48 @@ class BaseAgent(ABC):
         return None
 
     def analyze(self, payload: Dict[str, Any]) -> Dict[str, Any]:
-        """以统一结构化包络执行专业分析。
+        """执行一次模型并返回统一的模型结果信封。
 
-        子类可覆盖此方法以暴露更丰富的专业字段；默认实现复用既有
-        ``execute`` 结果，确保单模型接口不会再维护独立计算路径。
+        ``execute`` 仍由各专业 Agent 负责，所有公共入口只消费这里生成的
+        ``model_id/status/subject/result/meta/issues``，避免在 API、聊天和工具
+        调用层分别复制旧的展示型字段。
         """
-        execution = self.execute(payload or {})
-        raw_status = execution.get("status", "error")
-        degraded = execution.get("degraded") is True or raw_status == "degraded"
-        result = execution.get("result", {})
-        metadata = execution.get("metadata", {})
-        simulated = bool(metadata.get("simulated", execution.get("simulated", False)))
-        findings = [
-            {"title": str(key), "content": str(value)}
-            for key, value in result.items()
-            if key not in {"indicators", "obstacle_degree"}
-        ]
-        if result.get("indicators"):
-            findings.append({"title": "指标评价", "content": f"共 {len(result['indicators'])} 项指标"})
-        if result.get("obstacle_degree"):
-            findings.append({"title": "障碍度排序", "content": str(result["obstacle_degree"])})
+        from .output_contract import normalize_execution
 
-        capability = getattr(self, "capability", {
-            "agent_id": self.model_id,
-            "model_id": self.model_id,
-            "name": self.name,
-            "purpose": self.description,
-        })
-        fallback_used = raw_status in {"fallback", "rejected"} or simulated or degraded
-        if degraded:
-            reliability_level = "degraded"
-            reliability_message = "真实计算不可用，已返回统一降级响应。"
-            fallback_strategy = metadata.get("fallback_reason") or metadata.get("reason") or execution.get("reason") or "真实计算降级"
-        elif simulated:
-            reliability_level = "demo_stub"
-            reliability_message = "结果来自模拟/规则分析。"
-            fallback_strategy = metadata.get("fallback_reason") or metadata.get("reason") or "未使用回退"
-        else:
-            reliability_level = "real_model"
-            reliability_message = "结果来自已接入的专业计算。"
-            fallback_strategy = metadata.get("fallback_reason") or metadata.get("reason") or "未使用回退"
-        return {
-            "status": "ok" if raw_status in {"ok", "success", "fallback"} else raw_status,
-            "capability": capability,
-            "model": capability,
-            "summary": f"{capability['name']}已完成结构化分析。",
-            "data_source": execution.get("data_source", "unknown"),
-            "findings": findings,
-            "recommendations": [],
-            "evidence": result,
-            "lineage": {"runtime_dependency": "agent"},
-            "reliability": {
-                "level": reliability_level,
-                "message": reliability_message,
-            },
-            "fallback": {
-                "used": fallback_used,
-                "fields": [],
-                "strategy": fallback_strategy,
-            },
-            "analysis": result,
-            "degraded": degraded,
-        }
+        try:
+            execution = self.execute(payload or {})
+        except Exception as exc:
+            execution = {
+                "status": "error",
+                "error": str(exc),
+                "result": None,
+                "data_source": "unknown",
+            }
+        return normalize_execution(self, payload or {}, execution)
 
     def answer_from_analysis(self, analysis: Dict[str, Any]) -> Dict[str, Any]:
-        """将统一结构化分析转换为聊天链路可汇总的专业答复。"""
-        findings = analysis.get("findings", [])
-        finding_text = "；".join(
-            f"{item.get('title', '结果')}：{item.get('content', '')}"
-            for item in findings[:4]
-            if isinstance(item, dict)
-        )
-        recommendations = analysis.get("recommendations", [])
-        recommendation_text = "；".join(str(item) for item in recommendations[:3])
-        answer_parts = [analysis.get("summary", "暂无可用专业分析结果。")]
-        if finding_text:
-            answer_parts.append(finding_text)
-        if recommendation_text:
-            answer_parts.append(f"建议：{recommendation_text}")
+        """从规范结果生成聊天答复兼容对象。
 
-        raw_evidence = analysis.get("evidence", {})
-        if isinstance(raw_evidence, list):
-            evidence = raw_evidence
-        elif isinstance(raw_evidence, dict):
+        该对象只在 AgentManager 的内部兼容路径使用，公共聊天响应由投影函数
+        生成，不再将此对象直接序列化给客户端。
+        """
+        from .output_contract import deterministic_answer
+
+        answer = deterministic_answer(analysis)
+        result = analysis.get("result") if isinstance(analysis, dict) else {}
+        evidence = []
+        if isinstance(result, dict):
             evidence = [
-                {"metric": str(key), "value": value}
-                for key, value in raw_evidence.items()
-                if not isinstance(value, (dict, list))
+                {"metric": key, "value": value}
+                for key, value in result.items()
+                if not isinstance(value, (dict, list)) and value is not None
             ]
-        else:
-            evidence = []
-
-        reliability = analysis.get("reliability", {})
         return {
-            "answer": "\n".join(answer_parts),
+            "answer": answer,
             "evidence": evidence,
-            "confidence": 0.9 if reliability.get("level") == "real_model" else 0.5,
-            "simulated": reliability.get("level") == "demo_stub",
-            "analysis": analysis,
             "sources": [],
+            "model_result": analysis,
+            "status": analysis.get("status", "error"),
         }
 
     @abstractmethod

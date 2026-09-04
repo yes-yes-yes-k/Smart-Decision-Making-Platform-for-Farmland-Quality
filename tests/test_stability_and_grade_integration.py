@@ -37,6 +37,8 @@ geopandas_required = pytest.mark.skipif(
     reason="geopandas 未安装，跳过稳定性模型实际调用测试",
 )
 
+CANONICAL_FIELDS = {"model_id", "status", "subject", "result", "meta", "issues"}
+
 
 @pytest.fixture
 def flask_app_context():
@@ -99,7 +101,7 @@ class TestStabilityOnlineQuery:
 
     @geopandas_required
     def test_normal_query_returns_ok(self, flask_app_context):
-        """正常查询返回 status=ok 和结构化分析结果（analyze 包络）"""
+        """正常查询返回 status=ok 和 Schema 2.0 规范结果。"""
         from ai_culti_demo.thematic_models import run_thematic_model
 
         mock_indicators = {
@@ -119,13 +121,14 @@ class TestStabilityOnlineQuery:
             })
 
         assert out["status"] == "ok"
-        assert out["model"]["model_id"] == "stability-risk-evaluation"
-        assert out["reliability"]["level"] == "real_model"
-        assert "stability_modules" in out["analysis"]
+        assert out["model_id"] == "stability-risk-evaluation"
+        assert out["meta"]["data_source"] == "db"
+        assert out["meta"]["simulated"] is False
+        assert out["result"]["modules"]
 
     @geopandas_required
-    def test_not_ready_falls_back_to_demo(self):
-        """预计算未就绪时回退到 demo_stub（analyze 包络的 fallback 字段）"""
+    def test_not_ready_returns_unavailable(self):
+        """预计算未就绪时返回 unavailable，不伪造降级结果。"""
         from ai_culti_demo.thematic_models import run_thematic_model
 
         mock_storage = MagicMock()
@@ -137,15 +140,13 @@ class TestStabilityOnlineQuery:
                 "parcel_id": "110105001",
             })
 
-        # 真实结果缺失时返回统一降级响应（不再回退到 mock demo_stub）
-        assert out["status"] == "degraded"
-        assert out["degraded"] is True
-        assert out["reliability"]["level"] == "degraded"
-        assert out["fallback"]["used"] is True
+        assert out["status"] == "unavailable"
+        assert out["result"] is None
+        assert out["issues"][0]["code"] == "IMPORT_FAILED"
 
     @geopandas_required
-    def test_parcel_not_found_falls_back_to_demo(self):
-        """地块无真实数据时回退到统一降级响应（analyze 包络的 fallback 字段）"""
+    def test_parcel_not_found_returns_unavailable(self):
+        """地块无真实稳定性数据时返回 unavailable。"""
         from ai_culti_demo.thematic_models import run_thematic_model
 
         mock_storage = MagicMock()
@@ -157,13 +158,12 @@ class TestStabilityOnlineQuery:
                 "parcel_id": "nonexistent",
             })
 
-        assert out["status"] == "degraded"
-        assert out["degraded"] is True
-        assert out["reliability"]["level"] == "degraded"
-        assert out["fallback"]["used"] is True
+        assert out["status"] == "unavailable"
+        assert out["result"] is None
+        assert out["issues"][0]["code"] == "IMPORT_FAILED"
 
-    def test_missing_parcel_id_falls_back_to_demo(self):
-        """缺少 parcel_id 时返回统一降级响应（不调用实际模型）"""
+    def test_missing_parcel_id_is_rejected(self):
+        """缺少 parcel_id 时拒绝请求，不调用实际模型。"""
         from ai_culti_demo.thematic_models import run_thematic_model
 
         out = run_thematic_model({
@@ -171,8 +171,9 @@ class TestStabilityOnlineQuery:
             "area_code": "lechang",
         })
 
-        assert out["status"] == "degraded"
-        assert out["degraded"] is True
+        assert out["status"] == "rejected"
+        assert out["result"] is None
+        assert out["issues"][0]["code"] == "MISSING_INPUT"
 
 
 # ---------------------------------------------------------------------------
@@ -239,14 +240,11 @@ class TestCoreEngineDispatch:
             })
 
         assert out["status"] == "ok"
-        # parcel 不在 DB 中，Agent 走 legacy CSV 回退路径（patched run_grade_evaluation），
-        # data_source="fallback" → simulated=True → reliability="demo_stub"。
-        # app context 仅消除 "Working outside of application context" 异常，不改变回退路径。
-        assert out["reliability"]["level"] == "demo_stub"
-        assert out["analysis"]["quality_grade"] == "3"
+        assert out["meta"]["data_source"] == "csv"
+        assert out["result"]["quality_grade"] == "3"
 
-    def test_dispatch_grade_missing_parcel_code_falls_back_to_demo(self):
-        """quality-grade-evaluation 无 parcel_code 时返回统一降级响应"""
+    def test_dispatch_grade_missing_parcel_code_is_rejected(self):
+        """quality-grade-evaluation 无 parcel_code 时拒绝请求。"""
         from ai_culti_demo.thematic_models import run_thematic_model
 
         out = run_thematic_model({
@@ -254,8 +252,9 @@ class TestCoreEngineDispatch:
             "area_code": "lechang",
         })
 
-        assert out["status"] == "degraded"
-        assert out["degraded"] is True
+        assert out["status"] == "rejected"
+        assert out["result"] is None
+        assert out["issues"][0]["code"] == "MISSING_INPUT"
 
     def test_dispatch_invalid_model_id_returns_error(self):
         """无效 model_id 返回 INVALID_MODEL_ID 并列出支持的模型"""
@@ -272,13 +271,13 @@ class TestCoreEngineDispatch:
 # 9.8 响应字段结构符合统一调用契约
 # ---------------------------------------------------------------------------
 class TestResponseContract:
-    """验证响应字段结构符合统一调用契约"""
+    """验证响应字段结构符合 Schema 2.0 统一调用契约。"""
 
-    REQUIRED_FIELDS = {"status", "model", "summary", "findings", "reliability"}
+    REQUIRED_FIELDS = CANONICAL_FIELDS
 
     @geopandas_required
     def test_stability_response_has_required_fields(self):
-        """稳定性模型响应包含 status/model/summary/findings/reliability（analyze 包络）"""
+        """稳定性模型响应只包含规范信封字段。"""
         from ai_culti_demo.thematic_models import run_thematic_model
 
         mock_storage = MagicMock()
@@ -292,10 +291,11 @@ class TestResponseContract:
 
         missing = self.REQUIRED_FIELDS - set(out.keys())
         assert not missing, f"缺少字段: {missing}"
-        assert "analysis" in out
+        assert set(out) == self.REQUIRED_FIELDS
+        assert "analysis" not in out
 
     def test_grade_response_has_required_fields(self):
-        """质量等级模型响应包含统一字段 + analysis（analyze 包络）"""
+        """质量等级模型响应只包含规范信封字段。"""
         from ai_culti_demo.thematic_models import run_thematic_model
 
         mock_result = {
@@ -313,10 +313,11 @@ class TestResponseContract:
 
         missing = self.REQUIRED_FIELDS - set(out.keys())
         assert not missing, f"缺少字段: {missing}"
-        assert "analysis" in out
+        assert set(out) == self.REQUIRED_FIELDS
+        assert "analysis" not in out
 
     def test_demo_response_has_required_fields(self):
-        """demo 回退响应也包含统一字段 + fallback"""
+        """输入拒绝响应也保持规范字段集合。"""
         from ai_culti_demo.thematic_models import run_thematic_model
 
         out = run_thematic_model({
@@ -326,7 +327,9 @@ class TestResponseContract:
 
         missing = self.REQUIRED_FIELDS - set(out.keys())
         assert not missing, f"缺少字段: {missing}"
-        assert "fallback" in out
+        assert set(out) == self.REQUIRED_FIELDS
+        assert out["status"] == "rejected"
+        assert out["issues"]
 
 
 # ---------------------------------------------------------------------------
@@ -443,7 +446,7 @@ class TestEndToEndIntegration:
     """端到端集成测试：run_thematic_model → 响应结构"""
 
     def test_e2e_grade_full_pipeline(self, flask_app_context):
-        """端到端：质量等级模型从调度到响应结构（analyze 包络）"""
+        """端到端：质量等级模型从调度到 Schema 2.0 响应。"""
         from ai_culti_demo.thematic_models import run_thematic_model
 
         mock_exe_result = {
@@ -465,10 +468,7 @@ class TestEndToEndIntegration:
             })
 
         assert out["status"] == "ok"
-        assert out["model"]["model_id"] == "quality-grade-evaluation"
-        # parcel 不在 DB 中，Agent 走 legacy CSV 回退路径（patched run_grade_evaluation），
-        # data_source="fallback" → simulated=True → reliability="demo_stub"。
-        # app context 仅消除 "Working outside of application context" 异常，不改变回退路径。
-        assert out["reliability"]["level"] == "demo_stub"
-        assert out["analysis"]["quality_grade"] == "4"
-        assert len(out["findings"]) >= 1
+        assert out["model_id"] == "quality-grade-evaluation"
+        assert out["meta"]["data_source"] == "csv"
+        assert out["result"]["quality_grade"] == "4"
+        assert len(out["result"]["indicators"]) >= 1

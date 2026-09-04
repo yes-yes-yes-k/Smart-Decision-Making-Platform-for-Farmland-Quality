@@ -34,7 +34,7 @@ class ProblemIdentificationAgent(BaseAgent):
         super().__init__(
             name="ProblemIdentificationAgent",
             description="识别主要/次要障碍因素和障碍组合",
-            model_id="model-3",
+            model_id="obstacle-diagnosis",
             domain="problem",
         )
         self.dependencies = ["model-2"]
@@ -140,19 +140,21 @@ class ProblemIdentificationAgent(BaseAgent):
                         "persisted": False,
                     }
                 outputs = real_result
-                status = "degraded"
+                status = "ok"
+                data_source = "sqlite"
 
             persisted = self._persist_result(
                 agent_id=self.agent_id,
                 parcel_id=task.get("parcel_id") or inputs.get("parcel_id"),
-                inputs=inputs,
+                inputs={**inputs, "data_source": data_source},
                 outputs=outputs,
                 status=status,
+                execution_context=task.get("execution_context"),
             )
 
             return {
-                "status": "ok",
-                "simulated": data_source != "db",
+                "status": status,
+                "simulated": False,
                 "result": outputs,
                 "data_source": data_source,
                 "persisted": persisted,
@@ -161,9 +163,10 @@ class ProblemIdentificationAgent(BaseAgent):
             self._persist_result(
                 agent_id=self.agent_id,
                 parcel_id=task.get("parcel_id"),
-                inputs=inputs,
+                inputs={**inputs, "data_source": data_source},
                 outputs={"error": str(e)},
                 status="error",
+                execution_context=task.get("execution_context"),
             )
             return {
                 "status": "degraded",

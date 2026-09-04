@@ -124,6 +124,13 @@
 
 ## 七、相关实现与接口文档
 
+### 分析对象前置守卫
+
+问题类型识别后，系统先检查专业能力声明的对象类型和情景输入，再进入 Function Calling
+或关键词回退。缺少对象返回 `needs_analysis_object`，缺少情景参数返回
+`needs_scenario_inputs`；两种路径都不会调用专业 Agent 或生成模拟数值。知识问答继续进入
+RAG，不要求空间对象。对象协议、错误码和迁移兼容规则见 [API 文档](api.md#聊天分析对象与情景试算)。
+
 - 关键词和问题识别：[`framework/agents/nodes.py`](../framework/agents/nodes.py)
 - 类型到 Agent 的路由：[`framework/agents/router.py`](../framework/agents/router.py)
 - 正式能力目录：[`framework/agents/capabilities.py`](../framework/agents/capabilities.py)

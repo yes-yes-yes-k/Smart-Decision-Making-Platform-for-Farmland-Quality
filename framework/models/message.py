@@ -11,6 +11,7 @@ class Message(db.Model):
     sources = db.Column(db.JSON, default=None, comment='AI回答的引用来源')
     agents_invoked = db.Column(db.JSON, default=None, comment='本次回答调用的专业模型ID列表')
     recommendations = db.Column(db.JSON, default=None, comment='综合建议列表')
+    analysis_context_snapshot = db.Column(db.JSON, default=None, comment='消息创建时的不可变分析上下文快照')
     create_time = db.Column(db.DateTime, default=db.func.current_timestamp(), comment='发送时间')
 
     def to_dict(self):
@@ -22,5 +23,6 @@ class Message(db.Model):
             'sources': self.sources,
             'agents_invoked': self.agents_invoked or [],
             'recommendations': self.recommendations or [],
+            'analysis_context_snapshot': self.analysis_context_snapshot,
             'create_time': self.create_time.strftime('%Y-%m-%d %H:%M:%S') if self.create_time else None
         }
