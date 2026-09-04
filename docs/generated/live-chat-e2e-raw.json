@@ -1,0 +1,1278 @@
+{
+  "generated_at": "2026-09-04T15:15:59.786026+00:00",
+  "base_url": "http://127.0.0.1:8765",
+  "execution_mode": {
+    "transport": "actual_http",
+    "parcel_source": "PostgreSQL",
+    "professional_calculations": "actual_project_tools",
+    "external_llm": "disabled_for_data_safety",
+    "planner_and_reporter": "local_deterministic_fallback"
+  },
+  "conversation_ids": {
+    "unselected": 23,
+    "selected": 24,
+    "scenario": 25,
+    "comprehensive": 26
+  },
+  "exchanges": [
+    {
+      "label": "登录",
+      "started_at": "2026-09-04T15:15:59.786026+00:00",
+      "completed_at": "2026-09-04T15:15:59.998677+00:00",
+      "request": {
+        "method": "POST",
+        "path": "/api/v1/auth/login",
+        "headers": {
+          "Accept": "application/json",
+          "Content-Type": "application/json"
+        },
+        "json": {
+          "username": "admin",
+          "password": "<redacted>"
+        }
+      },
+      "response": {
+        "http_status": 200,
+        "json": {
+          "data": {
+            "token": "<redacted>",
+            "user": {
+              "create_time": "2026-08-17 21:11:44",
+              "id": 1,
+              "nickname": "管理员",
+              "role": "admin",
+              "status": 1,
+              "update_time": "2026-08-17 21:11:44",
+              "username": "admin"
+            }
+          },
+          "message": "登录成功",
+          "status": "ok"
+        }
+      }
+    },
+    {
+      "label": "创建会话：E2E-未选择地块",
+      "started_at": "2026-09-04T15:15:59.998677+00:00",
+      "completed_at": "2026-09-04T15:16:00.029870+00:00",
+      "request": {
+        "method": "POST",
+        "path": "/api/v1/chat/conversations",
+        "headers": {
+          "Accept": "application/json",
+          "Content-Type": "application/json",
+          "Authorization": "<redacted>"
+        },
+        "json": {
+          "title": "E2E-未选择地块"
+        }
+      },
+      "response": {
+        "http_status": 200,
+        "json": {
+          "data": {
+            "analysis_context": {
+              "mode": "spatial",
+              "object": null,
+              "version": 0
+            },
+            "create_time": "2026-09-04 23:16:00",
+            "id": 23,
+            "title": "E2E-未选择地块",
+            "update_time": "2026-09-04 23:16:00",
+            "user_id": 1
+          },
+          "message": "对话创建成功",
+          "status": "ok"
+        }
+      }
+    },
+    {
+      "label": "创建会话：E2E-选择真实地块",
+      "started_at": "2026-09-04T15:16:00.029870+00:00",
+      "completed_at": "2026-09-04T15:16:00.052049+00:00",
+      "request": {
+        "method": "POST",
+        "path": "/api/v1/chat/conversations",
+        "headers": {
+          "Accept": "application/json",
+          "Content-Type": "application/json",
+          "Authorization": "<redacted>"
+        },
+        "json": {
+          "title": "E2E-选择真实地块"
+        }
+      },
+      "response": {
+        "http_status": 200,
+        "json": {
+          "data": {
+            "analysis_context": {
+              "mode": "spatial",
+              "object": null,
+              "version": 0
+            },
+            "create_time": "2026-09-04 23:16:00",
+            "id": 24,
+            "title": "E2E-选择真实地块",
+            "update_time": "2026-09-04 23:16:00",
+            "user_id": 1
+          },
+          "message": "对话创建成功",
+          "status": "ok"
+        }
+      }
+    },
+    {
+      "label": "创建会话：E2E-逐轮补充情景参数",
+      "started_at": "2026-09-04T15:16:00.052049+00:00",
+      "completed_at": "2026-09-04T15:16:00.066493+00:00",
+      "request": {
+        "method": "POST",
+        "path": "/api/v1/chat/conversations",
+        "headers": {
+          "Accept": "application/json",
+          "Content-Type": "application/json",
+          "Authorization": "<redacted>"
+        },
+        "json": {
+          "title": "E2E-逐轮补充情景参数"
+        }
+      },
+      "response": {
+        "http_status": 200,
+        "json": {
+          "data": {
+            "analysis_context": {
+              "mode": "spatial",
+              "object": null,
+              "version": 0
+            },
+            "create_time": "2026-09-04 23:16:00",
+            "id": 25,
+            "title": "E2E-逐轮补充情景参数",
+            "update_time": "2026-09-04 23:16:00",
+            "user_id": 1
+          },
+          "message": "对话创建成功",
+          "status": "ok"
+        }
+      }
+    },
+    {
+      "label": "创建会话：E2E-综合诊断确认发布",
+      "started_at": "2026-09-04T15:16:00.066493+00:00",
+      "completed_at": "2026-09-04T15:16:00.084230+00:00",
+      "request": {
+        "method": "POST",
+        "path": "/api/v1/chat/conversations",
+        "headers": {
+          "Accept": "application/json",
+          "Content-Type": "application/json",
+          "Authorization": "<redacted>"
+        },
+        "json": {
+          "title": "E2E-综合诊断确认发布"
+        }
+      },
+      "response": {
+        "http_status": 200,
+        "json": {
+          "data": {
+            "analysis_context": {
+              "mode": "spatial",
+              "object": null,
+              "version": 0
+            },
+            "create_time": "2026-09-04 23:16:00",
+            "id": 26,
+            "title": "E2E-综合诊断确认发布",
+            "update_time": "2026-09-04 23:16:00",
+            "user_id": 1
+          },
+          "message": "对话创建成功",
+          "status": "ok"
+        }
+      }
+    },
+    {
+      "label": "未选地块：直接询问质量等级",
+      "started_at": "2026-09-04T15:16:00.084230+00:00",
+      "completed_at": "2026-09-04T15:16:01.236922+00:00",
+      "request": {
+        "method": "POST",
+        "path": "/api/v1/chat/",
+        "headers": {
+          "Accept": "application/json",
+          "Content-Type": "application/json",
+          "Authorization": "<redacted>"
+        },
+        "json": {
+          "message": "请评价这块地的质量等级",
+          "conversation_id": 23,
+          "include_model_results": false,
+          "response_schema": "2.0"
+        }
+      },
+      "response": {
+        "http_status": 200,
+        "json": {
+          "data": {
+            "analysis_context": {
+              "mode": "spatial",
+              "object": null,
+              "version": 0
+            },
+            "answer": "请选择满足该能力尺度要求的分析对象",
+            "interaction_state": "needs_analysis_object",
+            "message_id": 63,
+            "missing_inputs": [],
+            "object_title": null,
+            "recommendations": [],
+            "required_object_types": [
+              "parcel"
+            ],
+            "routing": {
+              "question_type": 2,
+              "status": "normal"
+            },
+            "scenario_result": null,
+            "sources": [],
+            "spatial_object": null,
+            "trace_id": "97e0a0a14a474d45a59c22c3efaa9a68"
+          },
+          "schema_version": "2.0",
+          "status": "ok",
+          "trace_id": "97e0a0a14a474d45a59c22c3efaa9a68"
+        }
+      }
+    },
+    {
+      "label": "已选地块：使用 PostgreSQL 地块评价",
+      "started_at": "2026-09-04T15:16:01.236922+00:00",
+      "completed_at": "2026-09-04T15:16:03.637003+00:00",
+      "request": {
+        "method": "POST",
+        "path": "/api/v1/chat/",
+        "headers": {
+          "Accept": "application/json",
+          "Content-Type": "application/json",
+          "Authorization": "<redacted>"
+        },
+        "json": {
+          "message": "这块地的质量等级怎么样？",
+          "conversation_id": 24,
+          "analysis_context": {
+            "action": "set",
+            "expected_version": 0,
+            "object": {
+              "type": "parcel",
+              "id": "4190"
+            }
+          },
+          "include_model_results": true,
+          "response_schema": "2.0"
+        }
+      },
+      "response": {
+        "http_status": 200,
+        "json": {
+          "data": {
+            "analysis_context": {
+              "mode": "spatial",
+              "object": {
+                "area_code": "440233",
+                "display_name": "地块 4190",
+                "id": "4190",
+                "parent_path": [],
+                "source": "parcel_info",
+                "type": "parcel",
+                "validated_at": "2026-09-04T15:16:01.267914+00:00"
+              },
+              "version": 1
+            },
+            "answer": "分析对象：地块 4190\n\n耕地质量等级评价：质量等级：3；综合指数：0.834",
+            "interaction_state": "completed",
+            "message_id": 65,
+            "missing_inputs": [],
+            "models": {
+              "model-2": {
+                "issues": [],
+                "meta": {
+                  "data_source": "db",
+                  "model_version": null,
+                  "simulated": false
+                },
+                "model_id": "quality-grade-evaluation",
+                "result": {
+                  "composite_index": 0.8339658156201359,
+                  "indicators": {
+                    "DXBW": "LHR",
+                    "GCHD": 20.0,
+                    "GCZD": "FRT",
+                    "GGNL": "S",
+                    "PSNL": "M",
+                    "SJD": 5.42084,
+                    "SXJ": 56.937799,
+                    "TRRZ": 1.34,
+                    "YJZ": 31.266078,
+                    "YXL": 46.235236,
+                    "YXTCHD": 100.0,
+                    "ZDGX": "TLBC"
+                  },
+                  "obstacle_degree": [
+                    0.7005415224221593,
+                    0.9895846917743032,
+                    1.0,
+                    0.442624969646894,
+                    0.9644750797747198,
+                    1.0,
+                    0.9992307122592459,
+                    0.95,
+                    0.8,
+                    0.8,
+                    0.6,
+                    1.0
+                  ],
+                  "quality_grade": "3"
+                },
+                "status": "ok",
+                "subject": {
+                  "id": "4190",
+                  "type": "parcel"
+                }
+              }
+            },
+            "object_title": "分析对象：地块 4190",
+            "provenance": {
+              "calculated_at": "2026-09-04T15:16:03.631998+00:00",
+              "data_as_of": null,
+              "data_version": null,
+              "key_inputs": {},
+              "model_id": "quality-grade-evaluation",
+              "model_version": "unknown",
+              "object_title": "分析对象：地块 4190",
+              "scenario_result": false,
+              "spatial_object": {
+                "area_code": "440233",
+                "display_name": "地块 4190",
+                "id": "4190",
+                "parent_path": [],
+                "source": "parcel_info",
+                "type": "parcel",
+                "validated_at": "2026-09-04T15:16:01.267914+00:00"
+              },
+              "trace_id": "e948a07b144e4eaab5cc3f5615d1e15b"
+            },
+            "recommendations": [],
+            "required_object_types": [],
+            "routing": {
+              "question_type": 2,
+              "status": "normal"
+            },
+            "scenario_result": false,
+            "sources": [],
+            "spatial_object": {
+              "area_code": "440233",
+              "display_name": "地块 4190",
+              "id": "4190",
+              "parent_path": [],
+              "source": "parcel_info",
+              "type": "parcel",
+              "validated_at": "2026-09-04T15:16:01.267914+00:00"
+            },
+            "trace_id": "e948a07b144e4eaab5cc3f5615d1e15b"
+          },
+          "schema_version": "2.0",
+          "status": "ok",
+          "trace_id": "e948a07b144e4eaab5cc3f5615d1e15b"
+        }
+      }
+    },
+    {
+      "label": "情景试算：首次输入不完整",
+      "started_at": "2026-09-04T15:16:03.637003+00:00",
+      "completed_at": "2026-09-04T15:16:04.681602+00:00",
+      "request": {
+        "method": "POST",
+        "path": "/api/v1/chat/",
+        "headers": {
+          "Accept": "application/json",
+          "Content-Type": "application/json",
+          "Authorization": "<redacted>"
+        },
+        "json": {
+          "message": "试算土壤酸化改良用量",
+          "conversation_id": 25,
+          "calculation_mode": "scenario",
+          "SJD": 5.2,
+          "response_schema": "2.0"
+        }
+      },
+      "response": {
+        "http_status": 200,
+        "json": {
+          "data": {
+            "analysis_context": {
+              "mode": "scenario",
+              "object": null,
+              "version": null
+            },
+            "answer": "请补充完整情景试算输入",
+            "interaction_state": "needs_scenario_inputs",
+            "message_id": 67,
+            "missing_inputs": [
+              "JHX",
+              "JLA",
+              "land_type",
+              "fertilizer_type"
+            ],
+            "object_title": null,
+            "recommendations": [],
+            "required_object_types": [],
+            "routing": {
+              "question_type": 4,
+              "status": "normal"
+            },
+            "scenario_result": null,
+            "sources": [],
+            "spatial_object": null,
+            "trace_id": "9984ceba65c84806a7c88ed937e90f69"
+          },
+          "schema_version": "2.0",
+          "status": "ok",
+          "trace_id": "9984ceba65c84806a7c88ed937e90f69"
+        }
+      }
+    },
+    {
+      "label": "情景试算：补齐缺少参数后重算",
+      "started_at": "2026-09-04T15:16:04.681602+00:00",
+      "completed_at": "2026-09-04T15:16:06.789770+00:00",
+      "request": {
+        "method": "POST",
+        "path": "/api/v1/chat/",
+        "headers": {
+          "Accept": "application/json",
+          "Content-Type": "application/json",
+          "Authorization": "<redacted>"
+        },
+        "json": {
+          "message": "补齐参数后重新试算土壤酸化改良用量",
+          "conversation_id": 25,
+          "calculation_mode": "scenario",
+          "SJD": 5.2,
+          "JHX": 2.1,
+          "JLA": 0.4,
+          "land_type": "upland",
+          "fertilizer_type": "compound",
+          "response_schema": "2.0"
+        }
+      },
+      "response": {
+        "http_status": 200,
+        "json": {
+          "data": {
+            "analysis_context": {
+              "mode": "scenario",
+              "object": null,
+              "version": null
+            },
+            "answer": "情景试算，非具体空间对象结果\n\n耕地土壤酸化改良：土壤调理剂用量：3178.3；木本泥炭用量：2043.7",
+            "interaction_state": "completed",
+            "message_id": 69,
+            "missing_inputs": [],
+            "object_title": "情景试算，非具体空间对象结果",
+            "provenance": {
+              "calculated_at": "2026-09-04T15:16:06.785767+00:00",
+              "data_as_of": null,
+              "data_version": null,
+              "key_inputs": {},
+              "model_id": "acidification-remediation",
+              "model_version": "process_v2_20260801",
+              "object_title": "情景试算，非具体空间对象结果",
+              "scenario_result": true,
+              "spatial_object": null,
+              "trace_id": "65e9d307974d4c1bb3a46b4753d2579f"
+            },
+            "recommendations": [],
+            "required_object_types": [],
+            "routing": {
+              "question_type": 4,
+              "status": "normal"
+            },
+            "scenario_result": true,
+            "sources": [],
+            "spatial_object": null,
+            "trace_id": "65e9d307974d4c1bb3a46b4753d2579f"
+          },
+          "schema_version": "2.0",
+          "status": "ok",
+          "trace_id": "65e9d307974d4c1bb3a46b4753d2579f"
+        }
+      }
+    },
+    {
+      "label": "综合诊断：选择真实地块并发起",
+      "started_at": "2026-09-04T15:16:06.789770+00:00",
+      "completed_at": "2026-09-04T15:16:08.973134+00:00",
+      "request": {
+        "method": "POST",
+        "path": "/api/v1/chat/",
+        "headers": {
+          "Accept": "application/json",
+          "Content-Type": "application/json",
+          "Authorization": "<redacted>"
+        },
+        "json": {
+          "message": "请为这块地生成包含酸化改良和有机质培肥的综合诊断与改良报告",
+          "conversation_id": 26,
+          "analysis_context": {
+            "action": "set",
+            "expected_version": 0,
+            "object": {
+              "type": "parcel",
+              "id": "4190"
+            }
+          },
+          "include_model_results": true,
+          "response_schema": "2.0"
+        }
+      },
+      "response": {
+        "http_status": 200,
+        "json": {
+          "data": {
+            "analysis_context": {
+              "mode": "spatial",
+              "object": {
+                "area_code": "440233",
+                "display_name": "地块 4190",
+                "id": "4190",
+                "parent_path": [],
+                "source": "parcel_info",
+                "type": "parcel",
+                "validated_at": "2026-09-04T15:16:06.804955+00:00"
+              },
+              "version": 1
+            },
+            "answer": "分析范围和所需输入已准备好，请确认后开始计算。",
+            "checkpoint_version": 1,
+            "degradations": [],
+            "interaction_state": "needs_confirmation",
+            "message_id": 71,
+            "missing_inputs": [],
+            "object_title": null,
+            "plan_summary": {
+              "plan_version": 1,
+              "tasks": [
+                {
+                  "agent_id": "model-1",
+                  "required": false,
+                  "task_id": "stability-risk"
+                },
+                {
+                  "agent_id": "model-2",
+                  "required": true,
+                  "task_id": "quality-evaluation"
+                },
+                {
+                  "agent_id": "model-3",
+                  "required": true,
+                  "task_id": "problem-diagnosis"
+                },
+                {
+                  "agent_id": "model-4",
+                  "required": false,
+                  "task_id": "acidification-remediation"
+                },
+                {
+                  "agent_id": "model-5",
+                  "required": false,
+                  "task_id": "organic-matter-improvement"
+                }
+              ]
+            },
+            "proposed_defaults": {},
+            "provenance": {},
+            "recommendations": [],
+            "report_draft": null,
+            "required_object_types": [],
+            "routing": {
+              "question_type": 0,
+              "status": "normal"
+            },
+            "run_id": "9498056728fe4f64aec7aa9f7ac2a169",
+            "scenario_result": null,
+            "sources": [],
+            "spatial_object": null,
+            "trace_id": "7415a2ed11ef4722825f0de1f59b86ea"
+          },
+          "schema_version": "2.0",
+          "status": "ok",
+          "trace_id": "7415a2ed11ef4722825f0de1f59b86ea"
+        }
+      }
+    },
+    {
+      "label": "综合诊断：用户确认方案并执行专业计算",
+      "started_at": "2026-09-04T15:16:08.973134+00:00",
+      "completed_at": "2026-09-04T15:16:19.052705+00:00",
+      "request": {
+        "method": "POST",
+        "path": "/api/v1/chat/",
+        "headers": {
+          "Accept": "application/json",
+          "Content-Type": "application/json",
+          "Authorization": "<redacted>"
+        },
+        "json": {
+          "conversation_id": 26,
+          "interaction_response": {
+            "run_id": "9498056728fe4f64aec7aa9f7ac2a169",
+            "expected_checkpoint_version": 1,
+            "action": "confirm_plan",
+            "values": {}
+          },
+          "response_schema": "2.0"
+        }
+      },
+      "response": {
+        "http_status": 200,
+        "json": {
+          "data": {
+            "analysis_context": {
+              "mode": "spatial",
+              "object": {
+                "area_code": "440233",
+                "display_name": "地块 4190",
+                "id": "4190",
+                "parent_path": [],
+                "source": "parcel_info",
+                "type": "parcel",
+                "validated_at": "2026-09-04T15:16:06.804955+00:00"
+              },
+              "version": 1
+            },
+            "answer": "报告草稿已生成，请确认发布或提出修改意见。",
+            "checkpoint_version": 2,
+            "degradations": [
+              "local_evidence_unavailable"
+            ],
+            "interaction_state": "awaiting_release",
+            "message_id": 72,
+            "missing_inputs": [],
+            "object_title": null,
+            "plan_summary": {
+              "plan_version": 1,
+              "tasks": [
+                {
+                  "agent_id": "model-1",
+                  "required": false,
+                  "task_id": "stability-risk"
+                },
+                {
+                  "agent_id": "model-2",
+                  "required": true,
+                  "task_id": "quality-evaluation"
+                },
+                {
+                  "agent_id": "model-3",
+                  "required": true,
+                  "task_id": "problem-diagnosis"
+                },
+                {
+                  "agent_id": "model-4",
+                  "required": false,
+                  "task_id": "acidification-remediation"
+                },
+                {
+                  "agent_id": "model-5",
+                  "required": false,
+                  "task_id": "organic-matter-improvement"
+                }
+              ]
+            },
+            "proposed_defaults": {},
+            "provenance": {},
+            "recommendations": [],
+            "report_draft": "# 地块综合诊断与改良建议\n\n## 分析对象\n\n本报告基于当前选中地块的权威数据生成。\n\n## 诊断摘要\n\n已完成耕地质量、主要限制因素和改良用量分析。\n\n## 耕地质量\n\n耕地质量等级为 3 级，综合指数为 0.834。\n\n## 主要限制因素\n\n当前障碍类型为 多障碍。主要关注有效磷、地形部位。同时关注速效钾、灌溉能力。\n\n## 改良用量建议\n\n土壤调理剂（亿土康）建议施用量为 5047.6 公斤/公顷。木本泥炭建议施用量为 11671.3 公斤/公顷。有机质培肥建议施用量为 223.7 吨/公顷。\n\n## 优先改良措施\n\n优先处理主要限制因素，分步实施土壤改良，并保留施用和复测记录。\n\n## 使用说明\n\n当前未接入外部资料检索，报告以地块数据库和专业计算结果为准；实施前建议结合现场调查和最新土样复核。\n\n## 数据说明\n\n结果由当前地块权威数据和已完成的专业计算生成。",
+            "required_object_types": [],
+            "routing": {
+              "question_type": 0,
+              "status": "normal"
+            },
+            "run_id": "9498056728fe4f64aec7aa9f7ac2a169",
+            "scenario_result": null,
+            "sources": [],
+            "spatial_object": null,
+            "trace_id": "7415a2ed11ef4722825f0de1f59b86ea"
+          },
+          "schema_version": "2.0",
+          "status": "ok",
+          "trace_id": "7415a2ed11ef4722825f0de1f59b86ea"
+        }
+      }
+    },
+    {
+      "label": "综合诊断：用户确认发布最终报告",
+      "started_at": "2026-09-04T15:16:19.052705+00:00",
+      "completed_at": "2026-09-04T15:16:19.081824+00:00",
+      "request": {
+        "method": "POST",
+        "path": "/api/v1/chat/",
+        "headers": {
+          "Accept": "application/json",
+          "Content-Type": "application/json",
+          "Authorization": "<redacted>"
+        },
+        "json": {
+          "conversation_id": 26,
+          "interaction_response": {
+            "run_id": "9498056728fe4f64aec7aa9f7ac2a169",
+            "expected_checkpoint_version": 2,
+            "action": "release_report",
+            "values": {}
+          },
+          "response_schema": "2.0"
+        }
+      },
+      "response": {
+        "http_status": 200,
+        "json": {
+          "data": {
+            "analysis_context": {
+              "mode": "spatial",
+              "object": {
+                "area_code": "440233",
+                "display_name": "地块 4190",
+                "id": "4190",
+                "parent_path": [],
+                "source": "parcel_info",
+                "type": "parcel",
+                "validated_at": "2026-09-04T15:16:06.804955+00:00"
+              },
+              "version": 1
+            },
+            "answer": "# 地块综合诊断与改良建议\n\n## 分析对象\n\n本报告基于当前选中地块的权威数据生成。\n\n## 诊断摘要\n\n已完成耕地质量、主要限制因素和改良用量分析。\n\n## 耕地质量\n\n耕地质量等级为 3 级，综合指数为 0.834。\n\n## 主要限制因素\n\n当前障碍类型为 多障碍。主要关注有效磷、地形部位。同时关注速效钾、灌溉能力。\n\n## 改良用量建议\n\n土壤调理剂（亿土康）建议施用量为 5047.6 公斤/公顷。木本泥炭建议施用量为 11671.3 公斤/公顷。有机质培肥建议施用量为 223.7 吨/公顷。\n\n## 优先改良措施\n\n优先处理主要限制因素，分步实施土壤改良，并保留施用和复测记录。\n\n## 使用说明\n\n当前未接入外部资料检索，报告以地块数据库和专业计算结果为准；实施前建议结合现场调查和最新土样复核。\n\n## 数据说明\n\n结果由当前地块权威数据和已完成的专业计算生成。",
+            "checkpoint_version": 2,
+            "degradations": [
+              "local_evidence_unavailable"
+            ],
+            "interaction_state": "partial_complete",
+            "message_id": 73,
+            "missing_inputs": [],
+            "object_title": null,
+            "plan_summary": {
+              "plan_version": 1,
+              "tasks": [
+                {
+                  "agent_id": "model-1",
+                  "required": false,
+                  "task_id": "stability-risk"
+                },
+                {
+                  "agent_id": "model-2",
+                  "required": true,
+                  "task_id": "quality-evaluation"
+                },
+                {
+                  "agent_id": "model-3",
+                  "required": true,
+                  "task_id": "problem-diagnosis"
+                },
+                {
+                  "agent_id": "model-4",
+                  "required": false,
+                  "task_id": "acidification-remediation"
+                },
+                {
+                  "agent_id": "model-5",
+                  "required": false,
+                  "task_id": "organic-matter-improvement"
+                }
+              ]
+            },
+            "proposed_defaults": {},
+            "provenance": {
+              "analysis_context": {
+                "mode": "spatial",
+                "object": {
+                  "area_code": "440233",
+                  "display_name": "地块 4190",
+                  "id": "4190",
+                  "parent_path": [],
+                  "source": "parcel_info",
+                  "type": "parcel",
+                  "validated_at": "2026-09-04T15:16:06.804955+00:00"
+                },
+                "version": 1
+              },
+              "models": [
+                {
+                  "agent_id": "model-1",
+                  "data_version": null,
+                  "model_version": "current",
+                  "status": "succeeded"
+                },
+                {
+                  "agent_id": "model-2",
+                  "data_version": null,
+                  "model_version": "current",
+                  "status": "succeeded"
+                },
+                {
+                  "agent_id": "model-3",
+                  "data_version": null,
+                  "model_version": "current",
+                  "status": "succeeded"
+                },
+                {
+                  "agent_id": "model-4",
+                  "data_version": null,
+                  "model_version": "current",
+                  "status": "succeeded"
+                },
+                {
+                  "agent_id": "model-5",
+                  "data_version": null,
+                  "model_version": "current",
+                  "status": "succeeded"
+                }
+              ],
+              "sources": [],
+              "trace_id": "7415a2ed11ef4722825f0de1f59b86ea"
+            },
+            "recommendations": [],
+            "report_draft": "# 地块综合诊断与改良建议\n\n## 分析对象\n\n本报告基于当前选中地块的权威数据生成。\n\n## 诊断摘要\n\n已完成耕地质量、主要限制因素和改良用量分析。\n\n## 耕地质量\n\n耕地质量等级为 3 级，综合指数为 0.834。\n\n## 主要限制因素\n\n当前障碍类型为 多障碍。主要关注有效磷、地形部位。同时关注速效钾、灌溉能力。\n\n## 改良用量建议\n\n土壤调理剂（亿土康）建议施用量为 5047.6 公斤/公顷。木本泥炭建议施用量为 11671.3 公斤/公顷。有机质培肥建议施用量为 223.7 吨/公顷。\n\n## 优先改良措施\n\n优先处理主要限制因素，分步实施土壤改良，并保留施用和复测记录。\n\n## 使用说明\n\n当前未接入外部资料检索，报告以地块数据库和专业计算结果为准；实施前建议结合现场调查和最新土样复核。\n\n## 数据说明\n\n结果由当前地块权威数据和已完成的专业计算生成。",
+            "required_object_types": [],
+            "routing": {
+              "question_type": 0,
+              "status": "normal"
+            },
+            "run_id": "9498056728fe4f64aec7aa9f7ac2a169",
+            "scenario_result": null,
+            "sources": [],
+            "spatial_object": null,
+            "trace_id": "7415a2ed11ef4722825f0de1f59b86ea"
+          },
+          "schema_version": "2.0",
+          "status": "ok",
+          "trace_id": "7415a2ed11ef4722825f0de1f59b86ea"
+        }
+      }
+    },
+    {
+      "label": "读取完整会话历史：unselected",
+      "started_at": "2026-09-04T15:16:19.081824+00:00",
+      "completed_at": "2026-09-04T15:16:19.104088+00:00",
+      "request": {
+        "method": "GET",
+        "path": "/api/v1/chat/conversations/23/messages",
+        "headers": {
+          "Accept": "application/json",
+          "Authorization": "<redacted>"
+        },
+        "json": null
+      },
+      "response": {
+        "http_status": 200,
+        "json": {
+          "data": [
+            {
+              "agents_invoked": [],
+              "analysis_context_snapshot": {
+                "mode": "spatial",
+                "object": null,
+                "version": 0
+              },
+              "content": "请评价这块地的质量等级",
+              "conversation_id": 23,
+              "create_time": "2026-09-04 23:16:00",
+              "id": 62,
+              "recommendations": [],
+              "role": "user",
+              "sources": null
+            },
+            {
+              "agents_invoked": [],
+              "analysis_context_snapshot": {
+                "mode": "spatial",
+                "object": null,
+                "provenance": {},
+                "trace_id": "97e0a0a14a474d45a59c22c3efaa9a68",
+                "version": 0
+              },
+              "content": "请选择满足该能力尺度要求的分析对象",
+              "conversation_id": 23,
+              "create_time": "2026-09-04 23:16:01",
+              "id": 63,
+              "recommendations": [],
+              "role": "assistant",
+              "sources": null
+            }
+          ],
+          "status": "ok"
+        }
+      }
+    },
+    {
+      "label": "读取完整会话历史：selected",
+      "started_at": "2026-09-04T15:16:19.104088+00:00",
+      "completed_at": "2026-09-04T15:16:19.133108+00:00",
+      "request": {
+        "method": "GET",
+        "path": "/api/v1/chat/conversations/24/messages",
+        "headers": {
+          "Accept": "application/json",
+          "Authorization": "<redacted>"
+        },
+        "json": null
+      },
+      "response": {
+        "http_status": 200,
+        "json": {
+          "data": [
+            {
+              "agents_invoked": [],
+              "analysis_context_snapshot": {
+                "mode": "spatial",
+                "object": {
+                  "area_code": "440233",
+                  "display_name": "地块 4190",
+                  "id": "4190",
+                  "parent_path": [],
+                  "source": "parcel_info",
+                  "type": "parcel",
+                  "validated_at": "2026-09-04T15:16:01.267914+00:00"
+                },
+                "version": 1
+              },
+              "content": "这块地的质量等级怎么样？",
+              "conversation_id": 24,
+              "create_time": "2026-09-04 23:16:01",
+              "id": 64,
+              "recommendations": [],
+              "role": "user",
+              "sources": null
+            },
+            {
+              "agents_invoked": [
+                "model-2"
+              ],
+              "analysis_context_snapshot": {
+                "mode": "spatial",
+                "object": {
+                  "area_code": "440233",
+                  "display_name": "地块 4190",
+                  "id": "4190",
+                  "parent_path": [],
+                  "source": "parcel_info",
+                  "type": "parcel",
+                  "validated_at": "2026-09-04T15:16:01.267914+00:00"
+                },
+                "provenance": {
+                  "calculated_at": "2026-09-04T15:16:03.631998+00:00",
+                  "data_as_of": null,
+                  "data_version": null,
+                  "key_inputs": {},
+                  "model_id": "quality-grade-evaluation",
+                  "model_version": "unknown",
+                  "object_title": "分析对象：地块 4190",
+                  "scenario_result": false,
+                  "spatial_object": {
+                    "area_code": "440233",
+                    "display_name": "地块 4190",
+                    "id": "4190",
+                    "parent_path": [],
+                    "source": "parcel_info",
+                    "type": "parcel",
+                    "validated_at": "2026-09-04T15:16:01.267914+00:00"
+                  },
+                  "trace_id": "e948a07b144e4eaab5cc3f5615d1e15b"
+                },
+                "trace_id": "e948a07b144e4eaab5cc3f5615d1e15b",
+                "version": 1
+              },
+              "content": "分析对象：地块 4190\n\n耕地质量等级评价：质量等级：3；综合指数：0.834",
+              "conversation_id": 24,
+              "create_time": "2026-09-04 23:16:03",
+              "id": 65,
+              "recommendations": [],
+              "role": "assistant",
+              "sources": null
+            }
+          ],
+          "status": "ok"
+        }
+      }
+    },
+    {
+      "label": "读取完整会话历史：scenario",
+      "started_at": "2026-09-04T15:16:19.133108+00:00",
+      "completed_at": "2026-09-04T15:16:19.148120+00:00",
+      "request": {
+        "method": "GET",
+        "path": "/api/v1/chat/conversations/25/messages",
+        "headers": {
+          "Accept": "application/json",
+          "Authorization": "<redacted>"
+        },
+        "json": null
+      },
+      "response": {
+        "http_status": 200,
+        "json": {
+          "data": [
+            {
+              "agents_invoked": [],
+              "analysis_context_snapshot": {
+                "mode": "scenario",
+                "object": null,
+                "version": null
+              },
+              "content": "试算土壤酸化改良用量",
+              "conversation_id": 25,
+              "create_time": "2026-09-04 23:16:03",
+              "id": 66,
+              "recommendations": [],
+              "role": "user",
+              "sources": null
+            },
+            {
+              "agents_invoked": [],
+              "analysis_context_snapshot": {
+                "mode": "scenario",
+                "object": null,
+                "provenance": {},
+                "trace_id": "9984ceba65c84806a7c88ed937e90f69",
+                "version": null
+              },
+              "content": "请补充完整情景试算输入",
+              "conversation_id": 25,
+              "create_time": "2026-09-04 23:16:04",
+              "id": 67,
+              "recommendations": [],
+              "role": "assistant",
+              "sources": null
+            },
+            {
+              "agents_invoked": [],
+              "analysis_context_snapshot": {
+                "mode": "scenario",
+                "object": null,
+                "version": null
+              },
+              "content": "补齐参数后重新试算土壤酸化改良用量",
+              "conversation_id": 25,
+              "create_time": "2026-09-04 23:16:04",
+              "id": 68,
+              "recommendations": [],
+              "role": "user",
+              "sources": null
+            },
+            {
+              "agents_invoked": [
+                "model-4"
+              ],
+              "analysis_context_snapshot": {
+                "mode": "scenario",
+                "object": null,
+                "provenance": {
+                  "calculated_at": "2026-09-04T15:16:06.785767+00:00",
+                  "data_as_of": null,
+                  "data_version": null,
+                  "key_inputs": {},
+                  "model_id": "acidification-remediation",
+                  "model_version": "process_v2_20260801",
+                  "object_title": "情景试算，非具体空间对象结果",
+                  "scenario_result": true,
+                  "spatial_object": null,
+                  "trace_id": "65e9d307974d4c1bb3a46b4753d2579f"
+                },
+                "trace_id": "65e9d307974d4c1bb3a46b4753d2579f",
+                "version": null
+              },
+              "content": "情景试算，非具体空间对象结果\n\n耕地土壤酸化改良：土壤调理剂用量：3178.3；木本泥炭用量：2043.7",
+              "conversation_id": 25,
+              "create_time": "2026-09-04 23:16:06",
+              "id": 69,
+              "recommendations": [],
+              "role": "assistant",
+              "sources": null
+            }
+          ],
+          "status": "ok"
+        }
+      }
+    },
+    {
+      "label": "读取完整会话历史：comprehensive",
+      "started_at": "2026-09-04T15:16:19.148120+00:00",
+      "completed_at": "2026-09-04T15:16:19.163645+00:00",
+      "request": {
+        "method": "GET",
+        "path": "/api/v1/chat/conversations/26/messages",
+        "headers": {
+          "Accept": "application/json",
+          "Authorization": "<redacted>"
+        },
+        "json": null
+      },
+      "response": {
+        "http_status": 200,
+        "json": {
+          "data": [
+            {
+              "agents_invoked": [],
+              "analysis_context_snapshot": {
+                "mode": "spatial",
+                "object": {
+                  "area_code": "440233",
+                  "display_name": "地块 4190",
+                  "id": "4190",
+                  "parent_path": [],
+                  "source": "parcel_info",
+                  "type": "parcel",
+                  "validated_at": "2026-09-04T15:16:06.804955+00:00"
+                },
+                "version": 1
+              },
+              "content": "请为这块地生成包含酸化改良和有机质培肥的综合诊断与改良报告",
+              "conversation_id": 26,
+              "create_time": "2026-09-04 23:16:06",
+              "id": 70,
+              "recommendations": [],
+              "role": "user",
+              "sources": null
+            },
+            {
+              "agents_invoked": [],
+              "analysis_context_snapshot": {
+                "mode": "spatial",
+                "object": {
+                  "area_code": "440233",
+                  "display_name": "地块 4190",
+                  "id": "4190",
+                  "parent_path": [],
+                  "source": "parcel_info",
+                  "type": "parcel",
+                  "validated_at": "2026-09-04T15:16:06.804955+00:00"
+                },
+                "provenance": {},
+                "trace_id": "7415a2ed11ef4722825f0de1f59b86ea",
+                "version": 1
+              },
+              "content": "分析范围和所需输入已准备好，请确认后开始计算。",
+              "conversation_id": 26,
+              "create_time": "2026-09-04 23:16:06",
+              "id": 71,
+              "recommendations": [],
+              "role": "assistant",
+              "sources": null
+            },
+            {
+              "agents_invoked": [],
+              "analysis_context_snapshot": {
+                "mode": "spatial",
+                "object": {
+                  "area_code": "440233",
+                  "display_name": "地块 4190",
+                  "id": "4190",
+                  "parent_path": [],
+                  "source": "parcel_info",
+                  "type": "parcel",
+                  "validated_at": "2026-09-04T15:16:06.804955+00:00"
+                },
+                "provenance": {},
+                "trace_id": "7415a2ed11ef4722825f0de1f59b86ea",
+                "version": 1
+              },
+              "content": "报告草稿已生成，请确认发布或提出修改意见。",
+              "conversation_id": 26,
+              "create_time": "2026-09-04 23:16:19",
+              "id": 72,
+              "recommendations": [],
+              "role": "assistant",
+              "sources": null
+            },
+            {
+              "agents_invoked": [],
+              "analysis_context_snapshot": {
+                "mode": "spatial",
+                "object": {
+                  "area_code": "440233",
+                  "display_name": "地块 4190",
+                  "id": "4190",
+                  "parent_path": [],
+                  "source": "parcel_info",
+                  "type": "parcel",
+                  "validated_at": "2026-09-04T15:16:06.804955+00:00"
+                },
+                "provenance": {
+                  "analysis_context": {
+                    "mode": "spatial",
+                    "object": {
+                      "area_code": "440233",
+                      "display_name": "地块 4190",
+                      "id": "4190",
+                      "parent_path": [],
+                      "source": "parcel_info",
+                      "type": "parcel",
+                      "validated_at": "2026-09-04T15:16:06.804955+00:00"
+                    },
+                    "version": 1
+                  },
+                  "models": [
+                    {
+                      "agent_id": "model-1",
+                      "data_version": null,
+                      "model_version": "current",
+                      "status": "succeeded"
+                    },
+                    {
+                      "agent_id": "model-2",
+                      "data_version": null,
+                      "model_version": "current",
+                      "status": "succeeded"
+                    },
+                    {
+                      "agent_id": "model-3",
+                      "data_version": null,
+                      "model_version": "current",
+                      "status": "succeeded"
+                    },
+                    {
+                      "agent_id": "model-4",
+                      "data_version": null,
+                      "model_version": "current",
+                      "status": "succeeded"
+                    },
+                    {
+                      "agent_id": "model-5",
+                      "data_version": null,
+                      "model_version": "current",
+                      "status": "succeeded"
+                    }
+                  ],
+                  "sources": [],
+                  "trace_id": "7415a2ed11ef4722825f0de1f59b86ea"
+                },
+                "trace_id": "7415a2ed11ef4722825f0de1f59b86ea",
+                "version": 1
+              },
+              "content": "# 地块综合诊断与改良建议\n\n## 分析对象\n\n本报告基于当前选中地块的权威数据生成。\n\n## 诊断摘要\n\n已完成耕地质量、主要限制因素和改良用量分析。\n\n## 耕地质量\n\n耕地质量等级为 3 级，综合指数为 0.834。\n\n## 主要限制因素\n\n当前障碍类型为 多障碍。主要关注有效磷、地形部位。同时关注速效钾、灌溉能力。\n\n## 改良用量建议\n\n土壤调理剂（亿土康）建议施用量为 5047.6 公斤/公顷。木本泥炭建议施用量为 11671.3 公斤/公顷。有机质培肥建议施用量为 223.7 吨/公顷。\n\n## 优先改良措施\n\n优先处理主要限制因素，分步实施土壤改良，并保留施用和复测记录。\n\n## 使用说明\n\n当前未接入外部资料检索，报告以地块数据库和专业计算结果为准；实施前建议结合现场调查和最新土样复核。\n\n## 数据说明\n\n结果由当前地块权威数据和已完成的专业计算生成。",
+              "conversation_id": 26,
+              "create_time": "2026-09-04 23:16:19",
+              "id": 73,
+              "recommendations": [],
+              "role": "assistant",
+              "sources": null
+            }
+          ],
+          "status": "ok"
+        }
+      }
+    }
+  ]
+}

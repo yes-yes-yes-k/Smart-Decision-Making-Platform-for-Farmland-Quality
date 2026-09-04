@@ -310,9 +310,16 @@ def normalize_execution(agent: Any, payload: Optional[Mapping[str, Any]], execut
         raw_result = execution.get("result")
         result = _normalize_result(agent_key, raw_result, payload)
         if agent_key == "model-5" and status == "ok" and isinstance(result, Mapping):
+            required_prediction_fields = (
+                ("dose_prediction",)
+                if source == "db"
+                else (
+                    "soc_prediction", "dose_prediction",
+                    "soc_confidence", "dose_confidence",
+                )
+            )
             missing = [
-                key for key in ("soc_prediction", "dose_prediction", "soc_confidence", "dose_confidence")
-                if result.get(key) is None
+                key for key in required_prediction_fields if result.get(key) is None
             ]
             if missing:
                 status = "degraded"
@@ -469,7 +476,14 @@ def deterministic_answer(model_result: Mapping[str, Any]) -> str:
     }
     for key, label in labels.items():
         if result.get(key) is not None:
-            parts.append(f"{label}：{result[key]}")
+            value = result[key]
+            if isinstance(value, float):
+                precision = 3 if key in {
+                    "composite_index", "score", "soc_prediction",
+                    "soc_confidence", "dose_confidence",
+                } else 1
+                value = f"{value:.{precision}f}".rstrip("0").rstrip(".")
+            parts.append(f"{label}：{value}")
     if result.get("primary_factors"):
         parts.append(f"主要障碍因素：{result['primary_factors']}")
     return "；".join(parts) or "模型已完成分析，但没有可展示的关键指标。"

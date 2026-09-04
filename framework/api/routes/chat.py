@@ -86,6 +86,8 @@ def _serialize_prepared_response(prepared, result, message_id, *, include_model_
     for key in (
         "interaction_state", "analysis_context", "provenance", "scenario_result",
         "spatial_object", "object_title", "required_object_types", "missing_inputs", "trace_id",
+        "run_id", "checkpoint_version", "plan_summary", "proposed_defaults",
+        "report_draft", "degradations",
     ):
         if key in rich:
             response["data"][key] = rich[key]

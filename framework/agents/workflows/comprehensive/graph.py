@@ -73,7 +73,7 @@ def build_comprehensive_graph(services:ComprehensiveServices,checkpointer):
             if action.action!="confirm_plan": raise ValueError("invalid_interaction_action")
         return {"confirmation":{"hash":decision.confirmation_hash},"interaction_state":"executing","checkpoint_version":version}
     def execute_node(state):
-        outcome=services.scheduler.execute(DiagnosticPlan.model_validate(state["diagnostic_plan"]),resolution=InputResolution.model_validate(state["resolved_inputs"]),execution_context={"analysis_context":state["analysis_context_snapshot"],"verified":True,"trace_id":state["trace_id"]},request_facts=state.get("request_facts",{}),existing_results=state.get("task_results"),existing_attempts=state.get("task_attempts"),trace_id=state["trace_id"])
+        outcome=services.scheduler.execute(DiagnosticPlan.model_validate(state["diagnostic_plan"]),resolution=InputResolution.model_validate(state["resolved_inputs"]),execution_context={"analysis_context":state["analysis_context_snapshot"],"verified":True,"trace_id":state["trace_id"],"run_id":state["run_id"],"conversation_id":state["conversation_id"],"user_id":state["user_id"]},request_facts=state.get("request_facts",{}),existing_results=state.get("task_results"),existing_attempts=state.get("task_attempts"),trace_id=state["trace_id"])
         core_failed=any(r.agent_id in {"model-2","model-3"} and r.status!="succeeded" for r in outcome.results.values())
         return {"task_results":{k:v.model_dump(mode="json") for k,v in outcome.results.items()},"task_attempts":outcome.attempts,"degradations":list(outcome.degradations),"interaction_state":"failed" if core_failed else "researching"}
     def research_node(state):

@@ -1,5 +1,6 @@
 """Allow-listed execution, validation, retry and two-wave scheduling."""
 from __future__ import annotations
+import inspect
 from dataclasses import dataclass
 from datetime import datetime, timezone
 from typing import Any
@@ -22,7 +23,20 @@ class ModelToolExecutor:
         parcel_id=str(obj.get("id") or "")
         if arguments.get("parcel_id") != parcel_id: raise TaskExecutionError("analysis_object_conflict")
         tools=self._tools or get_specialized_tools_for({task.agent_id})
-        try: return tools[task.agent_id].invoke(arguments)
+        try:
+            tool=tools[task.agent_id]
+            schema=getattr(tool,"args_schema",None)
+            fields=getattr(schema,"model_fields",{}) if schema else {}
+            call_arguments={
+                key:value for key,value in arguments.items()
+                if not fields or key in fields
+            }
+            func=getattr(tool,"func",None)
+            if func is None:
+                return tool.invoke(call_arguments)
+            if "execution_context" in inspect.signature(func).parameters:
+                call_arguments["execution_context"]=execution_context
+            return func(**call_arguments)
         except (TimeoutError, ConnectionError) as exc: raise TaskExecutionError("transient_tool_error",retryable=True) from exc
         except TaskExecutionError: raise
         except Exception as exc: raise TaskExecutionError("tool_execution_failed") from exc
@@ -32,7 +46,7 @@ class ResultValidationError(ValueError): pass
 
 
 REQUIRED_PAYLOAD_KEYS={
-    "model-1":("parcel_id","stability_modules"),
+    "model-1":("parcel_id","modules"),
     "model-2":("parcel_id","quality_grade","composite_index"),
     "model-3":("parcel_id",),
     "model-4":("parcel_id",),

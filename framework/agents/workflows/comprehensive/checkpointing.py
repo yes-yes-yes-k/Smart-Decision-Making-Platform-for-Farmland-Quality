@@ -9,9 +9,6 @@ from langgraph.checkpoint.base import BaseCheckpointSaver
 from langgraph.checkpoint.postgres import PostgresSaver
 
 
-CHECKPOINT_NAMESPACE = "single-parcel-v1"
-
-
 def normalize_postgres_uri(uri: str) -> str:
     return (
         uri.replace("postgresql+psycopg2://", "postgresql://", 1)
@@ -27,7 +24,6 @@ def workflow_thread_config(
     return {
         "configurable": {
             "thread_id": f"chat:{conversation_id}:comprehensive:{run_id}",
-            "checkpoint_ns": CHECKPOINT_NAMESPACE,
         }
     }
 

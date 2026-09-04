@@ -68,3 +68,40 @@ def test_projections_do_not_expose_internal_details():
     assert "details" not in compact
     assert "details" not in context
     assert legacy["analysis"]["quality_grade"] == "一等"
+
+
+def test_model5_database_dose_only_result_is_complete_for_db_capability():
+    agent = type("Agent", (), {
+        "model_id":"organic-matter-improvement",
+        "agent_id":"model-5",
+        "capability":{"model_id":"organic-matter-improvement"},
+    })()
+    result = normalize_execution(
+        agent,
+        {"parcel_id":"4190", "land_type":"upland"},
+        {
+            "status":"ok", "data_source":"db", "simulated":False,
+            "result":{"parcel_id":"4190", "dose":223.7},
+        },
+    )
+    assert result["status"] == "ok"
+    assert result["result"]["dose_prediction"] == 223.7
+    assert not result["issues"]
+
+
+def test_model5_ml_partial_result_still_reports_missing_predictions():
+    agent = type("Agent", (), {
+        "model_id":"organic-matter-improvement",
+        "agent_id":"model-5",
+        "capability":{"model_id":"organic-matter-improvement"},
+    })()
+    result = normalize_execution(
+        agent,
+        {"parcel_id":"4190", "land_type":"upland"},
+        {
+            "status":"ok", "data_source":"global_etr", "simulated":False,
+            "result":{"parcel_id":"4190", "dose_prediction":223.7},
+        },
+    )
+    assert result["status"] == "degraded"
+    assert result["issues"][0]["code"] == "PARTIAL_PREDICTION"

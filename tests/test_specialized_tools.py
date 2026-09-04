@@ -108,7 +108,7 @@ class TestWrapperPayload:
         result = _model_1_wrapper(parcel_id="1", area_code="lechang")
         _mock_agent_manager[1].execute.assert_called_once()
         call_args = _mock_agent_manager[1].execute.call_args
-        # model-1 用 data 参数
+        # model-1 实际稳定性 Agent 使用 data 参数
         assert "data" in call_args.kwargs
         payload = call_args.kwargs["data"]
         assert payload["parcel_id"] == "1"
@@ -139,7 +139,7 @@ class TestWrapperPayload:
         call_args = _mock_agent_manager[1].execute.call_args
         payload = call_args.kwargs["task"]
         assert payload["land_type"] == "paddy"
-        assert payload["fertilizer_type"] == "single"
+        assert payload["fertilizer_type"] == "urea"
 
     def test_model5_wrapper_requires_verified_parcel_id(self, _mock_agent_manager):
         from framework.function_calling.specialized_tools import _model_5_wrapper

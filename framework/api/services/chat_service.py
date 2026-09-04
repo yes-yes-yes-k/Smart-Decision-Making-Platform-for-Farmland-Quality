@@ -7,7 +7,10 @@ from datetime import datetime, timezone
 from typing import Any, Mapping
 from framework.agents.workflows.comprehensive.contracts import InteractionResponse
 
-from framework.agents.capabilities import get_capability_by_question_type
+from framework.agents.capabilities import (
+    get_capability_by_question_type,
+    public_comprehensive_capabilities,
+)
 from framework.analysis_context.contracts import AnalysisContext
 from framework.analysis_context.errors import AnalysisObjectInvalid
 from framework.analysis_context.provenance import ResultProvenanceBuilder
@@ -91,6 +94,7 @@ class ChatRequestService:
                 "calculation_mode": snapshot["mode"],
                 "validated_identifiers": execution_identifiers,
                 "scenario_inputs": dict(resolved.scenario_inputs),
+                "capabilities": public_comprehensive_capabilities(),
                 "user_id": user_id,
                 "conversation_id": conversation.id,
             })
@@ -204,6 +208,10 @@ class ChatRequestService:
     ) -> dict[str, Any]:
         normalized = deepcopy(dict(result))
         normalized.setdefault("interaction_state", "completed")
+        if not normalized.get("answer"):
+            normalized["answer"] = self._interaction_prompt(
+                normalized["interaction_state"]
+            )
         normalized.setdefault("analysis_context", deepcopy(prepared.context_snapshot))
         normalized.setdefault("sources", [])
         normalized.setdefault("model_results", {})
@@ -222,6 +230,16 @@ class ChatRequestService:
                 if answer and not answer.startswith(title):
                     normalized["answer"] = f"{title}\n\n{answer}"
         return normalized
+
+    @staticmethod
+    def _interaction_prompt(interaction_state: str) -> str:
+        return {
+            "needs_input": "请补充必要的地块信息后继续。",
+            "needs_confirmation": "分析范围和所需输入已准备好，请确认后开始计算。",
+            "awaiting_release": "报告草稿已生成，请确认发布或提出修改意见。",
+            "canceled": "本次综合诊断已取消。",
+            "failed": "本次综合诊断未能完成，请检查地块数据后重试。",
+        }.get(interaction_state, "请求已处理。")
 
     def _stream_provenance(
         self, prepared: PreparedChat, result: Mapping[str, Any],

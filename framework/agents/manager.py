@@ -245,9 +245,9 @@ class AgentManager:
 
         models = {aid: results[aid] for aid in ordered_invoked if aid in results}
         answer_parts = [
-            f"[{aid}] {deterministic_answer(results[aid])}"
+            f"{CAPABILITY_BY_AGENT_ID[aid].name}：{deterministic_answer(results[aid])}"
             for aid in ordered_invoked
-            if aid in results
+            if aid in results and aid in CAPABILITY_BY_AGENT_ID
         ]
         summary = "\n".join(answer_parts) if answer_parts else "暂无可用结果"
         recommendations: List[str] = []

@@ -5,7 +5,7 @@ from typing import Protocol
 
 from .contracts import DiagnosticPlan
 from .prompt_catalog import PLANNER_PROMPT
-from .structured_roles import StructuredRoleRunner
+from .structured_roles import StructuredRoleError, StructuredRoleRunner
 
 
 @dataclass(frozen=True)
@@ -64,5 +64,71 @@ class PlanValidator:
 class DiagnosticPlanner:
     def __init__(self, runner: StructuredRoleRunner, validator: PlanValidator): self._runner,self._validator=runner,validator
     def create_plan(self, *, request: dict, facts: PlanningFacts, capabilities: list[dict]) -> DiagnosticPlan:
-        plan=self._runner.generate(role="planner", prompt=f"{PLANNER_PROMPT.system}\nrequest={request}\nfacts={asdict(facts)}\ncapabilities={capabilities}", schema=DiagnosticPlan)
+        try:
+            plan=self._runner.generate(role="planner", prompt=f"{PLANNER_PROMPT.system}\nrequest={request}\nfacts={asdict(facts)}\ncapabilities={capabilities}", schema=DiagnosticPlan)
+        except StructuredRoleError:
+            plan=self._deterministic_plan(facts)
         return self._validator.validate(plan, facts)
+
+    @staticmethod
+    def _deterministic_plan(facts: PlanningFacts) -> DiagnosticPlan:
+        tasks = [
+            {
+                "task_id": "quality-evaluation",
+                "agent_id": "model-2",
+                "required": True,
+                "depends_on": (),
+                "trigger": {"type": "always", "predicates": ()},
+            },
+            {
+                "task_id": "problem-diagnosis",
+                "agent_id": "model-3",
+                "required": True,
+                "depends_on": (),
+                "trigger": {"type": "always", "predicates": ()},
+            },
+            {
+                "task_id": "acidification-remediation",
+                "agent_id": "model-4",
+                "required": False,
+                "depends_on": ("problem-diagnosis",),
+                "trigger": {
+                    "type": "any",
+                    "predicates": (
+                        "user_requested_acidification",
+                        "acidification_evidence",
+                    ),
+                },
+            },
+            {
+                "task_id": "organic-matter-improvement",
+                "agent_id": "model-5",
+                "required": False,
+                "depends_on": ("problem-diagnosis",),
+                "trigger": {
+                    "type": "any",
+                    "predicates": (
+                        "user_requested_organic_matter",
+                        "organic_matter_evidence",
+                    ),
+                },
+            },
+        ]
+        if facts.history_available:
+            tasks.insert(0, {
+                "task_id": "stability-risk",
+                "agent_id": "model-1",
+                "required": False,
+                "depends_on": (),
+                "trigger": {
+                    "type": "all",
+                    "predicates": ("history_available",),
+                },
+            })
+        return DiagnosticPlan.model_validate({
+            "plan_version": 1,
+            "analysis_mode": "single_parcel_comprehensive",
+            "planner_prompt_version": "planner-deterministic-v1",
+            "tasks": tasks,
+            "planner_reason": "按已注册能力生成固定、可审计的单地块综合诊断计划。",
+        })

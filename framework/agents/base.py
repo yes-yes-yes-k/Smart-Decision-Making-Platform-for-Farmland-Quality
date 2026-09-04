@@ -188,10 +188,12 @@ class BaseAgent(ABC):
             # 确保在 Flask 应用上下文中执行数据库操作
             app_ctx = None
             try:
-                from framework.api.app import create_app
-                _app = create_app("default")
-                app_ctx = _app.app_context()
-                app_ctx.push()
+                from flask import has_app_context
+                if not has_app_context():
+                    from framework.api.app import create_app
+                    _app = create_app("default")
+                    app_ctx = _app.app_context()
+                    app_ctx.push()
             except Exception:
                 pass
 

@@ -18,7 +18,6 @@ def test_workflow_thread_config_is_run_scoped():
     assert workflow_thread_config(12, "run-7") == {
         "configurable": {
             "thread_id": "chat:12:comprehensive:run-7",
-            "checkpoint_ns": "single-parcel-v1",
         }
     }
 

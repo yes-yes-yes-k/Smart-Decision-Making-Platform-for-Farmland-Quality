@@ -59,8 +59,8 @@ class Model4AcidificationArgs(BaseModel):
 
     parcel_id: str = Field(..., description="地块 ID")
     land_type: Literal["upland", "paddy"] = Field(default="upland", description="土地利用类型：upland(旱地)/paddy(水田)")
-    fertilizer_type: Literal["compound", "single"] = Field(
-        default="compound", description="肥料类型：compound(复合肥)/single(单质肥)"
+    fertilizer_type: Literal["compound", "urea", "single"] = Field(
+        default="compound", description="肥料类型：compound(复合肥)/urea(尿素)，single 作为尿素的兼容别名"
     )
     target_ph: Optional[float] = Field(default=None, description="目标 pH 值（默认 6.5）")
     SJD: Optional[float] = Field(default=None, description="土壤 pH 值（legacy 兜底）")
@@ -86,6 +86,7 @@ def _model_1_wrapper(
     db_path: Optional[str] = None,
     quality_index: Optional[float] = None,
     quality_grade: Optional[str] = None,
+    execution_context: Optional[Dict[str, Any]] = None,
 ) -> Dict[str, Any]:
     """包装 Model-1 稳定性风险评价 Agent。"""
     from framework.agents.manager import agent_manager
@@ -102,6 +103,12 @@ def _model_1_wrapper(
         payload["quality_index"] = quality_index
     if quality_grade is not None:
         payload["quality_grade"] = quality_grade
+    if execution_context:
+        payload.update({
+            "execution_channel": "chat",
+            "guard_passed": True,
+            "execution_context": execution_context,
+        })
     return _normalize_tool_result(agent, payload, agent.execute(data=payload))
 
 
@@ -111,6 +118,7 @@ def _model_2_wrapper(
     area_code: Optional[str] = None,
     exe_path: Optional[str] = None,
     dat_path: Optional[str] = None,
+    execution_context: Optional[Dict[str, Any]] = None,
 ) -> Dict[str, Any]:
     """包装 Model-2 质量等级评价 Agent。"""
     from framework.agents.manager import agent_manager
@@ -127,6 +135,12 @@ def _model_2_wrapper(
         payload["exe_path"] = exe_path
     if dat_path:
         payload["dat_path"] = dat_path
+    if execution_context:
+        payload.update({
+            "execution_channel": "chat",
+            "guard_passed": True,
+            "execution_context": execution_context,
+        })
     return _normalize_tool_result(agent, payload, agent.execute(data=payload))
 
 
@@ -134,6 +148,7 @@ def _model_3_wrapper(
     parcel_id: str,
     area_code: Optional[str] = None,
     db_path: Optional[str] = None,
+    execution_context: Optional[Dict[str, Any]] = None,
 ) -> Dict[str, Any]:
     """包装 Model-3 障碍诊断 Agent。"""
     from framework.agents.manager import agent_manager
@@ -146,6 +161,12 @@ def _model_3_wrapper(
         payload["area_code"] = area_code
     if db_path:
         payload["db_path"] = db_path
+    if execution_context:
+        payload.update({
+            "execution_channel": "chat",
+            "guard_passed": True,
+            "execution_context": execution_context,
+        })
     return _normalize_tool_result(agent, payload, agent.execute(task=payload))
 
 
@@ -155,6 +176,7 @@ def _model_4_wrapper(
     fertilizer_type: str = "compound",
     target_ph: Optional[float] = None,
     SJD: Optional[float] = None,
+    execution_context: Optional[Dict[str, Any]] = None,
 ) -> Dict[str, Any]:
     """包装 Model-4 酸化改良 Agent。"""
     from framework.agents.manager import agent_manager
@@ -162,11 +184,18 @@ def _model_4_wrapper(
     agent = agent_manager.agents.get("model-4")
     if agent is None:
         return {"status": "error", "agent_id": "model-4", "message": "Agent 未注册"}
-    payload = {"parcel_id": parcel_id, "land_type": land_type, "fertilizer_type": fertilizer_type}
+    normalized_fertilizer = "urea" if fertilizer_type == "single" else fertilizer_type
+    payload = {"parcel_id": parcel_id, "land_type": land_type, "fertilizer_type": normalized_fertilizer}
     if target_ph is not None:
         payload["target_ph"] = target_ph
     if SJD is not None:
         payload["SJD"] = SJD
+    if execution_context:
+        payload.update({
+            "execution_channel": "chat",
+            "guard_passed": True,
+            "execution_context": execution_context,
+        })
     return _normalize_tool_result(agent, payload, agent.execute(task=payload))
 
 
@@ -175,6 +204,7 @@ def _model_5_wrapper(
     area_code: Optional[str] = None,
     land_type: str = "upland",
     indicators: Optional[Dict[str, Any]] = None,
+    execution_context: Optional[Dict[str, Any]] = None,
 ) -> Dict[str, Any]:
     """包装 Model-5 有机质培肥 Agent。"""
     from framework.agents.manager import agent_manager
@@ -187,6 +217,12 @@ def _model_5_wrapper(
         payload["area_code"] = area_code
     if indicators:
         payload["indicators"] = indicators
+    if execution_context:
+        payload.update({
+            "execution_channel": "chat",
+            "guard_passed": True,
+            "execution_context": execution_context,
+        })
     return _normalize_tool_result(agent, payload, agent.execute(task=payload))
 
 
