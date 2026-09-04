@@ -7,20 +7,28 @@ from framework.core_engine import core_engine
 from framework.models.report import Report
 from framework.models.user import db
 from src.ai_culti_demo.report import generate_report, generate_pdf
+from src.ai_culti_demo.report_context import UNSUPPORTED_REPORT_TYPES, normalize_scope
 
 report_bp = Blueprint('report', __name__)
 
 
-def _async_generate_report(app, report_id, report_type, area_code):
-    """后台线程：生成报告内容并更新数据库。"""
+def _async_generate_report(app, report_id, report_type, scope):
+    """后台线程：生成报告内容并更新数据库。
+
+    沿用 app.app_context() 模式（与 SSE 事件流一致），避免 Working outside
+    of application context 错误。
+    """
     with app.app_context():
         try:
-            result = generate_report(report_type, area_code)
+            result = generate_report(report_type, scope)
             report = db.session.get(Report, report_id)
             if report and result.get("status") == "ok":
                 timestamp = datetime.now().strftime("%Y-%m-%d %H:%M")
                 report.title = f'{result["title"]}（{timestamp}）'
                 report.content = result["content"]
+                # 回写 scope（generate_report 已归一化），保证 to_dict 暴露给前端
+                if result.get("scope"):
+                    report.scope = result["scope"]
                 report.status = "completed"
             elif report:
                 report.status = "failed"
@@ -62,30 +70,44 @@ def generate():
         return jsonify({"status": "error", "error": {"code": "MISSING_PARAMS", "message": "缺少请求参数"}}), 400
 
     report_type = data.get('report_type')
+    scope = data.get('scope')
     area_code = data.get('area_code')
 
-    if not report_type or not area_code:
-        return jsonify({"status": "error", "error": {"code": "MISSING_PARAMS", "message": "report_type 和 area_code 为必填参数"}}), 400
+    # 5.5 校验：scope 与 area_code 至少其一存在
+    if not report_type or (not scope and not area_code):
+        return jsonify({"status": "error", "error": {"code": "MISSING_PARAMS", "message": "report_type 为必填，且 scope 与 area_code 至少其一存在"}}), 400
 
-    # 先创建记录，status=processing，立即返回
+    # 5.2 方案类模板直接拒绝，不创建 processing 记录
+    if report_type in UNSUPPORTED_REPORT_TYPES:
+        return jsonify({"status": "error", "error": {"code": "UNSUPPORTED_REPORT_TYPE", "message": "暂不支持的报告类型"}}), 400
+
+    # 5.1 归一化 scope（兼容旧 area_code 顶层字段按区域范围解析）
+    try:
+        scope_norm = normalize_scope(scope, area_code)
+    except Exception as e:
+        code = getattr(e, 'code', 'MISSING_PARAMS')
+        return jsonify({"status": "error", "error": {"code": code, "message": str(e)}}), 400
+
+    # 5.3 先创建记录，status=processing，立即返回；scope 写入以维持元数据
     report = Report(
         title='报告生成中...',
         report_type=report_type,
-        area_code=area_code,
+        area_code=scope_norm['id'] if scope_norm['type'] == 'region' else '',
         content='',
         status='processing',
         create_by=user_id
     )
+    report.scope = scope_norm
     db.session.add(report)
     db.session.commit()
     report_id = report.id
 
-    # 后台线程异步生成报告内容
+    # 5.4 后台线程异步生成报告内容
     from flask import current_app
     app = current_app._get_current_object()
     thread = threading.Thread(
         target=_async_generate_report,
-        args=(app, report_id, report_type, area_code),
+        args=(app, report_id, report_type, scope_norm),
         daemon=True
     )
     thread.start()

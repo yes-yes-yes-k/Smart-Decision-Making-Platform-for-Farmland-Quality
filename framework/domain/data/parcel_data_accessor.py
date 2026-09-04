@@ -85,6 +85,77 @@ class ParcelDataAccessor:
             logger.warning("查询 parcel snapshot 失败 (parcel_id=%s): %s", parcel_id, exc)
             return None
 
+    def get_parcel_record(self, parcel_id: str) -> Optional[dict]:
+        """按 parcel_id 返回地块记录 dict（含 soil_indicators/land_type/fertilizer_type/target_ph）。
+
+        供报告上下文聚合 model-4/5 计算所需的地块元信息。
+        """
+        try:
+            from framework.models.thematic_model import ParcelInfo
+
+            app = self._get_app()
+            ctx = app.app_context() if app else None
+            if ctx:
+                ctx.push()
+            try:
+                parcel = ParcelInfo.query.filter_by(parcel_id=parcel_id).first()
+                if parcel is None:
+                    return None
+                return {
+                    "parcel_id": parcel.parcel_id,
+                    "soil_indicators": parcel.soil_indicators or {},
+                    "land_type": parcel.land_type or "upland",
+                    "fertilizer_type": parcel.fertilizer_type or "urea",
+                    "target_ph": parcel.target_ph,
+                    "area_code": parcel.area_code,
+                }
+            finally:
+                if ctx:
+                    ctx.pop()
+        except Exception as e:
+            logger.warning("查询 parcel 记录失败 (parcel_id=%s): %s", parcel_id, e)
+            return None
+
+    def get_parcel_ids_by_area_code(self, area_code: str) -> list[str]:
+        """按 area_code 返回区域内全部地块编号列表（报告区域范围解析用）。"""
+        try:
+            from framework.models.thematic_model import ParcelInfo
+
+            app = self._get_app()
+            ctx = app.app_context() if app else None
+            if ctx:
+                ctx.push()
+            try:
+                rows = ParcelInfo.query.filter_by(area_code=area_code).all()
+                return [r.parcel_id for r in rows]
+            finally:
+                if ctx:
+                    ctx.pop()
+        except Exception as e:
+            logger.warning("查询区域地块列表失败 (area_code=%s): %s", area_code, e)
+            return []
+
+    def get_parcel_ids_by_area_prefix(self, prefix: str) -> list[str]:
+        """按 area_code 前缀 LIKE 查询（市级覆盖其下所有区县）。"""
+        try:
+            from framework.models.thematic_model import ParcelInfo
+
+            app = self._get_app()
+            ctx = app.app_context() if app else None
+            if ctx:
+                ctx.push()
+            try:
+                rows = ParcelInfo.query.filter(
+                    ParcelInfo.area_code.like(f"{prefix}%")
+                ).all()
+                return [r.parcel_id for r in rows]
+            finally:
+                if ctx:
+                    ctx.pop()
+        except Exception as e:
+            logger.warning("查询区域地块列表失败 (prefix=%s): %s", prefix, e)
+            return []
+
     def _to_code(self, indicator: str, value) -> Optional[str]:
         """英文/中文值 → 代码（先英文后中文回退）。
 
