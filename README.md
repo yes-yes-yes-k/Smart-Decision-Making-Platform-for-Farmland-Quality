@@ -114,6 +114,39 @@ python start_production_server.py --host 127.0.0.1 --port 8000 --threads 8
 
 生产环境部署详见 [deploy/deployment.md](deploy/deployment.md)，支持 Windows 服务注册、日志管理、配置校验等。
 
+### 地图底图瓦片
+
+前端地图底图使用项目自有的 GeoTIFF 离线切片（XYZ 瓦片金字塔），不依赖在线地图服务。瓦片是运行时产物，**不进 Git 仓库**（已被 `.gitignore` 排除），克隆后需重新生成。
+
+**瓦片目录与服务端点：**
+
+| 底图 | 源 TIF | 瓦片目录 | 端点 |
+|------|--------|----------|------|
+| 全国一张图（500m） | `China_RGB_500m_vis.tif` | `data/basemap_tiles/` | `/tiles/{z}/{x}/{y}.png` |
+| 广东高清（100m） | `Guangdong_RGB_100m.tif` | `data/gd_basemap_tiles/` | `/gd_tiles/{z}/{x}/{y}.png` |
+
+**生成瓦片（首次部署或源 TIF 更新时执行）：**
+
+```bash
+# 1. 安装依赖（GDAL + 直方图匹配库）
+conda install -c conda-forge gdal rasterio scikit-image
+
+# 2. 生成全国底图瓦片（zoom 4-8）
+python scripts/generate_basemap_tiles.py --force
+
+# 3. 预处理广东 TIF（Float64→Byte RGB + 直方图匹配到全国图色调）
+python scripts/prepare_gd_tif.py
+
+# 4. 生成广东高清瓦片（zoom 4-11）
+python scripts/generate_basemap_tiles.py --source data/gd_tif_normalized.tif --output data/gd_basemap_tiles --zoom 4-11 --force
+```
+
+**开发环境**：Flask `tiles_bp` / `gd_tiles_bp` 直接服务瓦片，Vite 已配置 `/tiles`、`/gd_tiles` 代理到 `http://127.0.0.1:5000`。
+
+**生产环境**：Nginx 直接 alias 静态托管瓦片（见 `deploy/deployment.md` §4.1、§4.2），绕过 Flask 提升性能。
+
+> ⚠️ 瓦片目录（`data/basemap_tiles/`、`data/gd_basemap_tiles/`）和中间产物（`data/gd_tif_normalized.tif`）均已被 `.gitignore` 排除，上传代码时看不到属正常现象。如需迁移到另一台机器，拷贝源 TIF + 跑一次上述脚本即可。
+
 ## API 概览
 
 所有 API 需通过 JWT 认证（`Authorization: Bearer <token>`）。
