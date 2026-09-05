@@ -98,8 +98,30 @@ def test_storage_create_tables():
 
         assert 'evaluation_results' in tables
         assert 'diagnosis_results' in tables
-        assert 'acidification_results' in tables
+        assert 'acidification_results' not in tables
         conn.close()
+
+
+def test_legacy_acidification_storage_methods_are_unavailable_without_table_access():
+    with tempfile.TemporaryDirectory() as tmpdir:
+        db_path = os.path.join(tmpdir, 'test.db')
+        storage = DiagnosisStorage(db_path)
+        conn = sqlite3.connect(db_path)
+        conn.execute("CREATE TABLE acidification_results (parcel_id TEXT, expected_effect TEXT)")
+        conn.execute("INSERT INTO acidification_results VALUES ('P-1', 'legacy text')")
+        conn.commit()
+        conn.close()
+
+        saved = storage.save_acidification([{"parcel_id": "P-2", "expected_effect": "new text"}])
+        loaded = storage.get_acidification("P-1")
+        assert saved["status"] == "unavailable"
+        assert loaded["status"] == "unavailable"
+        assert "expected_effect" not in loaded
+
+        conn = sqlite3.connect(db_path)
+        rows = conn.execute("SELECT * FROM acidification_results").fetchall()
+        conn.close()
+        assert rows == [("P-1", "legacy text")]
 
 def test_storage_save_and_get_evaluation():
     with tempfile.TemporaryDirectory() as tmpdir:

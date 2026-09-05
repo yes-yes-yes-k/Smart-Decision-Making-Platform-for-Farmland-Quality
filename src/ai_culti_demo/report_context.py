@@ -284,17 +284,20 @@ def _compute_model5_for_parcel(record: dict) -> Optional[dict]:
         accessor = ParcelDataAccessor()
         mapped = accessor._map_indicators_to_inputs(record["soil_indicators"], "model-5")
         land_type = record.get("land_type") or "upland"
-        dose, simulated = predict_dose(mapped, land_type)
+        prediction = predict_dose(mapped, land_type)
         som = mapped.get("SOMbe")
         level = _som_level(som)
         return {
             "parcel_id": record["parcel_id"],
             "organic_matter": som,
             "soil_ph": mapped.get("pH"),
-            "organic_fertilizer_dosage": dose,
+            "organic_fertilizer_dosage": prediction.dose,
             "level": level,
-            "simulated": simulated,
-            "source": "computed",
+            "potential_increase": None,
+            "simulated": prediction.simulated,
+            "source": prediction.data_source,
+            "model_version": prediction.model_version,
+            "reason": prediction.reason,
         }
     except Exception as e:
         logger.warning("补算 model-5 失败 (parcel_id=%s): %s", record.get("parcel_id"), e)
@@ -317,56 +320,42 @@ def _som_level(som: Optional[float]) -> str:
 
 
 def _read_model5_latest() -> Optional[dict]:
-    """model-5 为县级结果表（无 parcel_id），读最新一条作为区域级用量。
-
-    关键字段（organic_fertilizer_dosage/level/potential_increase）全为 None
-    时视为无效记录返回 None，触发补算降级。
-    """
+    """读取最新的、可由执行日志证明为真实模型输出的 Model-5 记录。"""
     try:
-        from framework.models.thematic_model import OrganicMatterResult
+        from framework.models.thematic_model import ModelExecutionLog, OrganicMatterResult
         with _app_ctx():
-            row = (
+            rows = (
                 OrganicMatterResult.query
                 .order_by(OrganicMatterResult.created_at.desc())
-                .first()
+                .all()
             )
-            if row is None:
-                return None
-            result = {
-                "organic_fertilizer_type": row.organic_fertilizer_type,
-                "organic_fertilizer_dosage": row.organic_fertilizer_dosage,
-                "level": row.level,
-                "potential_increase": row.potential_increase,
-                "om_improvement_target": row.om_improvement_target,
-                "source": "db",
-            }
-            # 关键字段（有机肥料用量、等级、预期提升量）为空或占位值 → 视为无效记录，触发补算
-            # 判定规则：
-            #   - organic_fertilizer_dosage 为空或 <= 0
-            #   - level 为空或"未知"（占位字符串）
-            #   - potential_increase 为空或 <= 0
-            # 三者同时满足才视为无效（任一字段有真实值仍复用）
-            dosage_empty = (
-                result["organic_fertilizer_dosage"] is None
-                or (isinstance(result["organic_fertilizer_dosage"], (int, float))
-                    and float(result["organic_fertilizer_dosage"]) <= 0)
-            )
-            level_empty = (
-                result["level"] is None
-                or result["level"] in ("", "未知")
-            )
-            inc_empty = (
-                result["potential_increase"] is None
-                or (isinstance(result["potential_increase"], (int, float))
-                    and float(result["potential_increase"]) <= 0)
-            )
-            if dosage_empty and level_empty and inc_empty:
-                logger.info(
-                    "model-5 最新记录关键字段全空 (dosage=%s, level=%s, potential_increase=%s)，触发补算降级",
-                    result["organic_fertilizer_dosage"], result["level"], result["potential_increase"],
+            for row in rows:
+                log = ModelExecutionLog.query.filter_by(id=row.execution_id).first()
+                output = log.output_result if log and isinstance(log.output_result, dict) else {}
+                meta = output.get("meta") if isinstance(output.get("meta"), dict) else {}
+                source = str(meta.get("data_source") or "unknown")
+                model_version = log.model_version if log else None
+                trusted = (
+                    row.simulated is False
+                    and log is not None
+                    and log.simulated is False
+                    and str(log.status).lower() in {"ok", "success", "complete", "completed"}
+                    and bool(model_version and str(model_version).strip().lower() != "unknown")
+                    and source in {"shaoguan_rf", "global_etr", "rf_model"}
                 )
-                return None
-            return result
+                if not trusted or row.organic_fertilizer_dosage is None:
+                    continue
+                return {
+                    "organic_fertilizer_type": row.organic_fertilizer_type,
+                    "organic_fertilizer_dosage": row.organic_fertilizer_dosage,
+                    "level": row.level,
+                    "potential_increase": None,
+                    "om_improvement_target": row.om_improvement_target,
+                    "simulated": False,
+                    "source": source,
+                    "model_version": model_version,
+                }
+            return None
     except Exception as e:
         logger.warning("读 model-5 最新结果失败: %s", e)
         return None
@@ -437,7 +426,7 @@ def _aggregate_model4(parcel_records: list[dict], scope: dict[str, str]) -> tupl
 
 
 def _aggregate_model5(parcel_records: list[dict], scope: dict[str, str]) -> tuple[dict, dict]:
-    """model-5 为县级用量；优先读最新结果，否则按范围补算代表值。"""
+    """优先复用可信真实记录，否则按范围调用当前 RF；失败时保留空定量结果。"""
     sampling_info: dict[str, Any] = {"applied": False, "total": len(parcel_records), "db_hits": 0}
     latest = _read_model5_latest()
     if latest is not None:
@@ -460,24 +449,32 @@ def _aggregate_model5(parcel_records: list[dict], scope: dict[str, str]) -> tupl
         sampling_info["threshold"] = REGION_SAMPLE_THRESHOLD
     doses: list[float] = []
     soms: list[float] = []
+    versions: list[str] = []
+    attempted = 0
     for i in idxs:
         out = _compute_model5_for_parcel(parcel_records[i])
+        attempted += 1
         if out and out.get("organic_fertilizer_dosage") is not None:
             doses.append(float(out["organic_fertilizer_dosage"]))
         if out and out.get("organic_matter") is not None:
             soms.append(float(out["organic_matter"]))
-    sampling_info["computed"] = len(doses)
-    if not doses:
+        if out and out.get("model_version"):
+            versions.append(str(out["model_version"]))
+    sampling_info["computed"] = attempted
+    if not doses and not soms:
         return {"model-5": None}, sampling_info
-    avg_dose = mean(doses)
+    avg_dose = mean(doses) if doses else None
     avg_som = mean(soms) if soms else None
     return {
         "model-5": {
             "organic_fertilizer_dosage": avg_dose,
+            "potential_increase": None,
             "level": _som_level(avg_som),
             "organic_matter": avg_som,
-            "source": "computed",
-            "sample_count": len(doses),
+            "source": "rf_model" if doses else "unavailable",
+            "simulated": not bool(doses),
+            "model_version": versions[0] if versions else None,
+            "sample_count": len(doses) if doses else len(soms),
         }
     }, sampling_info
 
@@ -565,8 +562,8 @@ def build_report_context(
     if isinstance(m4, list):
         versions.extend(r.get("model_version") for r in m4 if r.get("model_version"))
     m5 = model_results.get("model-5")
-    if isinstance(m5, dict) and m5.get("source") == "computed":
-        versions.append("process_v2_compute")
+    if isinstance(m5, dict) and m5.get("model_version"):
+        versions.append(m5["model_version"])
     source_meta = {
         "agent_id": agent_id,
         "model_versions": sorted(set(v for v in versions if v)),

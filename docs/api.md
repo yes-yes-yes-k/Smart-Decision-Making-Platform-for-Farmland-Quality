@@ -557,7 +557,7 @@ Model-4 无空间对象情景试算：
 
 **POST** `/api/v1/models/run`
 
-请求 `model_id` 使用公开标识 `organic-matter-improvement`。韶关区域按 `land_type` 选择旱地/水田 RF；规范字段也可以替换为外部模型字段 `SJD/YJZ/TD/TL/TJ/YXL/SXJ/YJZTSZ/YJFLX`。
+请求 `model_id` 使用公开标识 `organic-matter-improvement`。韶关区域按 `land_type` 选择旱地/水田 RF；规范字段也可以替换为外部模型字段 `SJD/YJZ/TD/TL/TJ/YXL/SXJ/YJZTSZ/YJFLX`。真实预测要求模型所需输入完整，SOC 模型使用的 `Dose` 也必须由调用方提供，服务端不再使用训练均值补齐缺失特征。
 
 ```json
 {
@@ -572,11 +572,14 @@ Model-4 无空间对象情景试算：
     "AP": 25.0,
     "AK": 80.0,
     "Gap": 5.0,
+    "Dose": 300.0,
     "Fertilizer type": 1
 }
 ```
 
-响应中的 `model_id` 为 `model-5`，并包含 `soc_prediction`、`dose_prediction`、`dose_confidence`、`model_version=SG_RF_v2_20260804` 和 `simulated=false`。缺少特征、模型文件或依赖时，响应会明确标记 `fallback`/`simulated` 与 `fallback_reason`，不会伪装为 RF 成功结果。`model_id=placeholder` 对应 model-6 占位能力，不调用该 RF 引擎。
+成功响应包含 `soc_prediction`、`dose_prediction`、`dose_confidence`、真实 `model_version` 和 `simulated=false`。缺少特征、模型文件、运行依赖或预测异常时，响应为 `degraded` 或 `unavailable`，`issues` 包含 `MODEL5_QUANTITATIVE_UNAVAILABLE`；`soc_prediction`、`dose_prediction`、`dose`、`manure_dosage` 和 `potential_increase` 均为 `null`。客户端不得使用历史等级表或本地默认数字回填。`potential_increase` 在建立并验证独立预测模型前始终不可用。
+
+报告只展示能够关联到执行日志、`simulated=false`、真实 RF/ETR 来源且模型版本完整的施用量。模拟、规则降级、来源不明或孤立历史记录均显示“暂无可靠估计”；旧 `potential_increase` 不再作为有效预期提升展示。
 
 ---
 

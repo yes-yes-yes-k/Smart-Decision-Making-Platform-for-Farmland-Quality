@@ -259,20 +259,35 @@ def _ensure_sg_model_loaded(land_type: str) -> bool:
     return not _SG_UPLAND_LOAD_FAILED
 
 
+_FALLBACK_REASON_CODES = {
+    "sklearn_missing": "MODEL5_DEPENDENCY_UNAVAILABLE",
+    "model_file_missing": "MODEL5_MODEL_UNAVAILABLE",
+    "missing_input": "MODEL5_INPUT_MISSING",
+    "invalid_input": "MODEL5_INPUT_INVALID",
+    "unexpected_error": "MODEL5_PREDICTION_FAILED",
+}
+
+
 def _fallback_response(input_data: Dict[str, Any], reason: str) -> Dict[str, Any]:
-    """构造 fallback 响应，使用训练集均值作为粗估。"""
+    """构造不含任何训练均值或规则数值的安全降级响应。"""
+    reason_code = _FALLBACK_REASON_CODES.get(reason, "MODEL5_QUANTITATIVE_UNAVAILABLE")
     return {
-        "status": "fallback",
+        "status": "degraded",
         "model_id": "model-5",
-        "soc_prediction": _SOC_META["feature_means"].get("SOCbe", 12.0) if _SOC_META else 12.0,
-        "soc_confidence": 0.3,
-        "dose_prediction": _DOSE_META["feature_means"].get("Dose", 100.0) if _DOSE_META else 100.0,
-        "dose_confidence": 0.3,
-        "dose_warning": "模型不可用，返回训练集均值估算" if reason != "input_out_of_range" else "输入值越界，未执行预测",
+        "soc_prediction": None,
+        "soc_confidence": None,
+        "dose_prediction": None,
+        "dose": None,
+        "manure_dosage": None,
+        "potential_increase": None,
+        "dose_confidence": None,
+        "dose_warning": "真实模型当前不可用，未生成定量预测。",
         "imputed_features": [],
         "imputation_applied": False,
-        "model_version": _MODEL_VERSION,
+        "model_version": None,
+        "reason": reason_code,
         "fallback_reason": reason,
+        "data_source": "unavailable",
         "simulated": True,
     }
 
@@ -357,6 +372,12 @@ def model_5_execution(input_data: Dict[str, Any], land_type: Optional[str] = Non
                 "model_version": _MODEL_VERSION,
                 "simulated": False,
             }
+
+        missing_features = sorted(set(soc_imputed + dose_imputed))
+        if missing_features:
+            fallback = _fallback_response(input_data, reason="missing_input")
+            fallback["missing_features"] = missing_features
+            return fallback
 
         # 9. 执行预测
         soc_pred = float(_SOC_MODEL.predict(soc_df)[0])

@@ -1,5 +1,4 @@
 import sqlite3
-import json
 import os
 from datetime import datetime
 from typing import Optional, List, Dict, Any
@@ -61,21 +60,6 @@ class DiagnosisStorage:
         diag_cols.append('created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP')
 
         cursor.execute(f'CREATE TABLE IF NOT EXISTS diagnosis_results ({", ".join(diag_cols)})')
-
-        cursor.execute('''
-            CREATE TABLE IF NOT EXISTS acidification_results (
-                parcel_id TEXT PRIMARY KEY REFERENCES evaluation_results(parcel_id),
-                acidification_level TEXT,
-                acidification_direction TEXT,
-                target_pH REAL,
-                lime_demand REAL,
-                amendment_type TEXT,
-                amendment_rate REAL,
-                measures TEXT,
-                expected_effect TEXT,
-                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-            )
-        ''')
 
         conn.commit()
         conn.close()
@@ -140,26 +124,14 @@ class DiagnosisStorage:
         conn.close()
         return count
 
-    def save_acidification(self, records: List[Dict[str, Any]]) -> int:
-        conn = sqlite3.connect(self.db_path)
-        cursor = conn.cursor()
-
-        for record in records:
-            cursor.execute('''
-                INSERT OR REPLACE INTO acidification_results
-                (parcel_id, acidification_level, acidification_direction,
-                 target_pH, lime_demand, amendment_type, amendment_rate, measures, expected_effect)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
-            ''', (
-                record['parcel_id'], record.get('acidification_level'), record.get('acidification_direction'),
-                record.get('target_pH'), record.get('lime_demand'), record.get('amendment_type'),
-                record.get('amendment_rate'), json.dumps(record.get('measures', [])), record.get('expected_effect'),
-            ))
-
-        conn.commit()
-        count = cursor.rowcount
-        conn.close()
-        return count
+    def save_acidification(self, records: List[Dict[str, Any]]) -> Dict[str, Any]:
+        """兼容入口：旧酸化结果表已退役，不访问数据库。"""
+        return {
+            "status": "unavailable",
+            "reason": "ACIDIFICATION_RESULTS_RETIRED",
+            "saved": 0,
+            "message": "acidification_results 已退役；请使用正式 Python 过程模型按需计算。",
+        }
 
     def get_evaluation(self, parcel_id: str) -> Optional[Dict[str, Any]]:
         conn = sqlite3.connect(self.db_path)
@@ -188,20 +160,14 @@ class DiagnosisStorage:
         # ZALX/ZYZAYS/CYZAYS 及 xxxZADJ/xxxZAD 均为标量列，不再 JSON loads
         return dict(zip(columns, row))
 
-    def get_acidification(self, parcel_id: str) -> Optional[Dict[str, Any]]:
-        conn = sqlite3.connect(self.db_path)
-        cursor = conn.cursor()
-        cursor.execute('SELECT * FROM acidification_results WHERE parcel_id = ?', (parcel_id,))
-        row = cursor.fetchone()
-        conn.close()
-
-        if row is None:
-            return None
-
-        columns = [desc[0] for desc in cursor.description]
-        result = dict(zip(columns, row))
-        result['measures'] = json.loads(result.get('measures', '[]'))
-        return result
+    def get_acidification(self, parcel_id: str) -> Dict[str, Any]:
+        """兼容入口：旧酸化结果表已退役，不返回历史结果。"""
+        return {
+            "status": "unavailable",
+            "reason": "ACIDIFICATION_RESULTS_RETIRED",
+            "parcel_id": str(parcel_id),
+            "message": "acidification_results 已退役；历史结果不可作为活动业务数据读取。",
+        }
 
     def is_ready(self) -> bool:
         conn = sqlite3.connect(self.db_path)

@@ -228,29 +228,27 @@ def render_organic_matter_dosage_table(ctx: dict[str, Any]) -> str:
     m5 = _model5_data(ctx)
     region = ctx.get("region_stats")
     if not m5 and not region:
-        return "<p>该地块有机肥用量需现场补算（model-5 暂无有效结果）。</p>"
+        return "<p>有机肥施用量：暂无可靠估计；预期提升量：暂无可靠估计。</p>"
 
     parts: list[str] = []
     if m5:
         parts.append("<table><thead><tr>")
         if m5.get("organic_matter") is not None:
             parts.append("<th>有机质 (g/kg)</th>")
-        parts.append("<th>有机肥施用量 (kg/亩)</th><th>等级</th>")
-        if m5.get("potential_increase") is not None:
-            parts.append("<th>预期提升量 (g/kg)</th>")
+        parts.append("<th>有机肥施用量 (kg/亩)</th><th>等级</th><th>预期提升量 (g/kg)</th>")
         if m5.get("organic_fertilizer_type"):
             parts.append("<th>肥料类型</th>")
         parts.append("<th>来源</th></tr></thead><tbody><tr>")
         if m5.get("organic_matter") is not None:
             parts.append(f"<td>{_fmt(m5.get('organic_matter'))}</td>")
-        parts.append(f"<td>{_fmt(m5.get('organic_fertilizer_dosage'))}</td>")
+        dosage = m5.get("organic_fertilizer_dosage")
+        parts.append(f"<td>{_fmt(dosage) if dosage is not None else '暂无可靠估计'}</td>")
         parts.append(f"<td>{_fmt(m5.get('level'))}</td>")
-        if m5.get("potential_increase") is not None:
-            parts.append(f"<td>{_fmt(m5.get('potential_increase'))}</td>")
+        parts.append("<td>暂无可靠估计</td>")
         if m5.get("organic_fertilizer_type"):
             parts.append(f"<td>{_fmt(m5.get('organic_fertilizer_type'))}</td>")
         parts.append(
-            f"<td>{'已落库' if m5.get('source') == 'db' else '现场补算'}</td>"
+            f"<td>{'真实模型' if dosage is not None else '定量不可用'}</td>"
         )
         parts.append("</tr></tbody></table>")
 
@@ -287,15 +285,16 @@ def _organic_data_brief(ctx: dict[str, Any]) -> str:
     m5 = _model5_data(ctx)
     parcel_ind = _parcel_indicators_brief(ctx)
     if not m5:
-        brief = "（无 model-5 用量数据，该地块有机肥用量需现场补算）"
+        brief = "有机肥施用量：暂无可靠估计；预期提升量：暂无可靠估计。"
         if parcel_ind:
             brief = f"地块实测指标：{parcel_ind}\n{brief}"
         return brief
     brief = (
-        f"- 有机肥施用量: {_fmt(m5.get('organic_fertilizer_dosage'))} kg/亩"
-        f"（等级 {m5.get('level', '未知')}）"
+        f"- 有机肥施用量: "
+        + (f"{_fmt(m5.get('organic_fertilizer_dosage'))} kg/亩" if m5.get("organic_fertilizer_dosage") is not None else "暂无可靠估计")
+        + f"（等级 {m5.get('level', '未知')}）"
         + (f"；有机质: {_fmt(m5.get('organic_matter'))} g/kg" if m5.get('organic_matter') is not None else "")
-        + (f"；预期提升量: {_fmt(m5.get('potential_increase'))} g/kg" if m5.get('potential_increase') is not None else "")
+        + "；预期提升量: 暂无可靠估计"
     )
     if parcel_ind:
         brief += f"\n- 地块实测指标：{parcel_ind}"
@@ -310,18 +309,17 @@ def organic_fertilizer_prompt(ctx: dict[str, Any]) -> str:
         return (
             f"范围：{_scope_label(ctx.get('scope'))}\n"
             f"{data_brief}\n\n"
-            "该地块有机肥用量需现场补算（model-5 暂无有效结果），"
-            "请基于地块实测指标给出一般性有机培肥建议："
-            "推荐有机肥源（腐熟农家肥/堆肥/商品有机肥）、秸秆还田常规用量、"
-            "绿肥种植品种与翻压量，并说明需补充土壤检测后确定精确用量。"
+            "Model-5 暂无可靠定量结果。请仅给出定性核验建议："
+            "说明应补充的土壤检测、模型输入、肥料来源核验和田间试验步骤；"
+            "不得给出施用量、提升量、县域平均值或其他未提供的数字。"
             "以 HTML 输出，<h3> 小标题、<table> 表格、<ul>/<li> 列表。"
         )
     return (
         f"范围：{_scope_label(ctx.get('scope'))}\n"
         f"以下为 model-5 有机质培肥用量计算结果与地块实测指标（仅依据提供的数据，不得编造未给出的数值）：\n"
         f"{data_brief}\n\n"
-        "基于该用量与地块指标制定有机培肥方案：有机肥源规划、秸秆还田、绿肥种植、"
-        "差异化培肥方案，说明用量测算与来源保障。"
+        "只有非空的真实模型用量可以作为处方引用；空值必须表述为暂无可靠估计。"
+        "据此制定有机肥源规划、秸秆还田、绿肥种植和差异化培肥核验方案。"
         "以 HTML 输出，<h3> 小标题、<table> 表格、<ul>/<li> 列表。"
     )
 
@@ -331,8 +329,8 @@ def organic_summary_prompt(ctx: dict[str, Any]) -> str:
     return (
         "计算结论（model-5，须基于此润色，不得编造数值）：\n"
         f"{_organic_data_brief(ctx)}\n\n"
-        "总结有机质提升方案的核心结论：现状评估、提升目标、推荐技术路线、"
-        "预期效果（有机质提升幅度、增产潜力、生态效益）。"
+        "总结有机质提升方案的核心结论：现状评估、推荐技术路线、监测与核验安排。"
+        "未提供可靠模型结果时，不得编造有机质提升幅度、增产潜力或施用量。"
         "以 HTML 输出，<ul>/<li> 列出核心结论，<p> 呈现展望。"
     )
 

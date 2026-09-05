@@ -1,8 +1,7 @@
-"""耕地质量诊断 + 酸化改良预计算入口
+"""耕地质量评价与障碍诊断预计算入口。
 
-封装 bulk_evaluate → evaluate_acidification 完整流程，从 CSV 输入生成
-data/farmland_diagnosis/farmland_diagnosis.db（含 evaluation_results 和
-acidification_results 两张表）。
+从 CSV 输入生成仍在使用的 evaluation_results；酸化改良由正式 Python
+过程模型按需计算，不再创建或填充 acidification_results。
 
 用法：
     python scripts/precompute_diagnosis.py
@@ -25,7 +24,7 @@ DEFAULT_CSV = "data/farmland_diagnosis/test.csv"
 
 
 def main() -> int:
-    parser = argparse.ArgumentParser(description="耕地质量诊断 + 酸化改良预计算")
+    parser = argparse.ArgumentParser(description="耕地质量评价预计算")
     parser.add_argument(
         "--csv",
         default=DEFAULT_CSV,
@@ -46,7 +45,7 @@ def main() -> int:
     # 1. 批量评价（生成 evaluation_results 表）
     from ai_culti_demo.farmland_diagnosis.evaluation import bulk_evaluate
 
-    print(f"[1/2] 批量评价: {csv_path}")
+    print(f"批量评价: {csv_path}")
     eval_result = bulk_evaluate(csv_path, args.db)
     if eval_result.get("status") != "ok":
         print(f"批量评价失败: {eval_result}")
@@ -56,17 +55,7 @@ def main() -> int:
         for err in eval_result["errors"][:5]:
             print(f"    - {err}")
 
-    # 2. 酸化改良评估（基于 evaluation_results 生成 acidification_results 表）
-    from ai_culti_demo.farmland_diagnosis.acidification import evaluate_acidification
-
-    print("[2/2] 酸化改良评估...")
-    acid_result = evaluate_acidification(args.db)
-    if acid_result.get("status") != "ok":
-        print(f"酸化改良评估失败: {acid_result}")
-        return 1
-    print(f"  评估 {acid_result['evaluated']} 条记录")
-
-    # 3. 显示输出 DB 路径
+    # 显示输出 DB 路径
     from ai_culti_demo.farmland_diagnosis.storage import DiagnosisStorage
 
     storage = DiagnosisStorage(args.db)
@@ -75,8 +64,7 @@ def main() -> int:
         size_kb = os.path.getsize(storage.db_path) / 1024
         print(f"  大小: {size_kb:.1f} KB")
 
-    print("\n预计算完成。model-3 (ProblemIdentificationAgent) 和 model-4 "
-          "(AcidificationRemediationAgent) 现在可以使用真实数据。")
+    print("\n预计算完成。model-3 可使用评价数据；model-4 继续按需调用正式过程模型。")
     return 0
 
 

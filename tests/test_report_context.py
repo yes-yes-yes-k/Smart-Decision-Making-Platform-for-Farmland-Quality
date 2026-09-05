@@ -493,8 +493,10 @@ from src.ai_culti_demo.report_templates import (
 
 
 def test_model5_latest_empty_record_returns_none():
-    """4.1: _read_model5_latest() 关键字段全空时返回 None。"""
+    """空定量记录即使执行日志可信也不作为报告处方。"""
     fake_row = MagicMock()
+    fake_row.execution_id = 10
+    fake_row.simulated = False
     fake_row.organic_fertilizer_type = None
     fake_row.organic_fertilizer_dosage = None
     fake_row.level = None
@@ -502,16 +504,28 @@ def test_model5_latest_empty_record_returns_none():
     fake_row.om_improvement_target = None
 
     fake_model = MagicMock()
-    fake_model.query.order_by.return_value.first.return_value = fake_row
+    fake_model.query.order_by.return_value.all.return_value = [fake_row]
+    fake_log = MagicMock(
+        id=10,
+        status="ok",
+        simulated=False,
+        model_version="rf-test-v1",
+        output_result={"meta": {"data_source": "rf_model"}},
+    )
+    fake_log_model = MagicMock()
+    fake_log_model.query.filter_by.return_value.first.return_value = fake_log
 
-    with patch("framework.models.thematic_model.OrganicMatterResult", fake_model):
+    with patch("framework.models.thematic_model.OrganicMatterResult", fake_model), \
+         patch("framework.models.thematic_model.ModelExecutionLog", fake_log_model):
         with patch("src.ai_culti_demo.report_context._app_ctx", lambda: _NullCtx()):
             assert _read_model5_latest() is None
 
 
 def test_model5_latest_partial_fields_returns_record():
-    """4.2: _read_model5_latest() 部分字段有值时仍返回记录。"""
+    """真实 RF 来源、完整版本且非模拟的施用量可以复用。"""
     fake_row = MagicMock()
+    fake_row.execution_id = 11
+    fake_row.simulated = False
     fake_row.organic_fertilizer_type = "urea"
     fake_row.organic_fertilizer_dosage = 300.0
     fake_row.level = None
@@ -519,14 +533,50 @@ def test_model5_latest_partial_fields_returns_record():
     fake_row.om_improvement_target = None
 
     fake_model = MagicMock()
-    fake_model.query.order_by.return_value.first.return_value = fake_row
+    fake_model.query.order_by.return_value.all.return_value = [fake_row]
+    fake_log = MagicMock(
+        id=11,
+        status="ok",
+        simulated=False,
+        model_version="rf-test-v1",
+        output_result={"meta": {"data_source": "rf_model"}},
+    )
+    fake_log_model = MagicMock()
+    fake_log_model.query.filter_by.return_value.first.return_value = fake_log
 
-    with patch("framework.models.thematic_model.OrganicMatterResult", fake_model):
+    with patch("framework.models.thematic_model.OrganicMatterResult", fake_model), \
+         patch("framework.models.thematic_model.ModelExecutionLog", fake_log_model):
         with patch("src.ai_culti_demo.report_context._app_ctx", lambda: _NullCtx()):
             result = _read_model5_latest()
             assert result is not None
             assert result["organic_fertilizer_dosage"] == 300.0
-            assert result["source"] == "db"
+            assert result["source"] == "rf_model"
+            assert result["potential_increase"] is None
+
+
+def test_model5_latest_rejects_simulated_or_unknown_source_records():
+    fake_row = MagicMock(
+        execution_id=12,
+        simulated=True,
+        organic_fertilizer_dosage=300.0,
+        potential_increase=5.0,
+    )
+    fake_model = MagicMock()
+    fake_model.query.order_by.return_value.all.return_value = [fake_row]
+    fake_log = MagicMock(
+        id=12,
+        status="degraded",
+        simulated=True,
+        model_version="unknown",
+        output_result={"meta": {"data_source": "rule_fallback"}},
+    )
+    fake_log_model = MagicMock()
+    fake_log_model.query.filter_by.return_value.first.return_value = fake_log
+
+    with patch("framework.models.thematic_model.OrganicMatterResult", fake_model), \
+         patch("framework.models.thematic_model.ModelExecutionLog", fake_log_model), \
+         patch("src.ai_culti_demo.report_context._app_ctx", lambda: _NullCtx()):
+        assert _read_model5_latest() is None
 
 
 def test_model5_compute_includes_soil_ph():
@@ -538,10 +588,16 @@ def test_model5_compute_includes_soil_ph():
 
     with patch("framework.domain.data.parcel_data_accessor.ParcelDataAccessor", return_value=fake_accessor):
         with patch("framework.domain.calculations.organic_matter_calculation.predict_dose",
-                   return_value=(250.0, False)):
+                   return_value=MagicMock(
+                       dose=250.0,
+                       simulated=False,
+                       data_source="rf_model",
+                       model_version="rf-test-v1",
+                       reason=None,
+                   )):
             result = _compute_model5_for_parcel(record)
             assert result is not None
-            assert result["source"] == "computed"
+            assert result["source"] == "rf_model"
             assert result["soil_ph"] == 5.5
             assert result["organic_fertilizer_dosage"] == 250.0
 
@@ -632,7 +688,9 @@ def test_integration_organic_parcel_has_indicators(monkeypatch):
             "soil_ph": 5.5,
             "organic_fertilizer_dosage": 250.0,
             "level": "低",
-            "source": "computed",
+            "source": "rf_model",
+            "model_version": "rf-test-v1",
+            "simulated": False,
         },
     )
     monkeypatch.setattr(
@@ -650,7 +708,9 @@ def test_integration_organic_parcel_has_indicators(monkeypatch):
     assert "18.00" in content
     # 含 model-5 补算用量
     assert "250.00" in content
-    assert "现场补算" in content
+    assert "真实模型" in content
+    assert "预期提升量" in content
+    assert "暂无可靠估计" in content
 
 
 def test_regression_model5_valid_db_hit_reuses(monkeypatch):
@@ -669,8 +729,10 @@ def test_regression_model5_valid_db_hit_reuses(monkeypatch):
         lambda: {
             "organic_fertilizer_dosage": 300.0,
             "level": "中",
-            "potential_increase": 5.0,
-            "source": "db",
+            "potential_increase": None,
+            "source": "rf_model",
+            "model_version": "rf-test-v1",
+            "simulated": False,
         },
     )
     # 补算不应被调用

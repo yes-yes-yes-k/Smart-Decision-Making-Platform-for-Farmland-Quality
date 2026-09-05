@@ -31,7 +31,11 @@ MODEL_CASES = {
     "model-5": (
         "organic-matter-improvement",
         {"soc_prediction": 20.1, "dose_prediction": 9.2, "soc_confidence": 0.91, "dose_confidence": 0.88, "region": "lechang", "land_type": "paddy", "imputed_features": []},
-        {"soc_prediction", "dose_prediction", "soc_confidence", "dose_confidence", "region", "land_type", "imputed_features"},
+        {
+            "organic_matter", "level", "soc_prediction", "dose_prediction", "dose",
+            "manure_dosage", "potential_increase", "soc_confidence", "dose_confidence",
+            "region", "land_type", "imputed_features",
+        },
     ),
 }
 
@@ -57,6 +61,7 @@ def _agent(agent_id: str, model_id: str):
 )
 def test_models_1_to_5_share_status_semantics(agent_id, raw_status, simulated, expected_status):
     model_id, raw_result, expected_fields = MODEL_CASES[agent_id]
+    source = "shaoguan_rf" if agent_id == "model-5" else "test-source"
     envelope = normalize_execution(
         _agent(agent_id, model_id),
         {"parcel_id": "P-1"},
@@ -64,7 +69,8 @@ def test_models_1_to_5_share_status_semantics(agent_id, raw_status, simulated, e
             "status": raw_status,
             "result": raw_result,
             "simulated": simulated,
-            "data_source": "test-source",
+            "data_source": source,
+            "model_version": "model5-test-v1" if agent_id == "model-5" else None,
         },
     )
 

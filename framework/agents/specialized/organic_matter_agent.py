@@ -4,20 +4,11 @@ from typing import Any, Dict
 import logging
 
 from ..base import BaseAgent, ProfessionalInputRejected
-from ..mock_data import MockDataLoader
 from ...domain.data.parcel_data_accessor import ParcelDataAccessor
 from ...domain.other_models.model_5 import EXTERNAL_FIELD_MAP, model_5_execution
 
 logger = logging.getLogger(__name__)
 
-
-# 旧规则仅作为没有任何模型特征时的明确降级路径，不代表真实 RF 结果。
-MOCK_INPUTS = {
-    "organic_matter": 22.0,
-    "total_nitrogen": 1.2,
-    "cn_ratio": 11.5,
-    "clay_content": 35.0,
-}
 
 ORGANIC_RULES = [
     (lambda v: v < 10.0, "极低"),
@@ -27,18 +18,13 @@ ORGANIC_RULES = [
     (lambda v: v >= 40.0, "极高"),
 ]
 
-MANURE_DOSAGE_RULES = {
-    "极低": 2000.0,
-    "低": 1500.0,
-    "中": 1000.0,
-    "高": 500.0,
-    "极高": 0.0,
-}
-
 MODEL_FEATURES = {
     "pH", "SOCbe", "SOMbe", "TN", "TP", "TK", "AP", "AK", "Gap",
     "Dose", "Fertilizer type", *EXTERNAL_FIELD_MAP.keys(),
 }
+
+MODEL5_QUANTITATIVE_UNAVAILABLE = "MODEL5_QUANTITATIVE_UNAVAILABLE"
+MODEL5_INPUT_MISSING = "MODEL5_INPUT_MISSING"
 
 
 class OrganicMatterAgent(BaseAgent):
@@ -94,14 +80,26 @@ class OrganicMatterAgent(BaseAgent):
         from ...models.thematic_model import OrganicMatterResult
 
         result_data = outputs.get("result", outputs)
+        def optional_float(value: Any) -> float | None:
+            try:
+                return float(value) if value is not None else None
+            except (TypeError, ValueError):
+                return None
+
+        simulated = bool(outputs.get("simulated", result_data.get("simulated", True)))
         return OrganicMatterResult(
             execution_id=execution_id,
-            soil_ph=float(outputs.get("soil_ph", 0.0) or 0.0),
-            organic_matter=float(result_data.get("organic_matter", 0.0) or 0.0),
-            available_potassium=float(outputs.get("available_potassium", 0.0) or 0.0),
-            level=result_data.get("level", "未知"),
-            potential_increase=float(result_data.get("potential_increase", 0.0) or 0.0),
-            simulated=True,
+            soil_ph=optional_float(outputs.get("soil_ph") or result_data.get("soil_ph")),
+            organic_matter=optional_float(result_data.get("organic_matter")),
+            available_potassium=optional_float(outputs.get("available_potassium")),
+            organic_fertilizer_dosage=optional_float(
+                result_data.get("dose_prediction")
+                if result_data.get("dose_prediction") is not None
+                else result_data.get("dose")
+            ) if not simulated else None,
+            level=result_data.get("level"),
+            potential_increase=None,
+            simulated=simulated,
         )
 
     @staticmethod
@@ -111,29 +109,40 @@ class OrganicMatterAgent(BaseAgent):
 
     @staticmethod
     def _rule_fallback(inputs: Dict[str, Any]) -> Dict[str, Any]:
-        data = MockDataLoader.merge_defaults(inputs, MOCK_INPUTS)
-        om = float(data["organic_matter"])
-        level = MockDataLoader.apply_threshold(om, ORGANIC_RULES)
-        manure_dosage = MANURE_DOSAGE_RULES.get(level, 0.0)
+        om = None
+        for key in ("organic_matter", "SOMbe", "SOCbe", "YJZ"):
+            if inputs.get(key) is None:
+                continue
+            try:
+                om = float(inputs[key])
+            except (TypeError, ValueError):
+                om = None
+            break
+        level = next((label for predicate, label in ORGANIC_RULES if om is not None and predicate(om)), None)
+        reason = MODEL5_QUANTITATIVE_UNAVAILABLE if om is not None else MODEL5_INPUT_MISSING
         return {
             "organic_matter": om,
             "level": level,
-            "manure_dosage": manure_dosage,
-            "potential_increase": round(manure_dosage / 1000.0 * 1.5, 2),
-            "total_nitrogen": data["total_nitrogen"],
-            "cn_ratio": data["cn_ratio"],
-            "clay_content": data["clay_content"],
+            "soc_prediction": None,
+            "dose_prediction": None,
+            "dose": None,
+            "manure_dosage": None,
+            "potential_increase": None,
+            "reason": reason,
+            "message": "定性等级不等于施肥处方或有机质提升预测。" if level else "缺少可验证的有机质实测值。",
+            "simulated": True,
         }
 
     def _execute_rule_fallback(self, inputs: Dict[str, Any]) -> Dict[str, Any]:
         return {
-            "status": "ok",
+            "status": "degraded",
             "degraded": True,
             "result": self._rule_fallback(inputs),
             "metadata": {
                 "simulated": True,
                 "fallback": True,
-                "fallback_reason": "missing_model_features",
+                "fallback_reason": MODEL5_INPUT_MISSING,
+                "data_source": "rule_fallback",
                 "need_input": sorted(MODEL_FEATURES - set(inputs)),
             },
         }
@@ -150,7 +159,6 @@ class OrganicMatterAgent(BaseAgent):
 
         try:
             if not self._has_model_features(inputs) and data_source != "db":
-                # Legacy 降级路径：规则 fallback
                 outputs = self._rule_fallback(inputs)
                 status = "degraded"
                 simulated = True
@@ -166,14 +174,23 @@ class OrganicMatterAgent(BaseAgent):
                 except Exception:
                     parcel = None
                 land_type = (parcel.land_type if parcel else None) or inputs.get("land_type") or "upland"
-                dose, simulated_flag = predict_dose(mapped, land_type)
+                prediction = predict_dose(mapped, land_type)
                 outputs = {
                     "parcel_id": inputs.get("parcel_id"),
-                    "dose": dose,
-                    "simulated": simulated_flag,
+                    "organic_matter": mapped.get("SOMbe"),
+                    "level": self._rule_fallback({"organic_matter": mapped.get("SOMbe")}).get("level"),
+                    "soc_prediction": None,
+                    "dose": prediction.dose,
+                    "dose_prediction": prediction.dose,
+                    "manure_dosage": prediction.dose,
+                    "potential_increase": None,
+                    "reason": prediction.reason,
+                    "model_version": prediction.model_version,
+                    "simulated": prediction.simulated,
                 }
-                status = "ok"
-                simulated = simulated_flag
+                status = prediction.status
+                simulated = prediction.simulated
+                data_source = prediction.data_source
             else:
                 # Legacy 路径：ML 模型
                 result = model_5_execution(
@@ -186,8 +203,8 @@ class OrganicMatterAgent(BaseAgent):
                 simulated = bool(result.get("simulated", status != "success"))
                 if status == "success":
                     data_source = "shaoguan_rf" if result.get("region") == "shaoguan" else "global_etr"
-                elif status == "fallback":
-                    data_source = "ml_fallback"
+                elif status in {"fallback", "degraded"}:
+                    data_source = result.get("data_source") or "unavailable"
 
             persisted = self._persist_result(
                 agent_id=self.agent_id,
@@ -205,6 +222,7 @@ class OrganicMatterAgent(BaseAgent):
                 "metadata": {
                     "simulated": simulated,
                     "data_source": data_source,
+                    "model_version": outputs.get("model_version") if isinstance(outputs, dict) else None,
                 },
                 "data_source": data_source,
                 "persisted": persisted,
@@ -240,6 +258,7 @@ class OrganicMatterAgent(BaseAgent):
                 "model_version": result.get("model_version"),
                 "fallback": True,
                 "fallback_reason": reason,
+                "issues": [{"code": MODEL5_QUANTITATIVE_UNAVAILABLE}],
             }
 
         land_label = {"upland": "旱地", "paddy": "水田"}.get(result.get("land_type"), "非韶关区域")
@@ -276,36 +295,32 @@ class OrganicMatterAgent(BaseAgent):
             return self._answer_from_ml(question, self.execute(inputs)["result"])
 
         computed = self._rule_fallback(inputs)
-        if "本县" in question or "平均含量" in question:
-            answer = (
-                f"本县耕地土壤有机质平均含量 {computed['organic_matter']} g/kg，"
-                f"等级为{computed['level']}。当前未提供模型特征，以上为规则降级结果。"
-            )
-            evidence = [{"metric": "organic_matter", "value": computed["organic_matter"], "unit": "g/kg"}]
-        elif "原因" in question and ("有机质" in question or "低" in question):
+        if "原因" in question and ("有机质" in question or "低" in question):
             answer = (
                 f"耕地有机质含量低的原因：受土壤类型、气候、地形、耕作制度、"
-                f"秸秆还田与施肥管理影响。当前未提供模型特征，暂以规则降级说明。"
+                f"秸秆还田与施肥管理影响。需要结合地块实测有机质和完整模型输入核验。"
             )
             evidence = [{"factors": "土壤类型/气候/地形/耕作制度/秸秆还田/施肥管理"}]
-        elif "含量" in question or "分布" in question or "现状" in question:
+        elif computed.get("organic_matter") is not None:
             answer = (
-                f"全省耕地有机质含量平均 {computed['organic_matter']} g/kg，等级为{computed['level']}。"
-                "当前未提供模型特征，以上为规则降级结果。"
+                f"提供的有机质实测值为 {computed['organic_matter']} g/kg，定性等级为{computed['level']}。"
+                "该等级不构成施肥处方；当前暂无可靠施用量或提升量估计，请补充完整模型输入并核验模型版本。"
             )
             evidence = [{"metric": "organic_matter", "value": computed["organic_matter"], "unit": "g/kg"}]
         else:
             answer = (
-                f"有机质等级为{computed['level']}，规则降级建议有机肥施用量 "
-                f"{computed['manure_dosage']} kg/亩。请提供土壤特征后调用 model-5 真实预测。"
+                "当前缺少可验证的有机质实测值和完整模型输入，无法给出县域平均值、"
+                "施肥处方或预期提升量。请补充地块实测指标并确认真实模型文件可用。"
             )
-            evidence = [{"metric": "manure_dosage", "value": computed["manure_dosage"], "unit": "kg/亩"}]
-        return MockDataLoader.mark_simulated({
+            evidence = [{"reason": MODEL5_INPUT_MISSING}]
+        return {
             "answer": answer,
             "evidence": evidence,
-            "confidence": 0.5,
+            "confidence": 0.0,
+            "simulated": True,
             "model_id": "model-5",
             "fallback": True,
-            "fallback_reason": "missing_model_features",
+            "fallback_reason": computed["reason"],
+            "issues": [{"code": MODEL5_QUANTITATIVE_UNAVAILABLE}],
             "need_input": sorted(MODEL_FEATURES - set(inputs)),
-        })
+        }

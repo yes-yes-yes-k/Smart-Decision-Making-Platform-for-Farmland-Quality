@@ -26,14 +26,18 @@ def _envelope(agent_id="model-1"):
         (),
         {"agent_id": agent_id, "model_id": model_id, "capability": {"model_id": model_id}},
     )()
+    execution = {
+        "status": "ok",
+        "result": raw_result,
+        "data_source": "precomputed",
+    }
+    if agent_id == "model-5":
+        execution["data_source"] = "shaoguan_rf"
+        execution["model_version"] = "SG_RF_test_v1"
     return normalize_execution(
         agent,
         {"parcel_id": "P-1"},
-        {
-            "status": "ok",
-            "result": raw_result,
-            "data_source": "precomputed",
-        },
+        execution,
     )
 
 
@@ -138,7 +142,13 @@ def test_explicit_professional_models_keep_their_discriminated_schema(chat_clien
     model_id, raw_result = MODEL_RESULTS[agent_id]
     model = response.get_json()["data"]["models"][agent_id]
     assert model["model_id"] == model_id
-    assert set(model["result"]) == set(raw_result)
+    if agent_id == "model-5":
+        assert set(raw_result) <= set(model["result"])
+        assert model["result"]["dose"] == raw_result["dose_prediction"]
+        assert model["result"]["manure_dosage"] == raw_result["dose_prediction"]
+        assert model["result"]["potential_increase"] is None
+    else:
+        assert set(model["result"]) == set(raw_result)
 
 
 def test_explicit_model_results_use_compact_schema_without_internal_details(chat_client, monkeypatch):

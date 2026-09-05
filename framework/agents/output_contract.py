@@ -14,6 +14,8 @@ from typing import Any, Dict, Iterable, List, Mapping, Optional, Tuple
 SCHEMA_VERSION = "2.0"
 LEGACY_SCHEMA_VERSION = "1.0"
 VALID_STATUSES = frozenset({"ok", "degraded", "rejected", "unavailable", "error"})
+MODEL5_QUANTITATIVE_UNAVAILABLE = "MODEL5_QUANTITATIVE_UNAVAILABLE"
+MODEL5_REAL_SOURCES = frozenset({"shaoguan_rf", "global_etr", "rf_model"})
 
 
 @dataclass(frozen=True)
@@ -266,9 +268,15 @@ def _normalize_result(agent_key: str, raw: Any, payload: Mapping[str, Any]) -> O
             "sub_model": first_present("sub_model") if "sub_model" in source else metadata.get("sub_model"),
         }
     if agent_key == "model-5":
+        dose = first_present("dose_prediction", "dose", "manure_dosage", "organic_fertilizer_dosage")
         return {
+            "organic_matter": first_present("organic_matter", "SOMbe", "SOCbe", "YJZ"),
+            "level": first_present("level"),
             "soc_prediction": first_present("soc_prediction"),
-            "dose_prediction": first_present("dose_prediction", "dose"),
+            "dose_prediction": dose,
+            "dose": dose,
+            "manure_dosage": dose,
+            "potential_increase": first_present("potential_increase"),
             "soc_confidence": first_present("soc_confidence"),
             "dose_confidence": first_present("dose_confidence"),
             "region": first_present("region") if "region" in source else payload.get("area_code"),
@@ -298,6 +306,14 @@ def normalize_execution(agent: Any, payload: Optional[Mapping[str, Any]], execut
     metadata = execution.get("metadata") if isinstance(execution.get("metadata"), Mapping) else {}
     source = str(execution.get("data_source") or metadata.get("data_source") or "unknown")
     simulated = bool(execution.get("simulated", metadata.get("simulated", False)))
+    raw_result = execution.get("result") if isinstance(execution.get("result"), Mapping) else {}
+    nested_metadata = raw_result.get("metadata") if isinstance(raw_result.get("metadata"), Mapping) else {}
+    model_version = (
+        execution.get("model_version")
+        or metadata.get("model_version")
+        or raw_result.get("model_version")
+        or nested_metadata.get("model_version")
+    )
 
     if agent_key == "model-6" or model_id == "comprehensive-fertility-improvement":
         status = "unavailable"
@@ -309,38 +325,50 @@ def normalize_execution(agent: Any, payload: Optional[Mapping[str, Any]], execut
         status, issues = _status_and_issue(execution, simulated, source)
         raw_result = execution.get("result")
         result = _normalize_result(agent_key, raw_result, payload)
-        if agent_key == "model-5" and status == "ok" and isinstance(result, Mapping):
-            required_prediction_fields = (
-                ("dose_prediction",)
-                if source == "db"
-                else (
-                    "soc_prediction", "dose_prediction",
-                    "soc_confidence", "dose_confidence",
+        if agent_key == "model-5" and isinstance(result, Mapping):
+            result = dict(result)
+            is_real_source = source in MODEL5_REAL_SOURCES
+            has_real_version = bool(model_version and str(model_version).strip().lower() != "unknown")
+            quantitative_available = status == "ok" and not simulated and is_real_source and has_real_version
+            if quantitative_available:
+                required_prediction_fields = (
+                    ("dose_prediction",)
+                    if source == "rf_model"
+                    else (
+                        "soc_prediction", "dose_prediction",
+                        "soc_confidence", "dose_confidence",
+                    )
                 )
-            )
-            missing = [
-                key for key in required_prediction_fields if result.get(key) is None
-            ]
-            if missing:
-                status = "degraded"
+                missing = [key for key in required_prediction_fields if result.get(key) is None]
+                if missing:
+                    status = "degraded"
+                    quantitative_available = False
+                    issues.append(_issue(
+                        "PARTIAL_PREDICTION", "warning",
+                        "真实模型仅返回部分必要预测结果。", details={"missing_fields": missing},
+                    ))
+            if not quantitative_available:
+                for key in ("soc_prediction", "dose_prediction", "dose", "manure_dosage", "potential_increase"):
+                    result[key] = None
+                if status == "ok":
+                    status = "degraded"
+                simulated = True
+                if source == "unknown":
+                    source = "unavailable"
                 issues.append(_issue(
-                    "PARTIAL_PREDICTION", "warning",
-                    "模型仅返回部分预测结果。", details={"missing_fields": missing},
+                    MODEL5_QUANTITATIVE_UNAVAILABLE,
+                    "warning",
+                    "缺少可验证的真实模型来源，Model-5 定量结果不可用。",
                 ))
+            else:
+                # 当前没有经验证的 potential_increase 预测模型。
+                result["potential_increase"] = None
         if status == "ok" and result is None:
             status = "degraded"
             issues.append(_issue("MISSING_RESULT", "warning", "模型未返回可用的结构化业务结果。"))
         if status in {"rejected", "unavailable", "error"}:
             result = None
 
-    raw_result = execution.get("result") if isinstance(execution.get("result"), Mapping) else {}
-    nested_metadata = raw_result.get("metadata") if isinstance(raw_result.get("metadata"), Mapping) else {}
-    model_version = (
-        execution.get("model_version")
-        or metadata.get("model_version")
-        or raw_result.get("model_version")
-        or nested_metadata.get("model_version")
-    )
     envelope: Dict[str, Any] = {
         "model_id": model_id,
         "status": status,
@@ -431,7 +459,7 @@ def legacy_projection(model_result: Mapping[str, Any]) -> Dict[str, Any]:
             for key, value in result.items()
             if value is not None and key != "modules"
         ]
-    return sanitize_json({
+    legacy = {
         "status": "ok" if model_result.get("status") in {"ok", "degraded"} else model_result.get("status"),
         "model": {"model_id": model_id},
         "capability": {"model_id": model_id},
@@ -452,7 +480,13 @@ def legacy_projection(model_result: Mapping[str, Any]) -> Dict[str, Any]:
             "fields": [],
             "strategy": issues[0].get("code") if issues else "未使用回退",
         },
-    })
+    }
+    if model_id == "organic-matter-improvement":
+        legacy["deprecation"] = {
+            "code": MODEL5_QUANTITATIVE_UNAVAILABLE,
+            "message": "旧规则施用量和提升量已停止提供；客户端必须接受 null，且不得本地回填。",
+        }
+    return sanitize_json(legacy)
 
 
 def deterministic_answer(model_result: Mapping[str, Any]) -> str:

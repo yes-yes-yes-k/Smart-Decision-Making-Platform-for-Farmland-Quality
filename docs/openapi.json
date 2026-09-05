@@ -649,7 +649,7 @@
       "post": {
         "tags": ["模型"],
         "summary": "执行专题模型",
-        "description": "执行指定正式专业模型，支持6项：stability-risk-evaluation、quality-grade-evaluation、obstacle-diagnosis、acidification-remediation、organic-matter-improvement、placeholder。model-5 使用韶关旱地/水田 RF 或全局 ETR；model-6 为占位能力。辅助空间/指标能力和实验性协同提升能力可独立调用，但不参与聊天路由。",
+        "description": "执行指定正式专业模型，支持6项：stability-risk-evaluation、quality-grade-evaluation、obstacle-diagnosis、acidification-remediation、organic-matter-improvement、placeholder。model-5 仅在真实 RF/ETR 成功且模型版本与来源完整时返回定量结果；缺少输入、模型文件、依赖或预测异常时，施用量和提升量为 null，并返回 MODEL5_QUANTITATIVE_UNAVAILABLE。model-6 为占位能力。",
         "security": [
           {
             "BearerAuth": []
@@ -741,7 +741,16 @@
                     "model_id": "organic-matter-improvement",
                     "area_code": "lechang",
                     "indicators": {
-                      "organic_matter": 18.5
+                      "pH": 6.2,
+                      "SOCbe": 18.5,
+                      "TN": 1.1,
+                      "TP": 0.8,
+                      "TK": 18.0,
+                      "AP": 25.0,
+                      "AK": 80.0,
+                      "Gap": 5.0,
+                      "Dose": 300.0,
+                      "Fertilizer type": 1
                     }
                   }
                 },
@@ -1765,70 +1774,68 @@
           }
         }
       },
+      "Model5Result": {
+        "type": "object",
+        "description": "Model-5 业务结果。没有可验证的真实模型依据时，所有预测、施用量及提升量字段均为 null。",
+        "properties": {
+          "organic_matter": {"type": "number", "nullable": true, "description": "调用方提供或权威数据源中的实测有机质；不得由默认值生成。"},
+          "level": {"type": "string", "nullable": true, "description": "仅可由真实有机质实测值生成的定性等级。"},
+          "soc_prediction": {"type": "number", "nullable": true},
+          "dose_prediction": {"type": "number", "nullable": true, "description": "真实 RF/ETR 施用量预测；降级时为 null。"},
+          "dose": {"type": "number", "nullable": true, "deprecated": true, "description": "兼容别名；不得由客户端回填。"},
+          "manure_dosage": {"type": "number", "nullable": true, "deprecated": true, "description": "兼容别名；不得恢复旧规则值。"},
+          "potential_increase": {"type": "number", "nullable": true, "deprecated": true, "description": "当前没有经验证的预测模型，保持 null。"},
+          "soc_confidence": {"type": "number", "nullable": true},
+          "dose_confidence": {"type": "number", "nullable": true},
+          "region": {"type": "string", "nullable": true},
+          "land_type": {"type": "string", "nullable": true},
+          "imputed_features": {"type": "array", "items": {"type": "string"}}
+        }
+      },
       "ModelRunResult": {
         "type": "object",
+        "required": ["model_id", "status", "subject", "result", "meta", "issues"],
         "properties": {
+          "model_id": {
+            "type": "string",
+            "description": "规范公开模型标识"
+          },
           "status": {
             "type": "string",
-            "example": "ok"
+            "enum": ["ok", "degraded", "rejected", "unavailable", "error"]
           },
-          "model": {
-            "$ref": "#/components/schemas/ThematicModel"
-          },
-          "area": {
+          "subject": {
             "type": "object",
             "properties": {
-              "code": {
-                "type": "string"
-              },
-              "name": {
-                "type": "string"
-              }
+              "type": {"type": "string"},
+              "id": {"type": "string", "nullable": true}
             }
           },
-          "summary": {
-            "type": "string",
-            "description": "模型执行结果摘要"
+          "result": {
+            "nullable": true,
+            "oneOf": [
+              {"$ref": "#/components/schemas/Model5Result"},
+              {"type": "object"}
+            ]
           },
-          "findings": {
+          "meta": {
+            "type": "object",
+            "properties": {
+              "data_source": {"type": "string"},
+              "simulated": {"type": "boolean"},
+              "model_version": {"type": "string", "nullable": true}
+            }
+          },
+          "issues": {
             "type": "array",
             "items": {
               "type": "object",
               "properties": {
-                "title": {
-                  "type": "string"
-                },
-                "content": {
-                  "type": "string"
-                }
+                "code": {"type": "string", "example": "MODEL5_QUANTITATIVE_UNAVAILABLE"},
+                "severity": {"type": "string"},
+                "message": {"type": "string"}
               }
-            },
-            "description": "发现列表"
-          },
-          "recommendations": {
-            "type": "array",
-            "items": {
-              "type": "string"
-            },
-            "description": "建议列表"
-          },
-          "recommended_layers": {
-            "type": "array",
-            "items": {
-              "type": "string"
-            },
-            "description": "推荐图层"
-          },
-          "lineage": {
-            "type": "object",
-            "description": "数据溯源信息"
-          },
-          "reliability": {
-            "$ref": "#/components/schemas/Reliability"
-          },
-          "fallback": {
-            "type": "object",
-            "description": "降级策略信息"
+            }
           }
         }
       },
