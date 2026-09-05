@@ -13,6 +13,8 @@ from framework.api.routes.county import county_bp
 from framework.api.routes.report import report_bp
 from framework.api.routes.data_import import data_import_bp
 from framework.api.routes.observability import observability_bp
+from framework.api.routes.tiles import tiles_bp
+from framework.api.routes.gd_tiles import gd_tiles_bp
 from framework.agents.workflows.comprehensive.checkpointing import (
     PostgresCheckpointerRuntime,
 )
@@ -140,6 +142,10 @@ def create_app(config_name: str = 'default') -> Flask:
     app.register_blueprint(report_bp, url_prefix='/api/v1/report')
     app.register_blueprint(data_import_bp, url_prefix='/api/v1/data')
     app.register_blueprint(observability_bp, url_prefix='/api/v1/observability')
+    # 本地瓦片端点（无 url_prefix，路由已含 /tiles/；生产由 Nginx 直接托管）
+    app.register_blueprint(tiles_bp)
+    # 广东高清瓦片端点（无 url_prefix，路由已含 /gd_tiles/；生产由 Nginx 直接托管）
+    app.register_blueprint(gd_tiles_bp)
 
     @app.route('/')
     def index():

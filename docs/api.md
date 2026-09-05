@@ -257,14 +257,31 @@
 
 > 路由采用 1:1 映射：每个 question_type 仅调用对应的单一专业智能体，不再按用户角色固定调用多个模型组合。
 
-请求体：
+#### Schema 协议
+
+本接口响应遵循 **Schema 2.0** 信封，通过请求体可选字段切换投影：
+
+| 字段 | 类型 | 默认 | 说明 |
+|------|------|------|------|
+| `response_schema` | string | `"2.0"` | 响应信封版本，取值 `"1.0"` 或 `"2.0"`；其他值返回 400 |
+| `include_model_results` | bool | `false` | 是否在响应中返回 `models` 投影。`true` 且 `question_type≠0` 时返回 `chat_compact` 投影 |
+
+- **Schema 2.0**（默认）：返回规范信封，含 `schema_version`、`trace_id`、`routing`、`analysis_context`、`provenance` 等字段
+- **Schema 1.0**（兼容期）：将 `models` 转换为旧 `model_results.findings/evidence` 结构，并附 `deprecation` 警告。建议尽快迁移到 2.0
+
+#### 请求体
+
 ```json
 {
     "message": "我的田有机质培肥施用量多少？",
     "conversation_id": 1,
     "area_code": "lechang",
-    "parcel_id": "1",
+    "parcel_id": "1460",
     "parcel_code": "A0001",
+    "land_type": "upland",
+    "fertilizer_type": "compound",
+    "response_schema": "2.0",
+    "include_model_results": true,
     "context": {
         "target_ph": 6.0,
         "soil_depth": 20,
@@ -279,16 +296,21 @@
 
 | 字段 | 类型 | 必填 | 说明 |
 |------|------|------|------|
-| `message` | string | 是 | 用户问题 |
-| `conversation_id` | int | 否 | 对话 ID，不传则创建新对话 |
-| `area_code` | string | 否 | 区域代码（默认 "lechang"，model-1/3/4 按 area_code 查 DB） |
-| `parcel_id` | string | 否 | 地块 ID（数字字符串，给 model-1/3/4 查 DB），农户端问题或 type 5 问题建议携带 |
-| `parcel_code` | string | 否 | 地块代码（字母数字，给 model-2 质量等级评价使用） |
+| `message` | string | 是 | 用户问题（非空字符串） |
+| `conversation_id` | int | 否 | 对话 ID，不传则创建新对话（标题取 message 前 50 字符） |
+| `area_code` | string | 否 | 区域代码（默认 `lechang`，model-1/3/4 按 area_code 查 DB） |
+| `parcel_id` | string | 否 | 地块 ID（数字字符串，model-1/3/4 查 DB；农户端问题或 type 5 问题建议携带） |
+| `parcel_code` | string | 否 | 地块代码（字母数字，model-2 质量等级评价使用） |
 | `land_type` | string | 否 | 土地利用类型（`upland` 旱地 / `paddy` 水田；model-5 韶关区域按此选择 RF 子模型，默认 `upland`） |
-| `fertilizer_type` | string | 否 | 肥料类型（`compound` 复合肥 / `urea` 尿素，默认 `compound`，酸化改良 model-4 使用，与 `land_type` 组合选择 4 子模型） |
-| `context` | object | 否 | 专业模型参数 |
+| `fertilizer_type` | string | 否 | 肥料类型（`compound` 复合肥 / `urea` 尿素，默认 `compound`；model-4 与 `land_type` 组合选择 4 子模型） |
+| `response_schema` | string | 否 | 响应信封版本（`"1.0"` 或 `"2.0"`，默认 `"2.0"`） |
+| `include_model_results` | bool | 否 | 是否返回 `models` 投影（默认 `false`） |
+| `analysis_context` | object | 否 | 分析对象上下文（含 `action`/`expected_version`/`object`，详见[聊天分析对象与情景试算](#聊天分析对象与情景试算)） |
+| `calculation_mode` | string | 否 | `"scenario"` 触发无空间对象的情景试算（默认走 spatial 模式） |
+| `context` | object | 否 | 专业模型参数（如下表） |
 
-context 参数说明：
+`context` 参数说明：
+
 | 参数 | 类型 | 说明 |
 |------|------|------|
 | `target_ph` | float | 目标 pH 值（默认 6.0） |
@@ -297,51 +319,304 @@ context 参数说明：
 | `safety_factor` | float | 安全系数（默认 1.3） |
 | `current_ph` | float | 当前 pH 值（默认 5.5） |
 | `nitrogen_rates` | array | 氮肥施用量序列（kg/ha，默认 [0, 50, 100, 150, 200]） |
-| `area_code` | string | 区域代码（默认 "lechang"） |
+| `area_code` | string | 区域代码（默认 `lechang`） |
 
-成功响应（200）：
+> 顶层字段（如 `area_code`、`parcel_id`、`land_type`、`fertilizer_type`、`pH`、`SOCbe`、`SJD`、`YJZ` 等）会被合并到 orchestrator_request，优先级高于 `context` 内的同名字段。RF 特征字段（`pH`/`SOCbe`/`SOMbe`/`TN`/`TP`/`TK`/`AP`/`AK`/`Gap`/`Dose`/`SJD`/`YJZ`/`TD`/`TL`/`TJ`/`YXL`/`SXJ`/`YJZTSZ`/`YJFLX`）由顶层传入。
+
+#### 成功响应（200）
+
 ```json
 {
+    "schema_version": "2.0",
+    "trace_id": "01H...XYZ",
     "status": "ok",
     "data": {
-        "answer": "根据评估结果，建议施用石灰...",
+        "message_id": 3,
+        "answer": "根据评估结果，建议施用...",
         "sources": [{"doc_name": "土壤治理指南.pdf"}],
-        "question_type": 5,
-        "model_results": {
-            "status": "ok",
-            "data": {
-                "question_type": 5,
-                "agents_invoked": ["model-5"],
-                "summary": "[model-5] 有机质培肥模型已完成结构化分析",
-                "details": {
-                    "model-5": {
-                        "answer": "SOC约 24.1 g/kg，建议施用量约 312.4 t/ha",
-                        "evidence": [{"metric": "model_version", "value": "SG_RF_v2_20260804"}],
-                        "confidence": 0.96,
-                        "simulated": false
-                    }
+        "recommendations": ["预测结果仅供辅助决策，请结合田间试验复核"],
+        "routing": {
+            "question_type": 5,
+            "status": "normal"
+        },
+        "interaction_state": "completed",
+        "analysis_context": {
+            "mode": "spatial",
+            "version": 1,
+            "object": {
+                "type": "parcel",
+                "id": "1460",
+                "display_name": "乐昌市-耕地1460",
+                "area_code": "lechang",
+                "parent_path": [
+                    {"type": "province", "id": "GD", "display_name": "广东省", "area_code": null},
+                    {"type": "city", "id": "SG", "display_name": "韶关市", "area_code": null},
+                    {"type": "county", "id": "LC", "display_name": "乐昌市", "area_code": "lechang"}
+                ],
+                "source": "parcel_registry",
+                "validated_at": "2026-09-02T10:00:00+08:00"
+            },
+            "trace_id": "01H...XYZ",
+            "provenance": { "...见 provenance 结构..." : "..." }
+        },
+        "provenance": {
+            "trace_id": "01H...XYZ",
+            "model_id": "organic-matter-improvement",
+            "model_version": "SG_RF_v2_20260804",
+            "data_as_of": "2026-08-04T00:00:00+08:00",
+            "data_version": "v1",
+            "calculated_at": "2026-09-02T02:00:00+00:00",
+            "key_inputs": {"parcel_id": "1460", "area_code": "lechang", "land_type": "upland"},
+            "scenario_result": false,
+            "spatial_object": { "...同 analysis_context.object..." : "..." },
+            "object_title": "分析对象：乐昌市-耕地1460"
+        },
+        "scenario_result": false,
+        "spatial_object": { "...同 analysis_context.object..." : "..." },
+        "object_title": "分析对象：乐昌市-耕地1460",
+        "required_object_types": [],
+        "missing_inputs": [],
+        "models": {
+            "model-5": {
+                "model_id": "organic-matter-improvement",
+                "status": "ok",
+                "subject": {"type": "parcel", "id": "1460"},
+                "result": {
+                    "soc_prediction": 24.1,
+                    "dose_prediction": 312.4,
+                    "soc_confidence": 0.96,
+                    "dose_confidence": 0.88,
+                    "region": "lechang",
+                    "land_type": "upland",
+                    "imputed_features": []
                 },
-                "recommendations": ["预测结果仅供辅助决策，请结合田间试验复核"]
+                "meta": {
+                    "data_source": "database",
+                    "simulated": false,
+                    "model_version": "SG_RF_v2_20260804"
+                },
+                "issues": []
             }
         },
-        "agents_invoked": ["model-5"],
-        "recommendations": ["预测结果仅供辅助决策，请结合田间试验复核"],
-        "message_id": 3
+        "trace_id": "01H...XYZ"
+    }
+}
+```
+
+> `models` 仅在 `include_model_results=true` 且 `question_type≠0` 时返回。`include_model_results=false` 时响应中无 `models` 字段。
+
+#### 响应字段说明
+
+**顶层信封**
+
+| 字段 | 类型 | 说明 |
+|------|------|------|
+| `schema_version` | string | 响应信封版本（`"1.0"` 或 `"2.0"`） |
+| `trace_id` | string | 全链路追踪 ID（用于日志关联） |
+| `status` | string | `"ok"` 或 `"error"` |
+| `data` | object | 响应数据 |
+
+**`data` 字段**
+
+| 字段 | 类型 | 说明 |
+|------|------|------|
+| `message_id` | int | 本次回答的消息 ID（已持久化到 message 表） |
+| `answer` | string | 综合回答内容（model 输出由 LLM 总结；若 provenance 流式补充，会前置 `object_title`） |
+| `sources` | array | RAG 引用文档列表（仅 question_type=0 或 RAG 命中时返回） |
+| `recommendations` | array | 综合建议列表 |
+| `routing` | object | 路由信息 `{question_type, status}` |
+| `routing.question_type` | int | 0-6（见路由说明） |
+| `routing.status` | string | `normal` / `fallback` / `degraded` 等路由状态 |
+| `interaction_state` | string | 交互状态，决定前端是否需要补充输入（见下表） |
+| `analysis_context` | object | 本次请求的分析上下文快照（见下表） |
+| `provenance` | object | 结果溯源信息（见下表） |
+| `scenario_result` | bool | 是否为情景试算结果（无具体空间对象） |
+| `spatial_object` | object\|null | 空间对象详情（情景试算时为 null） |
+| `object_title` | string | 对象标题（"分析对象：xxx" 或 "情景试算，非具体空间对象结果"） |
+| `required_object_types` | array | 当 `interaction_state=needs_analysis_object` 时返回，提示可接受的对象类型 |
+| `missing_inputs` | array | 当 `interaction_state=needs_scenario_inputs` 时返回，提示缺失的输入字段名 |
+| `models` | object | 仅当 `include_model_results=true` 且 `question_type≠0` 时返回，键为 agent_id（如 `"model-5"`） |
+| `trace_id` | string | 与顶层 trace_id 相同 |
+
+> Schema 1.0 模式下，`models` 字段会被 `legacy_projection` 转换为 `model_results` 旧结构（含 `findings`/`evidence`/`reliability`/`fallback` 等），并在顶层附加 `deprecation` 字段。
+
+#### `interaction_state` 状态码
+
+| 取值 | 含义 | 触发条件 | 前端处理建议 |
+|------|------|----------|-------------|
+| `completed` | 正常完成 | 通过 guard 校验，模型成功执行 | 直接展示 `answer` |
+| `needs_analysis_object` | 需要空间对象 | 专业能力要求 spatial 模式但 `analysis_context.object` 缺失或类型不匹配 | 提示用户选择地块/区域；`required_object_types` 列出可接受类型 |
+| `needs_scenario_inputs` | 需要补充情景试算输入 | 情景模式但缺少能力声明的必填输入 | 提示用户补充；`missing_inputs` 列出缺失字段 |
+
+#### `analysis_context` 结构
+
+```json
+{
+    "mode": "spatial",         // "spatial" 或 "scenario"
+    "version": 1,              // scenario 模式为 null
+    "object": {                // scenario 模式为 null
+        "type": "parcel",      // province | city | county | zone | parcel
+        "id": "1460",
+        "display_name": "乐昌市-耕地1460",
+        "area_code": "lechang",
+        "parent_path": [
+            {"type": "province", "id": "GD", "display_name": "广东省", "area_code": null}
+        ],
+        "source": "parcel_registry",
+        "validated_at": "2026-09-02T10:00:00+08:00"
+    },
+    "trace_id": "01H...XYZ",
+    "provenance": { "...同顶层 provenance..." : "..." }
+}
+```
+
+#### `provenance` 结构
+
+| 字段 | 类型 | 说明 |
+|------|------|------|
+| `trace_id` | string | 链路追踪 ID |
+| `model_id` | string | 能力标识（如 `organic-matter-improvement`） |
+| `model_version` | string | 模型版本号（如 `SG_RF_v2_20260804`）；缺失时为 `"unknown"` |
+| `data_as_of` | string\|null | 数据时间戳（ISO-8601） |
+| `data_version` | string\|null | 数据版本 |
+| `calculated_at` | string | 计算时间（ISO-8601，UTC） |
+| `key_inputs` | object | 安全白名单内的输入字段（`parcel_id`/`area_code`/`land_type`/`fertilizer_type`/`pH`/`SOCbe`/`SJD`/`YJZ` 等） |
+| `scenario_result` | bool | 是否为情景试算（无空间对象） |
+| `spatial_object` | object\|null | 空间对象（同 `analysis_context.object`）；scenario 模式为 null |
+| `object_title` | string | 对象标题（"分析对象：xxx" 或 "情景试算，非具体空间对象结果"） |
+
+> `provenance` 仅在 `interaction_state=completed` 且存在 `trace_id` 与能力匹配时生成；其他情况可能缺失。
+
+#### `models` 字段（`include_model_results=true` 时）
+
+`models` 是以 agent_id（如 `model-5`）为键的对象，值为 `chat_compact` 投影：
+
+```json
+{
+    "model-5": {
+        "model_id": "organic-matter-improvement",
+        "status": "ok",
+        "subject": {"type": "parcel", "id": "1460"},
+        "result": { "...模型特定业务结果..." : "..." },
+        "meta": {
+            "data_source": "database",
+            "simulated": false,
+            "model_version": "SG_RF_v2_20260804"
+        },
+        "issues": []
     }
 }
 ```
 
 | 字段 | 类型 | 说明 |
 |------|------|------|
-| `answer` | string | 综合回答内容 |
-| `sources` | array | RAG 引用文档列表（仅 type 0 或 RAG 命中时返回） |
-| `question_type` | int | 问题类型（0-6），见上方路由说明 |
-| `model_results` | object | 多智能体框架返回的结构化结果（type 1-6 时返回） |
-| `agents_invoked` | array | 调用的智能体 ID 列表（1:1 映射，仅含单一模型） |
-| `recommendations` | array | 综合建议列表 |
-| `message_id` | int | 本次回答的消息 ID |
+| `model_id` | string | 能力标识 |
+| `status` | string | `ok` / `degraded` / `rejected` / `unavailable` / `error` |
+| `subject` | object | 主体 `{type: parcel\|area\|unknown, id: str}` |
+| `result` | object\|null | 模型特定业务结果（失败时为 null） |
+| `meta` | object | `{data_source, simulated, model_version}` |
+| `issues` | array | 问题列表 `[{code, severity, message, field?, details?}]` |
 
-> 注：API 响应不再包含 `role` 字段（已移除）。客户端应使用 `question_type` 字段判断问题类型。
+**`status` 取值**
+
+| 取值 | 含义 |
+|------|------|
+| `ok` | 模型成功执行 |
+| `degraded` | 部分结果或使用替代数据 |
+| `rejected` | 输入不满足模型约束（如缺少必填字段、超出范围） |
+| `unavailable` | 模型能力不可用（如 sklearn 缺失、模型文件不存在） |
+| `error` | 执行异常 |
+
+**各 model 的 `result` 字段结构**（`chat_compact` 投影后）
+
+| model | result 字段 |
+|-------|------------|
+| `model-1` | `region`, `score`, `grade`, `modules`（仅保留 `score`/`grade`/`risk_level`/`退化风险等级`/`稳定性得分`） |
+| `model-2` | `quality_grade`, `composite_index`, `indicators`, `obstacle_degree` |
+| `model-3` | `obstacle_type`, `primary_factors`, `secondary_factors`, `obstacle_degrees`, `obstacle_levels`, `obstacle_combination` |
+| `model-4` | `acidification_level`, `background_acid`, `acid_deposition_input`, `crop_acid_output`, `nitrogen_cycle_acid`, `agricultural_acid`, `soil_conditioner_dosage` (ytk), `woody_peat_dosage` (mbnt), `sub_model` |
+| `model-5` | `soc_prediction`, `dose_prediction`, `soc_confidence`, `dose_confidence`, `region`, `land_type`, `imputed_features` |
+| `model-6` | 始终为 `unavailable`，result 为 null |
+
+#### 错误响应
+
+**Schema 协议错误（400）**
+
+```json
+{
+    "schema_version": "2.0",
+    "status": "error",
+    "error": {
+        "code": "INVALID_RESPONSE_SCHEMA",
+        "message": "response_schema 仅支持 1.0 或 2.0"
+    }
+}
+```
+
+**分析上下文错误（409 / 422 / 503）**
+
+```json
+{
+    "status": "error",
+    "error": {
+        "code": "analysis_object_invalid",
+        "message": "会话不存在或无权访问",
+        "details": {}
+    }
+}
+```
+
+| HTTP 状态码 | code | 触发场景 |
+|-------------|------|----------|
+| 409 | `analysis_context_conflict` | 分析上下文冲突 |
+| 422 | `analysis_object_invalid` | 请求体非法或会话不存在/无权访问 |
+| 422 | `legacy_identifier_ambiguity` | 旧标识符歧义 |
+| 503 | `analysis_object_validation_unavailable` | 对象校验服务不可用 |
+
+> 注：API 响应不再包含 `role` 字段（已移除）。客户端应使用 `routing.question_type` 字段判断问题类型。
+
+---
+
+### 流式智能问答
+
+**POST** `/api/v1/chat/stream`
+
+与 `/api/v1/chat/` 行为一致，但响应为 **SSE（Server-Sent Events）** 流式输出，便于前端逐 token 渲染。
+
+#### 请求
+
+与 `/api/v1/chat/` 完全相同的请求体（含 `response_schema` / `include_model_results`）。
+
+#### 响应
+
+`Content-Type: text/event-stream`，每行 `data: {JSON}\n\n`，事件类型如下：
+
+| 事件 | payload | 说明 |
+|------|---------|------|
+| `token` | `{event: "token", content: "..."}` | 增量生成的文本 token |
+| `meta` | `{event: "meta", data: {...}}` | 路由/元信息（如 question_type 提前告知前端） |
+| `done` | `{event: "done", data: {...}}` | 完整响应数据，`data` 结构与 `/api/v1/chat/` 的 `data` 一致 |
+| `error` | `{event: "error", message: "..."}` | 流式过程中发生的错误 |
+
+**示例 token 事件**
+
+```
+data: {"event":"token","content":"根据"}
+
+data: {"event":"token","content":"评估"}
+```
+
+**示例 done 事件**
+
+```
+data: {"event":"done","data":{"message_id":3,"answer":"...","sources":[...],"routing":{"question_type":5,"status":"normal"},"interaction_state":"completed","analysis_context":{...},"provenance":{...},"trace_id":"01H...XYZ"}}
+```
+
+#### 注意事项
+
+- 请求和响应信封结构与 `/api/v1/chat/` 完全一致
+- SSE 响应头：`Cache-Control: no-cache, no-transform, must-revalidate, max-age=0`、`Connection: keep-alive`、`Content-Encoding: identity`（关闭 gzip 以防缓冲）
+- 生成器内部已手动推入 Flask 应用上下文，db 写入不会触发 "Working outside of application context"
 
 ---
 
@@ -387,90 +662,131 @@ context 参数说明：
 
 > 可配参数白名单为 `{RPH, R, Y, S, FertN, Ndep, pHtarget}`，覆盖后的值记入响应 `customized_params`；元素含量等内置参数不允许 API 覆盖。
 
-#### 响应字段
+#### 响应字段（Schema 2.0 信封）
 
-`question_type=2` 时，`model_results.data.details["model-4"]` 返回 `acidification_detail` 对象：
+`question_type=2` 时，`data.models["model-4"]`（仅当 `include_model_results=true` 时返回）按 `chat_compact` 投影返回：
 
 | 字段 | 类型 | 说明 |
 |------|------|------|
-| `acidification_detail.status` | string | 执行状态：`success` / `rejected` |
-| `acidification_detail.result.ytk` | float | 亿土康施用量（kg/ha），rejected 时为 `null` |
-| `acidification_detail.result.mbnt` | float | 木本泥炭施用量（kg/ha），rejected 时为 `null` |
-| `acidification_detail.result.sub_model` | string | 命中的子模型名称（如 `upland_compound`） |
-| `acidification_detail.result.customized_params` | object | API 覆盖的可配参数，空对象表示全用默认值 |
-| `acidification_detail.metadata.model_version` | string | 过程模型版本号（`process_v2_20260801`） |
-| `acidification_detail.metadata.warning` | string | 警告信息（如 land_type/fertilizer_type 非法回退），无警告时缺省 |
-| `acidification_detail.metadata.reason` | string | rejected 原因：`missing_input` / `input_out_of_range` / `cannot_get_ph` / `model_unavailable` |
+| `model_id` | string | 固定为 `acidification-remediation` |
+| `status` | string | `ok` / `rejected` / `unavailable` / `error`（见 [`models.status` 取值](#models-字段include_model_resultstrue-时)） |
+| `subject` | object | `{type: parcel\|area\|unknown, id: str}` |
+| `result` | object\|null | 成功时见下表；`rejected` / `unavailable` / `error` 时为 `null` |
+| `meta` | object | `{data_source, simulated, model_version="process_v2_20260801"}` |
+| `issues` | array | 失败时含一条 `{code, severity, message}` |
 
-#### 响应示例（question_type=2 酸化改良）
+**`result` 字段（成功时）**
+
+| 字段 | 类型 | 说明 |
+|------|------|------|
+| `result.ytk` | float | 亿土康施用量（kg/ha） |
+| `result.mbnt` | float | 木本泥炭施用量（kg/ha） |
+| `result.sub_model` | string | 命中的子模型名称（如 `upland_compound`） |
+| `result.customized_params` | object | API 覆盖的可配参数，空对象表示全用默认值 |
+| `result.acidification_level` | string | 酸化程度 |
+| `result.background_acid` | float | 背景酸 |
+| `result.acid_deposition_input` | float | 酸沉降输入 |
+| `result.crop_acid_output` | float | 作物酸输出 |
+| `result.nitrogen_cycle_acid` | float | 氮循环酸 |
+| `result.agricultural_acid` | float | 农业酸 |
+
+> 顶层 `answer` / `recommendations` 由 LLM 总结生成，与 `models["model-4"].result` 并存。`provenance` 中 `model_id="acidification-remediation"`、`model_version="process_v2_20260801"`。
+
+#### 响应示例（question_type=2 成功）
 
 ```json
 {
+    "schema_version": "2.0",
+    "trace_id": "01H...ABC",
     "status": "ok",
     "data": {
+        "message_id": 4,
         "answer": "基于过程模型（upland_compound）计算，建议亿土康（YTK）施用量约 6413.6 kg/ha，木本泥炭（MBNT）约 11814.1 kg/ha（土地利用类型：upland，肥料类型：compound）。",
         "sources": [],
-        "question_type": 2,
-        "model_results": {
-            "status": "ok",
-            "data": {
-                "question_type": 2,
-                "agents_invoked": ["model-4"],
-                "summary": "[model-4] 酸化改良：亿土康 6413.6 kg/ha, 木本泥炭 11814.1 kg/ha (upland_compound)",
-                "details": {
-                    "model-4": {
-                        "answer": "基于过程模型（upland_compound）计算，建议亿土康（YTK）施用量约 6413.6 kg/ha，木本泥炭（MBNT）约 11814.1 kg/ha（土地利用类型：upland，肥料类型：compound）。",
-                        "evidence": [
-                            {"metric": "ytk", "value": 6413.6, "unit": "kg/ha"},
-                            {"metric": "mbnt", "value": 11814.1, "unit": "kg/ha"},
-                            {"metric": "sub_model", "value": "upland_compound"},
-                            {"metric": "land_type", "value": "upland"},
-                            {"metric": "fertilizer_type", "value": "compound"}
-                        ],
-                        "confidence": 0.88,
-                        "acidification_detail": {
-                            "status": "success",
-                            "result": {
-                                "ytk": 6413.6,
-                                "mbnt": 11814.1,
-                                "sub_model": "upland_compound",
-                                "customized_params": {}
-                            },
-                            "metadata": {
-                                "model_version": "process_v2_20260801",
-                                "warning": null,
-                                "reason": null
-                            }
-                        },
-                        "simulated": false
-                    }
+        "recommendations": [
+            "建议施用亿土康（YTK）约 6413.6 kg/ha 调节土壤酸度",
+            "配合木本泥炭（MBNT）约 11814.1 kg/ha 提升有机质"
+        ],
+        "routing": {"question_type": 2, "status": "normal"},
+        "interaction_state": "completed",
+        "analysis_context": { "...见 analysis_context 结构..." : "..." },
+        "provenance": {
+            "trace_id": "01H...ABC",
+            "model_id": "acidification-remediation",
+            "model_version": "process_v2_20260801",
+            "calculated_at": "2026-09-02T02:00:00+00:00",
+            "scenario_result": false,
+            "spatial_object": { "...同 analysis_context.object..." : "..." },
+            "object_title": "分析对象：乐昌市-耕地1460",
+            "key_inputs": {"parcel_id": "1460", "land_type": "upland", "fertilizer_type": "compound"}
+        },
+        "scenario_result": false,
+        "spatial_object": { "...同 analysis_context.object..." : "..." },
+        "object_title": "分析对象：乐昌市-耕地1460",
+        "models": {
+            "model-4": {
+                "model_id": "acidification-remediation",
+                "status": "ok",
+                "subject": {"type": "parcel", "id": "1460"},
+                "result": {
+                    "ytk": 6413.6,
+                    "mbnt": 11814.1,
+                    "sub_model": "upland_compound",
+                    "customized_params": {},
+                    "acidification_level": "中度",
+                    "background_acid": 1.2,
+                    "acid_deposition_input": 0.5,
+                    "crop_acid_output": 0.8,
+                    "nitrogen_cycle_acid": 1.0,
+                    "agricultural_acid": 2.3
                 },
-                "recommendations": ["建议施用亿土康（YTK）约 6413.6 kg/ha 调节土壤酸度", "配合木本泥炭（MBNT）约 11814.1 kg/ha 提升有机质"]
+                "meta": {
+                    "data_source": "database",
+                    "simulated": false,
+                    "model_version": "process_v2_20260801"
+                },
+                "issues": []
             }
         },
-        "agents_invoked": ["model-4"],
-        "recommendations": ["建议施用亿土康（YTK）约 6413.6 kg/ha 调节土壤酸度", "配合木本泥炭（MBNT）约 11814.1 kg/ha 提升有机质"],
-        "message_id": 4
+        "trace_id": "01H...ABC"
     }
 }
 ```
 
 #### rejected 响应示例（缺少必填输入）
 
+`models["model-4"]` 投影如下，顶层信封仍为 Schema 2.0：
+
 ```json
 {
-    "acidification_detail": {
-        "status": "rejected",
-        "result": {"ytk": null, "mbnt": null, "sub_model": null, "customized_params": {}},
-        "metadata": {
-            "model_version": "process_v2_20260801",
-            "reason": "cannot_get_ph"
+    "models": {
+        "model-4": {
+            "model_id": "acidification-remediation",
+            "status": "rejected",
+            "subject": {"type": "parcel", "id": "1460"},
+            "result": null,
+            "meta": {
+                "data_source": "database",
+                "simulated": false,
+                "model_version": "process_v2_20260801"
+            },
+            "issues": [
+                {
+                    "code": "CANNOT_GET_PH",
+                    "severity": "error",
+                    "message": "无法获取地块 pH 值"
+                }
+            ]
         }
     }
 }
 ```
 
-> `reason` 取值：`missing_input`（SJD/JHX/JLA 任一缺失）、`input_out_of_range`（pHstart 不在 [3,10] 或 Hex/Alex < 0）、`cannot_get_ph`（parcel_id 查 DB 未取到 SJD）、`model_unavailable`（acidification 模块不可用，优雅降级）。
+> `issues[].code` 取值（来自 `_status_and_issue` 的 reason 映射）：
+> - `MISSING_INPUT` — SJD/JHX/JLA 任一缺失
+> - `INPUT_OUT_OF_RANGE` — pHstart 不在 [3,10] 或 Hex/Alex < 0
+> - `CANNOT_GET_PH` — parcel_id 查 DB 未取到 SJD
+> - `MODEL_UNAVAILABLE` — acidification 模块不可用（优雅降级）
 
 ---
 

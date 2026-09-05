@@ -64,6 +64,18 @@ chroma_db.corrupted.*.bak/
 # 乐昌原始数据文件（大文件，不入库）
 data/lechang/
 
+# 本地一张图底图瓦片（gdal2tiles 切片产物，数百 MB，不入库；由 scripts/generate_basemap_tiles.py 重新生成）
+data/basemap_tiles/
+
+# 广东高清底图瓦片（gdal2tiles 切片产物，数百 MB；由 scripts/prepare_gd_tif.py + generate_basemap_tiles.py 重新生成）
+data/gd_basemap_tiles/
+
+# 广东归一化中间 TIF（prepare_gd_tif.py 产物，~200 MB；源 TIF 在外部目录）
+data/gd_tif_normalized.tif
+
+# GDAL 生成的辅助文件（.aux.xml 存储波段统计，可重新生成）
+data/*.aux.xml
+
 # src/data 运行时数据库（不入库）
 src/data/
 
