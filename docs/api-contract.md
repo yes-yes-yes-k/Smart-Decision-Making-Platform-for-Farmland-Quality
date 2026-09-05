@@ -49,7 +49,7 @@ python -m ai_culti_demo.http_server
 
 ## `POST /api/county/diagnose`
 
-用途：执行县域结构化诊断，当前首版使用规则占位结果，后续可替换真实模型。
+用途：执行县域结构化诊断。当前在缺少可验证统计或专业模型结果时，仅返回安全降级的定性建议，不返回固定模板数字。
 
 请求体：
 
@@ -76,6 +76,8 @@ python -m ai_culti_demo.http_server
 | 字段                     | 说明                 |
 | ------------------------ | -------------------- |
 | `diagnosis_id`         | 诊断结果标识         |
+| `status`               | `ok` 或 `degraded`；模板建议为 `degraded` |
+| `result_kind`          | 模板建议为 `advisory_only` |
 | `topic`                | 诊断主题             |
 | `summary`              | 诊断摘要             |
 | `evidence[]`           | 判定依据             |
@@ -83,6 +85,20 @@ python -m ai_culti_demo.http_server
 | `recommended_layers[]` | 建议联动图层         |
 | `fallback`             | 回退字段与策略       |
 | `lineage`              | 来源和运行时依赖说明 |
+| `reliability`          | 包含 `predictive` 和 `quantitative_available` |
+| `quantitative_estimates` | 定量结果可用状态与原因 |
+
+模板建议中的 `period`、`improve`、`effect`、`cost` 和问题 `percent` 为 `null`，同时在相邻 `metric_meta` 中标记 `status=unavailable` 和机器可读原因。没有可靠空间统计时，`regions` 与 `base_data` 返回空数组。
+
+非空定量字段只有在 `metric_meta` 同时提供以下依据时才可返回：
+
+- `source`：数据来源。
+- `method`：计算或统计方法。
+- `calculated_at`：计算时间。
+- `scope`：适用范围。
+- `model_version`：使用模型时的模型版本。
+
+旧客户端必须把 `degraded` 作为安全降级状态处理，对 `null` 显示“暂无可靠估计”，不得回填本地默认数字、固定周期或历史占位值。
 
 错误码：
 
@@ -93,9 +109,9 @@ python -m ai_culti_demo.http_server
 
 ## `POST /api/report/summary`
 
-用途：将一次成功诊断结果整理为可被前端或未来 Agent 二次加工的摘要。
+用途：将一次结构完整的 `ok` 或 `degraded` 诊断结果整理为可被前端或未来 Agent 二次加工的摘要。
 
-请求体：直接传入 `POST /api/county/diagnose` 的成功响应。
+请求体：直接传入 `POST /api/county/diagnose` 响应中的诊断结果。摘要保留原始 `status`、`result_kind`、`reliability` 和定量不可用状态，不会从 `null` 推断数字。
 
 关键响应字段：
 
@@ -106,6 +122,9 @@ python -m ai_culti_demo.http_server
 | `recommendations[]` | 治理建议   |
 | `actions[]`         | 后续行动项 |
 | `source`            | 摘要来源   |
+| `result_kind`       | 原诊断结果性质 |
+| `reliability`       | 原诊断可靠性状态 |
+| `quantitative_estimates` | 原诊断定量可用状态 |
 
 ## `GET /api/runtime/verify`
 

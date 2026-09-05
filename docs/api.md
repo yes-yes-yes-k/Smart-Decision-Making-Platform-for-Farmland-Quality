@@ -718,34 +718,83 @@ Model-4 无空间对象情景试算：
 请求体：
 ```json
 {
+    "topic": "acidification",
     "area_code": "lechang",
-    "target_ph": 6.0
+    "longitude": 113.35,
+    "latitude": 25.13
 }
 ```
 
 | 字段 | 类型 | 必填 | 说明 |
 |------|------|------|------|
 | `area_code` | string | 否 | 区域代码（默认 "lechang"） |
-| `target_ph` | float | 否 | 目标 pH 值（默认 6.0） |
+| `topic` | string | 是 | `acidification`、`quality` 或 `improvement` |
+| `longitude` | float | 否 | 经度；缺失时仅返回县域级定性建议 |
+| `latitude` | float | 否 | 纬度；缺失时仅返回县域级定性建议 |
 
-成功响应（200）：
+模板建议响应（HTTP 200）：
 ```json
 {
-    "status": "ok",
+    "status": "degraded",
     "data": {
-        "area": "lechang",
-        "assessment": {
-            "level": "中度",
-            "ph": 5.2
+        "status": "degraded",
+        "result_kind": "advisory_only",
+        "topic": {"id": "acidification", "name": "酸化诊断"},
+        "problems": [{
+            "name": "土壤酸化风险待核验",
+            "percent": null,
+            "advisory_only": true,
+            "basis": "template_guidance",
+            "metric_meta": {
+                "percent": {
+                    "status": "unavailable",
+                    "reason": "validated_statistics_unavailable",
+                    "unit": "%",
+                    "source": null,
+                    "method": null,
+                    "model_version": null,
+                    "calculated_at": null,
+                    "scope": {"type": "county", "id": "lechang"}
+                }
+            }
+        }],
+        "measures": [{
+            "name": "土壤酸化改良措施",
+            "cost": null,
+            "improve": null,
+            "period": null,
+            "advisory_only": true,
+            "basis": "template_guidance"
+        }],
+        "regions": [],
+        "base_data": [],
+        "reliability": {
+            "level": "insufficient_evidence",
+            "predictive": false,
+            "quantitative_available": false
         },
-        "calculation": {
-            "lime_demand": 1800,
-            "target_ph": 6.0,
-            "safety_factor": 1.3
+        "quantitative_estimates": {
+            "status": "unavailable",
+            "reason": "validated_quantitative_results_unavailable"
         }
     }
 }
 ```
+
+未来返回非空定量值时，对应 `metric_meta` 至少必须包含 `source`、`method`、`calculated_at`、`scope`，适用时还要包含 `model_version`；缺少这些依据的数值会被响应契约拒绝。非法主题仍返回 `status=error` 和 `error.code=INVALID_TOPIC`。
+
+#### 旧客户端迁移
+
+- 将 `degraded` 视为 HTTP 请求成功但证据不足的安全降级结果，不要改写为 `ok`。
+- `period`、`improve`、`effect`、`cost` 和问题 `percent` 均可能为 `null`，界面应显示“暂无可靠估计”。
+- 不要用本地默认数字、固定周期或历史占位值替换 `null`。
+- `regions` 和 `base_data` 可能为空数组，表示当前没有可靠的重点区域统计或排序。
+
+### 诊断摘要
+
+**POST** `/api/v1/report/summary`
+
+请求体直接传入县域诊断内部结果，即 `/api/v1/county/diagnose` 响应的 `data`。`status=ok` 和 `status=degraded` 均可接受；摘要会原样传播 `status`、`result_kind`、`reliability` 和 `quantitative_estimates`，不会根据空字段补造数值。
 
 ---
 

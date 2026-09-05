@@ -46,12 +46,13 @@ NO_CONTEXT_REPORT_TYPES: set[str] = set()
 def build_report_summary(diagnosis: dict[str, Any]) -> dict[str, Any]:
     """将诊断结果整理为稳定、可拆解的汇报摘要。"""
 
-    if diagnosis.get("status") != "ok":
+    diagnosis_status = diagnosis.get("status")
+    if diagnosis_status not in {"ok", "degraded"}:
         return {
             "status": "error",
             "error": {
                 "code": "MISSING_DIAGNOSIS",
-                "message": "需要传入成功的诊断结果",
+                "message": "需要传入 ok 或 degraded 的诊断结果",
             },
         }
 
@@ -72,16 +73,21 @@ def build_report_summary(diagnosis: dict[str, Any]) -> dict[str, Any]:
     )
 
     return {
-        "status": "ok",
+        "status": diagnosis_status,
+        "result_kind": diagnosis.get("result_kind"),
         "diagnosis_id": diagnosis["diagnosis_id"],
         "area": diagnosis["area"],
         "summary": diagnosis["summary"],
         "findings": findings,
         "recommendations": diagnosis.get("recommendations", []),
         "actions": DEFAULT_ACTIONS,
+        "reliability": diagnosis.get("reliability", {}),
+        "quantitative_estimates": diagnosis.get("quantitative_estimates", {}),
         "source": {
             "diagnosis_topic": topic["id"],
             "recommended_layers": diagnosis.get("recommended_layers", []),
+            "diagnosis_status": diagnosis_status,
+            "result_kind": diagnosis.get("result_kind"),
             "reliability": diagnosis.get("reliability", {}),
         },
     }

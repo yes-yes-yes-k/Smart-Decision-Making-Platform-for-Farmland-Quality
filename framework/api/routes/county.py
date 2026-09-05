@@ -28,6 +28,7 @@ def diagnose():
         payload['target_ph'] = data['target_ph']
 
     result = core_engine.diagnose_county(payload)
-    if result.get('status') == 'ok':
-        return jsonify({"status": "ok", "data": result})
+    status = result.get('status')
+    if status in {'ok', 'degraded'}:
+        return jsonify({"status": status, "data": result})
     return jsonify(result)

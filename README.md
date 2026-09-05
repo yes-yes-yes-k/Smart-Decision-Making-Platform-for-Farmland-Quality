@@ -162,6 +162,8 @@ python start_production_server.py --host 127.0.0.1 --port 8000 --threads 8
 | POST | `/api/v1/county/diagnose` | 结构化诊断 |
 | POST | `/api/v1/report/summary` | 报告汇总 |
 
+县域诊断在缺少可验证定量依据时返回 `status=degraded`、`result_kind=advisory_only`；可空指标应显示“暂无可靠估计”，客户端不得回填固定数字。
+
 ### 数据导入
 
 | 方法 | 路径 | 说明 |
