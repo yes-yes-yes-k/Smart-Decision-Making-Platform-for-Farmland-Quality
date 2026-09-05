@@ -6,6 +6,7 @@ from unittest.mock import MagicMock
 import pytest
 
 from framework.agents.output_contract import normalize_execution
+from framework.agents.manager import agent_manager
 from framework.api.routes.chat import _serialize_chat_response
 
 
@@ -50,6 +51,12 @@ def _orchestrator_result(question_type=1, routing_status="normal", answer="模�
         "models": models,
         "trace_id": "trace-chat",
     }
+
+
+def test_manager_fallback_answer_uses_business_name_not_internal_agent_id():
+    result = agent_manager._summarize(2, ["model-2"], {"model-2":_envelope("model-2")})
+    assert result["answer"].startswith("耕地质量等级评价：")
+    assert "model-2" not in result["answer"]
 
 
 @pytest.fixture()

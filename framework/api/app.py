@@ -1,3 +1,5 @@
+import atexit
+
 from flask import Flask
 from flask_cors import CORS
 from flask_jwt_extended import JWTManager
@@ -13,6 +15,39 @@ from framework.api.routes.data_import import data_import_bp
 from framework.api.routes.observability import observability_bp
 from framework.api.routes.tiles import tiles_bp
 from framework.api.routes.gd_tiles import gd_tiles_bp
+from framework.agents.workflows.comprehensive.checkpointing import (
+    PostgresCheckpointerRuntime,
+)
+
+
+def init_comprehensive_checkpointer(app: Flask) -> None:
+    if app.config["COMPREHENSIVE_WORKFLOW_MODE"] != "enabled":
+        return
+    runtime = PostgresCheckpointerRuntime(
+        app.config["LANGGRAPH_CHECKPOINT_URI"],
+        auto_setup=app.config["LANGGRAPH_CHECKPOINT_AUTO_SETUP"],
+    )
+    saver = runtime.start()
+    app.extensions["comprehensive_checkpointer_runtime"] = runtime
+    app.extensions["comprehensive_checkpointer"] = saver
+    atexit.register(runtime.close)
+
+
+def init_comprehensive_workflow(app: Flask) -> None:
+    """Compile the durable task graph only when execution is enabled."""
+    if app.config["COMPREHENSIVE_WORKFLOW_MODE"] != "enabled":
+        return
+    from framework.agents.workflows.comprehensive.graph import (
+        build_comprehensive_graph, build_default_comprehensive_services,
+    )
+    from framework.agents.workflows.comprehensive.runtime import ComprehensiveWorkflowRuntime
+    saver = app.extensions.get("comprehensive_checkpointer")
+    if saver is None:
+        return
+    services = build_default_comprehensive_services(app)
+    app.extensions["comprehensive_runtime"] = ComprehensiveWorkflowRuntime(
+        build_comprehensive_graph(services, saver)
+    )
 
 
 def _ensure_kb_message_columns(app: Flask):
@@ -92,6 +127,8 @@ def create_app(config_name: str = 'default') -> Flask:
     CORS(app)
     JWTManager(app)
     db.init_app(app)
+    init_comprehensive_checkpointer(app)
+    init_comprehensive_workflow(app)
 
     # 注册蓝图之前先把 ORM 需要的列补齐，防止首次请求 SELECT 时爆 no such column
     _ensure_kb_message_columns(app)

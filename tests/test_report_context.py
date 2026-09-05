@@ -316,7 +316,7 @@ def test_integration_acidification_parcel_report(monkeypatch):
     # Mock LLM 返回确定性 HTML
     monkeypatch.setattr(
         "src.ai_culti_demo.report.llm_service.generate",
-        lambda prompt: {"success": True, "content": f"<p>LLM 内容：{prompt[:20]}...</p>"},
+        lambda prompt, **kwargs: {"success": True, "content": f"<p>LLM 内容：{prompt[:20]}...</p>"},
     )
 
     result = generate_report("acidification_treatment", {"type": "parcel", "id": "P001"})
@@ -361,7 +361,7 @@ def test_integration_organic_matter_region_report(monkeypatch):
     # Mock LLM
     monkeypatch.setattr(
         "src.ai_culti_demo.report.llm_service.generate",
-        lambda prompt: {"success": True, "content": "<p>区域分析内容</p>"},
+        lambda prompt, **kwargs: {"success": True, "content": "<p>区域分析内容</p>"},
     )
 
     result = generate_report("organic_matter_improvement", {"type": "region", "id": "韶关市"})
@@ -400,7 +400,7 @@ def test_regression_legacy_area_code(monkeypatch):
     )
     monkeypatch.setattr(
         "src.ai_culti_demo.report.llm_service.generate",
-        lambda prompt: {"success": True, "content": "<p>内容</p>"},
+        lambda prompt, **kwargs: {"success": True, "content": "<p>内容</p>"},
     )
 
     # 旧式调用：area_code 作为字符串（scope=None）
@@ -434,7 +434,7 @@ def test_regression_scope_overrides_area_code(monkeypatch):
     )
     monkeypatch.setattr(
         "src.ai_culti_demo.report.llm_service.generate",
-        lambda prompt: {"success": True, "content": "<p>内容</p>"},
+        lambda prompt, **kwargs: {"success": True, "content": "<p>内容</p>"},
     )
 
     # 同时传 scope 和 area_code：scope 优先
@@ -637,7 +637,7 @@ def test_integration_organic_parcel_has_indicators(monkeypatch):
     )
     monkeypatch.setattr(
         "src.ai_culti_demo.report.llm_service.generate",
-        lambda prompt: {"success": True, "content": "<p>LLM 内容</p>"},
+        lambda prompt, **kwargs: {"success": True, "content": "<p>LLM 内容</p>"},
     )
 
     result = generate_report("organic_matter_improvement", {"type": "parcel", "id": "P001"})
@@ -680,7 +680,7 @@ def test_regression_model5_valid_db_hit_reuses(monkeypatch):
     monkeypatch.setattr("src.ai_culti_demo.report_context._compute_model5_for_parcel", fail_compute)
     monkeypatch.setattr(
         "src.ai_culti_demo.report.llm_service.generate",
-        lambda prompt: {"success": True, "content": "<p>内容</p>"},
+        lambda prompt, **kwargs: {"success": True, "content": "<p>内容</p>"},
     )
 
     result = generate_report("organic_matter_improvement", {"type": "parcel", "id": "P001"})
@@ -708,7 +708,7 @@ def test_regression_acidification_unaffected(monkeypatch):
     )
     monkeypatch.setattr(
         "src.ai_culti_demo.report.llm_service.generate",
-        lambda prompt: {"success": True, "content": "<p>酸化治理内容</p>"},
+        lambda prompt, **kwargs: {"success": True, "content": "<p>酸化治理内容</p>"},
     )
 
     result = generate_report("acidification_treatment", {"type": "parcel", "id": "P001"})

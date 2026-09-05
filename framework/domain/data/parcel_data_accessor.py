@@ -2,16 +2,30 @@
 from __future__ import annotations
 
 import logging
-from typing import Optional
+from dataclasses import dataclass
+from datetime import datetime
+from typing import Any, Optional
 
 logger = logging.getLogger(__name__)
+
+
+@dataclass(frozen=True)
+class ParcelDataSnapshot:
+    parcel_id: str
+    area_code: str | None
+    parcel_code: str | None
+    land_type: str | None
+    fertilizer_type: str | None
+    target_ph: float | None
+    indicators: dict[str, Any]
+    source_version: str
 
 
 class ParcelDataAccessor:
     """从 parcel_info 表查询地块指标的统一入口。"""
 
-    def __init__(self):
-        self._app = None
+    def __init__(self, app=None):
+        self._app = app
 
     def _get_app(self):
         """获取 Flask app 实例（延迟初始化）。"""
@@ -50,6 +64,25 @@ class ParcelDataAccessor:
                     ctx.pop()
         except Exception as e:
             logger.warning("查询 parcel_info 失败 (parcel_id=%s): %s", parcel_id, e)
+            return None
+
+    def get_parcel_snapshot(self, parcel_id: str) -> Optional[ParcelDataSnapshot]:
+        """Read one authoritative row and detach it from the ORM session."""
+        try:
+            from framework.models.thematic_model import ParcelInfo
+            app = self._get_app()
+            ctx = app.app_context() if app else None
+            if ctx: ctx.push()
+            try:
+                row = ParcelInfo.query.filter_by(parcel_id=parcel_id).first()
+                if row is None: return None
+                updated = getattr(row, "updated_at", None)
+                version = updated.isoformat() if isinstance(updated, datetime) else str(updated or "unknown")
+                return ParcelDataSnapshot(row.parcel_id, row.area_code, row.legacy_parcel_code, row.land_type, row.fertilizer_type, row.target_ph, dict(row.soil_indicators or {}), f"parcel:{version}")
+            finally:
+                if ctx: ctx.pop()
+        except Exception as exc:
+            logger.warning("查询 parcel snapshot 失败 (parcel_id=%s): %s", parcel_id, exc)
             return None
 
     def get_parcel_record(self, parcel_id: str) -> Optional[dict]:

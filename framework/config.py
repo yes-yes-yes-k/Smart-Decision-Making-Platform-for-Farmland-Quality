@@ -20,6 +20,27 @@ class Config:
     SQLALCHEMY_DATABASE_URI = (
         f"postgresql+psycopg2://{DB_USER}:{DB_PASSWORD}@{DB_HOST}:{DB_PORT}/{DB_NAME}"
     )
+    COMPREHENSIVE_WORKFLOW_MODE = os.environ.get(
+        "COMPREHENSIVE_WORKFLOW_MODE", "off"
+    ).lower()
+    if COMPREHENSIVE_WORKFLOW_MODE not in {"off", "shadow", "enabled"}:
+        raise ValueError(
+            "COMPREHENSIVE_WORKFLOW_MODE must be off, shadow, or enabled"
+        )
+    COMPREHENSIVE_ALLOWED_USER_IDS = tuple(
+        int(value)
+        for value in os.environ.get(
+            "COMPREHENSIVE_ALLOWED_USER_IDS", ""
+        ).split(",")
+        if value.strip()
+    )
+    LANGGRAPH_CHECKPOINT_URI = os.environ.get(
+        "LANGGRAPH_CHECKPOINT_URI", SQLALCHEMY_DATABASE_URI
+    )
+    LANGGRAPH_CHECKPOINT_AUTO_SETUP = (
+        os.environ.get("LANGGRAPH_CHECKPOINT_AUTO_SETUP", "false").lower()
+        == "true"
+    )
     SQLALCHEMY_TRACK_MODIFICATIONS = False
     SQLALCHEMY_ENGINE_OPTIONS = {
         'pool_size': 20,

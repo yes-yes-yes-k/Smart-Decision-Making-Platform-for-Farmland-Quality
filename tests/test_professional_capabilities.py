@@ -2,6 +2,7 @@
 from framework.agents.capabilities import (
     CAPABILITY_BY_QUESTION_TYPE,
     PROFESSIONAL_CAPABILITIES,
+    public_comprehensive_capabilities,
     public_capability_descriptor,
 )
 from framework.agents.manager import AgentManager
@@ -28,6 +29,24 @@ def test_public_descriptor_exposes_guard_metadata():
     assert descriptor["required_scenario_inputs"] == [
         "SJD", "JHX", "JLA", "land_type", "fertilizer_type"
     ]
+
+
+def test_public_descriptor_exposes_comprehensive_metadata():
+    descriptor = public_capability_descriptor(PROFESSIONAL_CAPABILITIES[1])
+    assert descriptor["tool_name"] == "model_2_quality_grade_evaluation"
+    assert descriptor["result_schema"] == "quality-grade-v1"
+    assert descriptor["cost_class"] == "standard"
+    assert descriptor["timeout_seconds"] == 90
+    assert descriptor["retry_limit"] == 2
+    assert descriptor["comprehensive_role"] == "core"
+    assert descriptor["allowed_triggers"] == ["always"]
+
+
+def test_public_comprehensive_capabilities_excludes_disabled_models():
+    capabilities = public_comprehensive_capabilities()
+    assert {capability["agent_id"] for capability in capabilities} == {
+        "model-1", "model-2", "model-3", "model-4", "model-5"
+    }
 
 
 def test_agent_manager_and_router_read_the_capability_catalog():

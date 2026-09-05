@@ -74,6 +74,9 @@ def test_needs_state_persists_two_equal_snapshots_without_execution(
     assert data["interaction_state"] == "needs_analysis_object"
     assert data["analysis_context"] == parcel_context.snapshot()
     assert len(calls) == 1
+    assert [item["agent_id"] for item in calls[0]["capabilities"]] == [
+        "model-1", "model-2", "model-3", "model-4", "model-5",
+    ]
     with chat_app.app_context():
         messages = Message.query.order_by(Message.id).all()
         assert [item.role for item in messages] == ["user", "assistant"]
@@ -109,3 +112,60 @@ def test_message_snapshots_remain_immutable_after_later_request(
         conversation.context_version = (conversation.context_version or 0) + 1
         db.session.commit()
         assert db.session.get(Message, 1).analysis_context_snapshot == first_snapshot
+
+
+def test_comprehensive_interaction_fields_are_exposed_to_client(
+    chat_app, auth_header, parcel_context, monkeypatch,
+):
+    monkeypatch.setattr(
+        chat_routes.chat_request_service, "_context_service", _ContextService(parcel_context),
+    )
+    monkeypatch.setattr(
+        chat_routes.multi_agent_orchestrator, "run",
+        lambda request, conversation_history=None: {
+            "interaction_state":"needs_confirmation",
+            "run_id":"run-http-1", "checkpoint_version":1,
+            "plan_summary":{"plan_version":1,"tasks":[]},
+            "proposed_defaults":{"target_ph":6.5},
+            "report_draft":None, "degradations":[], "trace_id":"trace-http-1",
+            "answer":"请确认分析范围。", "sources":[], "models":{},
+        },
+    )
+    response=chat_app.test_client().post(
+        "/api/v1/chat/", json={"message":"生成综合报告"}, headers=auth_header,
+    )
+    assert response.status_code==200
+    data=response.get_json()["data"]
+    assert data["interaction_state"]=="needs_confirmation"
+    assert data["run_id"]=="run-http-1"
+    assert data["checkpoint_version"]==1
+    assert data["plan_summary"]=={"plan_version":1,"tasks":[]}
+    assert data["proposed_defaults"]=={"target_ph":6.5}
+    assert data["degradations"]==[]
+
+
+def test_comprehensive_interaction_without_answer_persists_user_prompt(
+    chat_app, auth_header, parcel_context, monkeypatch,
+):
+    monkeypatch.setattr(
+        chat_routes.chat_request_service, "_context_service", _ContextService(parcel_context),
+    )
+    monkeypatch.setattr(
+        chat_routes.multi_agent_orchestrator, "run",
+        lambda request, conversation_history=None: {
+            "interaction_state":"needs_confirmation",
+            "run_id":"run-http-prompt", "checkpoint_version":1,
+            "plan_summary":{"plan_version":1,"tasks":[]},
+            "report_draft":None, "degradations":[], "trace_id":"trace-http-prompt",
+        },
+    )
+    response=chat_app.test_client().post(
+        "/api/v1/chat/", json={"message":"生成综合报告"}, headers=auth_header,
+    )
+    assert response.status_code==200
+    assert response.get_json()["data"]["answer"] == (
+        "分析范围和所需输入已准备好，请确认后开始计算。"
+    )
+    with chat_app.app_context():
+        assistant=Message.query.filter_by(role="assistant").one()
+        assert assistant.content == "分析范围和所需输入已准备好，请确认后开始计算。"

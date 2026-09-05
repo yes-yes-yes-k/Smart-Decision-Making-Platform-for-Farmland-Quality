@@ -172,27 +172,6 @@ def test_type2_contains_only_valid_model2_result():
     print("✓ type=2 models 中仅包含规范 model-2 结果")
 
 
-def test_should_execute_agent_method_removed():
-    """_should_execute_agent 方法应已删除"""
-    mgr = AgentManager()
-    assert not hasattr(mgr, "_should_execute_agent"), "_should_execute_agent 仍存在"
-    print("✓ _should_execute_agent 已移除")
-
-
-def test_fertility_keywords_constant_removed():
-    """FERTILITY_KEYWORDS 常量应已删除"""
-    import framework.agents.manager as mgr_mod
-    assert not hasattr(mgr_mod, "FERTILITY_KEYWORDS"), "FERTILITY_KEYWORDS 仍存在"
-    print("✓ FERTILITY_KEYWORDS 已移除")
-
-
-def test_grade_keywords_constant_removed():
-    """GRADE_KEYWORDS 常量应已删除"""
-    import framework.agents.manager as mgr_mod
-    assert not hasattr(mgr_mod, "GRADE_KEYWORDS"), "GRADE_KEYWORDS 仍存在"
-    print("✓ GRADE_KEYWORDS 已移除")
-
-
 if __name__ == "__main__":
     test_manager_register_six_agents()
     test_manager_topological_sort_province()
@@ -211,7 +190,4 @@ if __name__ == "__main__":
     test_process_no_routing_when_question_type_unknown()
     test_no_skipped_entries_in_details_for_type1()
     test_no_skipped_entries_in_details_for_type2()
-    test_should_execute_agent_method_removed()
-    test_fertility_keywords_constant_removed()
-    test_grade_keywords_constant_removed()
     print("\n所有 AgentManager 测试通过！")

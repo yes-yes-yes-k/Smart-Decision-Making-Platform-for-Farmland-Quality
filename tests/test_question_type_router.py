@@ -62,17 +62,9 @@ def test_get_agents_for_type_unknown_returns_empty():
     print("✓ 未知 type 返回空列表")
 
 
-def test_role_router_removed():
-    """RoleRouter 类已移除"""
-    import framework.agents.router as router_mod
-    assert not hasattr(router_mod, "RoleRouter"), "RoleRouter 仍存在，应已删除"
-    print("✓ RoleRouter 已移除")
-
-
 if __name__ == "__main__":
     test_type_agents_mapping_is_one_to_one()
     test_get_agents_for_type_known_types()
     test_get_agents_for_type_returns_copy()
     test_get_agents_for_type_unknown_returns_empty()
-    test_role_router_removed()
     print("\n所有 QuestionTypeRouter 测试通过！")

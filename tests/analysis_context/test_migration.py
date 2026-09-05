@@ -1,7 +1,7 @@
 import sqlalchemy as sa
 import pytest
 
-from scripts.migrate_analysis_context import downgrade_schema, upgrade_schema
+from scripts.migrate_analysis_context import _dialect_ddl_type, downgrade_schema, upgrade_schema
 
 
 def _create_legacy_schema(engine):
@@ -39,6 +39,12 @@ def _create_legacy_schema(engine):
 
 def _column_names(engine, table):
     return {column["name"] for column in sa.inspect(engine).get_columns(table)}
+
+
+def test_datetime_ddl_is_postgresql_compatible():
+    assert _dialect_ddl_type("postgresql","DATETIME")=="TIMESTAMP WITH TIME ZONE"
+    assert _dialect_ddl_type("sqlite","DATETIME")=="DATETIME"
+    assert _dialect_ddl_type("mysql","DATETIME")=="DATETIME"
 
 
 def test_upgrade_is_idempotent_and_downgrade_restores_legacy_schema(tmp_path):

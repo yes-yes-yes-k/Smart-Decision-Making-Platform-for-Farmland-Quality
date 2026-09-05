@@ -29,10 +29,9 @@ def _columns(connection, table: str) -> set[str]:
     return {item["name"] for item in sa.inspect(connection).get_columns(table)}
 
 
-def _normalize_ddl_type(connection, ddl_type: str) -> str:
-    # PostgreSQL has no DATETIME type; map it to TIMESTAMP (MySQL also prefers DATETIME as-is, but TIMESTAMP is safe).
-    if connection.dialect.name == "postgresql":
-        ddl_type = ddl_type.replace("DATETIME", "TIMESTAMP")
+def _dialect_ddl_type(dialect: str, ddl_type: str) -> str:
+    if dialect=="postgresql" and ddl_type=="DATETIME":
+        return "TIMESTAMP WITH TIME ZONE"
     return ddl_type
 
 
@@ -45,7 +44,7 @@ def _add_columns(connection, table: str, specs: dict[str, str]) -> None:
     table_sql = preparer.quote(table)
     for name, ddl_type in specs.items():
         if name not in present:
-            ddl_type = _normalize_ddl_type(connection, ddl_type)
+            ddl_type=_dialect_ddl_type(connection.dialect.name,ddl_type)
             connection.execute(sa.text(
                 f"ALTER TABLE {table_sql} ADD COLUMN {preparer.quote(name)} {ddl_type}"
             ))
