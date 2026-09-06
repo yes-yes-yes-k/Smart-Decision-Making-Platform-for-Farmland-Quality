@@ -214,7 +214,7 @@ def acid_summary_prompt(ctx: dict[str, Any]) -> str:
         "计算结论（model-4，须基于此润色，不得编造数值）：\n"
         f"{_acid_data_brief(ctx)}\n\n"
         "总结酸化治理方案的核心结论：酸化现状、推荐治理技术路线、"
-        "预期 pH 提升目标与增产潜力、投资规模与效益。"
+        "预期 pH 提升目标与增产潜力与效益。"  #、投资规模
         "以 HTML 输出，<ul>/<li> 列出核心结论，<p> 呈现展望。"
     )
 
@@ -561,7 +561,7 @@ ACIDIFICATION_TREATMENT: ReportTemplate = {
                 f"范围：{_scope_label(ctx.get('scope'))}\n"
                 f"地块土壤 pH 与酸化指标快照（仅依据提供的数据，不得编造未给出的数值）：\n{_acid_data_brief(ctx)}\n\n"
                 "基于上述 pH/交换性氢/交换性铝数据，分析土壤酸化现状：pH 空间分布、"
-                "不同酸化等级面积与占比、酸化深度剖面特征。"
+                # "不同酸化等级面积与占比、酸化深度剖面特征。"
                 "使用 <h3> 标题，pH 分布以 <table> 表格呈现，酸化等级以 <ul>/<li> 呈现。"
             ),
         },

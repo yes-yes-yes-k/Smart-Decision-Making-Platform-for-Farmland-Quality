@@ -5,35 +5,46 @@
 ## 功能特性
 
 - **统一框架**：Flask + SQLAlchemy + JWT + ChromaDB + LangChain + LangGraph
+
 - **核心引擎**：县域概览、结构化诊断、6 个正式专业模型与 3 个辅助/实验性能力、报告汇总（`src/ai_culti_demo`）
-- **多智能体编排**：6 个专业智能体 + AgentManager + QuestionTypeRouter（基于 question_type 1:1 映射）
+
+- **多智能体编排**：6 个专业智能体 + AgentManager + QuestionTypeRouter（基于 question\_type 1:1 映射）
+
   - model-1 稳定性风险识别 / model-2 质量等级与提升潜力 / model-3 问题识别
+
   - model-4 酸化改良（过程模型，4 子模型：水田/旱地 × 尿素/复合肥，输出 YTK/MBNT）
+
   - model-5 有机质培肥（韶关旱地/水田 RF + 全局 ETR）/ model-6 占位模型
+
 - **RAG 知识检索**：基于 ChromaDB 的向量检索与 SiliconFlow LLM 问答，知识性问题自动路由到 RAG
+
 - **Function Calling**：工具注册表 + LangChain Tools 集成 + 自定义工具接口
+
 - **JWT 认证**：用户体系、会话管理、权限装饰器
+
 - **文档管理**：PDF / Word / Excel 解析、向量化入库、检索引用
+
 - **15 个 REST API**：认证、聊天、模型调用、文档、县域、报告、数据导入
 
 ## 技术栈
 
-| 层级 | 组件 |
-|------|------|
-| Web 框架 | Flask 3.0 + Flask-CORS + Flask-JWT-Extended |
-| ORM | Flask-SQLAlchemy |
-| 数据库 | SQLite（开发与生产环境均使用） |
-| 向量库 | ChromaDB 0.5 |
-| LLM | SiliconFlow（DeepSeek-V4-Flash / BAAI/bge-m3） |
-| 编排 | LangChain 0.2 + LangGraph 0.1 |
-| 文档解析 | PyPDF2 / python-docx / openpyxl |
-| 生产服务器 | waitress |
+| 层级     | 组件                                           |
+| ------ | -------------------------------------------- |
+| Web 框架 | Flask 3.0 + Flask-CORS + Flask-JWT-Extended  |
+| ORM    | Flask-SQLAlchemy                             |
+| 数据库    | SQLite（开发与生产环境均使用）                           |
+| 向量库    | ChromaDB 0.5                                 |
+| LLM    | SiliconFlow（DeepSeek-V4-Flash / BAAI/bge-m3） |
+| 编排     | LangChain 0.2 + LangGraph 0.1                |
+| 文档解析   | PyPDF2 / python-docx / openpyxl              |
+| 生产服务器  | waitress                                     |
 
 ## 快速开始
 
 ### 环境要求
 
 - Python ≥ 3.10
+
 - Node.js（可选，用于 OpenSpec / Comet 工作流）
 
 ### 安装
@@ -63,7 +74,9 @@ CHROMA_COLLECTION_NAME=enterprise_kb
 ```
 
 开发与生产环境均使用 SQLite，无需额外配置数据库服务。数据库文件：
+
 - 开发环境：`instance/development.db`
+
 - 生产环境：`instance/production.db`
 
 ### LangSmith 监控（可选）
@@ -79,7 +92,9 @@ LANGCHAIN_PROJECT=agent-culti-demo
 ```
 
 - 未设置 `LANGCHAIN_API_KEY` 时 tracing 静默关闭，不影响系统运行
+
 - 开发环境不设置 `LANGCHAIN_TRACING_V2` 即可关闭 tracing
+
 - 配置后在 [LangSmith 平台](https://smith.langchain.com)查看完整 trace
 
 ### 初始化数据库
@@ -89,7 +104,9 @@ python init_db.py
 ```
 
 创建表结构并写入默认账号：
+
 - 管理员：`admin` / `admin123`
+
 - 普通用户：`user` / `user123`
 
 ### 启动服务
@@ -102,7 +119,7 @@ python start_http_server.py
 python start_http_server.py --host 0.0.0.0 --port 5000 --config development
 ```
 
-服务启动后访问 http://localhost:5000
+服务启动后访问 <http://localhost:5000>
 
 **生产环境：**
 
@@ -120,10 +137,10 @@ python start_production_server.py --host 127.0.0.1 --port 8000 --threads 8
 
 **瓦片目录与服务端点：**
 
-| 底图 | 源 TIF | 瓦片目录 | 端点 |
-|------|--------|----------|------|
-| 全国一张图（500m） | `China_RGB_500m_vis.tif` | `data/basemap_tiles/` | `/tiles/{z}/{x}/{y}.png` |
-| 广东高清（100m） | `Guangdong_RGB_100m.tif` | `data/gd_basemap_tiles/` | `/gd_tiles/{z}/{x}/{y}.png` |
+| 底图          | 源 TIF                    | 瓦片目录                     | 端点                          |
+| ----------- | ------------------------ | ------------------------ | --------------------------- |
+| 全国一张图（500m） | `China_RGB_500m_vis.tif` | `data/basemap_tiles/`    | `/tiles/{z}/{x}/{y}.png`    |
+| 广东高清（100m）  | `Guangdong_RGB_100m.tif` | `data/gd_basemap_tiles/` | `/gd_tiles/{z}/{x}/{y}.png` |
 
 **生成瓦片（首次部署或源 TIF 更新时执行）：**
 
@@ -153,20 +170,20 @@ python scripts/generate_basemap_tiles.py --source data/gd_tif_normalized.tif --o
 
 ### 认证
 
-| 方法 | 路径 | 说明 |
-|------|------|------|
-| POST | `/api/v1/auth/login` | 登录获取 Token |
-| POST | `/api/v1/auth/register` | 注册新用户 |
-| GET | `/api/v1/auth/me` | 获取当前用户信息 |
+| 方法   | 路径                      | 说明         |
+| ---- | ----------------------- | ---------- |
+| POST | `/api/v1/auth/login`    | 登录获取 Token |
+| POST | `/api/v1/auth/register` | 注册新用户      |
+| GET  | `/api/v1/auth/me`       | 获取当前用户信息   |
 
 ### 聊天与对话
 
-| 方法 | 路径 | 说明 |
-|------|------|------|
-| POST | `/api/v1/chat/` | 智能问答（RAG + 多智能体编排） |
-| GET | `/api/v1/chat/conversations` | 会话列表 |
-| GET | `/api/v1/chat/conversations/{id}` | 会话详情 |
-| GET | `/api/v1/chat/conversations/{id}/messages` | 会话消息列表 |
+| 方法   | 路径                                         | 说明                 |
+| ---- | ------------------------------------------ | ------------------ |
+| POST | `/api/v1/chat/`                            | 智能问答（RAG + 多智能体编排） |
+| GET  | `/api/v1/chat/conversations`               | 会话列表               |
+| GET  | `/api/v1/chat/conversations/{id}`          | 会话详情               |
+| GET  | `/api/v1/chat/conversations/{id}/messages` | 会话消息列表             |
 
 专业计算使用会话级通用空间分析对象，支持 `set`、`inherit`、`clear` 和显式
 `scenario` 情景试算；HTTP 与 SSE 返回相同的上下文和溯源字段。完整请求、可恢复
@@ -174,31 +191,31 @@ python scripts/generate_basemap_tiles.py --source data/gd_tif_normalized.tif --o
 
 ### 模型调用
 
-| 方法 | 路径 | 说明 |
-|------|------|------|
-| GET | `/api/v1/models/` | 可用模型列表 |
+| 方法   | 路径                   | 说明     |
+| ---- | -------------------- | ------ |
+| GET  | `/api/v1/models/`    | 可用模型列表 |
 | POST | `/api/v1/models/run` | 执行指定模型 |
 
 ### 文档管理
 
-| 方法 | 路径 | 说明 |
-|------|------|------|
-| GET | `/api/v1/docs/` | 文档列表 |
-| POST | `/api/v1/docs/upload` | 上传文档（PDF/Word/Excel） |
-| DELETE | `/api/v1/docs/{id}` | 删除文档 |
+| 方法     | 路径                    | 说明                   |
+| ------ | --------------------- | -------------------- |
+| GET    | `/api/v1/docs/`       | 文档列表                 |
+| POST   | `/api/v1/docs/upload` | 上传文档（PDF/Word/Excel） |
+| DELETE | `/api/v1/docs/{id}`   | 删除文档                 |
 
 ### 县域能力
 
-| 方法 | 路径 | 说明 |
-|------|------|------|
-| GET | `/api/v1/county/overview` | 县域耕地质量总览 |
-| POST | `/api/v1/county/diagnose` | 结构化诊断 |
-| POST | `/api/v1/report/summary` | 报告汇总 |
+| 方法   | 路径                        | 说明       |
+| ---- | ------------------------- | -------- |
+| GET  | `/api/v1/county/overview` | 县域耕地质量总览 |
+| POST | `/api/v1/county/diagnose` | 结构化诊断    |
+| POST | `/api/v1/report/summary`  | 报告汇总     |
 
 ### 数据导入
 
-| 方法 | 路径 | 说明 |
-|------|------|------|
+| 方法   | 路径                    | 说明                                          |
+| ---- | --------------------- | ------------------------------------------- |
 | POST | `/api/v1/data/import` | 上传部署专题模型数据（CSV/shapefile/耕地质量评价CSV，需 admin） |
 
 完整 OpenAPI 规范见 [docs/openapi.json](docs/openapi.json)，可导入 Apifox 等工具查看。
@@ -292,7 +309,7 @@ route_models（路由分发）
        结果汇总 + 推荐建议
 ```
 
-6 个专业智能体通过统一能力注册表与 [src/ai_culti_demo/thematic_models.py](src/ai_culti_demo/thematic_models.py) 的正式模型 API 一一对应。空间结构解析和关键指标解析为辅助能力，多项协同提升为实验性能力，不参与聊天路由。
+6 个专业智能体通过统一能力注册表与 [src/ai\_culti\_demo/thematic\_models.py](src/ai_culti_demo/thematic_models.py) 的正式模型 API 一一对应。空间结构解析和关键指标解析为辅助能力，多项协同提升为实验性能力，不参与聊天路由。
 
 **酸化改良（model-4）过程模型**：已从规则导向（GB/T 42817-2023 石灰剂量）替换为过程模型（移植自模型5源码），按 `land_type`（水田 paddy / 旱地 upland）× `fertilizer_type`（尿素 urea / 复合肥 compound）组合选择 4 个子模型之一，计算亿土康（YTK）与木本泥炭（MBNT）需求量（kg/ha）。必填输入为 SJD（pH）、JHX（交换性氢）、JLA（交换性铝）；`parcel_id` 可自动补 SJD。模型版本 `process_v2_20260801`。详见 [docs/api.md](docs/api.md) 酸化改良章节。
 
@@ -300,11 +317,11 @@ route_models（路由分发）
 
 支持多种配置环境（[framework/config.py](framework/config.py)）：
 
-| 配置 | 数据库 | 用途 |
-|------|--------|------|
-| `development`（默认） | SQLite (`instance/development.db`) | 本地开发 |
-| `sqlite` | SQLite (`instance/development.db`) | 显式指定 SQLite |
-| `production` | SQLite (`instance/production.db`) | 生产部署 |
+| 配置                | 数据库                                | 用途          |
+| ----------------- | ---------------------------------- | ----------- |
+| `development`（默认） | SQLite (`instance/development.db`) | 本地开发        |
+| `sqlite`          | SQLite (`instance/development.db`) | 显式指定 SQLite |
+| `production`      | SQLite (`instance/production.db`)  | 生产部署        |
 
 切换配置：
 
@@ -342,16 +359,23 @@ python start_production_server.py
 ## 项目规范
 
 - OpenSpec 规范目录：[openspec/specs/](openspec/specs/)（17 个 capability spec）
+
 - 变更归档：[openspec/changes/archive/](openspec/changes/archive/)
+
 - 项目总纲：[openspec/project.md](openspec/project.md)
 
 ## 开发约定
 
 - 密码哈希使用 `werkzeug.security`（非 MD5）
+
 - 新框架通过 `framework/core_engine/adapter.py` 访问核心引擎
-- 专题模型通过统一能力注册表对应 question_types 1-6（1=稳定性、2=质量等级与提升潜力、3=障碍诊断、4=酸化、5=有机质培肥、6=model-6 占位），通过 QuestionTypeRouter 1:1 映射到单一专业智能体
+
+- 专题模型通过统一能力注册表对应 question\_types 1-6（1=稳定性、2=质量等级与提升潜力、3=障碍诊断、4=酸化、5=有机质培肥、6=model-6 占位），通过 QuestionTypeRouter 1:1 映射到单一专业智能体
+
 - 开发环境使用 SQLite（`instance/development.db`）
+
 - 生产环境使用 SQLite（`instance/production.db`）
+
 - API 认证头格式：`Authorization: Bearer <token>`
 
 ## License
