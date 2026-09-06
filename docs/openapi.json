@@ -649,7 +649,7 @@
       "post": {
         "tags": ["模型"],
         "summary": "执行专题模型",
-        "description": "执行指定正式专业模型，支持6项：stability-risk-evaluation、quality-grade-evaluation、obstacle-diagnosis、acidification-remediation、organic-matter-improvement、placeholder。model-5 使用韶关旱地/水田 RF 或全局 ETR；model-6 为占位能力。辅助空间/指标能力和实验性协同提升能力可独立调用，但不参与聊天路由。",
+        "description": "执行指定正式专业模型，支持6项：stability-risk-evaluation、quality-grade-evaluation、obstacle-diagnosis、acidification-remediation、organic-matter-improvement、placeholder。model-5 仅在真实 RF/ETR 成功且模型版本与来源完整时返回定量结果；缺少输入、模型文件、依赖或预测异常时，施用量和提升量为 null，并返回 MODEL5_QUANTITATIVE_UNAVAILABLE。model-6 为占位能力。",
         "security": [
           {
             "BearerAuth": []
@@ -741,7 +741,16 @@
                     "model_id": "organic-matter-improvement",
                     "area_code": "lechang",
                     "indicators": {
-                      "organic_matter": 18.5
+                      "pH": 6.2,
+                      "SOCbe": 18.5,
+                      "TN": 1.1,
+                      "TP": 0.8,
+                      "TK": 18.0,
+                      "AP": 25.0,
+                      "AK": 80.0,
+                      "Gap": 5.0,
+                      "Dose": 300.0,
+                      "Fertilizer type": 1
                     }
                   }
                 },
@@ -1105,7 +1114,7 @@
       "post": {
         "tags": ["县域诊断"],
         "summary": "县域诊断分析",
-        "description": "综合评估指定区域的土壤酸化状况，支持三种诊断主题（酸化诊断、质量总览、治理提升）",
+        "description": "执行县域结构化诊断。仅有模板建议时返回 HTTP 200、status=degraded、result_kind=advisory_only，定量字段为 null；只有具备字段级来源和计算依据的结果才返回非空定量值。",
         "security": [
           {
             "BearerAuth": []
@@ -1155,7 +1164,7 @@
         },
         "responses": {
           "200": {
-            "description": "成功",
+            "description": "真实诊断成功或安全降级的模板建议",
             "content": {
               "application/json": {
                 "schema": {
@@ -1163,7 +1172,8 @@
                   "properties": {
                     "status": {
                       "type": "string",
-                      "example": "ok"
+                      "enum": ["ok", "degraded"],
+                      "example": "degraded"
                     },
                     "data": {
                       "$ref": "#/components/schemas/CountyDiagnosis"
@@ -1193,7 +1203,7 @@
               "schema": {
                 "$ref": "#/components/schemas/CountyDiagnosis"
               },
-              "description": "诊断结果或模型执行结果（必须包含 status: ok）"
+              "description": "结构完整的县域诊断结果（status 必须为 ok 或 degraded）"
             }
           }
         },
@@ -1207,7 +1217,8 @@
                   "properties": {
                     "status": {
                       "type": "string",
-                      "example": "ok"
+                      "enum": ["ok", "degraded"],
+                      "example": "degraded"
                     },
                     "data": {
                       "$ref": "#/components/schemas/ReportSummary"
@@ -1498,7 +1509,22 @@
       },
       "CountyDiagnosis": {
         "type": "object",
+        "required": ["status", "diagnosis_id", "topic", "area", "summary", "reliability"],
         "properties": {
+          "status": {
+            "type": "string",
+            "enum": ["ok", "degraded"],
+            "description": "具备可验证结果时为 ok，仅有定性建议时为 degraded"
+          },
+          "result_kind": {
+            "type": "string",
+            "nullable": true,
+            "enum": ["advisory_only", "validated_result"],
+            "description": "结果性质；模板建议使用 advisory_only"
+          },
+          "diagnosis_id": {
+            "type": "string"
+          },
           "topic": {
             "type": "object",
             "properties": {
@@ -1510,91 +1536,306 @@
               }
             }
           },
-          "area_code": {
-            "type": "string"
-          },
-          "findings": {
-            "type": "array",
-            "description": "诊断发现"
-          },
-          "recommendations": {
-            "type": "array",
-            "description": "治理建议"
-          },
-          "reliability": {
-            "type": "object",
-            "properties": {
-              "level": {
-                "type": "string"
-              }
-            }
-          }
-        }
-      },
-      "ModelRunResult": {
-        "type": "object",
-        "properties": {
-          "status": {
-            "type": "string",
-            "example": "ok"
-          },
-          "model": {
-            "$ref": "#/components/schemas/ThematicModel"
-          },
           "area": {
             "type": "object",
-            "properties": {
-              "code": {
-                "type": "string"
-              },
-              "name": {
-                "type": "string"
-              }
-            }
+            "description": "区域编码、名称和层级"
           },
           "summary": {
-            "type": "string",
-            "description": "模型执行结果摘要"
+            "type": "string"
           },
-          "findings": {
-            "type": "array",
-            "items": {
-              "type": "object",
-              "properties": {
-                "title": {
-                  "type": "string"
-                },
-                "content": {
-                  "type": "string"
-                }
-              }
-            },
-            "description": "发现列表"
-          },
-          "recommendations": {
+          "evidence": {
             "type": "array",
             "items": {
               "type": "string"
             },
-            "description": "建议列表"
+            "description": "定性判定依据"
           },
           "recommended_layers": {
             "type": "array",
             "items": {
               "type": "string"
-            },
-            "description": "推荐图层"
+            }
           },
-          "lineage": {
+          "recommendations": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "治理建议"
+          },
+          "problems": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/CountyProblem"
+            }
+          },
+          "problem_distribution": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/CountyProblem"
+            },
+            "description": "problems 的兼容别名，遵守相同定量安全规则"
+          },
+          "measures": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/CountyMeasure"
+            }
+          },
+          "treatments": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/CountyMeasure"
+            },
+            "description": "measures 的兼容别名，不能恢复无依据数值"
+          },
+          "regions": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/CountyRegion"
+            },
+            "description": "仅包含有真实统计依据的重点区域；无可靠结果时为空数组"
+          },
+          "base_data": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/CountyRegion"
+            },
+            "description": "regions 的兼容别名；无可靠结果时为空数组"
+          },
+          "quantitative_estimates": {
             "type": "object",
-            "description": "数据溯源信息"
+            "properties": {
+              "status": {
+                "type": "string",
+                "enum": ["available", "unavailable"]
+              },
+              "reason": {
+                "type": "string"
+              },
+              "fields": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              }
+            }
           },
           "reliability": {
             "$ref": "#/components/schemas/Reliability"
+          }
+        }
+      },
+      "MetricMetadata": {
+        "type": "object",
+        "required": ["status", "reason", "unit", "source", "method", "model_version", "calculated_at", "scope"],
+        "description": "字段级定量依据。status=unavailable 时值必须为 null；status=available 时 source、method、calculated_at、scope 必须非空，适用时提供 model_version。",
+        "properties": {
+          "status": {
+            "type": "string",
+            "enum": ["available", "unavailable"]
           },
-          "fallback": {
+          "reason": {
+            "type": "string",
+            "nullable": true
+          },
+          "unit": {
+            "type": "string",
+            "nullable": true
+          },
+          "source": {
+            "type": "string",
+            "nullable": true
+          },
+          "method": {
+            "type": "string",
+            "nullable": true
+          },
+          "model_version": {
+            "type": "string",
+            "nullable": true
+          },
+          "calculated_at": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "scope": {
+            "type": "object"
+          }
+        },
+        "example": {
+          "status": "available",
+          "reason": null,
+          "unit": "%",
+          "source": "county_quality_statistics_2026",
+          "method": "area_weighted_statistics",
+          "model_version": "quality-stat-v1",
+          "calculated_at": "2026-09-05T10:00:00+08:00",
+          "scope": {
+            "type": "county",
+            "id": "lechang"
+          }
+        }
+      },
+      "CountyProblem": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string"
+          },
+          "percent": {
+            "type": "number",
+            "nullable": true
+          },
+          "advisory_only": {
+            "type": "boolean"
+          },
+          "basis": {
+            "type": "string"
+          },
+          "metric_meta": {
             "type": "object",
-            "description": "降级策略信息"
+            "properties": {
+              "percent": {
+                "$ref": "#/components/schemas/MetricMetadata"
+              }
+            }
+          }
+        }
+      },
+      "CountyMeasure": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string"
+          },
+          "apply": {
+            "type": "string"
+          },
+          "cost": {
+            "type": "number",
+            "nullable": true
+          },
+          "improve": {
+            "type": "number",
+            "nullable": true
+          },
+          "period": {
+            "type": "string",
+            "nullable": true
+          },
+          "advisory_only": {
+            "type": "boolean"
+          },
+          "basis": {
+            "type": "string"
+          },
+          "metric_meta": {
+            "type": "object",
+            "properties": {
+              "cost": {
+                "$ref": "#/components/schemas/MetricMetadata"
+              },
+              "improve": {
+                "$ref": "#/components/schemas/MetricMetadata"
+              },
+              "period": {
+                "$ref": "#/components/schemas/MetricMetadata"
+              }
+            }
+          }
+        }
+      },
+      "CountyRegion": {
+        "type": "object",
+        "properties": {
+          "region": {
+            "type": "string"
+          },
+          "weight": {
+            "type": "number",
+            "nullable": true
+          },
+          "effect": {
+            "type": "number",
+            "nullable": true
+          },
+          "metric_meta": {
+            "type": "object",
+            "properties": {
+              "weight": {
+                "$ref": "#/components/schemas/MetricMetadata"
+              },
+              "effect": {
+                "$ref": "#/components/schemas/MetricMetadata"
+              }
+            }
+          }
+        }
+      },
+      "Model5Result": {
+        "type": "object",
+        "description": "Model-5 业务结果。没有可验证的真实模型依据时，所有预测、施用量及提升量字段均为 null。",
+        "properties": {
+          "organic_matter": {"type": "number", "nullable": true, "description": "调用方提供或权威数据源中的实测有机质；不得由默认值生成。"},
+          "level": {"type": "string", "nullable": true, "description": "仅可由真实有机质实测值生成的定性等级。"},
+          "soc_prediction": {"type": "number", "nullable": true},
+          "dose_prediction": {"type": "number", "nullable": true, "description": "真实 RF/ETR 施用量预测；降级时为 null。"},
+          "dose": {"type": "number", "nullable": true, "deprecated": true, "description": "兼容别名；不得由客户端回填。"},
+          "manure_dosage": {"type": "number", "nullable": true, "deprecated": true, "description": "兼容别名；不得恢复旧规则值。"},
+          "potential_increase": {"type": "number", "nullable": true, "deprecated": true, "description": "当前没有经验证的预测模型，保持 null。"},
+          "soc_confidence": {"type": "number", "nullable": true},
+          "dose_confidence": {"type": "number", "nullable": true},
+          "region": {"type": "string", "nullable": true},
+          "land_type": {"type": "string", "nullable": true},
+          "imputed_features": {"type": "array", "items": {"type": "string"}}
+        }
+      },
+      "ModelRunResult": {
+        "type": "object",
+        "required": ["model_id", "status", "subject", "result", "meta", "issues"],
+        "properties": {
+          "model_id": {
+            "type": "string",
+            "description": "规范公开模型标识"
+          },
+          "status": {
+            "type": "string",
+            "enum": ["ok", "degraded", "rejected", "unavailable", "error"]
+          },
+          "subject": {
+            "type": "object",
+            "properties": {
+              "type": {"type": "string"},
+              "id": {"type": "string", "nullable": true}
+            }
+          },
+          "result": {
+            "nullable": true,
+            "oneOf": [
+              {"$ref": "#/components/schemas/Model5Result"},
+              {"type": "object"}
+            ]
+          },
+          "meta": {
+            "type": "object",
+            "properties": {
+              "data_source": {"type": "string"},
+              "simulated": {"type": "boolean"},
+              "model_version": {"type": "string", "nullable": true}
+            }
+          },
+          "issues": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "code": {"type": "string", "example": "MODEL5_QUANTITATIVE_UNAVAILABLE"},
+                "severity": {"type": "string"},
+                "message": {"type": "string"}
+              }
+            }
           }
         }
       },
@@ -1603,7 +1844,15 @@
         "properties": {
           "level": {
             "type": "string",
-            "example": "demo_stub"
+            "example": "insufficient_evidence"
+          },
+          "predictive": {
+            "type": "boolean",
+            "example": false
+          },
+          "quantitative_available": {
+            "type": "boolean",
+            "example": false
           },
           "message": {
             "type": "string",
@@ -1616,7 +1865,13 @@
         "properties": {
           "status": {
             "type": "string",
-            "example": "ok"
+            "enum": ["ok", "degraded"],
+            "example": "degraded"
+          },
+          "result_kind": {
+            "type": "string",
+            "nullable": true,
+            "example": "advisory_only"
           },
           "diagnosis_id": {
             "type": "string",
@@ -1659,6 +1914,13 @@
             },
             "description": "待执行动作"
           },
+          "reliability": {
+            "$ref": "#/components/schemas/Reliability"
+          },
+          "quantitative_estimates": {
+            "type": "object",
+            "description": "原诊断的定量可用性状态"
+          },
           "source": {
             "type": "object",
             "properties": {
@@ -1670,6 +1932,14 @@
                 "items": {
                   "type": "string"
                 }
+              },
+              "diagnosis_status": {
+                "type": "string",
+                "enum": ["ok", "degraded"]
+              },
+              "result_kind": {
+                "type": "string",
+                "nullable": true
               },
               "reliability": {
                 "$ref": "#/components/schemas/Reliability"

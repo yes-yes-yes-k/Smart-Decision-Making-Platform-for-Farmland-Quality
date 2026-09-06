@@ -212,6 +212,8 @@ python scripts/generate_basemap_tiles.py --source data/gd_tif_normalized.tif --o
 | POST | `/api/v1/county/diagnose` | 结构化诊断    |
 | POST | `/api/v1/report/summary`  | 报告汇总     |
 
+县域诊断在缺少可验证定量依据时返回 `status=degraded`、`result_kind=advisory_only`；可空指标应显示“暂无可靠估计”，客户端不得回填固定数字。
+
 ### 数据导入
 
 | 方法   | 路径                    | 说明                                          |

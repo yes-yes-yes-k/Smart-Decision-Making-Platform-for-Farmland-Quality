@@ -14,6 +14,7 @@ PYTHON_FEATURES = {
     "AP": 25.0,
     "AK": 80.0,
     "Gap": 5.0,
+    "Dose": 300.0,
     "Fertilizer type": 1,
 }
 
@@ -26,6 +27,7 @@ EXTERNAL_FEATURES = {
     "YXL": 25.0,
     "SXJ": 80.0,
     "YJZTSZ": 5.0,
+    "Dose": 300.0,
     "YJFLX": 1,
 }
 
@@ -52,6 +54,7 @@ def test_external_fields_and_sombe_are_normalized():
         "AP": 25.0,
         "AK": 80.0,
         "Gap": 5.0,
+        "Dose": 300.0,
         "Fertilizer type": 1,
     }
 
@@ -87,14 +90,15 @@ def test_model5_global_and_shaoguan_paths_return_real_metadata():
     assert paddy_result["land_type"] == "paddy"
 
 
-def test_model5_accepts_land_type_inside_input_and_imputes_missing_features():
+def test_model5_missing_features_are_quantitatively_unavailable():
     from framework.domain.other_models.model_5 import model_5_execution
 
     result = model_5_execution({"area_code": "lechang", "land_type": "paddy", "pH": 6.2})
-    assert result["status"] == "success"
-    assert result["land_type"] == "paddy"
-    assert result["imputation_applied"] is True
-    assert result["imputed_features"]
+    assert result["status"] == "degraded"
+    assert result["reason"] == "MODEL5_INPUT_MISSING"
+    assert result["soc_prediction"] is None
+    assert result["dose_prediction"] is None
+    assert result["missing_features"]
 
 
 def test_model5_rejects_out_of_range_input():
@@ -112,10 +116,15 @@ def test_model5_dependency_unavailable_has_machine_readable_fallback(monkeypatch
 
     monkeypatch.setattr(model5, "_SKLEARN_AVAILABLE", False)
     result = model5.model_5_execution({"pH": 6.2})
-    assert result["status"] == "fallback"
+    assert result["status"] == "degraded"
     assert result["fallback_reason"] == "sklearn_missing"
+    assert result["reason"] == "MODEL5_DEPENDENCY_UNAVAILABLE"
     assert result["model_id"] == "model-5"
     assert result["simulated"] is True
+    assert result["soc_prediction"] is None
+    assert result["dose_prediction"] is None
+    assert result["manure_dosage"] is None
+    assert result["potential_increase"] is None
 
 
 def test_organic_agent_and_model_registry_keep_model6_placeholder():

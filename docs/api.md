@@ -873,7 +873,7 @@ Model-4 无空间对象情景试算：
 
 **POST** `/api/v1/models/run`
 
-请求 `model_id` 使用公开标识 `organic-matter-improvement`。韶关区域按 `land_type` 选择旱地/水田 RF；规范字段也可以替换为外部模型字段 `SJD/YJZ/TD/TL/TJ/YXL/SXJ/YJZTSZ/YJFLX`。
+请求 `model_id` 使用公开标识 `organic-matter-improvement`。韶关区域按 `land_type` 选择旱地/水田 RF；规范字段也可以替换为外部模型字段 `SJD/YJZ/TD/TL/TJ/YXL/SXJ/YJZTSZ/YJFLX`。真实预测要求模型所需输入完整，SOC 模型使用的 `Dose` 也必须由调用方提供，服务端不再使用训练均值补齐缺失特征。
 
 ```json
 {
@@ -888,11 +888,14 @@ Model-4 无空间对象情景试算：
     "AP": 25.0,
     "AK": 80.0,
     "Gap": 5.0,
+    "Dose": 300.0,
     "Fertilizer type": 1
 }
 ```
 
-响应中的 `model_id` 为 `model-5`，并包含 `soc_prediction`、`dose_prediction`、`dose_confidence`、`model_version=SG_RF_v2_20260804` 和 `simulated=false`。缺少特征、模型文件或依赖时，响应会明确标记 `fallback`/`simulated` 与 `fallback_reason`，不会伪装为 RF 成功结果。`model_id=placeholder` 对应 model-6 占位能力，不调用该 RF 引擎。
+成功响应包含 `soc_prediction`、`dose_prediction`、`dose_confidence`、真实 `model_version` 和 `simulated=false`。缺少特征、模型文件、运行依赖或预测异常时，响应为 `degraded` 或 `unavailable`，`issues` 包含 `MODEL5_QUANTITATIVE_UNAVAILABLE`；`soc_prediction`、`dose_prediction`、`dose`、`manure_dosage` 和 `potential_increase` 均为 `null`。客户端不得使用历史等级表或本地默认数字回填。`potential_increase` 在建立并验证独立预测模型前始终不可用。
+
+报告只展示能够关联到执行日志、`simulated=false`、真实 RF/ETR 来源且模型版本完整的施用量。模拟、规则降级、来源不明或孤立历史记录均显示“暂无可靠估计”；旧 `potential_increase` 不再作为有效预期提升展示。
 
 ---
 
@@ -1034,34 +1037,83 @@ Model-4 无空间对象情景试算：
 请求体：
 ```json
 {
+    "topic": "acidification",
     "area_code": "lechang",
-    "target_ph": 6.0
+    "longitude": 113.35,
+    "latitude": 25.13
 }
 ```
 
 | 字段 | 类型 | 必填 | 说明 |
 |------|------|------|------|
 | `area_code` | string | 否 | 区域代码（默认 "lechang"） |
-| `target_ph` | float | 否 | 目标 pH 值（默认 6.0） |
+| `topic` | string | 是 | `acidification`、`quality` 或 `improvement` |
+| `longitude` | float | 否 | 经度；缺失时仅返回县域级定性建议 |
+| `latitude` | float | 否 | 纬度；缺失时仅返回县域级定性建议 |
 
-成功响应（200）：
+模板建议响应（HTTP 200）：
 ```json
 {
-    "status": "ok",
+    "status": "degraded",
     "data": {
-        "area": "lechang",
-        "assessment": {
-            "level": "中度",
-            "ph": 5.2
+        "status": "degraded",
+        "result_kind": "advisory_only",
+        "topic": {"id": "acidification", "name": "酸化诊断"},
+        "problems": [{
+            "name": "土壤酸化风险待核验",
+            "percent": null,
+            "advisory_only": true,
+            "basis": "template_guidance",
+            "metric_meta": {
+                "percent": {
+                    "status": "unavailable",
+                    "reason": "validated_statistics_unavailable",
+                    "unit": "%",
+                    "source": null,
+                    "method": null,
+                    "model_version": null,
+                    "calculated_at": null,
+                    "scope": {"type": "county", "id": "lechang"}
+                }
+            }
+        }],
+        "measures": [{
+            "name": "土壤酸化改良措施",
+            "cost": null,
+            "improve": null,
+            "period": null,
+            "advisory_only": true,
+            "basis": "template_guidance"
+        }],
+        "regions": [],
+        "base_data": [],
+        "reliability": {
+            "level": "insufficient_evidence",
+            "predictive": false,
+            "quantitative_available": false
         },
-        "calculation": {
-            "lime_demand": 1800,
-            "target_ph": 6.0,
-            "safety_factor": 1.3
+        "quantitative_estimates": {
+            "status": "unavailable",
+            "reason": "validated_quantitative_results_unavailable"
         }
     }
 }
 ```
+
+未来返回非空定量值时，对应 `metric_meta` 至少必须包含 `source`、`method`、`calculated_at`、`scope`，适用时还要包含 `model_version`；缺少这些依据的数值会被响应契约拒绝。非法主题仍返回 `status=error` 和 `error.code=INVALID_TOPIC`。
+
+#### 旧客户端迁移
+
+- 将 `degraded` 视为 HTTP 请求成功但证据不足的安全降级结果，不要改写为 `ok`。
+- `period`、`improve`、`effect`、`cost` 和问题 `percent` 均可能为 `null`，界面应显示“暂无可靠估计”。
+- 不要用本地默认数字、固定周期或历史占位值替换 `null`。
+- `regions` 和 `base_data` 可能为空数组，表示当前没有可靠的重点区域统计或排序。
+
+### 诊断摘要
+
+**POST** `/api/v1/report/summary`
+
+请求体直接传入县域诊断内部结果，即 `/api/v1/county/diagnose` 响应的 `data`。`status=ok` 和 `status=degraded` 均可接受；摘要会原样传播 `status`、`result_kind`、`reliability` 和 `quantitative_estimates`，不会根据空字段补造数值。
 
 ---
 

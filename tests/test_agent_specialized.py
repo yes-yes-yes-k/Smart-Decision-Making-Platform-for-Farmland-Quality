@@ -239,9 +239,11 @@ def test_organic_matter_agent_execute():
     assert result["status"] == "degraded"
     assert result["metadata"]["simulated"] is True
     assert "level" in result["result"]
-    assert "manure_dosage" in result["result"]
-    assert "potential_increase" in result["result"]
-    print("✓ OrganicMatterAgent.execute 返回有机质分级与施用量")
+    assert result["result"]["organic_matter"] is None
+    assert result["result"]["manure_dosage"] is None
+    assert result["result"]["potential_increase"] is None
+    assert result["result"]["dose"] is None
+    print("✓ OrganicMatterAgent.execute 缺输入时不返回默认均值或施用量")
 
 
 def test_organic_matter_agent_answer_question_content():
@@ -250,6 +252,7 @@ def test_organic_matter_agent_answer_question_content():
     out = agent.answer_question("全省耕地土壤有机质含量如何？", {})
     assert out["simulated"] is True
     assert "有机质" in out["answer"]
+    assert "22.0" not in out["answer"]
     print("✓ OrganicMatterAgent 返回有机质含量评估")
 
 
@@ -258,9 +261,10 @@ def test_organic_matter_agent_answer_question_dosage():
     agent = OrganicMatterAgent()
     out = agent.answer_question("有机肥每亩施用量多少？", {})
     assert out["simulated"] is True
-    assert "kg" in out["answer"] or "有机肥" in out["answer"]
-    assert any("manure_dosage" in str(e) or "有机肥" in str(e) for e in out["evidence"])
-    print("✓ OrganicMatterAgent 返回有机肥施用量建议")
+    assert "无法" in out["answer"]
+    assert "kg/亩" not in out["answer"]
+    assert not any("manure_dosage" in str(e) for e in out["evidence"])
+    print("✓ OrganicMatterAgent 缺模型时不返回有机肥定量建议")
 
 
 def test_stability_agent_db_path(monkeypatch):
@@ -610,7 +614,8 @@ def test_acidification_agent_build_result_record_legacy_none():
 
 
 def test_organic_matter_agent_db_path(monkeypatch):
-    """DB 命中时 data_source="db"。"""
+    """DB 命中且 RF 成功时记录真实模型来源与版本。"""
+    from types import SimpleNamespace
     from framework.agents.specialized.organic_matter_agent import OrganicMatterAgent
     from framework.domain.data.parcel_data_accessor import ParcelDataAccessor
 
@@ -621,9 +626,27 @@ def test_organic_matter_agent_db_path(monkeypatch):
             "available_potassium": 120.0, "SOCbe": 15.0,
         }
     )
+    monkeypatch.setattr(
+        ParcelDataAccessor,
+        "_map_indicators_to_inputs",
+        lambda self, values, model: {"pH": 5.5, "SOMbe": 22.0, "AK": 120.0, "AP": 18.0, "TN": 1.2},
+    )
+    monkeypatch.setattr(
+        "framework.domain.calculations.organic_matter_calculation.predict_dose",
+        lambda inputs, land_type: SimpleNamespace(
+            dose=150.0,
+            simulated=False,
+            status="ok",
+            reason=None,
+            model_version="rf-test-v1",
+            data_source="rf_model",
+        ),
+    )
     agent = OrganicMatterAgent()
     result = agent.execute({"parcel_id": "P001"})
-    assert result["data_source"] == "db"
+    assert result["data_source"] == "rf_model"
+    assert result["result"]["dose_prediction"] == 150.0
+    assert result["metadata"]["model_version"] == "rf-test-v1"
 
 
 def test_organic_matter_agent_fallback_path(monkeypatch):
@@ -638,6 +661,7 @@ def test_organic_matter_agent_fallback_path(monkeypatch):
     agent = OrganicMatterAgent()
     result = agent.execute({"parcel_id": "NOT_IN_DB"})
     assert result["data_source"] == "rule_fallback"
+    assert all(result["result"][key] is None for key in ("dose", "dose_prediction", "manure_dosage", "potential_increase"))
 
 
 def test_organic_matter_agent_no_parcel_id_uses_fallback():
@@ -646,6 +670,7 @@ def test_organic_matter_agent_no_parcel_id_uses_fallback():
     agent = OrganicMatterAgent()
     result = agent.execute({"area_code": "lechang"})
     assert result["data_source"] == "rule_fallback"
+    assert result["result"]["organic_matter"] is None
 
 
 def test_organic_matter_agent_persist_success(monkeypatch):
@@ -676,7 +701,7 @@ def test_organic_matter_agent_persist_failure(monkeypatch):
     monkeypatch.setattr(agent, "_persist_result", lambda *a, **kw: False)
     result = agent.execute({"parcel_id": "P001"})
     assert result["persisted"] is False
-    assert result["status"] == "ok"
+    assert result["status"] == "degraded"
 
 
 def test_organic_matter_agent_degraded_logs_status(monkeypatch):

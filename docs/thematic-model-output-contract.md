@@ -28,6 +28,12 @@
 六个正式模型的业务字段只出现在 `data.result`。`status` 只能是
 `ok`、`degraded`、`rejected`、`unavailable` 或 `error`；失败状态的 `result` 为 `null`。
 
+Model-5 的定量字段采用来源门禁。只有 `meta.simulated=false`、
+`meta.data_source` 为真实 RF/ETR 来源且 `meta.model_version` 非空时，
+`soc_prediction` 或 `dose_prediction` 才可为非空。规则降级、模拟、来源不明、
+缺输入、缺依赖和模型异常均传播 `MODEL5_QUANTITATIVE_UNAVAILABLE`，并保持
+`dose_prediction`、`dose`、`manure_dosage` 和 `potential_increase` 为 `null`。
+
 聊天接口默认只返回 `message_id`、`answer`、`sources`、`recommendations` 和 `routing`。
 需要模型摘要时，在请求中加入 `include_model_results=true`，返回 `data.models` 的精简投影。
 RAG 问题不会返回 `models`。
@@ -36,6 +42,10 @@ RAG 问题不会返回 `models`。
 
 在迁移完成前，可在专题模型或聊天请求中加入 `response_schema: "1.0"`。
 旧响应由 Schema 2.0 规范结果单向投影生成，并带有 `SCHEMA_1_DEPRECATED` 提示；旧结构不会参与模型计算。
+
+对于 Model-5，Schema 1.0 可以保留旧字段名，但字段值仍为 `null`，并带有
+`MODEL5_QUANTITATIVE_UNAVAILABLE` 弃用信息。旧客户端必须显式处理 `null`；
+禁止在浏览器、移动端、网关或报表层用历史固定等级表、本地默认值或缓存数字回填。
 
 | 旧字段 | Schema 2.0 | 说明 |
 | --- | --- | --- |

@@ -80,12 +80,16 @@ def test_model5_database_dose_only_result_is_complete_for_db_capability():
         agent,
         {"parcel_id":"4190", "land_type":"upland"},
         {
-            "status":"ok", "data_source":"db", "simulated":False,
-            "result":{"parcel_id":"4190", "dose":223.7},
+            "status":"ok", "data_source":"rf_model", "simulated":False,
+            "model_version":"upland-dose-test-v1",
+            "result":{"parcel_id":"4190", "dose":223.7, "model_version":"upland-dose-test-v1"},
         },
     )
     assert result["status"] == "ok"
     assert result["result"]["dose_prediction"] == 223.7
+    assert result["result"]["dose"] == 223.7
+    assert result["result"]["manure_dosage"] == 223.7
+    assert result["result"]["potential_increase"] is None
     assert not result["issues"]
 
 
@@ -100,8 +104,38 @@ def test_model5_ml_partial_result_still_reports_missing_predictions():
         {"parcel_id":"4190", "land_type":"upland"},
         {
             "status":"ok", "data_source":"global_etr", "simulated":False,
-            "result":{"parcel_id":"4190", "dose_prediction":223.7},
+            "model_version":"global-test-v1",
+            "result":{"parcel_id":"4190", "dose_prediction":223.7, "model_version":"global-test-v1"},
         },
     )
     assert result["status"] == "degraded"
     assert result["issues"][0]["code"] == "PARTIAL_PREDICTION"
+
+
+def test_model5_untrusted_aliases_are_cleared_in_every_projection():
+    agent = type("Agent", (), {
+        "model_id": "organic-matter-improvement",
+        "agent_id": "model-5",
+        "capability": {"model_id": "organic-matter-improvement"},
+    })()
+    model = normalize_execution(
+        agent,
+        {"parcel_id": "P-1"},
+        {
+            "status": "degraded",
+            "data_source": "rule_fallback",
+            "simulated": True,
+            "result": {"manure_dosage": 1000.0, "potential_increase": 1.5, "dose": 135.0},
+        },
+    )
+    assert model["status"] == "degraded"
+    assert "MODEL5_QUANTITATIVE_UNAVAILABLE" in {item["code"] for item in model["issues"]}
+    for projected in (model, chat_compact(model), llm_context(model)):
+        result = projected["result"]
+        assert result.get("dose_prediction") is None
+        assert result.get("dose") is None
+        assert result.get("manure_dosage") is None
+        assert result.get("potential_increase") is None
+    legacy = legacy_projection(model)
+    assert legacy["evidence"]["dose_prediction"] is None
+    assert legacy["deprecation"]["code"] == "MODEL5_QUANTITATIVE_UNAVAILABLE"

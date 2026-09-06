@@ -51,12 +51,13 @@ def get_report_summary():
     if not data:
         return jsonify({"status": "error", "error": {"code": "MISSING_DIAGNOSIS", "message": "需要传入诊断结果或报告类型"}}), 400
 
-    if data.get('status') != 'ok' and not data.get('report_type'):
-        return jsonify({"status": "error", "error": {"code": "MISSING_DIAGNOSIS", "message": "需要传入成功的诊断结果或报告类型"}}), 400
+    if data.get('status') not in {'ok', 'degraded'} and not data.get('report_type'):
+        return jsonify({"status": "error", "error": {"code": "MISSING_DIAGNOSIS", "message": "需要传入 ok 或 degraded 的诊断结果或报告类型"}}), 400
 
     result = core_engine.build_report_summary(data)
-    if result.get('status') == 'ok':
-        return jsonify({"status": "ok", "data": result})
+    status = result.get('status')
+    if status in {'ok', 'degraded'}:
+        return jsonify({"status": status, "data": result})
     return jsonify(result)
 
 

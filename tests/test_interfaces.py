@@ -27,15 +27,18 @@ class InterfaceTests(unittest.TestCase):
             }
         )
 
-        self.assertEqual(result["status"], "ok")
+        self.assertEqual(result["status"], "degraded")
+        self.assertEqual(result["result_kind"], "advisory_only")
         self.assertEqual(result["topic"]["id"], "acidification")
         self.assertIn("recommended_layers", result)
-        self.assertFalse(result["fallback"]["used"])
+        self.assertTrue(result["fallback"]["used"])
+        self.assertFalse(result["reliability"]["predictive"])
+        self.assertFalse(result["reliability"]["quantitative_available"])
 
     def test_diagnosis_marks_missing_location_fallback(self):
         result = diagnose_county({"topic": "quality", "area_code": "lechang"})
 
-        self.assertEqual(result["status"], "ok")
+        self.assertEqual(result["status"], "degraded")
         self.assertTrue(result["fallback"]["used"])
         self.assertIn("longitude", result["fallback"]["fields"])
 
@@ -49,10 +52,12 @@ class InterfaceTests(unittest.TestCase):
         diagnosis = diagnose_county({"topic": "improvement", "area_code": "lechang"})
         result = build_report_summary(diagnosis)
 
-        self.assertEqual(result["status"], "ok")
+        self.assertEqual(result["status"], "degraded")
+        self.assertEqual(result["result_kind"], "advisory_only")
         self.assertEqual(result["diagnosis_id"], diagnosis["diagnosis_id"])
         self.assertIn("findings", result)
         self.assertIn("actions", result)
+        self.assertFalse(result["reliability"]["quantitative_available"])
 
     def test_runtime_check_has_no_external_runtime_dependency(self):
         result = verify_standalone_runtime()

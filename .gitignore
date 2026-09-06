@@ -102,4 +102,4 @@ logs/
 
 # Codex 本地配置
 .codex/
-.understand-anything/domain-graph.json
+.understand-anything

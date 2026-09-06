@@ -118,8 +118,8 @@ def test_organic_content_overall():
     out = OrganicMatterAgent().answer_question(
         "全省耕地土壤有机质含量如何，空间分布情况？", {})
     assert out["simulated"] is True
-    # 收紧：实现产出 "全省耕地有机质含量平均..."
-    assert "全省耕地有机质含量平均" in out["answer"]
+    assert "缺少可验证的有机质实测值" in out["answer"]
+    assert "平均" not in out["evidence"]
 
 
 def test_organic_manure_straw_dosage():
@@ -128,8 +128,8 @@ def test_organic_manure_straw_dosage():
     out = OrganicMatterAgent().answer_question(
         "为了提升耕地土壤有机质，有机肥或者秸秆每亩施用量多少？", {})
     assert out["simulated"] is True
-    # 收紧：实现产出 "建议有机肥施用量 {manure_dosage} kg/亩..."
-    assert "建议有机肥施用量" in out["answer"]
+    assert "无法" in out["answer"]
+    assert "kg/亩" not in out["answer"]
 
 
 def test_organic_county_average():
@@ -137,8 +137,7 @@ def test_organic_county_average():
     from framework.agents.specialized.organic_matter_agent import OrganicMatterAgent
     out = OrganicMatterAgent().answer_question("本县耕地土壤有机质平均含量是多少？", {})
     assert out["simulated"] is True
-    # 收紧：实现产出 "本县耕地土壤有机质平均含量..."
-    assert "本县耕地土壤有机质平均含量" in out["answer"]
+    assert "无法给出县域平均值" in out["answer"]
 
 
 def test_organic_low_value_reason():
