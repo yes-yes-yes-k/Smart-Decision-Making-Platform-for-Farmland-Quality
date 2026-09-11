@@ -46,6 +46,24 @@ def test_parcel_resolver_builds_backend_owned_parent_path(app):
         assert obj.area_code == "440281"
 
 
+def test_village_resolver_builds_full_administrative_path(app):
+    with app.app_context():
+        db.session.add_all([
+            _region("province", "44", "广东省", area_code="44"),
+            _region("city", "4402", "韶关市", area_code="4402", parent=("province", "44")),
+            _region("county", "440281", "乐昌市", area_code="440281", parent=("city", "4402")),
+            _region("township", "440281001", "乐城街道", area_code="440281001", parent=("county", "440281")),
+            _region("village", "440281001208", "河南村", area_code="440281001208", parent=("township", "440281001")),
+        ])
+        db.session.commit()
+        obj = SpatialObjectResolverRegistry().resolve(
+            ObjectType.VILLAGE, "440281001208", user_id=7,
+        )
+        assert [item.type.value for item in obj.parent_path] == [
+            "province", "city", "county", "township",
+        ]
+
+
 def test_disabled_region_is_invalid(app):
     with app.app_context():
         db.session.add(_region("county", "440281", "乐昌市", enabled=False))
