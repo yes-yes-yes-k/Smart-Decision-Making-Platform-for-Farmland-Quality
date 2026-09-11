@@ -1117,6 +1117,170 @@ Model-4 无空间对象情景试算：
 
 ---
 
+## 耕地空间统计接口
+
+接口统一前缀为 `/api/v1/farmland-statistics`，均需携带 JWT。完整字段定义、示例和错误响应已导出到 [`openapi.json`](openapi.json)，可直接导入 Apifox、Swagger UI 等工具；统计口径和前端联动建议见 [`farmland-statistics-api.md`](farmland-statistics-api.md)。
+
+### 获取指标配置
+
+**GET** `/api/v1/farmland-statistics/metrics`
+
+返回 8 项指标的名称、来源字段、单位、精度、分级区间和颜色。前端应以此响应生成图例，避免重复硬编码。所有最高档均不封顶，例如有机质大于 40 仍属于“高”档并使用统一颜色。
+
+指标 key：
+
+| key | 指标 | 单位 | 分级区间 |
+|-----|------|------|----------|
+| `quality_grade` | 耕地质量等级 | 等 | 1–10 等，各等级单独分档 |
+| `soil_ph` | 酸化 pH 情况 | pH | 极强酸性 `<4.5`；强酸性 `[4.5,5.5)`；酸性 `[5.5,6.5)`；中性 `[6.5,7.5]`；碱性 `>7.5` |
+| `organic_matter` | 有机质含量 | g/kg | 低 `(0,10]`；中低 `(10,20]`；中高 `(20,25]`；高 `(25,+∞)` |
+| `available_phosphorus` | 有效磷含量 | mg/kg | 低 `(0,10]`；中低 `(10,20]`；中高 `(20,35]`；高 `(35,+∞)` |
+| `available_potassium` | 速效钾含量 | mg/kg | 低 `(0,50]`；中低 `(50,100]`；中高 `(100,150]`；高 `(150,+∞)` |
+| `bulk_density` | 土壤容重 | g/cm³ | 极低 `(0,0.9)`；低 `[0.9,0.95)`；偏低 `[0.95,1)`；正常 `[1,1.2]`；偏高 `(1.2,1.3]`；高 `(1.3,1.4]`；极高 `(1.4,+∞)` |
+| `plow_layer_thickness` | 耕层厚度 | cm | 极低 `(0,10]`；低 `(10,15]`；中 `(15,20)`；高 `[20,+∞)` |
+| `effective_soil_depth` | 有效土层厚度 | cm | 极低 `(0,60)`；低 `[60,80)`；中 `[80,100)`；高 `[100,+∞)` |
+
+### 查询行政区域
+
+**GET** `/api/v1/farmland-statistics/regions`
+
+| 查询参数 | 类型 | 必填 | 说明 |
+|----------|------|------|------|
+| `parent_type` | string | 否 | 父级类型，必须与 `parent_id` 同时提供 |
+| `parent_id` | string | 否 | 父级对象 ID，必须与 `parent_type` 同时提供 |
+| `include_disputes` | boolean | 否 | 是否包含不可选择的村间争议区，默认 `false` |
+
+```text
+# 查询乐昌市下的镇
+GET /api/v1/farmland-statistics/regions?parent_type=county&parent_id=440281
+
+# 查询某镇下的村
+GET /api/v1/farmland-statistics/regions?parent_type=township&parent_id=440281001
+```
+
+区域对象会返回 `regionType`、`regionId`、`displayName`、`areaCode`、父级信息、`selectable` 和 `hasGeometry`。当前区域代码来自区域目录和空间审计，不再固定为新丰县 `440233`。
+
+### 聚合统计
+
+**POST** `/api/v1/farmland-statistics/aggregate`
+
+按村等行政区域统计：
+
+```json
+{
+  "scope": {
+    "type": "administrative_region",
+    "region_type": "village",
+    "region_id": "440281001208"
+  },
+  "metrics": "all"
+}
+```
+
+按当前地图视窗统计：
+
+```json
+{
+  "scope": {
+    "type": "viewport",
+    "bbox": [113.0, 24.0, 114.0, 25.0]
+  },
+  "metrics": ["soil_ph", "organic_matter", "available_phosphorus"]
+}
+```
+
+`bbox` 坐标系为 WGS84，顺序是 `[minLon, minLat, maxLon, maxLat]`。地图缩放或平移后，前端可用新 bbox 再次请求；建议做 300–500 ms 防抖并取消过期请求。
+
+成功响应（200，节选）：
+
+```json
+{
+  "status": "ok",
+  "data": {
+    "dataAsOf": "2026-09-11T10:20:30",
+    "scopeSummary": {"parcelCount": 2, "totalAreaMu": 18.5},
+    "metrics": [{
+      "key": "organic_matter",
+      "label": "有机质含量",
+      "unit": "g/kg",
+      "table": {
+        "average": 26.42,
+        "totalAreaMu": 18.5,
+        "parcelCount": 2,
+        "validAreaMu": 18.5,
+        "validParcelCount": 2,
+        "range": {"min": 18.2, "max": 42.0}
+      },
+      "distribution": [{
+        "key": "high",
+        "label": "高",
+        "rangeLabel": "(25,+∞)",
+        "color": "#1A9850",
+        "lower": 25,
+        "upper": null,
+        "lowerInclusive": false,
+        "upperInclusive": false,
+        "parcelCount": 1,
+        "areaMu": 9.5,
+        "countPercent": 50.0,
+        "areaPercent": 51.3514
+      }],
+      "unclassified": {"parcelCount": 0, "areaMu": 0.0}
+    }],
+    "scope": {
+      "type": "administrative_region",
+      "regionType": "village",
+      "regionId": "440281001208",
+      "displayName": "示例村"
+    }
+  }
+}
+```
+
+`table.average` 是按裁剪后地块面积加权的平均值；总面积和分档面积单位均为亩。`distribution` 按等级顺序返回，可供柱状图和饼图共用；`unclassified` 单独承载缺值、非法值和未落入有效区间的数据。
+
+### 按经纬度点选地块
+
+**POST** `/api/v1/farmland-statistics/parcels/pick`
+
+```json
+{
+  "longitude": 113.35,
+  "latitude": 25.13
+}
+```
+
+返回命中地块的 `parcelId`、`areaCode`、`qualityGrade`、`organicMatter`、`soilPh` 和 `availablePhosphorus`。未命中返回 404；多个地块重叠时优先返回面积较小的地块。
+
+### 获取地块详情
+
+**GET** `/api/v1/farmland-statistics/parcels/{parcel_id}`
+
+返回字段与点选接口相同，供已知地块 ID 时直接加载详情。
+
+### 统计接口错误码
+
+错误响应统一为：
+
+```json
+{
+  "status": "error",
+  "code": "invalid_scope",
+  "message": "请求必须包含 scope 对象"
+}
+```
+
+| HTTP 状态码 | 说明 |
+|-------------|------|
+| 400 | 请求体、指标、父级、统计范围或经纬度无效 |
+| 401 | 未携带或无法验证 JWT |
+| 404 | 区域/地块不存在，或点选位置未命中地块 |
+| 409 | 区域存在但尚未导入边界 |
+| 500 | 统计服务内部错误 |
+| 503 | 区域目录、空间统计或地块点选服务暂时不可用 |
+
+---
+
 ## 数据导入接口
 
 ### 上传部署专题模型数据
