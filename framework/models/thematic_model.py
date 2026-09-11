@@ -554,6 +554,7 @@ class SpatialRegionCatalog(db.Model):
     parent_object_type = db.Column(db.String(16))
     parent_object_id = db.Column(db.String(64))
     layer_id = db.Column(db.BigInteger)
+    geom = db.Column(Geometry("MULTIPOLYGON", srid=4326), comment="行政区域边界（PostGIS）")
     source = db.Column(db.String(32), nullable=False)
     metadata_json = db.Column("metadata", db.JSON)
     enabled = db.Column(db.Boolean, nullable=False, server_default="true")
@@ -565,4 +566,5 @@ class SpatialRegionCatalog(db.Model):
         db.Index("idx_spatial_region_catalog_area_code", "area_code"),
         db.Index("idx_spatial_region_catalog_parent", "parent_object_type", "parent_object_id"),
         db.Index("idx_spatial_region_catalog_enabled", "enabled"),
+        db.Index("idx_spatial_region_catalog_geom", "geom", postgresql_using="gist"),
     )

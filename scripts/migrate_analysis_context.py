@@ -6,6 +6,11 @@ from collections.abc import Sequence
 
 import sqlalchemy as sa
 
+try:
+    from geoalchemy2 import Geometry
+except ImportError:  # pragma: no cover - only used by minimal migration environments
+    Geometry = None
+
 
 CONVERSATION_COLUMNS = {
     "analysis_object": "JSON",
@@ -71,7 +76,12 @@ def ensure_legacy_parcel_index(connection) -> None:
 
 def ensure_spatial_region_catalog(connection) -> None:
     metadata = sa.MetaData()
-    sa.Table(
+    geom_type = (
+        Geometry("MULTIPOLYGON", srid=4326)
+        if connection.dialect.name == "postgresql" and Geometry is not None
+        else sa.Text()
+    )
+    table = sa.Table(
         "spatial_region_catalog", metadata,
         sa.Column("id", sa.BigInteger().with_variant(sa.Integer, "sqlite"), primary_key=True, autoincrement=True),
         sa.Column("object_type", sa.String(16), nullable=False),
@@ -81,6 +91,7 @@ def ensure_spatial_region_catalog(connection) -> None:
         sa.Column("parent_object_type", sa.String(16)),
         sa.Column("parent_object_id", sa.String(64)),
         sa.Column("layer_id", sa.BigInteger),
+        sa.Column("geom", geom_type),
         sa.Column("source", sa.String(32), nullable=False),
         sa.Column("metadata", sa.JSON),
         sa.Column("enabled", sa.Boolean, nullable=False, server_default=sa.true()),
@@ -90,8 +101,44 @@ def ensure_spatial_region_catalog(connection) -> None:
         sa.Index("idx_spatial_region_catalog_area_code", "area_code"),
         sa.Index("idx_spatial_region_catalog_parent", "parent_object_type", "parent_object_id"),
         sa.Index("idx_spatial_region_catalog_enabled", "enabled"),
+        sa.Index(
+            "idx_spatial_region_catalog_geom",
+            "geom",
+            postgresql_using="gist",
+        ),
     )
     metadata.create_all(connection, checkfirst=True)
+
+    # create_all(checkfirst=True) does not add columns to an existing table.
+    # Keep the startup migration idempotent for installations that already have
+    # the catalog introduced by the analysis-context migration.
+    present = _columns(connection, "spatial_region_catalog")
+    if "geom" not in present:
+        if connection.dialect.name == "postgresql":
+            connection.execute(sa.text(
+                "ALTER TABLE spatial_region_catalog "
+                "ADD COLUMN geom geometry(MULTIPOLYGON,4326)"
+            ))
+        else:
+            connection.execute(sa.text(
+                "ALTER TABLE spatial_region_catalog ADD COLUMN geom TEXT"
+            ))
+
+    indexes = {
+        item["name"]
+        for item in sa.inspect(connection).get_indexes("spatial_region_catalog")
+    }
+    if "idx_spatial_region_catalog_geom" not in indexes:
+        if connection.dialect.name == "postgresql":
+            connection.execute(sa.text(
+                "CREATE INDEX idx_spatial_region_catalog_geom "
+                "ON spatial_region_catalog USING GIST (geom)"
+            ))
+        else:
+            connection.execute(sa.text(
+                "CREATE INDEX idx_spatial_region_catalog_geom "
+                "ON spatial_region_catalog (geom)"
+            ))
 
 
 def ensure_execution_log_provenance(connection) -> None:

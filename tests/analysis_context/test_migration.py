@@ -54,6 +54,7 @@ def test_upgrade_is_idempotent_and_downgrade_restores_legacy_schema(tmp_path):
     upgrade_schema(engine)
     inspector = sa.inspect(engine)
     assert inspector.has_table("spatial_region_catalog")
+    assert "geom" in _column_names(engine, "spatial_region_catalog")
     assert "analysis_object" in _column_names(engine, "kb_conversation")
     assert "analysis_context_snapshot" in _column_names(engine, "kb_message")
     assert "analysis_object_type" in _column_names(engine, "model_execution_log")

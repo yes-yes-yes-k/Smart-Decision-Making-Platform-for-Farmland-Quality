@@ -15,6 +15,8 @@ class ObjectType(str, Enum):
     PROVINCE = "province"
     CITY = "city"
     COUNTY = "county"
+    TOWNSHIP = "township"
+    VILLAGE = "village"
     ZONE = "zone"
     PARCEL = "parcel"
 
