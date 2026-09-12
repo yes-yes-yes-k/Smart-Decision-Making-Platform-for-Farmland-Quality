@@ -50,3 +50,5 @@
 - [ ] 8.1 对生产/开发库执行 `--apply` 写入来源标记（dry-run 结果见 `docs/generated/provenance-candidates-20260912.json`）
 - [ ] 8.2 确认 `plow_layer_thickness` 等“测试数据常量”应标记为回填还是另行处理
 - [ ] 8.3 确认 Model-4 是否也应像 Model-5 一样在回填输入下置空用量
+- [x] 8.4 发现并记录字段名不一致：model-5 的 `TN` 取自 `total_nitrogen`，而回填脚本写的是 `total_n`（已在 design.md 的 Open Questions 记录，并加漂移测试 `test_model5_feature_sources_match_accessor`）
+- [ ] 8.5 决策：是否把 model-5 的 `TN` 取数字段改为 `total_n`（会触发 `MODEL5_INPUT_IMPUTED`，需与主线确认）

@@ -33,12 +33,17 @@ IMPUTED_SOURCES = frozenset({SOURCE_REGION_MEAN_BACKFILL, SOURCE_DEFAULT})
 IMPUTED_INPUT = "IMPUTED_INPUT"
 
 #: Model-5 必填特征 -> soil_indicators 字段
+#:
+#: 注意 ``TN`` 取自 ``total_nitrogen``（见 ParcelDataAccessor 的 model-5 映射），
+#: 而不是 ``link_soil_indicators.py`` 回填的 ``total_n``；两者字段名不一致的问题
+#: 见本 change 的 Open Questions。测试 test_model5_feature_sources_match_accessor
+#: 用于防止后续再次漂移。
 MODEL5_FEATURE_SOURCES: dict[str, str] = {
     "pH": "soil_ph",
     "SOMbe": "organic_matter",
     "AK": "available_potassium",
     "AP": "available_phosphorus",
-    "TN": "total_n",
+    "TN": "total_nitrogen",
 }
 
 #: Model-4 过程模型输入 -> soil_indicators 字段

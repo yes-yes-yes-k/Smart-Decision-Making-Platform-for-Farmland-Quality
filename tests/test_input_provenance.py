@@ -60,12 +60,28 @@ def test_source_and_imputed_judgement():
 
 def test_imputed_feature_names_maps_source_fields_to_features():
     indicators = {
-        "total_n": 1.4055,
-        PROVENANCE_KEY: {"total_n": SOURCE_REGION_MEAN_BACKFILL},
+        "total_nitrogen": 1.4055,
+        PROVENANCE_KEY: {"total_nitrogen": SOURCE_REGION_MEAN_BACKFILL},
     }
     from framework.domain.provenance import MODEL5_FEATURE_SOURCES
 
     assert imputed_feature_names(indicators, MODEL5_FEATURE_SOURCES) == ["TN"]
+
+
+def test_model5_feature_sources_match_accessor():
+    """MODEL5_FEATURE_SOURCES 必须与实际取数字段一致（防止字段名漂移）。"""
+    from framework.domain.data.parcel_data_accessor import ParcelDataAccessor
+    from framework.domain.provenance import MODEL5_FEATURE_SOURCES
+
+    probe = {
+        "soil_ph": 1.1, "organic_matter": 2.2, "available_potassium": 3.3,
+        "available_phosphorus": 4.4, "total_nitrogen": 5.5, "total_n": 6.6,
+    }
+    mapped = ParcelDataAccessor()._map_indicators_to_inputs(probe, "model-5")
+    for feature, source_field in MODEL5_FEATURE_SOURCES.items():
+        assert mapped[feature] == probe[source_field], (
+            f"{feature} 的实际取数字段与 MODEL5_FEATURE_SOURCES 不一致"
+        )
 
 
 # ---------------------------------------------------------------- 常量字段识别
@@ -152,7 +168,7 @@ def test_predict_dose_with_backfilled_tn_degrades_and_labels_input():
     result = predict_dose(
         dict(DOSE_FEATURES),
         "upland",
-        provenance={"total_n": SOURCE_REGION_MEAN_BACKFILL},
+        provenance={"total_nitrogen": SOURCE_REGION_MEAN_BACKFILL},
     )
     assert result.status == "degraded"
     assert result.reason == MODEL5_INPUT_IMPUTED
@@ -170,7 +186,9 @@ def test_missing_feature_still_reports_missing_not_imputed():
 
     features = dict(DOSE_FEATURES)
     features["TN"] = None
-    result = predict_dose(features, "upland", provenance={"total_n": SOURCE_REGION_MEAN_BACKFILL})
+    result = predict_dose(
+        features, "upland", provenance={"total_nitrogen": SOURCE_REGION_MEAN_BACKFILL}
+    )
     assert result.status == "degraded"
     assert result.reason == MODEL5_INPUT_MISSING
     assert result.dose is None
