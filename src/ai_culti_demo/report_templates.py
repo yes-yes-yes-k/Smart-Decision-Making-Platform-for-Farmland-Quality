@@ -152,19 +152,32 @@ def render_acidification_dosage_table(ctx: dict[str, Any]) -> str:
             "<th>来源</th>"
             "</tr></thead><tbody>"
         )
+        imputed_fields_seen: set[str] = set()
         for r in rows:
             pid = r.get("parcel_id", "—")
             ph = _fmt(r.get("soil_ph"))
             hex_ = _fmt(r.get("exchangeable_hydrogen"))
             alex = _fmt(r.get("exchangeable_aluminum"))
-            lime = _fmt(r.get("lime_dosage") if r.get("lime_dosage") is not None else r.get("soil_conditioner_dosage"))
-            of = _fmt(r.get("organic_fertilizer_dosage") if r.get("organic_fertilizer_dosage") is not None else r.get("woody_peat_dosage"))
+            imputed = list(r.get("imputed_inputs") or [])
+            if imputed:
+                # 输入含回填/默认取值 → 用量不作为结论展示
+                imputed_fields_seen.update(imputed)
+                lime = organic = "暂无可靠估计"
+            else:
+                lime = _fmt(r.get("lime_dosage") if r.get("lime_dosage") is not None else r.get("soil_conditioner_dosage"))
+                organic = _fmt(r.get("organic_fertilizer_dosage") if r.get("organic_fertilizer_dosage") is not None else r.get("woody_peat_dosage"))
             src = "已落库" if r.get("source") == "db" else "现场补算"
             parts.append(
                 f"<tr><td>{pid}</td><td>{ph}</td><td>{hex_}</td><td>{alex}</td>"
-                f"<td>{lime}</td><td>{of}</td><td>{src}</td></tr>"
+                f"<td>{lime}</td><td>{organic}</td><td>{src}</td></tr>"
             )
         parts.append("</tbody></table>")
+        if imputed_fields_seen:
+            parts.append(
+                "<p>注：上表中标注“暂无可靠估计”的用量未给出，原因是这些地块的酸化计算输入包含"
+                f"区域平均回填或默认取值（{'、'.join(sorted(imputed_fields_seen))}），"
+                "不足以支撑地块级用量结论。</p>"
+            )
 
     if region:
         parts.append("<p>区域统计：</p><ul>")
@@ -189,6 +202,13 @@ def _acid_data_brief(ctx: dict[str, Any]) -> str:
     for r in rows[:50]:
         pid = r.get("parcel_id", "?")
         ph = _fmt(r.get("soil_ph"))
+        imputed = list(r.get("imputed_inputs") or [])
+        if imputed:
+            lines.append(
+                f"- 地块 {pid}: pH={ph}，石灰/调理剂=暂无可靠估计，有机肥/泥炭=暂无可靠估计"
+                f"（输入含回填或默认取值：{'、'.join(imputed)}，因此不给出用量结论）"
+            )
+            continue
         lime = _fmt(r.get("lime_dosage") if r.get("lime_dosage") is not None else r.get("soil_conditioner_dosage"))
         of = _fmt(r.get("organic_fertilizer_dosage") if r.get("organic_fertilizer_dosage") is not None else r.get("woody_peat_dosage"))
         lines.append(f"- 地块 {pid}: pH={ph}, 石灰/调理剂={lime} kg/亩, 有机肥/泥炭={of} kg/亩")

@@ -88,7 +88,7 @@ imputed = [name for name in FEATURE_COLUMNS if is_imputed(indicators, name)]
 
 因此两种降级可以区分：`MODEL5_INPUT_MISSING` 表示字段缺失，`MODEL5_INPUT_IMPUTED` 加 `imputed_features` 表示字段存在但不是地块实测值。
 
-Model-4 采用“降级但保留用量”的策略：过程模型其余输入（pH、地类）仍是地块级真实值，且统一输出契约对 Model-4 没有置空规则，因此 `soil_conditioner_dosage`、`woody_peat_dosage` 保留，同时在结果中列出 `imputed_inputs`。两个模型的差异是有意为之，是否对 Model-4 也置空列入 Open Questions。
+Model-4 与 Model-5 现在采用同一策略（2026-09-12 决定）：输入含回填或默认取值时，用量（`soil_conditioner_dosage`、`woody_peat_dosage`）与酸缓冲量（`background_acid`）一并置空，`issues` 增加 `MODEL4_QUANTITATIVE_UNAVAILABLE`。依据是实测结果——交换性酸为常量输入，导致这些用量在地块之间几乎无差异（地块 1 与地块 2 的 pH 差 0.28，木本泥炭用量完全相同），精确数字的实际信息量很低而误用风险不低。该规则在统一输出契约、Agent 落库与报告补算三处同时生效，保证报告不会通过读库路径又拿回数值。
 
 ### 4. 数字审计采用白名单比对，不做语义判断
 
@@ -160,5 +160,4 @@ Model-4 采用“降级但保留用量”的策略：过程模型其余输入（
   全氮一共有四个名字（模型特征名 `TN`、V3.0 数据字段 `total_n`、遗留表列 `total_nitrogen`、外部别名 `TD`）。遗留表列（`organic_matter_result.total_nitrogen`）与遗留 ML 路径不在本次统一范围内，仍按旧名读写。
 
 - 中文数字表述（“提升三成”）暂不在审计范围内，待前端与业务反馈。
-- 报告 `degraded` 状态在前端的具体展示方式需要与前端确认。
-- Model-4 是否也应像 Model-5 一样在回填输入下置空用量。
+- 报告 `degraded` 状态在前端的展示方式需要与前端确认。

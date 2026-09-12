@@ -24,6 +24,9 @@ MOCK_INPUTS = {
     "exchangeable_al": 4.08,  # 向后兼容
 }
 
+#: 输入不可信时置空的定量结论字段（酸缓冲量与两项用量）。
+QUANTITATIVE_RESULT_FIELDS = ("Aback", "YTK", "MBNT")
+
 
 def _imputed_model4_inputs(parcel, mapped) -> list[str]:
     """列出 Model-4 输入中被区域平均回填或使用默认值的字段。
@@ -138,10 +141,19 @@ class AcidificationRemediationAgent(BaseAgent):
                 result = calculate_acidification(
                     SJD=mapped["SJD"] or 0.0, Hex=mapped["Hex"] or 0.0, Alex=mapped["Alex"] or 0.0,
                     land_type=land_type, fertilizer_type=fertilizer_type, pHtarget=pHtarget)
+                if imputed_inputs:
+                    # 用量与酸缓冲量由回填/默认输入推出，不作为结论输出（与统一输出契约的
+                    # Model-4 安全规则一致）；落库同步置空，避免报告读库时又取到这些数字。
+                    result = {
+                        key: (None if key in QUANTITATIVE_RESULT_FIELDS else value)
+                        for key, value in result.items()
+                    }
                 outputs = {
                     "parcel_id": inputs.get("parcel_id"),
                     **result,
                     "imputed_inputs": imputed_inputs,
+                    # 统一输出契约从嵌套 result 读取问题码，故与 Model-5 保持同一形状。
+                    "reason": IMPUTED_INPUT if imputed_inputs else None,
                 }
                 # 输入含回填或默认取值时降级，避免把回填参数的计算结果当作实测结论。
                 status = "degraded" if imputed_inputs else "ok"

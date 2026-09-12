@@ -50,7 +50,7 @@
 
 - [x] 8.1 对开发库执行 `--apply` 写入来源标记（2026-09-12 已执行：21 个字段、5491 个地块；结果见 `docs/generated/provenance-manifest-20260912.json`）
 - [x] 8.2 `plow_layer_thickness` 等源数据常量按 `measured` 处理，并在数据质量报告中说明其在测试数据中无空间差异
-- [ ] 8.3 确认 Model-4 是否也应像 Model-5 一样在回填输入下置空用量
+- [x] 8.3 Model-4 在回填/默认输入下置空用量（`soil_conditioner_dosage`/`woody_peat_dosage`/`background_acid`）：统一输出契约 + Agent 落库 + 报告补算与渲染同步，问题码 `MODEL4_QUANTITATIVE_UNAVAILABLE`
 - [x] 8.4 发现并记录字段名不一致：model-5 的 `TN` 取自 `total_nitrogen`，而回填脚本写的是 `total_n`（已在 design.md 的 Open Questions 记录，并加漂移测试 `test_model5_feature_sources_match_accessor`）
 - [x] 8.5 决策并实施：model-5 的 `TN` 改读 `total_n`（V3.0 命名）；正式地块因此由 `MODEL5_INPUT_MISSING` 变为 `MODEL5_INPUT_IMPUTED` + 降级
 - [x] 8.6 读侧映射统一：`ParcelDataAccessor`（model-1/4/5）与报告指标表统一走 `framework/domain/provenance.py` 的映射表，并加漂移测试

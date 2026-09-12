@@ -81,8 +81,29 @@
 - **WHEN** 映射表、实际取数字段或报告指标表登记出现不一致
 - **THEN** 漂移测试（`test_model5_feature_sources_match_accessor`、`test_report_labels_use_central_field_names`）SHALL 失败
 
-### Requirement: Model-5 输入回填时的降级与标注
+### Requirement: Model-4 输入回填时的用量置空
 
+当 Model-4 的输入（`soil_ph`、`exchangeable_hydrogen`、`exchangeable_aluminum`、`target_ph`、`fertilizer_type`）中存在被回填或被默认的字段时，系统 SHALL NOT 输出用量结论：`soil_conditioner_dosage`、`woody_peat_dosage`、`background_acid` MUST 置空，`status` SHALL 为 `degraded`，`reason` SHALL 为 `IMPUTED_INPUT`，`imputed_inputs` SHALL 列出被回填/默认的输入字段，`issues` SHALL 包含稳定代码 `MODEL4_QUANTITATIVE_UNAVAILABLE`。该规则 MUST 在统一输出契约与 Agent 落库两处同时生效（避免报告读库时又取到这些数值），报告补算路径 MUST 遵循同一规则。
+
+#### Scenario: 契约层置空
+
+- **WHEN** Model-4 执行结果带有非空的 `imputed_inputs`
+- **THEN** 用量与酸缓冲量 SHALL 为 `null`
+- **AND** `issues` MUST 包含 `MODEL4_QUANTITATIVE_UNAVAILABLE`
+
+#### Scenario: 落库与补算一致
+
+- **WHEN** 输入含回填或默认字段
+- **THEN** 落库与报告补算结果 MUST 同样不包含用量数值
+- **AND** 报告 MUST 能拿到 `imputed_inputs` 用于说明原因
+
+#### Scenario: 输入为实测时不受影响
+
+- **WHEN** 输入字段均未被标记为回填或默认
+- **THEN** 用量 SHALL 照常输出
+- **AND** `issues` MUST NOT 包含 `MODEL4_QUANTITATIVE_UNAVAILABLE`
+
+### Requirement: Model-5 输入回填时的降级与标注
 当 Model-5 的必填特征（`pH`、`SOMbe`、`AK`、`AP`、`TN`）中存在被回填字段时，系统 SHALL 返回 `status=degraded`，`reason` SHALL 为 `MODEL5_INPUT_IMPUTED`，`result.imputed_features` SHALL 列出被回填的特征名，`issues` SHALL 包含稳定代码 `IMPUTED_INPUT`。系统 MUST 通过上述标记使调用方能够区分“基于实测输入的预测”与“含回填输入的预测”；定量字段是否保留 SHALL 由统一输出契约的既有安全规则决定（当前实现为置空并附加 `MODEL5_QUANTITATIVE_UNAVAILABLE`）。特征缺失时的既有行为 MUST 保持不变。
 
 #### Scenario: 全氮被回填
