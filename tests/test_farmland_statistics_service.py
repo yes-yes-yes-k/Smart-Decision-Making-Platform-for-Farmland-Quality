@@ -1,6 +1,7 @@
 from datetime import datetime, timezone
+from types import SimpleNamespace
 
-from framework.api.services.farmland_statistics import summarize_rows
+from framework.api.services.farmland_statistics import _parcel_response, summarize_rows
 
 
 def test_summary_is_area_weighted_and_keeps_unclassified_separate():
@@ -33,3 +34,28 @@ def test_summary_parses_json_text_and_quality_grade():
     metric = result["metrics"][0]
     assert metric["table"]["average"] == 8.0
     assert metric["distribution"][7]["parcelCount"] == 1
+
+
+def test_parcel_response_includes_full_geometry_area_in_mu():
+    parcel = SimpleNamespace(
+        parcel_id="P1",
+        area_code="440281",
+        soil_indicators={
+            "quality_grade": 8,
+            "organic_matter": 19.178225,
+            "soil_ph": 5.578967,
+            "available_phosphorus": 27.682971,
+        },
+    )
+
+    response = _parcel_response(parcel, area_mu=379.850149)
+
+    assert response["areaMu"] == 379.8501
+
+
+def test_parcel_response_uses_null_area_when_geometry_is_missing():
+    parcel = SimpleNamespace(parcel_id="P2", area_code="440281", soil_indicators={})
+
+    response = _parcel_response(parcel, area_mu=None)
+
+    assert response["areaMu"] is None

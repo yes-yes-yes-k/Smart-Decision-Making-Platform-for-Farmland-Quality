@@ -1250,7 +1250,7 @@ GET /api/v1/farmland-statistics/regions?parent_type=township&parent_id=440281001
 }
 ```
 
-返回命中地块的 `parcelId`、`areaCode`、`qualityGrade`、`organicMatter`、`soilPh` 和 `availablePhosphorus`。未命中返回 404；多个地块重叠时优先返回面积较小的地块。
+返回命中地块的 `parcelId`、`areaCode`、`areaMu`、`qualityGrade`、`organicMatter`、`soilPh` 和 `availablePhosphorus`。`areaMu` 是完整地块测地面积换算的亩数，保留 4 位小数，不按当前视窗裁剪；几何缺失时为 `null`。未命中返回 404；多个地块重叠时优先返回面积较小的地块。
 
 ### 获取地块详情
 
