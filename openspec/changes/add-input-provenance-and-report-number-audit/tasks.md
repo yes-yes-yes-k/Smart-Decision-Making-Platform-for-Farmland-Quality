@@ -48,9 +48,9 @@
 
 ## 8. 未完成（需人工确认后执行）
 
-- [ ] 8.1 对生产/开发库执行 `--apply` 写入来源标记（dry-run 结果见 `docs/generated/provenance-manifest-20260912.json`）
+- [x] 8.1 对开发库执行 `--apply` 写入来源标记（2026-09-12 已执行：21 个字段、5491 个地块；结果见 `docs/generated/provenance-manifest-20260912.json`）
 - [x] 8.2 `plow_layer_thickness` 等源数据常量按 `measured` 处理，并在数据质量报告中说明其在测试数据中无空间差异
 - [ ] 8.3 确认 Model-4 是否也应像 Model-5 一样在回填输入下置空用量
 - [x] 8.4 发现并记录字段名不一致：model-5 的 `TN` 取自 `total_nitrogen`，而回填脚本写的是 `total_n`（已在 design.md 的 Open Questions 记录，并加漂移测试 `test_model5_feature_sources_match_accessor`）
-- [ ] 8.5 决策：是否把 model-5 的 `TN` 取数字段改为 `total_n`（会触发 `MODEL5_INPUT_IMPUTED`，需与主线确认）
-- [ ] 8.6 读侧映射统一：把“特征名 ↔ `soil_indicators` 字段名”的对应关系集中一处，让 `ParcelDataAccessor` 与报告模板都走它（受影响出口：模型取数与报告指标表），需与主线确认后再改
+- [x] 8.5 决策并实施：model-5 的 `TN` 改读 `total_n`（V3.0 命名）；正式地块因此由 `MODEL5_INPUT_MISSING` 变为 `MODEL5_INPUT_IMPUTED` + 降级
+- [x] 8.6 读侧映射统一：`ParcelDataAccessor`（model-1/4/5）与报告指标表统一走 `framework/domain/provenance.py` 的映射表，并加漂移测试

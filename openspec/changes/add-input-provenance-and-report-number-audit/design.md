@@ -155,9 +155,10 @@ Model-4 采用“降级但保留用量”的策略：过程模型其余输入（
 ## Open Questions
 
 - 交换性氢、交换性铝、全氮的地块级数据来源尚未确定（现有三普数据为脱敏点，且没有地块编号）。
-- **已发现字段名不一致**：`ParcelDataAccessor` 的 model-5 映射把 `TN` 取自 `total_nitrogen`（当前库中仅 3 个 P-VERIFY 地块有值），而 `link_soil_indicators.py` 回填的是 `total_n`（5491 个地块全部有值）。实测结果是：5488 个正式地块在 DB 路径上 TN 缺失，Model-5 返回 `MODEL5_INPUT_MISSING` 而不是 `MODEL5_INPUT_IMPUTED`——**回填值目前根本没有进入 RF 输入**。本次只把来源映射对齐到实际取数字段并加了漂移测试；是否把取数字段改为 `total_n`（届时那 5488 个地块会得到基于常量 TN 的预测，并被 `MODEL5_INPUT_IMPUTED` 拦住）需要单独决策。
+- **字段名不一致（已解决）**：`ParcelDataAccessor` 的 model-5 映射曾把 `TN` 取自 `total_nitrogen`（仅 3 个 P-VERIFY 地块有值），而 `link_soil_indicators.py` 写的是 `total_n`（5491 个地块全部有值），导致 5488 个正式地块 TN 缺失、Model-5 只返回 `MODEL5_INPUT_MISSING`。2026-09-12 已按 V3.0 命名统一：读侧通过 `MODEL5_FEATURE_SOURCES` 改读 `total_n`，报告指标表同步；正式地块现在是 `MODEL5_INPUT_IMPUTED` + 降级（输入是回填常量），不再是缺失。
 
-  全氮一共有四个名字（模型特征名 `TN`、V3.0 数据字段 `total_n`、遗留表列 `total_nitrogen`、外部别名 `TD`），同一裂缝还影响其他出口：`report_templates.py` 的指标中文名表只登记 `total_nitrogen`，导致地块报告里“全氮”整行被静默省略（区域表同理）；遗留 ML 路径走 `TN`/`TD`，不经 JSON，因此同一业务量在两条路径上结果不同。凡是“特征名 ↔ 数据字段名”的对应关系都应集中一处并配漂移测试，避免再有第三个名字。
-- 是否需要把中文数字表述（“提升三成”）纳入审计范围，待前端与业务反馈。
+  全氮一共有四个名字（模型特征名 `TN`、V3.0 数据字段 `total_n`、遗留表列 `total_nitrogen`、外部别名 `TD`）。遗留表列（`organic_matter_result.total_nitrogen`）与遗留 ML 路径不在本次统一范围内，仍按旧名读写。
+
+- 中文数字表述（“提升三成”）暂不在审计范围内，待前端与业务反馈。
 - 报告 `degraded` 状态在前端的具体展示方式需要与前端确认。
 - Model-4 是否也应像 Model-5 一样在回填输入下置空用量。

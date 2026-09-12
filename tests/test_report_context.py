@@ -614,7 +614,7 @@ def test_render_parcel_indicators_table_parcel():
                     "organic_matter": 18.0,
                     "available_potassium": 120.0,
                     "available_phosphorus": 15.0,
-                    "total_nitrogen": 1.2,
+                    "total_n": 1.2,
                 },
             }
         ],
@@ -625,6 +625,7 @@ def test_render_parcel_indicators_table_parcel():
     assert "5.50" in html
     assert "有机质" in html
     assert "18.00" in html
+    assert "全氮" in html
 
 
 def test_render_parcel_indicators_table_empty():

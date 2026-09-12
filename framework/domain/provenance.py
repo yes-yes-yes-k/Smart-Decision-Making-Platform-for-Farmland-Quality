@@ -86,18 +86,18 @@ MANIFEST_BASIS: tuple[tuple[str, str], ...] = (
     ("default", "import_real_parcels.py 写入的固定默认值（target_ph=6.5、fertilizer_type=compound）"),
 )
 
-#: Model-5 必填特征 -> soil_indicators 字段
+#: Model-5 必填特征 -> soil_indicators 字段（V3.0 命名）
 #:
-#: 注意 ``TN`` 取自 ``total_nitrogen``（见 ParcelDataAccessor 的 model-5 映射），
-#: 而不是 ``link_soil_indicators.py`` 回填的 ``total_n``；两者字段名不一致的问题
-#: 见本 change 的 Open Questions。测试 test_model5_feature_sources_match_accessor
-#: 用于防止后续再次漂移。
+#: 全氮曾取 ``total_nitrogen``（遗留列名），与写入侧的 ``total_n`` 不一致，导致
+#: 正式地块 TN 恒为 ``None``；现已统一为 V3.0 命名 ``total_n``。读侧 MUST 通过
+#: ``map_feature_sources`` 取字段，MUST NOT 各自硬编码字段名。漂移测试见
+#: ``test_model5_feature_sources_match_accessor`` 与 ``test_report_labels_use_central_field_names``。
 MODEL5_FEATURE_SOURCES: dict[str, str] = {
     "pH": "soil_ph",
     "SOMbe": "organic_matter",
     "AK": "available_potassium",
     "AP": "available_phosphorus",
-    "TN": "total_nitrogen",
+    "TN": "total_n",
 }
 
 #: Model-4 过程模型输入 -> soil_indicators 字段
@@ -162,3 +162,16 @@ def imputed_feature_names(
         for feature, source_field in feature_sources.items()
         if is_imputed(indicators, source_field)
     ]
+
+
+def map_feature_sources(
+    indicators: Optional[Mapping[str, Any]],
+    feature_sources: Mapping[str, str],
+) -> dict[str, Any]:
+    """按统一映射把指标快照转换为模型特征输入。
+
+    读侧（``ParcelDataAccessor`` 等）统一调用本函数，字段名只在此映射表中维护，
+    避免各读取方硬编码不同名字造成漂移。
+    """
+    data: Mapping[str, Any] = indicators if isinstance(indicators, Mapping) else {}
+    return {feature: data.get(field_name) for feature, field_name in feature_sources.items()}

@@ -60,6 +60,27 @@
 - **THEN** 系统 SHALL 依据台账将其标记为 `measured`
 - **AND** 系统 MUST NOT 因为取值集中就判定为回填
 
+### Requirement: 读侧字段名统一
+
+读侧（`ParcelDataAccessor`、报告模板）MUST 通过统一映射取 `soil_indicators` 字段：Model-5 特征使用 `MODEL5_FEATURE_SOURCES`、Model-4 输入使用 `MODEL4_INPUT_SOURCES`，取值经 `map_feature_sources()`。系统 MUST NOT 在读取方各自硬编码字段名。字段名以 V3.0 命名为准（全氮为 `total_n`，遗留列名 `total_nitrogen` 不再作为 Model-5 取数来源）。来源标记属于元数据，MUST NOT 作为模型输入传递。
+
+#### Scenario: 按统一映射取数
+
+- **WHEN** 读侧需要 Model-5 的 `TN` 特征
+- **THEN** 系统 SHALL 从 `MODEL5_FEATURE_SOURCES` 取出字段名（`total_n`）并读取该键
+- **AND** 快照中只有遗留键 `total_nitrogen` 时，`TN` MUST 为 `None`
+
+#### Scenario: 报告指标表
+
+- **WHEN** 地块快照包含 `total_n`
+- **THEN** 报告的地块指标表 SHALL 渲染“全氮”行
+- **AND** 指标中文名表 MUST NOT 登记已废弃的 `total_nitrogen`
+
+#### Scenario: 防止字段名再次漂移
+
+- **WHEN** 映射表、实际取数字段或报告指标表登记出现不一致
+- **THEN** 漂移测试（`test_model5_feature_sources_match_accessor`、`test_report_labels_use_central_field_names`）SHALL 失败
+
 ### Requirement: Model-5 输入回填时的降级与标注
 
 当 Model-5 的必填特征（`pH`、`SOMbe`、`AK`、`AP`、`TN`）中存在被回填字段时，系统 SHALL 返回 `status=degraded`，`reason` SHALL 为 `MODEL5_INPUT_IMPUTED`，`result.imputed_features` SHALL 列出被回填的特征名，`issues` SHALL 包含稳定代码 `IMPUTED_INPUT`。系统 MUST 通过上述标记使调用方能够区分“基于实测输入的预测”与“含回填输入的预测”；定量字段是否保留 SHALL 由统一输出契约的既有安全规则决定（当前实现为置空并附加 `MODEL5_QUANTITATIVE_UNAVAILABLE`）。特征缺失时的既有行为 MUST 保持不变。

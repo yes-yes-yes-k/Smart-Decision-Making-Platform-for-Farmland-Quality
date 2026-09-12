@@ -76,7 +76,7 @@ _INDICATOR_LABELS: dict[str, str] = {
     "organic_matter": "有机质 (g/kg)",
     "available_potassium": "速效钾 (mg/kg)",
     "available_phosphorus": "有效磷 (mg/kg)",
-    "total_nitrogen": "全氮 (g/kg)",
+    "total_n": "全氮 (g/kg)",
     "bulk_density": "容重 (g/cm³)",
     "topsoil_thickness": "表土厚度 (cm)",
     "terrain_position": "地形部位",
@@ -100,7 +100,7 @@ def render_parcel_indicators_table(ctx: dict[str, Any]) -> str:
     # 区域范围 → 渲染聚合统计
     if scope.get("type") == "region" and region:
         parts: list[str] = ["<table><thead><tr><th>指标</th><th>均值</th><th>最小</th><th>最大</th><th>样本数</th></tr></thead><tbody>"]
-        for key in ("soil_ph", "organic_matter", "available_potassium", "available_phosphorus", "total_nitrogen"):
+        for key in ("soil_ph", "organic_matter", "available_potassium", "available_phosphorus", "total_n"):
             s = region.get(key)
             if s:
                 label = _INDICATOR_LABELS.get(key, key)

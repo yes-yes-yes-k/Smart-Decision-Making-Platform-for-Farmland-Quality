@@ -65,12 +65,31 @@ def test_source_and_imputed_judgement():
 
 def test_imputed_feature_names_maps_source_fields_to_features():
     indicators = {
-        "total_nitrogen": 1.4055,
-        PROVENANCE_KEY: {"total_nitrogen": SOURCE_REGION_MEAN_BACKFILL},
+        "total_n": 1.4055,
+        PROVENANCE_KEY: {"total_n": SOURCE_REGION_MEAN_BACKFILL},
     }
     from framework.domain.provenance import MODEL5_FEATURE_SOURCES
 
     assert imputed_feature_names(indicators, MODEL5_FEATURE_SOURCES) == ["TN"]
+
+
+def test_model5_mapping_ignores_legacy_total_nitrogen():
+    """遗留列名 total_nitrogen 不再被 model-5 取数，避免两种命名各自为政。"""
+    from framework.domain.data.parcel_data_accessor import ParcelDataAccessor
+
+    mapped = ParcelDataAccessor()._map_indicators_to_inputs({"total_nitrogen": 1.5}, "model-5")
+    assert mapped["TN"] is None
+
+
+def test_report_labels_use_central_field_names():
+    """报告指标表登记的字段名必须与统一映射一致（防漂移）。"""
+    from framework.domain.provenance import MODEL5_FEATURE_SOURCES
+    from src.ai_culti_demo.report_templates import _INDICATOR_LABELS
+
+    assert "total_n" in _INDICATOR_LABELS
+    assert "total_nitrogen" not in _INDICATOR_LABELS
+    for source_field in MODEL5_FEATURE_SOURCES.values():
+        assert source_field in _INDICATOR_LABELS, f"报告缺少 {source_field} 的中文名"
 
 
 def test_model5_feature_sources_match_accessor():
@@ -162,7 +181,7 @@ def test_predict_dose_with_backfilled_tn_degrades_and_labels_input():
     result = predict_dose(
         dict(DOSE_FEATURES),
         "upland",
-        provenance={"total_nitrogen": SOURCE_REGION_MEAN_BACKFILL},
+        provenance={"total_n": SOURCE_REGION_MEAN_BACKFILL},
     )
     assert result.status == "degraded"
     assert result.reason == MODEL5_INPUT_IMPUTED
@@ -181,7 +200,7 @@ def test_missing_feature_still_reports_missing_not_imputed():
     features = dict(DOSE_FEATURES)
     features["TN"] = None
     result = predict_dose(
-        features, "upland", provenance={"total_nitrogen": SOURCE_REGION_MEAN_BACKFILL}
+        features, "upland", provenance={"total_n": SOURCE_REGION_MEAN_BACKFILL}
     )
     assert result.status == "degraded"
     assert result.reason == MODEL5_INPUT_MISSING

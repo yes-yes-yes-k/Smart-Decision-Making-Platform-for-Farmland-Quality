@@ -36,5 +36,27 @@
     "target_ph": "default",
     "fertilizer_type": "default"
   },
-  "applied": null
+  "applied": {
+    "soil_ph": 5491,
+    "organic_matter": 5491,
+    "available_phosphorus": 5491,
+    "available_potassium": 5491,
+    "bulk_density": 5491,
+    "topsoil_thickness": 5491,
+    "plow_layer_thickness": 5491,
+    "soil_texture": 5491,
+    "irrigation_condition": 5491,
+    "drainage_capacity": 5491,
+    "terrain_position": 5491,
+    "soil_structure": 5491,
+    "quality_grade": 5488,
+    "exchangeable_hydrogen": 5491,
+    "exchangeable_aluminum": 5491,
+    "exchangeable_acid_total": 5491,
+    "hydrolytic_total_acidity": 5491,
+    "total_n": 5491,
+    "cation_exchange_capacity": 5491,
+    "target_ph": 5491,
+    "fertilizer_type": 5491
+  }
 }
