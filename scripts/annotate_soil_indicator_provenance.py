@@ -102,20 +102,29 @@ def preview(cur, sources: dict[str, str]) -> None:
 
 
 def apply_marks(cur, sources: dict[str, str]) -> dict[str, int]:
-    """逐字段写入来源标记，跳过已标注字段。返回 {字段: 受影响行数}。"""
+    """逐字段写入来源标记，跳过已标注字段。返回 {字段: 受影响行数}。
+
+    用 ``||`` 合并而不是 ``jsonb_set``：本机 PostgreSQL 17.4 构建对多层路径
+    （``'{provenance,total_n}'``）的 ``create_if_missing`` 是静默 no-op，写入会
+    悄悄失败；``||`` 合并行为稳定且可读。
+    """
     affected: dict[str, int] = {}
     for field, source in sources.items():
         cur.execute(
             """
             UPDATE parcel_info
-            SET soil_indicators = jsonb_set(
-                    soil_indicators::jsonb,
-                    ARRAY['provenance', %s],
-                    to_jsonb(%s::text),
-                    true
+            SET soil_indicators = (
+                    soil_indicators::jsonb
+                    || jsonb_build_object(
+                           'provenance',
+                           coalesce(soil_indicators::jsonb -> 'provenance', '{}'::jsonb)
+                           || jsonb_build_object(%s::text, %s::text)
+                       )
                 )::json
             WHERE (soil_indicators::jsonb) ? %s
-              AND NOT ((soil_indicators::jsonb -> 'provenance') ? %s)
+              AND NOT coalesce(
+                    (soil_indicators::jsonb -> 'provenance') ? %s, false
+                  )
             """,
             (field, source, field, field),
         )
@@ -124,16 +133,23 @@ def apply_marks(cur, sources: dict[str, str]) -> dict[str, int]:
 
 
 def revert_marks(cur, fields: Sequence[str]) -> dict[str, int]:
-    """移除本脚本写入的来源标记，不触碰其他字段。"""
+    """移除本脚本写入的来源标记，不触碰其他字段。
+
+    当移除后 ``provenance`` 变成空对象时，一并删除该键，避免留下“看似已标注”的空壳。
+    """
     affected: dict[str, int] = {}
     for field in fields:
         cur.execute(
             """
             UPDATE parcel_info
-            SET soil_indicators = (soil_indicators::jsonb #- ARRAY['provenance', %s])::json
-            WHERE (soil_indicators::jsonb -> 'provenance') ? %s
+            SET soil_indicators = case
+                    when (soil_indicators::jsonb -> 'provenance') - %s = '{}'::jsonb
+                        then (soil_indicators::jsonb #- ARRAY['provenance'])::json
+                    else (soil_indicators::jsonb #- ARRAY['provenance', %s])::json
+                end
+            WHERE coalesce((soil_indicators::jsonb -> 'provenance') ? %s, false)
             """,
-            (field, field),
+            (field, field, field),
         )
         affected[field] = cur.rowcount
     return affected
