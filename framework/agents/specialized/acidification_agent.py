@@ -6,6 +6,13 @@ from ..base import BaseAgent, ProfessionalInputRejected
 from ..mock_data import MockDataLoader
 from ...domain.data.parcel_data_accessor import ParcelDataAccessor
 from ...domain.other_models.model_4 import model_4_execution
+from ...domain.provenance import (
+    IMPUTED_INPUT,
+    MODEL4_INPUT_SOURCES,
+    SOURCE_DEFAULT,
+    imputed_fields,
+    provenance_map,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -16,6 +23,25 @@ MOCK_INPUTS = {
     "JLA": 4.08,
     "exchangeable_al": 4.08,  # 向后兼容
 }
+
+
+def _imputed_model4_inputs(parcel, mapped) -> list[str]:
+    """列出 Model-4 输入中被区域平均回填或使用默认值的字段。
+
+    返回 ``soil_indicators`` 字段名（如 ``exchangeable_aluminum``）；目标 pH 与
+    肥料类型缺失或标记为默认来源时补充 ``target_ph``、``fertilizer_type``。
+    """
+    indicators = getattr(parcel, "soil_indicators", None) if parcel is not None else None
+    imputed = imputed_fields(indicators, tuple(MODEL4_INPUT_SOURCES.values()))
+    marked = provenance_map(indicators)
+    for field in ("target_ph", "fertilizer_type"):
+        if field in imputed:
+            continue
+        if marked.get(field) == SOURCE_DEFAULT:
+            imputed.append(field)
+        elif parcel is None or getattr(parcel, field, None) in (None, ""):
+            imputed.append(field)
+    return imputed
 
 
 class AcidificationRemediationAgent(BaseAgent):
@@ -108,11 +134,17 @@ class AcidificationRemediationAgent(BaseAgent):
                 land_type = (parcel.land_type if parcel else None) or land_type or "upland"
                 fertilizer_type = (parcel.fertilizer_type if parcel else None) or fertilizer_type or "compound"
                 pHtarget = parcel.target_ph if parcel else None
+                imputed_inputs = _imputed_model4_inputs(parcel, mapped)
                 result = calculate_acidification(
                     SJD=mapped["SJD"] or 0.0, Hex=mapped["Hex"] or 0.0, Alex=mapped["Alex"] or 0.0,
                     land_type=land_type, fertilizer_type=fertilizer_type, pHtarget=pHtarget)
-                outputs = {"parcel_id": inputs.get("parcel_id"), **result}
-                status = "ok"
+                outputs = {
+                    "parcel_id": inputs.get("parcel_id"),
+                    **result,
+                    "imputed_inputs": imputed_inputs,
+                }
+                # 输入含回填或默认取值时降级，避免把回填参数的计算结果当作实测结论。
+                status = "degraded" if imputed_inputs else "ok"
             else:
                 # Legacy 路径：model_4_execution
                 enriched = dict(inputs)
@@ -149,14 +181,29 @@ class AcidificationRemediationAgent(BaseAgent):
             )
 
             if data_source == "db":
-                return {
-                    "status": "ok",
+                imputed_inputs = outputs.get("imputed_inputs") or []
+                envelope: Dict[str, Any] = {
+                    "status": status,
+                    # 模型真实执行，但部分输入来自回填或默认值，因此不标记为模拟。
                     "simulated": False,
                     "result": outputs,
-                    "metadata": {},
+                    "metadata": {
+                        "reason": IMPUTED_INPUT if imputed_inputs else None,
+                        "imputed_inputs": imputed_inputs,
+                    },
                     "data_source": data_source,
                     "persisted": persisted,
                 }
+                if imputed_inputs:
+                    envelope["issues"] = [{
+                        "code": IMPUTED_INPUT,
+                        "severity": "warning",
+                        "message": (
+                            "酸化计算输入包含区域平均回填或默认取值，已降级标注："
+                            + "、".join(imputed_inputs)
+                        ),
+                    }]
+                return envelope
             return {
                 "status": result["status"],
                 # legacy 路径使用默认输入或文件数据，公共契约将其标记为降级。

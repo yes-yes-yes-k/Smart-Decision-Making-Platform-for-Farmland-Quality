@@ -10,6 +10,8 @@ import os
 import logging
 from typing import Iterator, Optional
 
+from framework.domain.provenance import IMPUTED_SOURCES, MODEL5_FEATURE_SOURCES
+
 logger = logging.getLogger(__name__)
 
 # 模型产物目录: 项目根/data/model_artifacts
@@ -26,6 +28,8 @@ _version_cache = {}
 
 
 MODEL5_INPUT_MISSING = "MODEL5_INPUT_MISSING"
+#: 必填特征中存在回填或默认取值；结果降级但保留来源标注。
+MODEL5_INPUT_IMPUTED = "MODEL5_INPUT_IMPUTED"
 MODEL5_DEPENDENCY_UNAVAILABLE = "MODEL5_DEPENDENCY_UNAVAILABLE"
 MODEL5_MODEL_UNAVAILABLE = "MODEL5_MODEL_UNAVAILABLE"
 MODEL5_PREDICTION_FAILED = "MODEL5_PREDICTION_FAILED"
@@ -41,6 +45,8 @@ class DosePredictionResult:
     reason: Optional[str]
     model_version: Optional[str]
     data_source: str
+    #: 被回填或被默认的输入特征名（例如 TN）；空元组表示无回填输入。
+    imputed_features: tuple[str, ...] = ()
 
     def __iter__(self) -> Iterator[object]:
         yield self.dose
@@ -81,17 +87,30 @@ def _artifact_version(model_path: str) -> str:
     return _version_cache[model_path]
 
 
-def predict_dose(indicators: dict, land_type: str) -> DosePredictionResult:
+def predict_dose(
+    indicators: dict,
+    land_type: str,
+    provenance: Optional[dict] = None,
+) -> DosePredictionResult:
     """RF 模型预测 Dose。
 
     Args:
         indicators: 映射后的指标 dict（pH/SOMbe/AK/AP/TN）。
         land_type: "upland" 或 "paddy"。
+        provenance: 地块指标来源标记（``soil_indicators.provenance``），
+            用于识别被区域平均回填或使用默认值的特征。
 
     Returns:
-        带状态、原因、模型版本和来源的预测结果。
+        带状态、原因、模型版本、来源与回填特征标注的预测结果。
     """
     model_path = os.path.join(MODEL_ARTIFACTS_DIR, f"{land_type}_dose_rf.joblib")
+
+    provenance = provenance or {}
+    imputed = [
+        feature
+        for feature, source_field in MODEL5_FEATURE_SOURCES.items()
+        if provenance.get(source_field) in IMPUTED_SOURCES
+    ]
 
     missing = [name for name in FEATURE_COLUMNS if indicators.get(name) is None]
     if missing:
@@ -138,6 +157,20 @@ def predict_dose(indicators: dict, land_type: str) -> DosePredictionResult:
             indicators["TN"],
         ]]
         dose = float(rf.predict(features)[0])
+        if imputed:
+            # 输入含区域平均回填或默认取值：保留预测值但必须降级并标注来源。
+            logger.warning(
+                "RF 输入含回填字段 (land_type=%s, imputed=%s)", land_type, imputed
+            )
+            return DosePredictionResult(
+                dose=dose,
+                simulated=False,
+                status="degraded",
+                reason=MODEL5_INPUT_IMPUTED,
+                model_version=_artifact_version(model_path),
+                data_source="rf_model",
+                imputed_features=tuple(imputed),
+            )
         return DosePredictionResult(
             dose=dose,
             simulated=False,

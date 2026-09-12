@@ -1,0 +1,88 @@
+{
+  "parcels": 5491,
+  "max_others": 10,
+  "min_share": 0.95,
+  "candidates": [
+    {
+      "field": "exchangeable_acid_total",
+      "distinct": 1,
+      "top_value": "4.2611",
+      "top_share": 1.0,
+      "non_null": 5491,
+      "outliers": 0,
+      "total": 5491
+    },
+    {
+      "field": "fertilizer_type",
+      "distinct": 1,
+      "top_value": "compound",
+      "top_share": 1.0,
+      "non_null": 5491,
+      "outliers": 0,
+      "total": 5491
+    },
+    {
+      "field": "hydrolytic_total_acidity",
+      "distinct": 1,
+      "top_value": "8.4076",
+      "top_share": 1.0,
+      "non_null": 5491,
+      "outliers": 0,
+      "total": 5491
+    },
+    {
+      "field": "target_ph",
+      "distinct": 1,
+      "top_value": "6.5",
+      "top_share": 1.0,
+      "non_null": 5491,
+      "outliers": 0,
+      "total": 5491
+    },
+    {
+      "field": "total_n",
+      "distinct": 1,
+      "top_value": "1.4055",
+      "top_share": 1.0,
+      "non_null": 5491,
+      "outliers": 0,
+      "total": 5491
+    },
+    {
+      "field": "cation_exchange_capacity",
+      "distinct": 4,
+      "top_value": "11.1782",
+      "top_share": 0.999454,
+      "non_null": 5491,
+      "outliers": 3,
+      "total": 5491
+    },
+    {
+      "field": "exchangeable_aluminum",
+      "distinct": 4,
+      "top_value": "4.0262",
+      "top_share": 0.999454,
+      "non_null": 5491,
+      "outliers": 3,
+      "total": 5491
+    },
+    {
+      "field": "exchangeable_hydrogen",
+      "distinct": 4,
+      "top_value": "0.2949",
+      "top_share": 0.999454,
+      "non_null": 5491,
+      "outliers": 3,
+      "total": 5491
+    },
+    {
+      "field": "plow_layer_thickness",
+      "distinct": 4,
+      "top_value": "20.0",
+      "top_share": 0.999454,
+      "non_null": 5491,
+      "outliers": 3,
+      "total": 5491
+    }
+  ]
+}

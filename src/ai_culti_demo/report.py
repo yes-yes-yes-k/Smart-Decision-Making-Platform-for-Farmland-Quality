@@ -12,6 +12,11 @@ from .report_context import (
     error_result,
     normalize_scope,
 )
+from .report_audit import (
+    audit_report_sections,
+    collect_allowed_numbers,
+    collect_imputed_inputs,
+)
 from .report_templates import REPORT_TEMPLATES
 from framework.llm.service import llm_service
 
@@ -204,6 +209,30 @@ def generate_report(report_type: str, scope: Any, area_code: Any = None) -> dict
         if s["kind"] == "data":
             section_results[s["idx"]] = s["content"]
 
+    # 4.5 生成后数字审计：语言模型章节只允许引用输入中已有的定量内容
+    llm_sections = [
+        {
+            "idx": s["idx"],
+            "heading": s["heading"],
+            "content": section_results.get(s["idx"], ""),
+        }
+        for s in section_plan
+        if s["kind"] in ("llm", "summary")
+    ]
+    data_html = "\n".join(
+        section_results.get(s["idx"], "") for s in section_plan if s["kind"] == "data"
+    )
+    allowed_numbers = collect_allowed_numbers(ctx, data_html, scope_norm)
+    sanitized_sections, audit_summary = audit_report_sections(llm_sections, allowed_numbers)
+    for item in sanitized_sections:
+        section_results[item["idx"]] = item["content"]
+    if audit_summary["issues"]:
+        logger.warning(
+            "[Report] 数字审计发现 %d 处无依据定量表述（检查 %d 处）：%s",
+            len(audit_summary["issues"]), audit_summary["checked_claims"],
+            [issue["claim"] for issue in audit_summary["issues"][:5]],
+        )
+
     # 按模板顺序拼接 HTML
     sections_html_parts: list[str] = []
     for i, s in enumerate(section_plan):
@@ -219,7 +248,9 @@ def generate_report(report_type: str, scope: Any, area_code: Any = None) -> dict
 
     # 4.5 自动追加"数据来源与计算依据"小节
     if ctx:
-        source_html = _render_source_meta(ctx.get("source_meta", {}), scope_norm)
+        source_html = _render_source_meta(
+            ctx.get("source_meta", {}), scope_norm, collect_imputed_inputs(ctx)
+        )
         if source_html:
             sections_html_parts.append(source_html)
 
@@ -274,22 +305,39 @@ def generate_report(report_type: str, scope: Any, area_code: Any = None) -> dict
 
     # region 范围仍写 area_code 维持历史列表查询
     result_area_code = scope_norm["id"] if scope_norm["type"] == "region" else ""
+    audit_issues = [
+        {
+            "code": item["code"],
+            "severity": "warning",
+            "message": item["message"],
+            "field": item.get("section"),
+        }
+        for item in audit_summary["issues"]
+    ]
     return {
-        "status": "ok",
+        # 生成后审计发现无依据定量内容时降级，调用方可据此判断报告是否只引用输入事实。
+        "status": "degraded" if audit_issues else "ok",
         "title": title,
         "content": full_html,
         "report_type": report_type,
         "area_code": result_area_code,
         "scope": scope_norm,
+        "audit": audit_summary,
+        "issues": audit_issues,
     }
 
 
-def _render_source_meta(meta: dict[str, Any], scope: dict[str, str]) -> str:
+def _render_source_meta(
+    meta: dict[str, Any],
+    scope: dict[str, str],
+    imputed_inputs: dict[str, list[str]] | None = None,
+) -> str:
     """渲染"数据来源与计算依据"小节。
 
-    由 source_meta 渲染地块编号、指标快照时间、模型版本、采样标注。
+    由 source_meta 渲染地块编号、指标快照时间、模型版本、采样标注，并列出被回填或
+    使用默认值的输入字段（内容由来源信息驱动，不由语言模型生成）。
     """
-    if not meta:
+    if not meta and not imputed_inputs:
         return ""
     total = meta.get("total_parcels", 0)
     missing = meta.get("missing_parcels") or []
@@ -328,6 +376,15 @@ def _render_source_meta(meta: dict[str, Any], scope: dict[str, str]) -> str:
             parts.append(
                 f"<li>区域采样：未启用（库命中 {sampling.get('db_hits', 0)}，"
                 f"补算 {sampling.get('computed', 0)}）</li>"
+            )
+    if imputed_inputs:
+        for label, fields in imputed_inputs.items():
+            if not fields:
+                continue
+            parts.append(
+                f"<li>{label}："
+                + "、".join(fields)
+                + "（非地块实测值，相关用量与预测仅作参考）</li>"
             )
     parts.append("</ul>")
     parts.append("</div>")

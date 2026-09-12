@@ -15,6 +15,8 @@ SCHEMA_VERSION = "2.0"
 LEGACY_SCHEMA_VERSION = "1.0"
 VALID_STATUSES = frozenset({"ok", "degraded", "rejected", "unavailable", "error"})
 MODEL5_QUANTITATIVE_UNAVAILABLE = "MODEL5_QUANTITATIVE_UNAVAILABLE"
+#: 模型输入包含回填或默认取值（见 framework/domain/provenance.py）。
+IMPUTED_INPUT = "IMPUTED_INPUT"
 MODEL5_REAL_SOURCES = frozenset({"shaoguan_rf", "global_etr", "rf_model"})
 
 
@@ -266,6 +268,8 @@ def _normalize_result(agent_key: str, raw: Any, payload: Mapping[str, Any]) -> O
             "soil_conditioner_dosage": _first_value(source, "soil_conditioner_dosage", "ytk", "YTK"),
             "woody_peat_dosage": _first_value(source, "woody_peat_dosage", "mbnt", "MBNT"),
             "sub_model": first_present("sub_model") if "sub_model" in source else metadata.get("sub_model"),
+            # 被回填或使用默认值的输入字段（如 exchangeable_aluminum、target_ph）。
+            "imputed_inputs": list(first_present("imputed_inputs") or []),
         }
     if agent_key == "model-5":
         dose = first_present("dose_prediction", "dose", "manure_dosage", "organic_fertilizer_dosage")
