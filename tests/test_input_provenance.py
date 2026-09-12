@@ -8,14 +8,19 @@ import pytest
 
 from framework.agents.specialized.acidification_agent import _imputed_model4_inputs
 from framework.domain.provenance import (
+    BACKFILLED_FIELDS,
+    DEFAULT_FIELDS,
+    MEASURED_FIELDS,
     PROVENANCE_KEY,
     SOURCE_DEFAULT,
     SOURCE_MEASURED,
     SOURCE_REGION_MEAN_BACKFILL,
-    detect_constant_fields,
+    SOURCE_MANIFEST,
+    declared_source,
     imputed_feature_names,
     imputed_fields,
     is_imputed,
+    manifest_for,
     provenance_map,
     source_of,
 )
@@ -84,60 +89,49 @@ def test_model5_feature_sources_match_accessor():
         )
 
 
-# ---------------------------------------------------------------- 常量字段识别
+# ---------------------------------------------------------------- 来源台账
 
-def test_detect_constant_fields_marks_backfilled_constants():
-    snapshots = [
-        {"total_n": 1.4055, "soil_ph": 5.1, "soil_texture": "壤土",
-         PROVENANCE_KEY: {}},
-        {"total_n": 1.4055, "soil_ph": 5.6, "soil_texture": "砂土",
-         PROVENANCE_KEY: {}},
-        {"total_n": 1.4055, "soil_ph": 5.9, "soil_texture": "壤土",
-         PROVENANCE_KEY: {}},
-    ]
-    found = {item["field"]: item for item in detect_constant_fields(snapshots)}
-    assert "total_n" in found
-    assert found["total_n"]["distinct"] == 1
-    assert found["total_n"]["top_share"] == 1.0
-    # 连续变化的地块级指标不应被判定为回填
-    assert "soil_ph" not in found
-    # 结构性枚举字段不参与判定
-    assert "soil_texture" not in found
-
-
-def test_detect_constant_fields_skips_already_marked_fields():
-    snapshots = [
-        {"total_n": 1.4055, PROVENANCE_KEY: {"total_n": SOURCE_REGION_MEAN_BACKFILL}},
-        {"total_n": 1.4055, PROVENANCE_KEY: {"total_n": SOURCE_REGION_MEAN_BACKFILL}},
-    ]
-    assert detect_constant_fields(snapshots) == []
-
-
-def test_detect_constant_fields_respects_share_threshold():
-    snapshots = [{"exchangeable_hydrogen": 0.2949} for _ in range(9)]
-    snapshots.append({"exchangeable_hydrogen": 5.0})
-    # 默认阈值 0.95：占比 0.9 不判定为回填
-    assert {item["field"] for item in detect_constant_fields(snapshots)} == set()
-    found = {
-        item["field"]: item
-        for item in detect_constant_fields(snapshots, min_share=0.85)
+def test_manifest_groups_match_write_paths():
+    """台账必须与已知写路径一致：回填字段、默认字段、实测字段各归其位。"""
+    assert SOURCE_MANIFEST == {
+        **{field: SOURCE_MEASURED for field in MEASURED_FIELDS},
+        **{field: SOURCE_REGION_MEAN_BACKFILL for field in BACKFILLED_FIELDS},
+        **{field: SOURCE_DEFAULT for field in DEFAULT_FIELDS},
     }
-    assert set(found) == {"exchangeable_hydrogen"}
-    assert found["exchangeable_hydrogen"]["distinct"] == 2
-    assert found["exchangeable_hydrogen"]["top_share"] == pytest.approx(0.9)
+    # link_soil_indicators.py 写入的三个 Model-4/5 关键字段必须在回填组
+    for field in ("exchangeable_hydrogen", "exchangeable_aluminum", "total_n"):
+        assert declared_source(field) == SOURCE_REGION_MEAN_BACKFILL
+    # 导入脚本写死的两个字段必须在默认组
+    for field in ("target_ph", "fertilizer_type"):
+        assert declared_source(field) == SOURCE_DEFAULT
+    # 源 shp 逐地块映射的字段属于实测组（含在源数据中取值恒定的 plow_layer_thickness）
+    for field in ("soil_ph", "organic_matter", "plow_layer_thickness", "quality_grade"):
+        assert declared_source(field) == SOURCE_MEASURED
+    assert declared_source("not_in_manifest") is None
 
 
-def test_detect_constant_fields_tolerates_few_outlier_parcels():
-    """少量验证地块等特例不应阻止常量识别。"""
-    snapshots = [{"exchangeable_hydrogen": 0.2949} for _ in range(100)]
-    snapshots.extend({"exchangeable_hydrogen": value} for value in (5.0, 4.0, 2.0))
-    found = {item["field"]: item for item in detect_constant_fields(snapshots)}
-    assert set(found) == {"exchangeable_hydrogen"}
-    assert found["exchangeable_hydrogen"]["outliers"] == 3
-    # 离群地块过多时不再判定为回填
-    noisy = [{"exchangeable_hydrogen": 0.2949} for _ in range(100)]
-    noisy.extend({"exchangeable_hydrogen": float(value)} for value in range(1, 20))
-    assert {item["field"] for item in detect_constant_fields(noisy)} == set()
+def test_manifest_for_filters_unknown_fields():
+    assert manifest_for() == SOURCE_MANIFEST
+    assert manifest_for(["total_n", "unknown_field"]) == {
+        "total_n": SOURCE_REGION_MEAN_BACKFILL
+    }
+
+
+def test_declared_backfill_field_is_imputed_after_marking():
+    """按台账标注后，回填字段应被判定为回填输入。"""
+    marked = {field: source for field, source in SOURCE_MANIFEST.items()}
+    indicators = {"total_n": 1.4055, "exchangeable_aluminum": 4.0262, "soil_ph": 5.3,
+                  PROVENANCE_KEY: marked}
+    assert is_imputed(indicators, "total_n") is True
+    assert is_imputed(indicators, "exchangeable_aluminum") is True
+    assert is_imputed(indicators, "target_ph") is True
+    assert is_imputed(indicators, "soil_ph") is False
+    # 源数据里的常量字段按实测处理，不贴回填标签
+    assert is_imputed(indicators, "plow_layer_thickness") is False
+    # 台账顺序与默认（按字段名排序）两种调用得到同一集合
+    assert sorted(imputed_fields(indicators, list(SOURCE_MANIFEST))) == sorted(
+        imputed_fields(indicators)
+    )
 
 
 # ---------------------------------------------------------------- Model-5 守卫

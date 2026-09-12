@@ -245,7 +245,11 @@ def render_markdown(report: dict[str, Any]) -> str:
             )
         )
     lines.append("")
-    lines.append("> 「最高频值占比」接近 100% 说明该指标在同一值上高度堆积，通常来自按区域平均值回填，而不是地块级实测。")
+    lines.append(
+        "> 「最高频值占比」接近 100% 说明该指标在同一值上高度堆积：可能来自平均值回填，"
+        "也可能来自源数据本身没有差异（例如当前测试数据的耕层厚度恒为 20 cm）。"
+        "字段来源以 `framework/domain/provenance.py` 的来源台账为准，不以数值分布判定。"
+    )
     lines.append("")
     lines.append("## 2. 各指标等级分布")
     for item in report["indicators"]:

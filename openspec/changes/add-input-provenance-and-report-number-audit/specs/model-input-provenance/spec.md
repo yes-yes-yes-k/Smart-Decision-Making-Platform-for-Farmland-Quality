@@ -24,15 +24,23 @@
 - **THEN** 数值本身 MUST 保持不变
 - **AND** 系统 MUST NOT 把回填值改写为 `0` 或 `null`
 
-### Requirement: 回填字段识别与标注脚本
+### Requirement: 声明式来源台账与标注脚本
 
-系统 SHALL 提供标注脚本，基于跨地块取值集中度识别回填字段：同一字段的最高频取值占比不低于 95%，且不等于该取值的地块数不超过 10 个时判定为候选回填字段；结构性枚举字段（地类、质地、灌溉条件、排水能力、地形部位、土壤结构）MUST 排除在候选之外。已知由导入代码写入固定值的字段（目标 pH、肥料类型）SHALL 标记为 `default`，其余候选 SHALL 标记为 `region_mean_backfill`。脚本 MUST 默认只读，只有显式 `--apply` 才写入来源标记，重复运行 MUST NOT 修改已有标记，`--revert` MUST 只移除本脚本写入的标记。
+系统 SHALL 在 `framework/domain/provenance.py` 维护一份声明式来源台账，逐字段声明来源：由 `scripts/import_real_parcels.py` 从地块 shp 逐地块映射的字段 SHALL 为 `measured`；由 `scripts/link_soil_indicators.py` 用采样表平均值批量填充的字段（交换性氢、交换性铝、交换性酸总量、水解性总酸度、全氮、阳离子交换量）SHALL 为 `region_mean_backfill`；导入脚本写入的固定值（目标 pH、肥料类型）SHALL 为 `default`。系统 MUST NOT 依据数值分布特征推断字段来源。
+
+标注脚本 SHALL 按台账写入来源标记，MUST 默认只读，只有显式 `--apply` 才写入；重复运行 MUST NOT 修改已有标记；`--revert` MUST 只移除台账中字段的来源标记，不触碰指标数值与其他字段。
 
 #### Scenario: 默认运行标注脚本
 
 - **WHEN** 运维人员不带 `--apply` 运行标注脚本
-- **THEN** 系统 SHALL 输出字段清单、不同取值数、最高频占比和将被标注的地块数
+- **THEN** 系统 SHALL 输出台账清单、每个字段的来源、有值地块数与已标注地块数
 - **AND** 系统 MUST NOT 写入数据库
+
+#### Scenario: 按台账写入来源标记
+
+- **WHEN** 运维人员执行 `--apply`
+- **THEN** 系统 SHALL 按台账写入来源标记（实测、回填、默认三组）
+- **AND** 未出现在台账中的字段 MUST NOT 被标记
 
 #### Scenario: 重复执行标注
 
@@ -43,8 +51,14 @@
 #### Scenario: 回滚来源标记
 
 - **WHEN** 运维人员执行 `--revert`
-- **THEN** 系统 SHALL 移除本脚本写入的来源标记
+- **THEN** 系统 SHALL 移除台账中字段的来源标记
 - **AND** 系统 MUST NOT 修改指标数值或其他字段
+
+#### Scenario: 源数据中取值恒定的字段
+
+- **WHEN** 某字段在所有地块取同一值，但其值来自地块 shp 的逐地块映射
+- **THEN** 系统 SHALL 依据台账将其标记为 `measured`
+- **AND** 系统 MUST NOT 因为取值集中就判定为回填
 
 ### Requirement: Model-5 输入回填时的降级与标注
 

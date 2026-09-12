@@ -4,10 +4,15 @@
 
 1. 地块级映射（``scripts/import_real_parcels.py``）：来自地块 shp 的指标；
 2. 区域平均回填（``scripts/link_soil_indicators.py``）：把三普采样表的平均值
-   批量写入所有地块，用于补齐 Model-4/5 需要的字段。
+   批量写入所有地块，用于补齐 Model-4/5 需要的字段；
+3. 少量固定默认值（同导入脚本写入的 ``target_ph``、``fertilizer_type``）。
 
-第 2 类字段“有值”但并非地块实测值，模型侧无法据此判断输入是否可信。本模块
-把来源标记固定为机器可读事实：
+来源是**写入方的事实**，不是数据的统计特征。因此本模块用一份声明式台账
+（``SOURCE_MANIFEST``）记录“谁写了什么”，而不是根据数值分布去反推：分布层面
+既会把源数据本身的常量误判为回填，也无法恢复“同一字段在不同地块可能是实测、
+也可能是平均填充”这种逐地块事实。
+
+来源取值：
 
 - ``measured``：由地块级来源数据映射得到；
 - ``region_mean_backfill``：由区域/全局平均值批量回填；
@@ -17,8 +22,7 @@
 """
 from __future__ import annotations
 
-from collections import Counter
-from typing import Any, Iterable, Mapping, Optional, Sequence
+from typing import Any, Iterable, Mapping, Optional
 
 PROVENANCE_KEY = "provenance"
 
@@ -31,6 +35,56 @@ IMPUTED_SOURCES = frozenset({SOURCE_REGION_MEAN_BACKFILL, SOURCE_DEFAULT})
 
 #: 统一问题码：模型输入中包含回填或默认取值。
 IMPUTED_INPUT = "IMPUTED_INPUT"
+
+#: 由 ``scripts/import_real_parcels.py`` 从 2024 年测试地块 shp 逐地块映射的字段。
+MEASURED_FIELDS: tuple[str, ...] = (
+    "soil_ph",
+    "organic_matter",
+    "available_phosphorus",
+    "available_potassium",
+    "bulk_density",
+    "topsoil_thickness",
+    "plow_layer_thickness",
+    "soil_texture",
+    "irrigation_condition",
+    "drainage_capacity",
+    "terrain_position",
+    "soil_structure",
+    "quality_grade",
+)
+
+#: 由 ``scripts/link_soil_indicators.py`` 用三普采样表平均值批量填充的字段。
+#:
+#: 该脚本只填充缺失字段，因此这些字段的取值不是地块实测值。当前填充口径是
+#: **全局平均**（脚本注释写作“按行政区域”，实现未按区域分组）。
+BACKFILLED_FIELDS: tuple[str, ...] = (
+    "exchangeable_hydrogen",
+    "exchangeable_aluminum",
+    "exchangeable_acid_total",
+    "hydrolytic_total_acidity",
+    "total_n",
+    "cation_exchange_capacity",
+)
+
+#: 由导入脚本写入的固定默认值。
+DEFAULT_FIELDS: tuple[str, ...] = (
+    "target_ph",
+    "fertilizer_type",
+)
+
+#: 声明式来源台账：字段 -> 来源。唯一事实来源，供标注脚本与守卫使用。
+SOURCE_MANIFEST: dict[str, str] = {
+    **{field: SOURCE_MEASURED for field in MEASURED_FIELDS},
+    **{field: SOURCE_REGION_MEAN_BACKFILL for field in BACKFILLED_FIELDS},
+    **{field: SOURCE_DEFAULT for field in DEFAULT_FIELDS},
+}
+
+#: 来源台账的依据说明（写入文档与脚本输出）。
+MANIFEST_BASIS: tuple[tuple[str, str], ...] = (
+    ("measured", "scripts/import_real_parcels.py 从 2024_测试数据.shp 逐地块映射"),
+    ("region_mean_backfill", "scripts/link_soil_indicators.py 用三普采样表平均值批量填充缺失字段"),
+    ("default", "import_real_parcels.py 写入的固定默认值（target_ph=6.5、fertilizer_type=compound）"),
+)
 
 #: Model-5 必填特征 -> soil_indicators 字段
 #:
@@ -56,25 +110,17 @@ MODEL4_INPUT_SOURCES: dict[str, str] = {
 #: Model-4 的上下文参数（不是 soil_indicators 字段，缺失即按默认值处理）
 MODEL4_CONTEXT_INPUTS = ("target_ph", "fertilizer_type")
 
-#: 结构性枚举字段：取值天然离散，不参与“跨地块常量”判定。
-STRUCTURAL_FIELDS = frozenset({
-    "soil_texture",
-    "irrigation_condition",
-    "drainage_capacity",
-    "terrain_position",
-    "soil_structure",
-    "land_type",
-    "obstacle_factors",
-    "quality_grade",
-})
 
-#: 已知由导入/兼容代码写入固定默认值的字段。
-DEFAULT_FIELDS = frozenset({"target_ph", "fertilizer_type"})
+def manifest_for(fields: Optional[Iterable[str]] = None) -> dict[str, str]:
+    """返回来源台账（可按字段筛选），用于标注脚本写入。"""
+    if fields is None:
+        return dict(SOURCE_MANIFEST)
+    return {field: SOURCE_MANIFEST[field] for field in fields if field in SOURCE_MANIFEST}
 
 
-def source_for_field(field: str) -> str:
-    """回填字段的默认来源类型：已知默认值字段标记为 ``default``。"""
-    return SOURCE_DEFAULT if field in DEFAULT_FIELDS else SOURCE_REGION_MEAN_BACKFILL
+def declared_source(field: str) -> Optional[str]:
+    """台账声明的来源；未在台账中的字段返回 ``None``。"""
+    return SOURCE_MANIFEST.get(field)
 
 
 def provenance_map(indicators: Optional[Mapping[str, Any]]) -> dict[str, str]:
@@ -116,65 +162,3 @@ def imputed_feature_names(
         for feature, source_field in feature_sources.items()
         if is_imputed(indicators, source_field)
     ]
-
-
-def empty_provenance(indicators: Optional[Mapping[str, Any]], fields: Sequence[str]) -> dict[str, str]:
-    """为尚未标注的字段生成来源标记草案（默认 ``region_mean_backfill``）。"""
-    existing = provenance_map(indicators)
-    return {
-        field: SOURCE_REGION_MEAN_BACKFILL
-        for field in fields
-        if field not in existing and field != PROVENANCE_KEY
-    }
-
-
-def detect_constant_fields(
-    snapshots: Sequence[Mapping[str, Any]],
-    *,
-    min_share: float = 0.95,
-    max_others: int = 10,
-    excluded_fields: Iterable[str] = STRUCTURAL_FIELDS,
-) -> list[dict[str, Any]]:
-    """识别“跨地块常量”字段。
-
-    判定条件：字段的最高频取值占比不低于 ``min_share``，且不属于该取值的**离群地块数**
-    不超过 ``max_others``（用于容忍少量验证地块等特例）。结构性枚举字段与已标注字段
-    会被跳过。
-
-    返回按最高频占比降序排列的判定结果，供标注脚本输出与写入使用。
-    """
-    excluded = set(excluded_fields)
-    counters: dict[str, Counter] = {}
-    total = len(snapshots)
-
-    for snapshot in snapshots:
-        if not isinstance(snapshot, Mapping):
-            continue
-        marked = provenance_map(snapshot)
-        for field, value in snapshot.items():
-            key = str(field)
-            if key == PROVENANCE_KEY or key in excluded or key in marked:
-                continue
-            if value is None or (isinstance(value, str) and not value.strip()):
-                continue
-            counters.setdefault(key, Counter())[str(value)] += 1
-
-    results: list[dict[str, Any]] = []
-    for field, counter in counters.items():
-        non_null = sum(counter.values())
-        if non_null == 0:
-            continue
-        top_value, top_count = counter.most_common(1)[0]
-        share = top_count / non_null
-        if share >= min_share and (non_null - top_count) <= max_others:
-            results.append({
-                "field": field,
-                "distinct": len(counter),
-                "top_value": top_value,
-                "top_share": round(share, 6),
-                "non_null": non_null,
-                "outliers": non_null - top_count,
-                "total": total,
-            })
-    results.sort(key=lambda item: (-item["top_share"], item["field"]))
-    return results
