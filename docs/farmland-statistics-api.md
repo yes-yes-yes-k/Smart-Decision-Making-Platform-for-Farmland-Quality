@@ -9,6 +9,7 @@
 - 所有最高档不设上限。有机质大于 40、有效磷大于 40 均继续使用各自“高”档颜色，不新增颜色。
 - 有效土层厚度对接现有数据字段 `topsoil_thickness`；接口对外名称为 `effective_soil_depth`。
 - 73 个村间争议面以 `zone` 保存并标记为不可选择，不强行归入任何普通村。
+- 地块详情和点选响应中的 `areaMu` 是完整地块测地面积换算的亩数，不受当前视窗或行政区边界裁剪；几何缺失时为 `null`。
 
 ## 接口输入输出示例
 
@@ -349,6 +350,7 @@ Authorization: Bearer <token>
   "data": {
     "parcelId": "1007",
     "areaCode": "440281",
+    "areaMu": 379.8501,
     "qualityGrade": 8,
     "organicMatter": 19.178225,
     "soilPh": 5.578967,
@@ -357,7 +359,7 @@ Authorization: Bearer <token>
 }
 ```
 
-指标缺失时，相应字段返回 `null`，字段本身不会省略。
+`areaMu` 为完整地块面积，单位为亩并保留 4 位小数；它不同于聚合统计中按范围裁剪后的面积。地块几何缺失时 `areaMu` 返回 `null`。指标缺失时，相应字段也返回 `null`，字段本身不会省略。
 
 ### 5. 按经纬度点选地块
 
@@ -380,6 +382,7 @@ Authorization: Bearer <token>
   "data": {
     "parcelId": "1007",
     "areaCode": "440281",
+    "areaMu": 379.8501,
     "qualityGrade": 8,
     "organicMatter": 19.178225,
     "soilPh": 5.578967,

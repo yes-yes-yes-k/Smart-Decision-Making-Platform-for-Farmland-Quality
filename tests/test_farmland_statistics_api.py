@@ -46,3 +46,17 @@ def test_service_error_preserves_code_and_status(monkeypatch):
     response = client.get("/stats/parcels/missing", headers=headers)
     assert response.status_code == 404
     assert response.get_json()["code"] == "parcel_not_found"
+
+
+def test_parcel_summary_exposes_area_in_mu(monkeypatch):
+    client, headers = _client()
+    monkeypatch.setattr(
+        routes,
+        "get_parcel_summary",
+        lambda _parcel_id: {"parcelId": "1007", "areaMu": 379.8501},
+    )
+
+    response = client.get("/stats/parcels/1007", headers=headers)
+
+    assert response.status_code == 200
+    assert response.get_json()["data"]["areaMu"] == 379.8501

@@ -285,11 +285,31 @@ def list_regions(
     } for row in rows]
 
 
-def _parcel_response(parcel: ParcelInfo) -> dict[str, Any]:
+def _parcel_area_mu(parcel_id: str) -> float | None:
+    try:
+        area_mu = db.session.execute(sa.text("""
+            SELECT CASE
+                     WHEN geom IS NULL THEN NULL
+                     ELSE ST_Area(geom::geography) * :mu_per_sqm
+                   END AS area_mu
+            FROM parcel_info
+            WHERE parcel_id = :parcel_id
+            LIMIT 1
+        """), {
+            "parcel_id": parcel_id,
+            "mu_per_sqm": MU_PER_SQUARE_METRE,
+        }).scalar()
+    except sa.exc.SQLAlchemyError as exc:
+        raise StatisticsError("statistics_unavailable", "地块面积服务暂时不可用", 503) from exc
+    return None if area_mu is None else float(area_mu)
+
+
+def _parcel_response(parcel: ParcelInfo, area_mu: float | None) -> dict[str, Any]:
     indicators = parcel.soil_indicators or {}
     return {
         "parcelId": parcel.parcel_id,
         "areaCode": parcel.area_code,
+        "areaMu": _round(area_mu),
         "qualityGrade": indicators.get("quality_grade"),
         "organicMatter": indicators.get("organic_matter"),
         "soilPh": indicators.get("soil_ph"),
@@ -301,7 +321,7 @@ def get_parcel_summary(parcel_id: str) -> dict[str, Any]:
     parcel = ParcelInfo.query.filter_by(parcel_id=parcel_id).first()
     if parcel is None:
         raise StatisticsError("parcel_not_found", "地块不存在", 404)
-    return _parcel_response(parcel)
+    return _parcel_response(parcel, _parcel_area_mu(parcel.parcel_id))
 
 
 def pick_parcel(longitude: Any, latitude: Any) -> dict[str, Any]:
@@ -312,16 +332,22 @@ def pick_parcel(longitude: Any, latitude: Any) -> dict[str, Any]:
     if not (math.isfinite(lon) and math.isfinite(lat) and -180 <= lon <= 180 and -90 <= lat <= 90):
         raise StatisticsError("invalid_coordinate", "经纬度范围无效")
     try:
-        parcel_id = db.session.execute(sa.text("""
-            SELECT parcel_id FROM parcel_info
+        selected = db.session.execute(sa.text("""
+            SELECT parcel_id,
+                   ST_Area(geom::geography) * :mu_per_sqm AS area_mu
+            FROM parcel_info
             WHERE geom IS NOT NULL
               AND ST_Covers(geom, ST_SetSRID(ST_Point(:lon, :lat), 4326))
             ORDER BY ST_Area(geom::geography), parcel_id
             LIMIT 1
-        """), {"lon": lon, "lat": lat}).scalar()
+        """), {
+            "lon": lon,
+            "lat": lat,
+            "mu_per_sqm": MU_PER_SQUARE_METRE,
+        }).mappings().first()
     except sa.exc.SQLAlchemyError as exc:
         raise StatisticsError("statistics_unavailable", "地块点选服务暂时不可用", 503) from exc
-    parcel = ParcelInfo.query.filter_by(parcel_id=parcel_id).first() if parcel_id else None
+    parcel = ParcelInfo.query.filter_by(parcel_id=selected["parcel_id"]).first() if selected else None
     if parcel is None:
         raise StatisticsError("parcel_not_found", "该位置未命中地块", 404)
-    return _parcel_response(parcel)
+    return _parcel_response(parcel, float(selected["area_mu"]))
