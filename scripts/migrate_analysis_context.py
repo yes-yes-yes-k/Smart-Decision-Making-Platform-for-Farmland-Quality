@@ -2,9 +2,12 @@
 from __future__ import annotations
 
 import argparse
+import logging
 from collections.abc import Sequence
 
 import sqlalchemy as sa
+
+LOG = logging.getLogger("migrate_analysis_context")
 
 try:
     from geoalchemy2 import Geometry
@@ -107,7 +110,28 @@ def ensure_spatial_region_catalog(connection) -> None:
             postgresql_using="gist",
         ),
     )
-    metadata.create_all(connection, checkfirst=True)
+    # create_all 的 checkfirst 只校验表是否存在、不会校验索引；已存在的旧表
+    # 会重复创建 idx_spatial_region_catalog_geom 而报 DuplicateTable。
+    # 因此仅在表不存在（全新安装）时整体建表建索引；已存在的表交给下方的
+    # 幂等列/索引补齐逻辑处理。
+    if not sa.inspect(connection).has_table(table.name):
+        # PostgreSQL 在 search_path 含多个 schema、且表位于非首个 schema 时，
+        # inspector 对默认 schema 的 has_table 可能返回 False，但 create_all 里的
+        # CREATE INDEX 仍按完整 search_path 解析到已存在的表/索引，重复创建而报
+        # DuplicateTable。用保存点吞掉这类“重复建表/建索引”异常，交由下方幂等
+        # 列/索引补齐逻辑校验，避免整个启动事务被回滚。
+        try:
+            with connection.begin_nested():
+                metadata.create_all(connection, checkfirst=True)
+        except sa.exc.ProgrammingError:
+            # create_all 因历史残留/多 schema 重复建索引而失败，且事务回滚后
+            # 表通常并不存在。用 CREATE TABLE IF NOT EXISTS 以幂等方式补齐，
+            # 确保下方列/索引补齐逻辑能基于真实存在的表继续执行，避免后续
+            # get_columns 抛 NoSuchTableError。
+            LOG.warning(
+                "spatial_region_catalog 建表冲突，改用 CREATE TABLE IF NOT EXISTS 幂等补齐"
+            )
+            connection.execute(sa.schema.CreateTable(table, if_not_exists=True))
 
     # create_all(checkfirst=True) does not add columns to an existing table.
     # Keep the startup migration idempotent for installations that already have
