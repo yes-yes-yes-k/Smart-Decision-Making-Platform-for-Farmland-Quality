@@ -11,6 +11,11 @@ from typing import Any, Callable
 NumberParser = Callable[[Any], float | None]
 
 
+# Increment this value whenever a label, unit, range boundary or color changes.
+# Clients can use it to invalidate cached legends and thematic styles.
+CLASSIFICATION_VERSION = "2026-09-18.1"
+
+
 def _to_float(value: Any) -> float | None:
     if value is None or isinstance(value, bool):
         return None
@@ -70,6 +75,7 @@ class IndicatorDefinition:
     decimals: int
     buckets: tuple[BucketDefinition, ...]
     parser: NumberParser = _to_float
+    source_aliases: tuple[str, ...] = ()
 
     def parse(self, value: Any) -> float | None:
         return self.parser(value)
@@ -80,11 +86,20 @@ class IndicatorDefinition:
             return None
         return next((bucket for bucket in self.buckets if bucket.contains(parsed)), None)
 
+    def value_from(self, indicators: dict[str, Any]) -> Any:
+        """Read the canonical source field, falling back to legacy aliases."""
+        for field in (self.source_field, *self.source_aliases):
+            value = indicators.get(field)
+            if value is not None and value != "":
+                return value
+        return None
+
     def as_dict(self) -> dict[str, Any]:
         return {
             "key": self.key,
             "label": self.label,
             "sourceField": self.source_field,
+            "sourceAliases": list(self.source_aliases),
             "unit": self.unit,
             "decimals": self.decimals,
             "buckets": [bucket.as_dict() for bucket in self.buckets],
@@ -195,7 +210,8 @@ INDICATOR_DEFINITIONS: dict[str, IndicatorDefinition] = {
         ),
     ),
     "effective_soil_depth": IndicatorDefinition(
-        key="effective_soil_depth", label="有效土层厚度", source_field="topsoil_thickness", unit="cm", decimals=2,
+        key="effective_soil_depth", label="有效土层厚度", source_field="effective_soil_depth",
+        source_aliases=("topsoil_thickness",), unit="cm", decimals=2,
         buckets=(
             _bucket("very_low", "极低", "(0,60)", "#D73027", 0, 60),
             _bucket("low", "低", "[60,80)", "#FC8D59", 60, 80, lower_inclusive=True),

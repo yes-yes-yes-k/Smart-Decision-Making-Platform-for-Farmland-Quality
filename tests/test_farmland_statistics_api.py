@@ -60,3 +60,110 @@ def test_parcel_summary_exposes_area_in_mu(monkeypatch):
 
     assert response.status_code == 200
     assert response.get_json()["data"]["areaMu"] == 379.8501
+
+
+def test_boundaries_forwards_map_filters(monkeypatch):
+    client, headers = _client()
+    received = {}
+
+    def fake_list_boundaries(**kwargs):
+        received.update(kwargs)
+        return {"type": "FeatureCollection", "features": []}
+
+    monkeypatch.setattr(routes, "list_boundaries", fake_list_boundaries)
+
+    response = client.get(
+        "/stats/boundaries?region_type=township&parent_type=county&parent_id=440281"
+        "&bbox=112,24,114,26&zoom=10",
+        headers=headers,
+    )
+
+    assert response.status_code == 200
+    assert received == {
+        "region_type": "township",
+        "parent_type": "county",
+        "parent_id": "440281",
+        "bbox": "112,24,114,26",
+        "zoom": "10",
+    }
+
+
+def test_pick_forwards_metric_and_tolerance(monkeypatch):
+    client, headers = _client()
+    received = {}
+
+    def fake_pick(longitude, latitude, **kwargs):
+        received.update(longitude=longitude, latitude=latitude, **kwargs)
+        return {"parcelId": "P1"}
+
+    monkeypatch.setattr(routes, "pick_parcel", fake_pick)
+
+    response = client.post(
+        "/stats/parcels/pick",
+        json={
+            "longitude": 113.1,
+            "latitude": 24.9,
+            "metric": "soil_ph",
+            "toleranceMeters": 8,
+        },
+        headers=headers,
+    )
+
+    assert response.status_code == 200
+    assert received == {
+        "longitude": 113.1,
+        "latitude": 24.9,
+        "metric_key": "soil_ph",
+        "tolerance_meters": 8,
+    }
+
+
+def test_viewport_parcels_forwards_query_parameters(monkeypatch):
+    client, headers = _client()
+    received = {}
+
+    def fake_viewport(**kwargs):
+        received.update(kwargs)
+        return {"type": "FeatureCollection", "features": []}
+
+    monkeypatch.setattr(routes, "list_viewport_parcels", fake_viewport)
+
+    response = client.get(
+        "/stats/parcels/viewport?bbox=112,24,114,26&metric=organic_matter"
+        "&geometry=simplified&zoom=14&limit=500",
+        headers=headers,
+    )
+
+    assert response.status_code == 200
+    assert received == {
+        "bbox": "112,24,114,26",
+        "metric_key": "organic_matter",
+        "geometry_mode": "simplified",
+        "zoom": "14",
+        "limit": "500",
+    }
+
+
+def test_quality_audit_returns_service_payload(monkeypatch):
+    client, headers = _client()
+    monkeypatch.setattr(routes, "indicator_quality_audit", lambda: {"parcelCount": 5488})
+
+    response = client.get("/stats/quality/audit", headers=headers)
+
+    assert response.status_code == 200
+    assert response.get_json()["data"]["parcelCount"] == 5488
+
+
+def test_pick_rate_limit_returns_429_and_retry_after(monkeypatch):
+    client, headers = _client()
+    monkeypatch.setattr(routes._PICK_LIMITER, "allow", lambda _key: False)
+
+    response = client.post(
+        "/stats/parcels/pick",
+        json={"longitude": 113.1, "latitude": 24.9},
+        headers=headers,
+    )
+
+    assert response.status_code == 429
+    assert response.headers["Retry-After"] == "1"
+    assert response.get_json()["code"] == "rate_limited"

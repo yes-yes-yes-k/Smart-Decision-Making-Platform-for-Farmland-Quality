@@ -195,7 +195,7 @@ class ParcelDataAccessor:
                 "YXL": indicators.get("available_phosphorus"),
                 "SXJ": indicators.get("available_potassium"),
                 "TRRZ": indicators.get("bulk_density"),
-                "YXTCHD": indicators.get("topsoil_thickness"),
+                "YXTCHD": indicators.get("effective_soil_depth", indicators.get("topsoil_thickness")),
                 "GCHD": indicators.get("plow_layer_thickness"),
                 "GCZD": self._to_code("GCZD", indicators.get("soil_texture")),
                 "GGNL": self._to_code("GGNL", indicators.get("irrigation_condition")),

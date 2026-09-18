@@ -52,6 +52,9 @@ def test_over_40_uses_the_same_high_color():
         assert get_indicator_definition(metric).buckets[-1].upper is None
 
 
-def test_effective_depth_uses_imported_topsoil_field():
+def test_effective_depth_uses_canonical_field_with_legacy_alias():
     definition = get_indicator_definition("effective_soil_depth")
-    assert definition.source_field == "topsoil_thickness"
+    assert definition.source_field == "effective_soil_depth"
+    assert definition.source_aliases == ("topsoil_thickness",)
+    assert definition.value_from({"effective_soil_depth": 90, "topsoil_thickness": 80}) == 90
+    assert definition.value_from({"topsoil_thickness": 80}) == 80

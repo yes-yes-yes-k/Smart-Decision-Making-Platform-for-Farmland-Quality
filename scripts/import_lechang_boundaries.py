@@ -1,4 +1,4 @@
-"""Validate and import Lechang county, township and village boundaries.
+"""Validate and import Guangdong L0-L4 administrative boundaries.
 
 The command is a dry run unless ``--apply`` is supplied. Village-to-village
 dispute polygons are retained as non-selectable ``zone`` records instead of
@@ -18,6 +18,7 @@ from typing import Any
 import geopandas as gpd
 import psycopg2
 from psycopg2.extras import Json
+from shapely import from_wkt, get_parts, make_valid, union_all
 
 
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
@@ -28,6 +29,20 @@ DEFAULT_BOUNDARY_DIR = Path(
 SOIL_INSTITUTE_SOURCE = "soil_institute_gd_2020"
 LEGACY_SOURCE = "lechang_admin_2016"
 REPLACED_SOURCES = (LEGACY_SOURCE, SOIL_INSTITUTE_SOURCE)
+
+LEVEL_SPECS = (
+    ("province", "Guangdong_L0_PXZQ.shp", "PXZQDM", "PXZQMC", None, None, 2),
+    ("city", "Guangdong_L1_CXZQ.shp", "CXZQDM", "CXZQMC", "province", "PXZQDM", 4),
+    ("county", "Guangdong_L2_FXZQ.shp", "FXZQDM", "FXZQMC", "city", "CXZQDM", 6),
+    ("township", "Guangdong_L3_TXZQ.shp", "TXZQDM", "TXZQMC", "county", "FXZQDM", 9),
+    ("village", "Guangdong_L4_XZQ.shp", "XZQDM", "XZQMC", "township", "TXZQDM", 12),
+)
+
+SCOPE_CODES = {
+    "lechang": "440281",
+    "shaoguan": "4402",
+    "guangdong": "44",
+}
 
 
 def load_dotenv() -> None:
@@ -238,6 +253,411 @@ def build_records(directory: Path) -> tuple[list[dict[str, Any]], dict[str, Any]
     return records, report
 
 
+def _scope_where(code_field: str, code_length: int, scope_code: str) -> str:
+    if code_length <= len(scope_code):
+        value = scope_code[:code_length]
+        return f"{code_field} = '{value}'"
+    return f"{code_field} LIKE '{scope_code}%'"
+
+
+def _read_scoped_level(
+    directory: Path,
+    filename: str,
+    code_field: str,
+    code_length: int,
+    scope_code: str,
+    repair_invalid: bool = False,
+) -> gpd.GeoDataFrame:
+    path = directory / filename
+    if not path.exists():
+        raise RuntimeError(f"广东 L0-L4 数据缺少文件: {filename}")
+    frame = gpd.read_file(
+        path,
+        where=_scope_where(code_field, code_length, scope_code),
+        encoding="utf-8",
+    )
+    epsg = frame.crs.to_epsg() if frame.crs else None
+    if epsg != 4490:
+        raise RuntimeError(f"{path.name} 坐标系应为 EPSG:4490，实际为 {frame.crs}")
+    if frame.empty:
+        raise RuntimeError(f"{path.name} 在范围 {scope_code} 内没有数据")
+    if frame.geometry.isna().any() or frame.geometry.is_empty.any():
+        raise RuntimeError(f"{path.name} 包含空几何")
+    invalid_mask = ~frame.geometry.is_valid
+    invalid = int(invalid_mask.sum())
+    if invalid and not repair_invalid:
+        invalid_ids = frame.loc[invalid_mask, "OBJECTID"].astype(int).tolist()
+        raise RuntimeError(
+            f"{path.name} 包含 {invalid} 个无效几何（OBJECTID={invalid_ids[:10]}），"
+            "停止导入；复核后可显式传 --repair-invalid"
+        )
+    if invalid:
+        frame = frame.copy()
+        for index in frame.index[invalid_mask]:
+            fixed = make_valid(frame.at[index, "geometry"])
+            polygonal_parts = [
+                part for part in get_parts(fixed)
+                if part.geom_type in {"Polygon", "MultiPolygon"}
+            ]
+            if not polygonal_parts:
+                object_id = frame.at[index, "OBJECTID"]
+                raise RuntimeError(f"{path.name} OBJECTID={object_id} 无法修复为面几何")
+            frame.at[index, "geometry"] = union_all(polygonal_parts)
+        if (~frame.geometry.is_valid).any() or frame.geometry.is_empty.any():
+            raise RuntimeError(f"{path.name} 无效几何修复后仍未通过校验")
+    frame.attrs["repaired_invalid_count"] = invalid if repair_invalid else 0
+    return frame
+
+
+def _clean_boundary_name(value: Any) -> str:
+    name = str(value or "").replace("\ufffd", "").strip()
+    if not name:
+        raise RuntimeError("行政区名称为空或无法解码")
+    return name
+
+
+def _best_boundary_name(values) -> str:
+    names = [_clean_boundary_name(value) for value in values]
+    # Duplicate codes are usually multipart or enclave features. Prefer the
+    # shortest clean name because suffixes such as “飞地” describe a part,
+    # not the administrative object itself.
+    return min(set(names), key=lambda item: ("飞地" in item, len(item), item))
+
+
+def _dissolved_records(
+    frame: gpd.GeoDataFrame,
+    *,
+    object_type: str,
+    code_field: str,
+    name_field: str,
+    parent_type: str | None,
+    parent_field: str | None,
+    source_file: str,
+    disambiguate_parent_collisions: bool = False,
+    parent_name_field: str | None = None,
+) -> tuple[list[dict[str, Any]], int]:
+    records: list[dict[str, Any]] = []
+    duplicate_parts = 0
+    collision_codes: set[str] = set()
+    group_fields: str | list[str] = code_field
+    if disambiguate_parent_collisions and parent_field:
+        parent_counts = frame.groupby(code_field, dropna=False)[parent_field].nunique()
+        collision_codes = {str(code) for code in parent_counts[parent_counts > 1].index}
+        group_fields = [code_field, parent_field]
+
+    for group_key, group in frame.groupby(group_fields, sort=True, dropna=False):
+        code_value = group_key[0] if isinstance(group_key, tuple) else group_key
+        code = str(code_value or "").strip()
+        if not code:
+            raise RuntimeError(f"{source_file} 存在空的 {code_field}")
+        duplicate_parts += max(len(group) - 1, 0)
+        parent = None
+        if parent_field:
+            parent_codes = {str(value).strip() for value in group[parent_field] if str(value).strip()}
+            if len(parent_codes) != 1:
+                raise RuntimeError(f"{object_type} {code} 的父级编码不唯一: {sorted(parent_codes)}")
+            parent = (str(parent_type), next(iter(parent_codes)))
+        geometry = group.geometry.union_all()
+        if geometry.is_empty or not geometry.is_valid:
+            raise RuntimeError(f"{object_type} {code} 合并后几何无效")
+        object_ids = [int(value) for value in group["OBJECTID"] if value is not None]
+        catalog_id = code
+        if code in collision_codes and parent:
+            catalog_id = f"{code}:{parent[1]}"
+        metadata = {
+            "selectable": True,
+            "sourceObjectIds": object_ids,
+            "rawAreaCode": code,
+            "parentCodeCollision": code in collision_codes,
+            "sourceFile": source_file,
+            "sourceCrs": "EPSG:4490",
+        }
+        if parent_name_field:
+            metadata["sourceParentName"] = _best_boundary_name(group[parent_name_field])
+        if "FXZQMC" in group.columns:
+            metadata["sourceCountyName"] = _best_boundary_name(group["FXZQMC"])
+        if "CXZQMC" in group.columns:
+            metadata["sourceCityName"] = _best_boundary_name(group["CXZQMC"])
+        records.append(_record(
+            object_type,
+            catalog_id,
+            _best_boundary_name(group[name_field]),
+            code,
+            parent,
+            geometry,
+            metadata,
+        ))
+    return records, duplicate_parts
+
+
+def _add_synthetic_region_parents(records: list[dict[str, Any]]) -> dict[str, int]:
+    """Create non-selectable parents for direct-admin source placeholders."""
+    keys = {(record["object_type"], record["object_id"]) for record in records}
+    missing_ids = sorted({
+        record["parent_id"]
+        for record in records
+        if record["parent_type"] == "township"
+        and ("township", record["parent_id"]) not in keys
+    })
+    synthetic_counties = 0
+    for parent_id in missing_ids:
+        children = [record for record in records if record["parent_type"] == "township" and record["parent_id"] == parent_id]
+        county_id = str(parent_id)[:6]
+        if ("county", county_id) not in keys:
+            city_id = county_id[:4]
+            if ("city", city_id) not in keys:
+                raise RuntimeError(f"缺失县级 {county_id} 无法挂接地市父节点 {city_id}")
+            county_names = [
+                record["metadata"].get("sourceCountyName")
+                for record in children
+                if record["metadata"].get("sourceCountyName")
+            ]
+            county_name = _best_boundary_name(county_names) if county_names else f"{city_id}直属区域"
+            county_geometry = union_all([from_wkt(record["wkt"]) for record in children if record["wkt"]])
+            records.append(_record(
+                "county",
+                county_id,
+                county_name,
+                county_id,
+                ("city", city_id),
+                county_geometry,
+                {
+                    "selectable": False,
+                    "syntheticFromVillageParent": True,
+                    "sourceChildCount": len(children),
+                    "sourceFile": "Guangdong_L4_XZQ.shp",
+                    "sourceCrs": "EPSG:4490",
+                },
+            ))
+            keys.add(("county", county_id))
+            synthetic_counties += 1
+        names = [
+            record["metadata"].get("sourceParentName")
+            for record in children
+            if record["metadata"].get("sourceParentName")
+        ]
+        display_name = _best_boundary_name(names) if names else f"{county_id}直属区域"
+        geometry = union_all([from_wkt(record["wkt"]) for record in children if record["wkt"]])
+        records.append(_record(
+            "township",
+            str(parent_id),
+            display_name,
+            str(parent_id),
+            ("county", county_id),
+            geometry,
+            {
+                "selectable": False,
+                "syntheticFromVillageParent": True,
+                "sourceChildCount": len(children),
+                "sourceFile": "Guangdong_L4_XZQ.shp",
+                "sourceCrs": "EPSG:4490",
+            },
+        ))
+        keys.add(("township", str(parent_id)))
+    return {"county": synthetic_counties, "township": len(missing_ids)}
+
+
+def build_scope_records(
+    directory: Path,
+    scope_code: str = "440281",
+    repair_invalid: bool = False,
+) -> tuple[list[dict[str, Any]], dict[str, Any]]:
+    """Build L0-L4 records for a county, city or the whole province.
+
+    ``scope_code`` accepts a 6-digit county, 4-digit city or 2-digit province
+    code. Source feature parts sharing one administrative code are dissolved
+    into one catalog geometry.
+    """
+    if len(scope_code) not in {2, 4, 6} or not scope_code.isdigit():
+        raise RuntimeError("scope_code 必须为 2 位省、4 位市或 6 位县级行政区代码")
+    if len(scope_code) == 2:
+        raise RuntimeError("省级范围必须使用分地市流式模式，避免一次载入全省村界导致内存耗尽")
+
+    records: list[dict[str, Any]] = []
+    feature_counts: dict[str, int] = {}
+    duplicate_counts: dict[str, int] = {}
+    repaired_invalid_counts: dict[str, int] = {}
+    dispute_count = 0
+
+    for (
+        object_type,
+        filename,
+        code_field,
+        name_field,
+        parent_type,
+        parent_field,
+        code_length,
+    ) in LEVEL_SPECS:
+        frame = _read_scoped_level(
+            directory, filename, code_field, code_length, scope_code,
+            repair_invalid=repair_invalid,
+        )
+        feature_counts[object_type] = len(frame)
+        repaired_invalid_counts[object_type] = int(frame.attrs.get("repaired_invalid_count", 0))
+
+        if object_type == "village":
+            names = frame[name_field].map(_clean_boundary_name)
+            disputed = names.str.contains("争议", na=False)
+            normal_records, duplicate_parts = _dissolved_records(
+                frame.loc[~disputed],
+                object_type=object_type,
+                code_field=code_field,
+                name_field=name_field,
+                parent_type=parent_type,
+                parent_field=parent_field,
+                source_file=filename,
+                disambiguate_parent_collisions=True,
+                parent_name_field="TXZQMC",
+            )
+            records.extend(normal_records)
+            duplicate_counts[object_type] = duplicate_parts
+            for _, row in frame.loc[disputed].sort_values("OBJECTID").iterrows():
+                object_id = int(row["OBJECTID"])
+                records.append(_record(
+                    "zone",
+                    f"dispute:{object_id}",
+                    _clean_boundary_name(row[name_field]),
+                    str(row[code_field]),
+                    ("township", str(row[parent_field])),
+                    row.geometry,
+                    {
+                        "selectable": False,
+                        "kind": "village_boundary_dispute",
+                        "rawVillageCode": str(row[code_field]),
+                        "sourceObjectId": object_id,
+                        "sourceFile": filename,
+                        "sourceCrs": "EPSG:4490",
+                        "sourceParentName": _clean_boundary_name(row["TXZQMC"]),
+                        "sourceCountyName": _clean_boundary_name(row["FXZQMC"]),
+                        "sourceCityName": _clean_boundary_name(row["CXZQMC"]),
+                    },
+                ))
+            dispute_count = int(disputed.sum())
+            continue
+
+        level_records, duplicate_parts = _dissolved_records(
+            frame,
+            object_type=object_type,
+            code_field=code_field,
+            name_field=name_field,
+            parent_type=parent_type,
+            parent_field=parent_field,
+            source_file=filename,
+        )
+        records.extend(level_records)
+        duplicate_counts[object_type] = duplicate_parts
+
+    synthetic_parent_counts = _add_synthetic_region_parents(records)
+    keys = {(record["object_type"], record["object_id"]) for record in records}
+    missing_parents = [
+        (record["object_type"], record["object_id"], record["parent_type"], record["parent_id"])
+        for record in records
+        if record["parent_type"] and (record["parent_type"], record["parent_id"]) not in keys
+    ]
+    if missing_parents:
+        raise RuntimeError(f"存在缺失父级的行政区记录: {missing_parents[:5]}")
+
+    return records, {
+        "source": SOIL_INSTITUTE_SOURCE,
+        "directory": str(directory),
+        "datasetLayout": "guangdong_l0_l4",
+        "datasetLineage": "2016 boundary lineage; 2020-10 export metadata",
+        "scopeCode": scope_code,
+        "crs": "EPSG:4490",
+        "counts": dict(Counter(record["object_type"] for record in records)),
+        "sourceFeatureCounts": feature_counts,
+        "dissolvedDuplicateParts": duplicate_counts,
+        "disputeFeatureCount": dispute_count,
+        "parentIntegrity": "passed",
+        "geometryValidity": "passed",
+        "repairedInvalidGeometries": repaired_invalid_counts,
+        "syntheticRegionParents": synthetic_parent_counts,
+    }
+
+
+def _province_city_codes(directory: Path, province_code: str) -> list[str]:
+    frame = _read_scoped_level(
+        directory,
+        "Guangdong_L1_CXZQ.shp",
+        "CXZQDM",
+        4,
+        province_code,
+    )
+    return sorted({str(value).strip() for value in frame["CXZQDM"] if str(value).strip()})
+
+
+def _merge_city_reports(reports: list[dict[str, Any]], province_code: str) -> dict[str, Any]:
+    counts: Counter[str] = Counter()
+    source_counts: Counter[str] = Counter()
+    duplicate_counts: Counter[str] = Counter()
+    repaired_counts: Counter[str] = Counter()
+    for report in reports:
+        counts.update(report["counts"])
+        source_counts.update(report["sourceFeatureCounts"])
+        duplicate_counts.update(report["dissolvedDuplicateParts"])
+        repaired_counts.update(report["repairedInvalidGeometries"])
+    # Every city batch contains the same province feature. It is upserted in
+    # apply mode and must only be counted once in the province summary.
+    counts["province"] = 1
+    source_counts["province"] = 1
+    return {
+        "source": SOIL_INSTITUTE_SOURCE,
+        "directory": reports[0]["directory"] if reports else None,
+        "datasetLayout": "guangdong_l0_l4_streamed_by_city",
+        "datasetLineage": "2016 boundary lineage; 2020-10 export metadata",
+        "scopeCode": province_code,
+        "crs": "EPSG:4490",
+        "cityBatchCount": len(reports),
+        "counts": dict(counts),
+        "sourceFeatureCounts": dict(source_counts),
+        "dissolvedDuplicateParts": dict(duplicate_counts),
+        "disputeFeatureCount": sum(int(report["disputeFeatureCount"]) for report in reports),
+        "parentIntegrity": "passed",
+        "geometryValidity": "passed",
+        "repairedInvalidGeometries": dict(repaired_counts),
+        "syntheticRegionParents": {
+            "county": sum(int(report["syntheticRegionParents"]["county"]) for report in reports),
+            "township": sum(int(report["syntheticRegionParents"]["township"]) for report in reports),
+        },
+    }
+
+
+def process_province_scope(
+    directory: Path,
+    province_code: str,
+    *,
+    repair_invalid: bool,
+    apply: bool,
+) -> dict[str, Any]:
+    """Validate and optionally import a province one city at a time."""
+    city_codes = _province_city_codes(directory, province_code)
+    reports: list[dict[str, Any]] = []
+
+    # Complete a read-only preflight before any database record is changed.
+    for city_code in city_codes:
+        records, report = build_scope_records(
+            directory, city_code, repair_invalid=repair_invalid,
+        )
+        reports.append(report)
+        print(json.dumps({"preflightCity": city_code, "counts": report["counts"]}, ensure_ascii=False), flush=True)
+        del records
+
+    if apply:
+        for index, city_code in enumerate(city_codes):
+            records, report = build_scope_records(
+                directory, city_code, repair_invalid=repair_invalid,
+            )
+            import_records(
+                records,
+                report["source"],
+                deactivate_existing=index == 0,
+            )
+            print(json.dumps({"importedCity": city_code, "counts": report["counts"]}, ensure_ascii=False), flush=True)
+            del records
+
+    return _merge_city_reports(reports, province_code)
+
+
 def ensure_schema(cursor) -> None:
     cursor.execute("CREATE EXTENSION IF NOT EXISTS postgis")
     cursor.execute("""
@@ -269,16 +689,22 @@ def ensure_schema(cursor) -> None:
     """)
 
 
-def import_records(records: list[dict[str, Any]], source_name: str) -> None:
+def import_records(
+    records: list[dict[str, Any]],
+    source_name: str,
+    *,
+    deactivate_existing: bool = True,
+) -> None:
     connection = db_connection()
     try:
         with connection:
             with connection.cursor() as cursor:
                 ensure_schema(cursor)
-                cursor.execute(
-                    "UPDATE spatial_region_catalog SET enabled = FALSE, updated_at = NOW() WHERE source = ANY(%s)",
-                    (list(REPLACED_SOURCES),),
-                )
+                if deactivate_existing:
+                    cursor.execute(
+                        "UPDATE spatial_region_catalog SET enabled = FALSE, updated_at = NOW() WHERE source = ANY(%s)",
+                        (list(REPLACED_SOURCES),),
+                    )
                 for record in records:
                     cursor.execute("""
                         INSERT INTO spatial_region_catalog (
@@ -313,18 +739,50 @@ def import_records(records: list[dict[str, Any]], source_name: str) -> None:
 
 
 def main() -> int:
-    parser = argparse.ArgumentParser(description="导入乐昌市县、镇、村行政边界")
+    parser = argparse.ArgumentParser(description="校验并导入广东 L0-L4 行政边界")
     parser.add_argument(
         "--boundary-dir",
         type=Path,
-        default=Path(os.environ.get("LECHANG_BOUNDARY_DIR", DEFAULT_BOUNDARY_DIR)),
+        default=Path(os.environ.get(
+            "GUANGDONG_BOUNDARY_DIR",
+            os.environ.get("LECHANG_BOUNDARY_DIR", DEFAULT_BOUNDARY_DIR),
+        )),
     )
     parser.add_argument("--apply", action="store_true", help="写入数据库；默认只校验")
+    parser.add_argument(
+        "--scope",
+        choices=tuple(SCOPE_CODES),
+        default="lechang",
+        help="预设导入范围；默认 lechang",
+    )
+    parser.add_argument(
+        "--scope-code",
+        help="自定义 2 位省、4 位市或 6 位县级代码；设置后覆盖 --scope",
+    )
+    parser.add_argument(
+        "--repair-invalid",
+        action="store_true",
+        help="显式修复源数据中的无效面并重新校验；默认遇到无效几何即停止",
+    )
     args = parser.parse_args()
     load_dotenv()
-    records, report = build_records(args.boundary_dir)
+    scope_code = args.scope_code or SCOPE_CODES[args.scope]
+    if len(scope_code) == 2:
+        report = process_province_scope(
+            args.boundary_dir,
+            scope_code,
+            repair_invalid=args.repair_invalid,
+            apply=args.apply,
+        )
+        records = None
+    else:
+        records, report = build_scope_records(
+            args.boundary_dir,
+            scope_code,
+            repair_invalid=args.repair_invalid,
+        )
     report["mode"] = "apply" if args.apply else "dry-run"
-    if args.apply:
+    if args.apply and records is not None:
         import_records(records, report["source"])
         report["databaseWrite"] = "committed"
     else:
