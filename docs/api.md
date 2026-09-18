@@ -1125,7 +1125,7 @@ Model-4 无空间对象情景试算：
 
 **GET** `/api/v1/farmland-statistics/metrics`
 
-返回 8 项指标的名称、来源字段、单位、精度、分级区间和颜色。前端应以此响应生成图例，避免重复硬编码。所有最高档均不封顶，例如有机质大于 40 仍属于“高”档并使用统一颜色。
+返回 8 项指标的名称、规范来源字段、兼容来源字段、单位、精度、分级区间、颜色和 `classificationVersion`。前端应以此响应生成图例，版本变化时刷新缓存，避免重复硬编码。所有最高档均不封顶，例如有机质大于 40 仍属于“高”档并使用统一颜色。
 
 指标 key：
 
@@ -1160,6 +1160,16 @@ GET /api/v1/farmland-statistics/regions?parent_type=township&parent_id=440281001
 
 区域对象会返回 `regionType`、`regionId`、`displayName`、`areaCode`、父级信息、`selectable` 和 `hasGeometry`。当前区域代码来自区域目录和空间审计，不再固定为新丰县 `440233`。
 
+### 获取行政边界 GeoJSON
+
+**GET** `/api/v1/farmland-statistics/boundaries`
+
+```text
+GET /api/v1/farmland-statistics/boundaries?region_type=township&parent_type=county&parent_id=440281&zoom=10
+```
+
+可按 `region_type`、父级、`bbox=minLon,minLat,maxLon,maxLat` 和 `zoom` 查询。响应为 GeoJSON `FeatureCollection`，包含名称、代码、父级、是否可选和层级最小缩放级别。省/市/县/镇/村的 `minZoom` 分别为 3/5/7/9/12；低于该级别时返回空要素集。
+
 ### 聚合统计
 
 **POST** `/api/v1/farmland-statistics/aggregate`
@@ -1189,6 +1199,36 @@ GET /api/v1/farmland-statistics/regions?parent_type=township&parent_id=440281001
 }
 ```
 
+多个同级行政区联合统计：
+
+```json
+{
+  "scope": {
+    "type": "administrative_regions",
+    "region_type": "county",
+    "region_ids": ["440281", "440282"]
+  },
+  "metrics": "all"
+}
+```
+
+自定义圈选区域统计：
+
+```json
+{
+  "scope": {
+    "type": "polygon",
+    "geometry": {
+      "type": "Polygon",
+      "coordinates": [[[113.0, 24.0], [113.1, 24.0], [113.1, 24.1], [113.0, 24.0]]]
+    }
+  },
+  "metrics": ["organic_matter"]
+}
+```
+
+多区域一次最多 100 个且不允许混级；后端先合并并消除重叠。圈选范围仅支持 WGS84 Polygon/MultiPolygon，最多 5000 个顶点、面积最多 200000 平方公里。
+
 `bbox` 坐标系为 WGS84，顺序是 `[minLon, minLat, maxLon, maxLat]`。地图缩放或平移后，前端可用新 bbox 再次请求；建议做 300–500 ms 防抖并取消过期请求。
 
 成功响应（200，节选）：
@@ -1197,10 +1237,12 @@ GET /api/v1/farmland-statistics/regions?parent_type=township&parent_id=440281001
 {
   "status": "ok",
   "data": {
+    "classificationVersion": "2026-09-18.1",
     "dataAsOf": "2026-09-11T10:20:30",
     "scopeSummary": {"parcelCount": 2, "totalAreaMu": 18.5},
     "metrics": [{
       "key": "organic_matter",
+      "metricKey": "organic_matter",
       "label": "有机质含量",
       "unit": "g/kg",
       "table": {
@@ -1246,11 +1288,29 @@ GET /api/v1/farmland-statistics/regions?parent_type=township&parent_id=440281001
 ```json
 {
   "longitude": 113.35,
-  "latitude": 25.13
+  "latitude": 25.13,
+  "metric": "soil_ph",
+  "toleranceMeters": 8
 }
 ```
 
-返回命中地块的 `parcelId`、`areaCode`、`areaMu`、`qualityGrade`、`organicMatter`、`soilPh` 和 `availablePhosphorus`。`areaMu` 是完整地块测地面积换算的亩数，保留 4 位小数，不按当前视窗裁剪；几何缺失时为 `null`。未命中返回 404；多个地块重叠时优先返回面积较小的地块。
+传 `metric` 时只返回当前指标的值、等级、颜色及来源信息；省略时保持原有全部 8 项响应。`toleranceMeters` 默认为 0、最大 50 米，精确覆盖优先，否则返回容差内最近地块。每项指标均返回 `dataSource`、`measurementYear`、`isImputed`、`imputationMethod` 和 `qualityFlag`。接口有 5 秒短时缓存及每用户 120 次/分钟保护。
+
+### 获取视口轻量地块要素
+
+**GET** `/api/v1/farmland-statistics/parcels/viewport`
+
+```text
+GET /api/v1/farmland-statistics/parcels/viewport?bbox=113,24,114,25&metric=soil_ph&geometry=centroid&limit=2000
+```
+
+返回 GeoJSON `FeatureCollection`，每个要素只包含地块 ID、当前指标的值/等级/颜色/来源，以及质心、简化几何或空几何。`limit` 默认 2000、最大 5000；超过时 `truncated=true`。该接口用于地图批量渲染和前端本地悬浮拾取，每用户限制为 60 次/分钟。
+
+### 获取指标质量审计
+
+**GET** `/api/v1/farmland-statistics/quality/audit`
+
+返回 8 项指标的非空率、可解析数、范围、唯一值数、异常/未分类数量和来源分布。当前审计已将耕层厚度标记为常量值、有效土层厚度标记为低变异。结果缓存 5 分钟。
 
 ### 获取地块详情
 
@@ -1276,6 +1336,8 @@ GET /api/v1/farmland-statistics/regions?parent_type=township&parent_id=440281001
 | 401 | 未携带或无法验证 JWT |
 | 404 | 区域/地块不存在，或点选位置未命中地块 |
 | 409 | 区域存在但尚未导入边界 |
+| 413 | 行政区数量、圈选顶点数或圈选面积超过限制 |
+| 429 | 点选或视口地块请求超过当前用户频率限制 |
 | 500 | 统计服务内部错误 |
 | 503 | 区域目录、空间统计或地块点选服务暂时不可用 |
 
