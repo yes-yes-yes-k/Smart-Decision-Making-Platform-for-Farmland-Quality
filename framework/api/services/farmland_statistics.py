@@ -1,12 +1,15 @@
-"""Versioned spatial statistics, region, boundary and parcel query services."""
+"""Spatially clipped farmland statistics used by the satellite-map dashboard."""
 
 from __future__ import annotations
 
 import json
 import math
-from collections import Counter
+from collections import Counter, OrderedDict
 from collections.abc import Iterable, Mapping
+from copy import deepcopy
 from datetime import datetime
+from threading import Lock
+from time import monotonic
 from typing import Any
 
 import sqlalchemy as sa
@@ -15,7 +18,9 @@ from framework.domain.statistics import (
     CLASSIFICATION_VERSION,
     INDICATOR_DEFINITIONS,
     INDICATOR_GROUPS,
+    audit_indicator_rows,
     get_indicator_definition,
+    metric_provenance,
 )
 from framework.models import ParcelInfo, SpatialRegionCatalog, db
 
@@ -24,11 +29,54 @@ MU_PER_SQUARE_METRE = 1.0 / 666.6666666666666
 SCOPE_VERSION = 1
 REGION_TYPES = {"province", "city", "county", "township", "village", "zone"}
 BOUNDARY_MIN_ZOOM = {
-    "province": 3, "city": 5, "county": 7,
-    "township": 9, "village": 12, "zone": 12,
+    "province": 3,
+    "city": 5,
+    "county": 7,
+    "township": 9,
+    "village": 12,
+    "zone": 12,
 }
 MAX_BOUNDARY_FEATURES = 5000
 MAX_PARCEL_QUERY_LIMIT = 500
+MAX_SELECTED_REGIONS = 100
+MAX_CUSTOM_GEOMETRY_VERTICES = 5000
+MAX_CUSTOM_GEOMETRY_AREA_SQ_KM = 200_000.0
+MAX_PICK_TOLERANCE_METERS = 50.0
+MAX_VIEWPORT_PARCELS = 5000
+DEFAULT_VIEWPORT_PARCELS = 2000
+PICK_CACHE_TTL_SECONDS = 5.0
+QUALITY_AUDIT_CACHE_TTL_SECONDS = 300.0
+
+
+class _TtlCache:
+    def __init__(self, max_size: int):
+        self.max_size = max_size
+        self._values: OrderedDict[Any, tuple[float, Any]] = OrderedDict()
+        self._lock = Lock()
+
+    def get(self, key: Any) -> Any | None:
+        now = monotonic()
+        with self._lock:
+            item = self._values.get(key)
+            if item is None:
+                return None
+            expires_at, value = item
+            if expires_at <= now:
+                self._values.pop(key, None)
+                return None
+            self._values.move_to_end(key)
+            return deepcopy(value)
+
+    def set(self, key: Any, value: Any, ttl_seconds: float) -> None:
+        with self._lock:
+            self._values[key] = (monotonic() + ttl_seconds, deepcopy(value))
+            self._values.move_to_end(key)
+            while len(self._values) > self.max_size:
+                self._values.popitem(last=False)
+
+
+_PICK_CACHE = _TtlCache(max_size=512)
+_QUALITY_AUDIT_CACHE = _TtlCache(max_size=1)
 
 
 class StatisticsError(Exception):
@@ -73,7 +121,6 @@ def _row_indicators(row: Mapping[str, Any]) -> dict[str, Any]:
 
 
 def _catalog_rows() -> list[Mapping[str, Any]] | None:
-    """Return annual snapshots, or ``None`` when the metadata DB is unavailable."""
     try:
         return db.session.execute(sa.text("""
             SELECT survey_year AS data_year, soil_indicators, quality_grade, composite_index
@@ -97,7 +144,6 @@ def _year_summaries(rows: Iterable[Mapping[str, Any]]) -> list[dict[str, Any]]:
 
 
 def metric_metadata() -> dict[str, Any]:
-    """Return grouped metric metadata with observed availability by data year."""
     rows = _catalog_rows()
     years = _year_summaries(rows or [])
     counts: dict[str, Counter[int]] = {key: Counter() for key in INDICATOR_DEFINITIONS}
@@ -222,9 +268,20 @@ def summarize_rows(
         }
         unclassified_count = 0
         unclassified_area = 0.0
+        provenance_counts = {
+            "dataSource": Counter(),
+            "measurementYear": Counter(),
+            "isImputed": Counter(),
+            "imputationMethod": Counter(),
+            "qualityFlag": Counter(),
+        }
 
         for row in materialized:
             indicators = _row_indicators(row)
+            provenance = metric_provenance(indicators, metric_key)
+            for field, counter in provenance_counts.items():
+                value = provenance[field]
+                counter["unknown" if value is None else value] += 1
             parsed = definition.parse(definition.value_from(indicators))
             area_mu = max(float(row.get("area_mu") or 0), 0)
             if parsed is None:
@@ -243,17 +300,27 @@ def summarize_rows(
                     unclassified_count += 1
                     unclassified_area += area_mu
                     continue
-                else:
-                    bucket_values[bucket.key]["parcelCount"] += 1
-                    bucket_values[bucket.key]["areaMu"] += area_mu
+                bucket_values[bucket.key]["parcelCount"] += 1
+                bucket_values[bucket.key]["areaMu"] += area_mu
             numeric_values.append((numeric, area_mu))
 
         valid_count = len(numeric_values) + sum(category_values.values())
         valid_area = sum(area for _, area in numeric_values) + sum(category_areas.values())
+
+        def uniform_value(field: str) -> Any:
+            values_with_counts = provenance_counts[field]
+            if len(values_with_counts) != 1:
+                return None
+            value = next(iter(values_with_counts))
+            return None if value == "unknown" else value
+
         if definition.value_type == "category":
             distribution = [
                 {
-                    "key": value, "label": value, "rangeLabel": value, "color": None,
+                    "key": value,
+                    "label": value,
+                    "rangeLabel": value,
+                    "color": None,
                     "parcelCount": category_values[value],
                     "areaMu": _round(category_areas[value]),
                     "countPercent": _round(category_values[value] * 100 / valid_count) if valid_count else 0.0,
@@ -293,6 +360,19 @@ def summarize_rows(
             "order": definition.order,
             "valueType": definition.value_type,
             "dataYear": data_year,
+            "dataSource": uniform_value("dataSource") or (
+                "mixed" if len(provenance_counts["dataSource"]) > 1 else None
+            ),
+            "measurementYear": uniform_value("measurementYear"),
+            "isImputed": uniform_value("isImputed"),
+            "imputationMethod": uniform_value("imputationMethod"),
+            "qualityFlag": uniform_value("qualityFlag") or (
+                "mixed" if len(provenance_counts["qualityFlag"]) > 1 else None
+            ),
+            "provenanceSummary": {
+                field: {str(value): count for value, count in counter.items()}
+                for field, counter in provenance_counts.items()
+            },
             "table": {
                 "average": _round(average, definition.decimals),
                 "totalAreaMu": _round(total_area),
@@ -312,7 +392,10 @@ def summarize_rows(
         "classificationVersion": CLASSIFICATION_VERSION,
         "dataYear": data_year,
         "dataAsOf": _isoformat(data_as_of),
-        "scopeSummary": {"parcelCount": len(materialized), "totalAreaMu": _round(total_area)},
+        "scopeSummary": {
+            "parcelCount": len(materialized),
+            "totalAreaMu": _round(total_area),
+        },
         "metrics": summaries,
     }
 
@@ -353,6 +436,155 @@ def _parse_bbox(value: Any, field_name: str = "bbox") -> list[float] | None:
     return [min_lon, min_lat, max_lon, max_lat]
 
 
+def _validate_custom_geometry(geometry: Any) -> tuple[dict[str, Any], int]:
+    if not isinstance(geometry, Mapping):
+        raise StatisticsError("invalid_geometry", "scope.geometry 必须为 GeoJSON 几何对象")
+    geometry_type = geometry.get("type")
+    if geometry_type not in {"Polygon", "MultiPolygon"}:
+        raise StatisticsError("invalid_geometry", "自定义范围仅支持 Polygon 或 MultiPolygon")
+    coordinates = geometry.get("coordinates")
+    polygons = [coordinates] if geometry_type == "Polygon" else coordinates
+    if not isinstance(polygons, list) or not polygons:
+        raise StatisticsError("invalid_geometry", "GeoJSON coordinates 不能为空")
+
+    vertex_count = 0
+    for polygon in polygons:
+        if not isinstance(polygon, list) or not polygon:
+            raise StatisticsError("invalid_geometry", "每个 Polygon 至少需要一个线性环")
+        for ring in polygon:
+            if not isinstance(ring, list) or len(ring) < 4:
+                raise StatisticsError("invalid_geometry", "每个线性环至少需要四个坐标点")
+            first: tuple[float, float] | None = None
+            last: tuple[float, float] | None = None
+            for position in ring:
+                if not isinstance(position, (list, tuple)) or len(position) < 2:
+                    raise StatisticsError("invalid_geometry", "GeoJSON 坐标点必须包含经度和纬度")
+                if isinstance(position[0], bool) or isinstance(position[1], bool):
+                    raise StatisticsError("invalid_geometry", "GeoJSON 坐标必须为数字")
+                try:
+                    lon, lat = float(position[0]), float(position[1])
+                except (TypeError, ValueError) as exc:
+                    raise StatisticsError("invalid_geometry", "GeoJSON 坐标必须为数字") from exc
+                if not (math.isfinite(lon) and math.isfinite(lat) and -180 <= lon <= 180 and -90 <= lat <= 90):
+                    raise StatisticsError("invalid_geometry", "GeoJSON 坐标超出 WGS84 有效范围")
+                current = (lon, lat)
+                first = current if first is None else first
+                last = current
+                vertex_count += 1
+                if vertex_count > MAX_CUSTOM_GEOMETRY_VERTICES:
+                    raise StatisticsError(
+                        "geometry_too_complex",
+                        f"自定义范围顶点数不能超过 {MAX_CUSTOM_GEOMETRY_VERTICES}",
+                        413,
+                    )
+            if first != last:
+                raise StatisticsError("invalid_geometry", "GeoJSON 线性环必须首尾闭合")
+    return dict(geometry), vertex_count
+
+
+def list_boundaries(
+    region_type: str | None,
+    parent_type: str | None = None,
+    parent_id: str | None = None,
+    bbox: Any = None,
+    zoom: Any = None,
+) -> dict[str, Any]:
+    region_type = str(region_type or "")
+    if region_type not in REGION_TYPES:
+        raise StatisticsError("invalid_region_type", "region_type 无效")
+    if bool(parent_type) != bool(parent_id):
+        raise StatisticsError("invalid_parent", "parent_type 与 parent_id 必须同时提供")
+    if parent_type and parent_type not in REGION_TYPES:
+        raise StatisticsError("invalid_parent", "parent_type 无效")
+    parsed_bbox = _parse_bbox(bbox)
+    parsed_zoom: float | None = None
+    if zoom is not None and zoom != "":
+        try:
+            parsed_zoom = float(zoom)
+        except (TypeError, ValueError) as exc:
+            raise StatisticsError("invalid_zoom", "zoom 必须为 0 到 24 之间的数字") from exc
+        if not math.isfinite(parsed_zoom) or not 0 <= parsed_zoom <= 24:
+            raise StatisticsError("invalid_zoom", "zoom 必须为 0 到 24 之间的数字")
+
+    min_zoom = BOUNDARY_MIN_ZOOM[region_type]
+    base = {
+        "type": "FeatureCollection",
+        "regionType": region_type,
+        "minZoom": min_zoom,
+        "maxZoom": None,
+        "zoom": parsed_zoom,
+        "bbox": parsed_bbox,
+    }
+    if parsed_zoom is not None and parsed_zoom < min_zoom:
+        return {**base, "suppressedByZoom": True, "truncated": False, "features": []}
+
+    conditions = [
+        "object_type = :region_type",
+        "enabled = TRUE",
+        "geom IS NOT NULL",
+    ]
+    params: dict[str, Any] = {
+        "region_type": region_type,
+        "limit": MAX_BOUNDARY_FEATURES + 1,
+        "tolerance": 0.0 if parsed_zoom is None else 360.0 / (256.0 * 2 ** parsed_zoom) * 0.25,
+    }
+    if parent_type:
+        conditions.extend([
+            "parent_object_type = :parent_type",
+            "parent_object_id = :parent_id",
+        ])
+        params.update(parent_type=parent_type, parent_id=str(parent_id))
+    if parsed_bbox:
+        conditions.extend([
+            "geom && ST_MakeEnvelope(:min_lon, :min_lat, :max_lon, :max_lat, 4326)",
+            "ST_Intersects(geom, ST_MakeEnvelope(:min_lon, :min_lat, :max_lon, :max_lat, 4326))",
+        ])
+        params.update(zip(("min_lon", "min_lat", "max_lon", "max_lat"), parsed_bbox))
+
+    sql = sa.text(f"""
+        SELECT object_type, object_id, display_name, area_code,
+               parent_object_type, parent_object_id, metadata,
+               ST_AsGeoJSON(
+                   CASE WHEN :tolerance > 0
+                        THEN ST_SimplifyPreserveTopology(geom, :tolerance)
+                        ELSE geom END
+               ) AS geometry
+        FROM spatial_region_catalog
+        WHERE {' AND '.join(conditions)}
+        ORDER BY object_id
+        LIMIT :limit
+    """)
+    try:
+        rows = db.session.execute(sql, params).mappings().all()
+    except sa.exc.SQLAlchemyError as exc:
+        raise StatisticsError("statistics_unavailable", "行政边界服务暂时不可用", 503) from exc
+
+    truncated = len(rows) > MAX_BOUNDARY_FEATURES
+    features = []
+    for row in rows[:MAX_BOUNDARY_FEATURES]:
+        metadata = _json_object(row["metadata"])
+        geometry = row["geometry"]
+        if isinstance(geometry, str):
+            geometry = json.loads(geometry)
+        features.append({
+            "type": "Feature",
+            "id": f"{row['object_type']}:{row['object_id']}",
+            "properties": {
+                "regionType": row["object_type"],
+                "regionId": row["object_id"],
+                "displayName": row["display_name"],
+                "areaCode": row["area_code"],
+                "parentType": row["parent_object_type"],
+                "parentId": row["parent_object_id"],
+                "selectable": bool(metadata.get("selectable", True)),
+                "minZoom": min_zoom,
+                "maxZoom": None,
+            },
+            "geometry": geometry,
+        })
+    return {**base, "suppressedByZoom": False, "truncated": truncated, "features": features}
+
+
 def _scope_sql(scope: Mapping[str, Any]) -> tuple[str, dict[str, Any], dict[str, Any]]:
     scope_type = scope.get("type")
     if scope_type == "administrative_region":
@@ -379,24 +611,124 @@ def _scope_sql(scope: Mapping[str, Any]) -> tuple[str, dict[str, Any], dict[str,
                  AND enabled = TRUE AND geom IS NOT NULL LIMIT 1""",
             {"region_type": region_type, "region_id": region_id},
             {
-                "scopeVersion": SCOPE_VERSION, "type": scope_type,
-                "regionType": region_type, "regionId": region_id,
+                "scopeVersion": SCOPE_VERSION,
+                "type": scope_type,
+                "regionType": region_type,
+                "regionId": region_id,
                 "displayName": exists["display_name"],
+            },
+        )
+
+    if scope_type == "administrative_regions":
+        region_type = str(scope.get("region_type") or "")
+        region_ids_value = scope.get("region_ids")
+        if region_type not in REGION_TYPES:
+            raise StatisticsError("invalid_scope", "多区域统计必须包含有效的 region_type")
+        if not isinstance(region_ids_value, list) or not region_ids_value:
+            raise StatisticsError("invalid_scope", "region_ids 必须为非空数组")
+        if any(value is None or isinstance(value, bool) or not str(value).strip() for value in region_ids_value):
+            raise StatisticsError("invalid_scope", "region_ids 不能包含空值")
+        region_ids = [str(value).strip() for value in region_ids_value]
+        if len(set(region_ids)) != len(region_ids):
+            raise StatisticsError("invalid_scope", "region_ids 不能包含空值或重复值")
+        if len(region_ids) > MAX_SELECTED_REGIONS:
+            raise StatisticsError("too_many_regions", f"一次最多选择 {MAX_SELECTED_REGIONS} 个同级行政区", 413)
+        try:
+            rows = db.session.execute(sa.text("""
+                SELECT object_id, display_name, geom IS NOT NULL AS has_geom
+                FROM spatial_region_catalog
+                WHERE object_type = :region_type
+                  AND object_id = ANY(CAST(:region_ids AS text[]))
+                  AND enabled = TRUE
+            """), {"region_type": region_type, "region_ids": region_ids}).mappings().all()
+        except sa.exc.SQLAlchemyError as exc:
+            raise StatisticsError("statistics_unavailable", "区域目录服务暂时不可用", 503) from exc
+        by_id = {row["object_id"]: row for row in rows}
+        missing = [region_id for region_id in region_ids if region_id not in by_id]
+        if missing:
+            raise StatisticsError("region_not_found", f"以下行政区域不存在或未启用: {', '.join(missing)}", 404)
+        without_geometry = [region_id for region_id in region_ids if not by_id[region_id]["has_geom"]]
+        if without_geometry:
+            raise StatisticsError("region_geometry_missing", f"以下行政区域尚未导入边界: {', '.join(without_geometry)}", 409)
+        return (
+            """SELECT ST_UnaryUnion(ST_Collect(geom)) AS geom
+               FROM spatial_region_catalog
+               WHERE object_type = :region_type
+                 AND object_id = ANY(CAST(:region_ids AS text[]))
+                 AND enabled = TRUE AND geom IS NOT NULL""",
+            {"region_type": region_type, "region_ids": region_ids},
+            {
+                "scopeVersion": SCOPE_VERSION,
+                "type": scope_type,
+                "regionType": region_type,
+                "regionIds": region_ids,
+                "regions": [{
+                    "regionType": region_type,
+                    "regionId": region_id,
+                    "displayName": by_id[region_id]["display_name"],
+                } for region_id in region_ids],
+            },
+        )
+
+    if scope_type == "polygon":
+        geometry, vertex_count = _validate_custom_geometry(scope.get("geometry"))
+        geojson = json.dumps(geometry, ensure_ascii=False, separators=(",", ":"))
+        try:
+            validation = db.session.execute(sa.text("""
+                WITH input AS (
+                    SELECT ST_SetSRID(ST_GeomFromGeoJSON(:geojson), 4326) AS geom
+                )
+                SELECT ST_IsValid(geom) AS is_valid,
+                       ST_IsValidReason(geom) AS reason,
+                       ST_Area(geom::geography) / 1000000.0 AS area_sq_km
+                FROM input
+            """), {"geojson": geojson}).mappings().first()
+        except (sa.exc.SQLAlchemyError, ValueError) as exc:
+            raise StatisticsError("invalid_geometry", "GeoJSON 几何无法解析或计算") from exc
+        if validation is None or not validation["is_valid"]:
+            reason = validation["reason"] if validation else "unknown"
+            raise StatisticsError("invalid_geometry", f"GeoJSON 几何无效: {reason}")
+        area_sq_km = float(validation["area_sq_km"] or 0)
+        if area_sq_km <= 0:
+            raise StatisticsError("invalid_geometry", "自定义范围面积必须大于 0")
+        if area_sq_km > MAX_CUSTOM_GEOMETRY_AREA_SQ_KM:
+            raise StatisticsError(
+                "geometry_too_large",
+                f"自定义范围面积不能超过 {MAX_CUSTOM_GEOMETRY_AREA_SQ_KM:g} 平方公里",
+                413,
+            )
+        return (
+            """SELECT ST_ForcePolygonCCW(
+                         ST_Force2D(ST_SetSRID(ST_GeomFromGeoJSON(:geojson), 4326))
+                     ) AS geom""",
+            {"geojson": geojson},
+            {
+                "scopeVersion": SCOPE_VERSION,
+                "type": scope_type,
+                "geometryType": geometry["type"],
+                "vertexCount": vertex_count,
+                "areaSqKm": _round(area_sq_km, 4),
+                "srid": 4326,
             },
         )
 
     if scope_type == "viewport":
         try:
-            bbox = _parse_bbox(scope.get("bbox"), "viewport.bbox")
+            parsed_bbox = _parse_bbox(scope.get("bbox"), "viewport.bbox")
         except StatisticsError as exc:
             raise StatisticsError("invalid_scope", exc.message) from exc
-        if bbox is None:
+        if parsed_bbox is None:
             raise StatisticsError("invalid_scope", "viewport.bbox 必须为 [minLon,minLat,maxLon,maxLat]")
-        min_lon, min_lat, max_lon, max_lat = bbox
+        min_lon, min_lat, max_lon, max_lat = parsed_bbox
         return (
             "SELECT ST_MakeEnvelope(:min_lon, :min_lat, :max_lon, :max_lat, 4326) AS geom",
             {"min_lon": min_lon, "min_lat": min_lat, "max_lon": max_lon, "max_lat": max_lat},
-            {"scopeVersion": SCOPE_VERSION, "type": scope_type, "bbox": bbox, "srid": 4326},
+            {
+                "scopeVersion": SCOPE_VERSION,
+                "type": scope_type,
+                "bbox": [min_lon, min_lat, max_lon, max_lat],
+                "srid": 4326,
+            },
         )
 
     if scope_type == "parcel":
@@ -418,12 +750,17 @@ def _scope_sql(scope: Mapping[str, Any]) -> tuple[str, dict[str, Any], dict[str,
             "SELECT geom FROM parcel_info WHERE parcel_id = :scope_parcel_id AND geom IS NOT NULL LIMIT 1",
             {"scope_parcel_id": parcel_id},
             {
-                "scopeVersion": SCOPE_VERSION, "type": scope_type,
-                "parcelId": parcel_id, "areaCode": exists["area_code"],
+                "scopeVersion": SCOPE_VERSION,
+                "type": scope_type,
+                "parcelId": parcel_id,
+                "areaCode": exists["area_code"],
             },
         )
 
-    raise StatisticsError("invalid_scope", "scope.type 仅支持 administrative_region、viewport 或 parcel")
+    raise StatisticsError(
+        "invalid_scope",
+        "scope.type 仅支持 administrative_region、administrative_regions、polygon、viewport 或 parcel",
+    )
 
 
 def _dataset_sql(year: int | None) -> tuple[str, dict[str, Any]]:
@@ -458,23 +795,35 @@ def aggregate_statistics(payload: Mapping[str, Any] | None) -> dict[str, Any]:
     dataset_query, dataset_params = _dataset_sql(year)
     sql = sa.text(f"""
         WITH scope AS MATERIALIZED ({scope_query}),
+        scope_parts AS MATERIALIZED (
+            SELECT ST_Subdivide(geom, 256) AS geom
+            FROM scope
+            WHERE geom IS NOT NULL AND NOT ST_IsEmpty(geom)
+        ),
         data AS MATERIALIZED ({dataset_query}),
-        scoped AS (
-            SELECT data.parcel_id, data.area_code, data.soil_indicators,
-                   data.quality_grade, data.composite_index, data.updated_at,
-                   ST_Intersection(data.geom, scope.geom) AS clipped_geom
-            FROM data CROSS JOIN scope
+        clipped AS MATERIALIZED (
+            SELECT data.parcel_pk,
+                   ST_Intersection(data.geom, scope_parts.geom) AS clipped_geom
+            FROM data
+            JOIN scope_parts
+              ON data.geom && scope_parts.geom
+             AND ST_Intersects(data.geom, scope_parts.geom)
             WHERE data.geom IS NOT NULL
-              AND data.geom && scope.geom
-              AND ST_Intersects(data.geom, scope.geom)
+        ),
+        parcel_areas AS (
+            SELECT parcel_pk,
+                   SUM(ST_Area(clipped_geom::geography)) * :mu_per_sqm AS area_mu
+            FROM clipped
+            WHERE NOT ST_IsEmpty(clipped_geom)
+            GROUP BY parcel_pk
         )
-        SELECT parcel_id, area_code, soil_indicators, quality_grade,
-               composite_index, updated_at,
-               ST_Area(clipped_geom::geography) * :mu_per_sqm AS area_mu
-        FROM scoped
-        WHERE NOT ST_IsEmpty(clipped_geom)
-          AND ST_Area(clipped_geom::geography) > 0
-        ORDER BY parcel_id
+        SELECT data.parcel_id, data.area_code, data.soil_indicators,
+               data.quality_grade, data.composite_index, data.updated_at,
+               parcel_areas.area_mu
+        FROM parcel_areas
+        JOIN data ON data.parcel_pk = parcel_areas.parcel_pk
+        WHERE parcel_areas.area_mu > 0
+        ORDER BY data.parcel_id
     """)
     params = {**scope_params, **dataset_params, "mu_per_sqm": MU_PER_SQUARE_METRE}
     try:
@@ -492,9 +841,12 @@ def list_regions(
     include_disputes: bool = False,
 ) -> list[dict[str, Any]]:
     query = db.session.query(
-        SpatialRegionCatalog.object_type, SpatialRegionCatalog.object_id,
-        SpatialRegionCatalog.display_name, SpatialRegionCatalog.area_code,
-        SpatialRegionCatalog.parent_object_type, SpatialRegionCatalog.parent_object_id,
+        SpatialRegionCatalog.object_type,
+        SpatialRegionCatalog.object_id,
+        SpatialRegionCatalog.display_name,
+        SpatialRegionCatalog.area_code,
+        SpatialRegionCatalog.parent_object_type,
+        SpatialRegionCatalog.parent_object_id,
         SpatialRegionCatalog.metadata_json,
         SpatialRegionCatalog.geom.isnot(None).label("has_geometry"),
     ).filter(SpatialRegionCatalog.enabled.is_(True))
@@ -511,93 +863,45 @@ def list_regions(
         query = query.filter(SpatialRegionCatalog.object_type != "zone")
     rows = query.order_by(SpatialRegionCatalog.object_type, SpatialRegionCatalog.object_id).all()
     return [{
-        "regionType": row.object_type, "regionId": row.object_id,
-        "displayName": row.display_name, "areaCode": row.area_code,
-        "parentType": row.parent_object_type, "parentId": row.parent_object_id,
+        "regionType": row.object_type,
+        "regionId": row.object_id,
+        "displayName": row.display_name,
+        "areaCode": row.area_code,
+        "parentType": row.parent_object_type,
+        "parentId": row.parent_object_id,
         "selectable": bool((row.metadata_json or {}).get("selectable", True)),
         "hasGeometry": bool(row.has_geometry),
     } for row in rows]
 
 
-def list_boundaries(
-    region_type: str | None,
-    parent_type: str | None = None,
-    parent_id: str | None = None,
-    bbox: Any = None,
-    zoom: Any = None,
-) -> dict[str, Any]:
-    region_type = str(region_type or "")
-    if region_type not in REGION_TYPES:
-        raise StatisticsError("invalid_region_type", "region_type 无效")
-    if bool(parent_type) != bool(parent_id):
-        raise StatisticsError("invalid_parent", "parent_type 与 parent_id 必须同时提供")
-    if parent_type and parent_type not in REGION_TYPES:
-        raise StatisticsError("invalid_parent", "parent_type 无效")
-    parsed_bbox = _parse_bbox(bbox)
-    parsed_zoom: float | None = None
-    if zoom not in (None, ""):
-        try:
-            parsed_zoom = float(zoom)
-        except (TypeError, ValueError) as exc:
-            raise StatisticsError("invalid_zoom", "zoom 必须为 0 到 24 之间的数字") from exc
-        if not math.isfinite(parsed_zoom) or not 0 <= parsed_zoom <= 24:
-            raise StatisticsError("invalid_zoom", "zoom 必须为 0 到 24 之间的数字")
-
-    min_zoom = BOUNDARY_MIN_ZOOM[region_type]
-    base = {
-        "type": "FeatureCollection", "regionType": region_type,
-        "minZoom": min_zoom, "maxZoom": None, "zoom": parsed_zoom, "bbox": parsed_bbox,
-    }
-    if parsed_zoom is not None and parsed_zoom < min_zoom:
-        return {**base, "suppressedByZoom": True, "truncated": False, "features": []}
-
-    conditions = ["object_type = :region_type", "enabled = TRUE", "geom IS NOT NULL"]
-    params: dict[str, Any] = {
-        "region_type": region_type,
-        "limit": MAX_BOUNDARY_FEATURES + 1,
-        "tolerance": 0.0 if parsed_zoom is None else 360.0 / (256.0 * 2 ** parsed_zoom) * 0.25,
-    }
-    if parent_type:
-        conditions.extend(["parent_object_type = :parent_type", "parent_object_id = :parent_id"])
-        params.update(parent_type=parent_type, parent_id=str(parent_id))
-    if parsed_bbox:
-        conditions.extend([
-            "geom && ST_MakeEnvelope(:min_lon, :min_lat, :max_lon, :max_lat, 4326)",
-            "ST_Intersects(geom, ST_MakeEnvelope(:min_lon, :min_lat, :max_lon, :max_lat, 4326))",
-        ])
-        params.update(zip(("min_lon", "min_lat", "max_lon", "max_lat"), parsed_bbox))
-    sql = sa.text(f"""
-        SELECT object_type, object_id, display_name, area_code,
-               parent_object_type, parent_object_id, metadata,
-               ST_AsGeoJSON(CASE WHEN :tolerance > 0
-                   THEN ST_SimplifyPreserveTopology(geom, :tolerance) ELSE geom END) AS geometry
-        FROM spatial_region_catalog
-        WHERE {' AND '.join(conditions)}
-        ORDER BY object_id LIMIT :limit
-    """)
+def _parcel_area_mu(parcel_id: str) -> float | None:
     try:
-        rows = db.session.execute(sql, params).mappings().all()
+        area_mu = db.session.execute(sa.text("""
+            SELECT CASE
+                     WHEN geom IS NULL THEN NULL
+                     ELSE ST_Area(geom::geography) * :mu_per_sqm
+                   END AS area_mu
+            FROM parcel_info
+            WHERE parcel_id = :parcel_id
+            LIMIT 1
+        """), {
+            "parcel_id": parcel_id,
+            "mu_per_sqm": MU_PER_SQUARE_METRE,
+        }).scalar()
     except sa.exc.SQLAlchemyError as exc:
-        raise StatisticsError("statistics_unavailable", "行政边界服务暂时不可用", 503) from exc
-    truncated = len(rows) > MAX_BOUNDARY_FEATURES
-    features = []
-    for row in rows[:MAX_BOUNDARY_FEATURES]:
-        metadata = _json_object(row["metadata"])
-        geometry = row["geometry"]
-        if isinstance(geometry, str):
-            geometry = json.loads(geometry)
-        features.append({
-            "type": "Feature", "id": f"{row['object_type']}:{row['object_id']}",
-            "properties": {
-                "regionType": row["object_type"], "regionId": row["object_id"],
-                "displayName": row["display_name"], "areaCode": row["area_code"],
-                "parentType": row["parent_object_type"], "parentId": row["parent_object_id"],
-                "selectable": bool(metadata.get("selectable", True)),
-                "minZoom": min_zoom, "maxZoom": None,
-            },
-            "geometry": geometry,
-        })
-    return {**base, "suppressedByZoom": False, "truncated": truncated, "features": features}
+        raise StatisticsError("statistics_unavailable", "地块面积服务暂时不可用", 503) from exc
+    return None if area_mu is None else float(area_mu)
+
+
+def _validated_metric_key(metric_key: Any, *, required: bool = False) -> str | None:
+    if metric_key is None or metric_key == "":
+        if required:
+            raise StatisticsError("invalid_metric", "必须提供有效的 metric 指标 key")
+        return None
+    metric_key = str(metric_key)
+    if metric_key not in INDICATOR_DEFINITIONS:
+        raise StatisticsError("invalid_metric", f"不支持的指标: {metric_key}")
+    return metric_key
 
 
 def _metric_response(metric_key: str, indicators: Mapping[str, Any]) -> dict[str, Any]:
@@ -607,13 +911,18 @@ def _metric_response(metric_key: str, indicators: Mapping[str, Any]) -> dict[str
     if isinstance(value, float):
         value = _round(value, definition.decimals)
     return {
-        "metricKey": definition.key, "label": definition.label,
-        "groupKey": definition.group_key, "valueType": definition.value_type,
-        "value": value, "unit": definition.unit,
+        "metricKey": definition.key,
+        "label": definition.label,
+        "groupKey": definition.group_key,
+        "order": definition.order,
+        "valueType": definition.value_type,
+        "value": value,
+        "unit": definition.unit,
         "bucketKey": bucket.key if bucket else None,
         "bucketLabel": bucket.label if bucket else None,
         "rangeLabel": bucket.range_label if bucket else None,
         "color": bucket.color if bucket else None,
+        **metric_provenance(indicators, metric_key),
     }
 
 
@@ -624,26 +933,47 @@ def _parcel_payload(
     area_mu: float | None,
     data_year: int | None,
     metric_keys: Iterable[str] | None = None,
+    metric_key: str | None = None,
 ) -> dict[str, Any]:
     keys = list(metric_keys) if metric_keys is not None else _metric_keys({"metrics": "all"})
     metrics = {key: _metric_response(key, indicators) for key in keys}
+    if metric_key is not None:
+        return {
+            "classificationVersion": CLASSIFICATION_VERSION,
+            "parcelId": parcel_id,
+            "areaCode": area_code,
+            "areaMu": _round(area_mu),
+            "dataYear": data_year,
+            "metric": metrics[metric_key],
+        }
     response = {
         "classificationVersion": CLASSIFICATION_VERSION,
-        "parcelId": parcel_id, "areaCode": area_code,
-        "areaMu": _round(area_mu), "dataYear": data_year, "metrics": metrics,
+        "parcelId": parcel_id,
+        "areaCode": area_code,
+        "areaMu": _round(area_mu),
+        "dataYear": data_year,
+        "metrics": metrics,
     }
-    for legacy_key, metric_key in (
-        ("qualityGrade", "quality_grade"), ("organicMatter", "organic_matter"),
-        ("soilPh", "soil_ph"), ("availablePhosphorus", "available_phosphorus"),
+    for legacy_key, key in (
+        ("qualityGrade", "quality_grade"),
+        ("organicMatter", "organic_matter"),
+        ("soilPh", "soil_ph"),
+        ("availablePhosphorus", "available_phosphorus"),
+        ("availablePotassium", "available_potassium"),
+        ("bulkDensity", "bulk_density"),
+        ("plowLayerThickness", "plow_layer_thickness"),
+        ("effectiveSoilDepth", "effective_soil_depth"),
     ):
-        if metric_key in metrics:
-            response[legacy_key] = metrics[metric_key]["value"]
+        if key in metrics:
+            response[legacy_key] = metrics[key]["value"]
     return response
 
 
 def _parcel_response(
     parcel: ParcelInfo,
     area_mu: float | None,
+    metric_key: str | None = None,
+    *,
     data_year: int | None = None,
     metric_keys: Iterable[str] | None = None,
 ) -> dict[str, Any]:
@@ -652,21 +982,36 @@ def _parcel_response(
         indicators["quality_grade"] = parcel.quality_grade
     if getattr(parcel, "composite_index", None) is not None:
         indicators["composite_index"] = parcel.composite_index
-    return _parcel_payload(parcel.parcel_id, parcel.area_code, indicators, area_mu, data_year, metric_keys)
+    return _parcel_payload(
+        parcel.parcel_id,
+        parcel.area_code,
+        indicators,
+        area_mu,
+        data_year,
+        metric_keys,
+        metric_key,
+    )
 
 
-def get_parcel_summary(parcel_id: str, year: Any = None) -> dict[str, Any]:
+def get_parcel_summary(
+    parcel_id: str,
+    year: Any = None,
+    metric_key: Any = None,
+) -> dict[str, Any]:
+    validated_metric = _validated_metric_key(metric_key)
     data_year = _resolve_year(year)
     if data_year is None:
         parcel = ParcelInfo.query.filter_by(parcel_id=parcel_id).first()
         if parcel is None:
             raise StatisticsError("parcel_not_found", "地块不存在", 404)
-        area_mu = db.session.execute(sa.text("""
-            SELECT CASE WHEN geom IS NULL THEN NULL
-                        ELSE ST_Area(geom::geography) * :mu_per_sqm END
-            FROM parcel_info WHERE parcel_id = :parcel_id LIMIT 1
-        """), {"parcel_id": parcel_id, "mu_per_sqm": MU_PER_SQUARE_METRE}).scalar()
-        return _parcel_response(parcel, None if area_mu is None else float(area_mu), None)
+        keys = [validated_metric] if validated_metric else None
+        return _parcel_response(
+            parcel,
+            _parcel_area_mu(parcel.parcel_id),
+            validated_metric,
+            data_year=None,
+            metric_keys=keys,
+        )
     try:
         row = db.session.execute(sa.text("""
             SELECT p.parcel_id, p.area_code, h.soil_indicators, h.quality_grade,
@@ -678,41 +1023,103 @@ def get_parcel_summary(parcel_id: str, year: Any = None) -> dict[str, Any]:
             WHERE p.parcel_id = :parcel_id AND h.survey_year = :data_year
             LIMIT 1
         """), {
-            "parcel_id": parcel_id, "data_year": data_year,
+            "parcel_id": parcel_id,
+            "data_year": data_year,
             "mu_per_sqm": MU_PER_SQUARE_METRE,
         }).mappings().first()
     except sa.exc.SQLAlchemyError as exc:
         raise StatisticsError("statistics_unavailable", "地块详情服务暂时不可用", 503) from exc
     if row is None:
         raise StatisticsError("parcel_year_not_found", f"地块在 {data_year} 年没有可用数据", 404)
+    keys = [validated_metric] if validated_metric else None
     return _parcel_payload(
-        row["parcel_id"], row["area_code"], _row_indicators(row),
-        None if row["area_mu"] is None else float(row["area_mu"]), data_year,
+        row["parcel_id"],
+        row["area_code"],
+        _row_indicators(row),
+        None if row["area_mu"] is None else float(row["area_mu"]),
+        data_year,
+        keys,
+        validated_metric,
     )
 
 
-def pick_parcel(longitude: Any, latitude: Any, year: Any = None) -> dict[str, Any]:
+def pick_parcel(
+    longitude: Any,
+    latitude: Any,
+    metric_key: Any = None,
+    tolerance_meters: Any = 0,
+    year: Any = None,
+) -> dict[str, Any]:
     try:
         lon, lat = float(longitude), float(latitude)
     except (TypeError, ValueError) as exc:
         raise StatisticsError("invalid_coordinate", "经纬度必须为数字") from exc
     if not (math.isfinite(lon) and math.isfinite(lat) and -180 <= lon <= 180 and -90 <= lat <= 90):
         raise StatisticsError("invalid_coordinate", "经纬度范围无效")
+    metric_key = _validated_metric_key(metric_key)
+    try:
+        tolerance = float(tolerance_meters or 0)
+    except (TypeError, ValueError) as exc:
+        raise StatisticsError("invalid_tolerance", "toleranceMeters 必须为数字") from exc
+    if not math.isfinite(tolerance) or not 0 <= tolerance <= MAX_PICK_TOLERANCE_METERS:
+        raise StatisticsError(
+            "invalid_tolerance",
+            f"toleranceMeters 必须在 0 到 {MAX_PICK_TOLERANCE_METERS:g} 之间",
+        )
+
     data_year = _resolve_year(year)
+    cache_key = (round(lon, 7), round(lat, 7), round(tolerance, 2), metric_key, data_year)
+    cached = _PICK_CACHE.get(cache_key)
+    if cached is not None:
+        return cached
+
+    tolerance_degrees = tolerance / 111_320.0
     dataset_query, dataset_params = _dataset_sql(data_year)
     try:
         selected = db.session.execute(sa.text(f"""
-            WITH data AS ({dataset_query})
-            SELECT parcel_id FROM data
-            WHERE geom IS NOT NULL
-              AND ST_Covers(geom, ST_SetSRID(ST_Point(:lon, :lat), 4326))
-            ORDER BY ST_Area(geom::geography), parcel_id LIMIT 1
-        """), {**dataset_params, "lon": lon, "lat": lat}).mappings().first()
+            WITH target AS (
+                SELECT ST_SetSRID(ST_Point(:lon, :lat), 4326) AS geom
+            ),
+            data AS MATERIALIZED ({dataset_query})
+            SELECT data.parcel_id,
+                   ST_Area(data.geom::geography) * :mu_per_sqm AS area_mu,
+                   ST_Covers(data.geom, target.geom) AS exact_hit,
+                   CASE WHEN ST_Covers(data.geom, target.geom) THEN 0.0
+                        ELSE ST_Distance(data.geom::geography, target.geom::geography)
+                   END AS distance_meters
+            FROM data
+            CROSS JOIN target
+            WHERE data.geom IS NOT NULL
+              AND data.geom && ST_Expand(target.geom, :tolerance_degrees)
+              AND (
+                    ST_Covers(data.geom, target.geom)
+                    OR (:tolerance > 0 AND ST_DWithin(
+                        data.geom::geography, target.geom::geography, :tolerance
+                    ))
+              )
+            ORDER BY exact_hit DESC, distance_meters,
+                     ST_Area(data.geom::geography), data.parcel_id
+            LIMIT 1
+        """), {
+            **dataset_params,
+            "lon": lon,
+            "lat": lat,
+            "tolerance": tolerance,
+            "tolerance_degrees": tolerance_degrees,
+            "mu_per_sqm": MU_PER_SQUARE_METRE,
+        }).mappings().first()
     except sa.exc.SQLAlchemyError as exc:
         raise StatisticsError("statistics_unavailable", "地块点选服务暂时不可用", 503) from exc
     if selected is None:
-        raise StatisticsError("parcel_not_found", "该位置在所选年份未命中地块", 404)
-    return get_parcel_summary(selected["parcel_id"], data_year)
+        raise StatisticsError("parcel_not_found", "该位置未命中地块", 404)
+    result = get_parcel_summary(selected["parcel_id"], data_year, metric_key)
+    result["hit"] = {
+        "mode": "exact" if selected["exact_hit"] else "nearest",
+        "distanceMeters": _round(float(selected["distance_meters"] or 0), 3),
+        "toleranceMeters": tolerance,
+    }
+    _PICK_CACHE.set(cache_key, result, PICK_CACHE_TTL_SECONDS)
+    return result
 
 
 def query_parcels(payload: Mapping[str, Any] | None) -> dict[str, Any]:
@@ -729,7 +1136,10 @@ def query_parcels(payload: Mapping[str, Any] | None) -> dict[str, Any]:
     except (TypeError, ValueError) as exc:
         raise StatisticsError("invalid_pagination", "limit 和 offset 必须为整数") from exc
     if not 1 <= limit <= MAX_PARCEL_QUERY_LIMIT or offset < 0:
-        raise StatisticsError("invalid_pagination", f"limit 必须为 1-{MAX_PARCEL_QUERY_LIMIT}，offset 不能小于 0")
+        raise StatisticsError(
+            "invalid_pagination",
+            f"limit 必须为 1-{MAX_PARCEL_QUERY_LIMIT}，offset 不能小于 0",
+        )
     geometry_mode = str(payload.get("geometry", "centroid"))
     if geometry_mode not in {"none", "centroid"}:
         raise StatisticsError("invalid_geometry_mode", "geometry 仅支持 none 或 centroid")
@@ -754,8 +1164,11 @@ def query_parcels(payload: Mapping[str, Any] | None) -> dict[str, Any]:
         ORDER BY parcel_id LIMIT :query_limit OFFSET :query_offset
     """)
     params = {
-        **scope_params, **dataset_params, "mu_per_sqm": MU_PER_SQUARE_METRE,
-        "query_limit": limit + 1, "query_offset": offset,
+        **scope_params,
+        **dataset_params,
+        "mu_per_sqm": MU_PER_SQUARE_METRE,
+        "query_limit": limit + 1,
+        "query_offset": offset,
     }
     try:
         rows = db.session.execute(sql, params).mappings().all()
@@ -765,8 +1178,12 @@ def query_parcels(payload: Mapping[str, Any] | None) -> dict[str, Any]:
     items = []
     for row in rows[:limit]:
         item = _parcel_payload(
-            row["parcel_id"], row["area_code"], _row_indicators(row),
-            float(row["area_mu"]), data_year, metric_keys,
+            row["parcel_id"],
+            row["area_code"],
+            _row_indicators(row),
+            float(row["area_mu"]),
+            data_year,
+            metric_keys,
         )
         geometry = row["geometry"]
         item["geometry"] = json.loads(geometry) if isinstance(geometry, str) else geometry
@@ -778,3 +1195,124 @@ def query_parcels(payload: Mapping[str, Any] | None) -> dict[str, Any]:
         "items": items,
         "pagination": {"limit": limit, "offset": offset, "hasMore": has_more},
     }
+
+
+def list_viewport_parcels(
+    bbox: Any,
+    metric_key: Any,
+    geometry_mode: Any = "centroid",
+    zoom: Any = None,
+    limit: Any = DEFAULT_VIEWPORT_PARCELS,
+) -> dict[str, Any]:
+    parsed_bbox = _parse_bbox(bbox)
+    if parsed_bbox is None:
+        raise StatisticsError("invalid_bbox", "bbox 必须为 [minLon,minLat,maxLon,maxLat]")
+    metric_key = _validated_metric_key(metric_key, required=True)
+    geometry_mode = str(geometry_mode or "centroid")
+    if geometry_mode not in {"centroid", "simplified", "none"}:
+        raise StatisticsError("invalid_geometry_mode", "geometry 必须为 centroid、simplified 或 none")
+    try:
+        parsed_limit = int(limit)
+    except (TypeError, ValueError) as exc:
+        raise StatisticsError("invalid_limit", "limit 必须为整数") from exc
+    if not 1 <= parsed_limit <= MAX_VIEWPORT_PARCELS:
+        raise StatisticsError("invalid_limit", f"limit 必须在 1 到 {MAX_VIEWPORT_PARCELS} 之间")
+
+    parsed_zoom = 14.0
+    if zoom not in (None, ""):
+        try:
+            parsed_zoom = float(zoom)
+        except (TypeError, ValueError) as exc:
+            raise StatisticsError("invalid_zoom", "zoom 必须为 0 到 24 之间的数字") from exc
+        if not math.isfinite(parsed_zoom) or not 0 <= parsed_zoom <= 24:
+            raise StatisticsError("invalid_zoom", "zoom 必须为 0 到 24 之间的数字")
+    tolerance = 360.0 / (256.0 * 2 ** parsed_zoom) * 0.25
+
+    if geometry_mode == "centroid":
+        geometry_sql = "ST_AsGeoJSON(ST_PointOnSurface(p.geom))"
+    elif geometry_mode == "simplified":
+        geometry_sql = """ST_AsGeoJSON(ST_SimplifyPreserveTopology(
+            ST_Intersection(p.geom, bounds.geom), :tolerance
+        ))"""
+    else:
+        geometry_sql = "NULL"
+
+    min_lon, min_lat, max_lon, max_lat = parsed_bbox
+    sql = sa.text(f"""
+        WITH bounds AS MATERIALIZED (
+            SELECT ST_MakeEnvelope(:min_lon, :min_lat, :max_lon, :max_lat, 4326) AS geom
+        )
+        SELECT p.parcel_id, p.area_code, p.soil_indicators, p.updated_at,
+               {geometry_sql} AS geometry
+        FROM parcel_info AS p
+        CROSS JOIN bounds
+        WHERE p.geom IS NOT NULL
+          AND p.geom && bounds.geom
+          AND ST_Intersects(p.geom, bounds.geom)
+        ORDER BY p.parcel_id
+        LIMIT :query_limit
+    """)
+    try:
+        rows = db.session.execute(sql, {
+            "min_lon": min_lon,
+            "min_lat": min_lat,
+            "max_lon": max_lon,
+            "max_lat": max_lat,
+            "tolerance": tolerance,
+            "query_limit": parsed_limit + 1,
+        }).mappings().all()
+    except sa.exc.SQLAlchemyError as exc:
+        raise StatisticsError("statistics_unavailable", "视口地块服务暂时不可用", 503) from exc
+
+    truncated = len(rows) > parsed_limit
+    features = []
+    updated_values = []
+    for row in rows[:parsed_limit]:
+        indicators = _json_object(row["soil_indicators"])
+        metric = _metric_response(metric_key, indicators)
+        geometry = row["geometry"]
+        if isinstance(geometry, str):
+            geometry = json.loads(geometry)
+        if row["updated_at"] is not None:
+            updated_values.append(row["updated_at"])
+        features.append({
+            "type": "Feature",
+            "id": row["parcel_id"],
+            "properties": {
+                "parcelId": row["parcel_id"],
+                "areaCode": row["area_code"],
+                **metric,
+            },
+            "geometry": geometry,
+        })
+
+    return {
+        "type": "FeatureCollection",
+        "classificationVersion": CLASSIFICATION_VERSION,
+        "metricKey": metric_key,
+        "bbox": parsed_bbox,
+        "geometryMode": geometry_mode,
+        "zoom": parsed_zoom if geometry_mode == "simplified" else None,
+        "dataAsOf": _isoformat(max(updated_values)) if updated_values else None,
+        "truncated": truncated,
+        "limit": parsed_limit,
+        "features": features,
+    }
+
+
+def indicator_quality_audit(*, refresh: bool = False) -> dict[str, Any]:
+    if not refresh:
+        cached = _QUALITY_AUDIT_CACHE.get("all")
+        if cached is not None:
+            return cached
+    try:
+        rows = db.session.execute(sa.text("""
+            SELECT soil_indicators, updated_at
+            FROM parcel_info
+            ORDER BY id
+        """)).mappings().all()
+    except sa.exc.SQLAlchemyError as exc:
+        raise StatisticsError("statistics_unavailable", "指标质量审计服务暂时不可用", 503) from exc
+    result = audit_indicator_rows(rows)
+    _QUALITY_AUDIT_CACHE.set("all", result, QUALITY_AUDIT_CACHE_TTL_SECONDS)
+    return result

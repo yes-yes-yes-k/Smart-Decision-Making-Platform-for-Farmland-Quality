@@ -1,0 +1,62 @@
+{
+  "manifest_basis": [
+    {
+      "source": "measured",
+      "basis": "scripts/import_real_parcels.py 从 2024_测试数据.shp 逐地块映射"
+    },
+    {
+      "source": "region_mean_backfill",
+      "basis": "scripts/link_soil_indicators.py 用三普采样表平均值批量填充缺失字段"
+    },
+    {
+      "source": "default",
+      "basis": "import_real_parcels.py 写入的固定默认值（target_ph=6.5、fertilizer_type=compound）"
+    }
+  ],
+  "planned": {
+    "soil_ph": "measured",
+    "organic_matter": "measured",
+    "available_phosphorus": "measured",
+    "available_potassium": "measured",
+    "bulk_density": "measured",
+    "topsoil_thickness": "measured",
+    "plow_layer_thickness": "measured",
+    "soil_texture": "measured",
+    "irrigation_condition": "measured",
+    "drainage_capacity": "measured",
+    "terrain_position": "measured",
+    "soil_structure": "measured",
+    "quality_grade": "measured",
+    "exchangeable_hydrogen": "region_mean_backfill",
+    "exchangeable_aluminum": "region_mean_backfill",
+    "exchangeable_acid_total": "region_mean_backfill",
+    "hydrolytic_total_acidity": "region_mean_backfill",
+    "total_n": "region_mean_backfill",
+    "cation_exchange_capacity": "region_mean_backfill",
+    "target_ph": "default",
+    "fertilizer_type": "default"
+  },
+  "applied": {
+    "soil_ph": 5491,
+    "organic_matter": 5491,
+    "available_phosphorus": 5491,
+    "available_potassium": 5491,
+    "bulk_density": 5491,
+    "topsoil_thickness": 5491,
+    "plow_layer_thickness": 5491,
+    "soil_texture": 5491,
+    "irrigation_condition": 5491,
+    "drainage_capacity": 5491,
+    "terrain_position": 5491,
+    "soil_structure": 5491,
+    "quality_grade": 5488,
+    "exchangeable_hydrogen": 5491,
+    "exchangeable_aluminum": 5491,
+    "exchangeable_acid_total": 5491,
+    "hydrolytic_total_acidity": 5491,
+    "total_n": 5491,
+    "cation_exchange_capacity": 5491,
+    "target_ph": 5491,
+    "fertilizer_type": 5491
+  }
+}

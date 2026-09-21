@@ -633,13 +633,14 @@ def test_organic_matter_agent_db_path(monkeypatch):
     )
     monkeypatch.setattr(
         "framework.domain.calculations.organic_matter_calculation.predict_dose",
-        lambda inputs, land_type: SimpleNamespace(
+        lambda inputs, land_type, provenance=None: SimpleNamespace(
             dose=150.0,
             simulated=False,
             status="ok",
             reason=None,
             model_version="rf-test-v1",
             data_source="rf_model",
+            imputed_features=(),
         ),
     )
     agent = OrganicMatterAgent()

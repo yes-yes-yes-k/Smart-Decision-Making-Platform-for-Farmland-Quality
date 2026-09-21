@@ -15,6 +15,10 @@ SCHEMA_VERSION = "2.0"
 LEGACY_SCHEMA_VERSION = "1.0"
 VALID_STATUSES = frozenset({"ok", "degraded", "rejected", "unavailable", "error"})
 MODEL5_QUANTITATIVE_UNAVAILABLE = "MODEL5_QUANTITATIVE_UNAVAILABLE"
+#: 模型输入包含回填或默认取值（见 framework/domain/provenance.py）。
+IMPUTED_INPUT = "IMPUTED_INPUT"
+#: Model-4 在回填/默认输入下不输出用量结论。
+MODEL4_QUANTITATIVE_UNAVAILABLE = "MODEL4_QUANTITATIVE_UNAVAILABLE"
 MODEL5_REAL_SOURCES = frozenset({"shaoguan_rf", "global_etr", "rf_model"})
 
 
@@ -266,6 +270,8 @@ def _normalize_result(agent_key: str, raw: Any, payload: Mapping[str, Any]) -> O
             "soil_conditioner_dosage": _first_value(source, "soil_conditioner_dosage", "ytk", "YTK"),
             "woody_peat_dosage": _first_value(source, "woody_peat_dosage", "mbnt", "MBNT"),
             "sub_model": first_present("sub_model") if "sub_model" in source else metadata.get("sub_model"),
+            # 被回填或使用默认值的输入字段（如 exchangeable_aluminum、target_ph）。
+            "imputed_inputs": list(first_present("imputed_inputs") or []),
         }
     if agent_key == "model-5":
         dose = first_present("dose_prediction", "dose", "manure_dosage", "organic_fertilizer_dosage")
@@ -325,6 +331,21 @@ def normalize_execution(agent: Any, payload: Optional[Mapping[str, Any]], execut
         status, issues = _status_and_issue(execution, simulated, source)
         raw_result = execution.get("result")
         result = _normalize_result(agent_key, raw_result, payload)
+        if agent_key == "model-4" and isinstance(result, Mapping):
+            result = dict(result)
+            imputed_inputs = list(result.get("imputed_inputs") or [])
+            if imputed_inputs:
+                # 用量与酸缓冲量由回填或默认输入推出，不作为结论输出（与 model-5 同策略）。
+                for key in ("background_acid", "soil_conditioner_dosage", "woody_peat_dosage"):
+                    result[key] = None
+                if status == "ok":
+                    status = "degraded"
+                issues.append(_issue(
+                    MODEL4_QUANTITATIVE_UNAVAILABLE,
+                    "warning",
+                    "输入包含区域平均回填或默认取值，Model-4 用量结论不可用。",
+                    details={"imputed_inputs": imputed_inputs},
+                ))
         if agent_key == "model-5" and isinstance(result, Mapping):
             result = dict(result)
             is_real_source = source in MODEL5_REAL_SOURCES

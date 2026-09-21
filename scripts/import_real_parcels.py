@@ -25,6 +25,8 @@ import geopandas as gpd
 import psycopg2
 from psycopg2.extras import execute_values
 
+from framework.domain.statistics import PROVENANCE_FIELD, build_source_provenance
+
 SHAPEFILE_DIR = r"D:\destkop\模型1-5\模型1_v2\模型1_v2"
 YEAR_FILES = {
     2018: "2018_测试数据.shp",
@@ -39,7 +41,7 @@ FIELD_MAP = {
     "YXL": "available_phosphorus",
     "SXJ": "available_potassium",
     "TRRZ": "bulk_density",
-    "YXTCHD": "topsoil_thickness",
+    "YXTCHD": "effective_soil_depth",
     "GCHD": "plow_layer_thickness",
     "GCZD": "soil_texture",
     "GGNL": "irrigation_condition",
@@ -79,7 +81,7 @@ def to_float(val):
         return None
 
 
-def build_soil_indicators(row):
+def build_soil_indicators(row, measurement_year=2024):
     """从 shp 行构建 V3.0 soil_indicators dict。
 
     包含 12 个标准指标 + Model-4/5 默认值：
@@ -100,13 +102,15 @@ def build_soil_indicators(row):
             fval = to_float(val)
             if fval is not None:
                 indicators[v3_field] = fval
-    # Public statistics use canonical names while model adapters continue to
-    # accept the historical aliases.
-    if "topsoil_thickness" in indicators:
-        indicators["effective_soil_depth"] = indicators["topsoil_thickness"]
+    # Keep the former field during the compatibility window.  YXTCHD means
+    # effective soil depth; older model code used the misleading
+    # ``topsoil_thickness`` key for the same source value.
+    if "effective_soil_depth" in indicators:
+        indicators.setdefault("topsoil_thickness", indicators["effective_soil_depth"])
     # Model-4/5 默认值（源数据不含 target_ph/fertilizer_type，由 Model-4 交互层调整）
     indicators.setdefault("target_ph", 6.5)
     indicators.setdefault("fertilizer_type", "compound")
+    indicators[PROVENANCE_FIELD] = build_source_provenance(indicators, measurement_year)
     return indicators
 
 
@@ -160,6 +164,9 @@ def import_parcels_2024(conn):
         zhqz = to_float(row.get("ZHQZ"))
         if gdzldj:
             indicators["quality_grade"] = gdzldj
+            indicators[PROVENANCE_FIELD].update(
+                build_source_provenance(indicators, 2024)
+            )
         if zhqz is not None:
             indicators["composite_index"] = zhqz
 
@@ -268,7 +275,7 @@ def import_history_snapshots(conn):
             batch = gdf.iloc[i:i + batch_size]
             for _, row in batch.iterrows():
                 parcel_id = str(int(row["TYBH"]))
-                indicators = build_soil_indicators(row)
+                indicators = build_soil_indicators(row, measurement_year=year)
                 quality_grade = clean_value(row.get("GDZLDJ"))
                 composite_index = to_float(row.get("ZHQZ"))
 
@@ -300,7 +307,7 @@ def import_history_snapshots(conn):
         batch = gdf.iloc[i:i + batch_size]
         for _, row in batch.iterrows():
             parcel_id = str(int(row["TYBH"]))
-            indicators = build_soil_indicators(row)
+            indicators = build_soil_indicators(row, measurement_year=2024)
             quality_grade = clean_value(row.get("GDZLDJ"))
             composite_index = to_float(row.get("ZHQZ"))
 

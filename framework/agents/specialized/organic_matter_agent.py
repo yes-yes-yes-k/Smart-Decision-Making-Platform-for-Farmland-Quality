@@ -6,6 +6,7 @@ import logging
 from ..base import BaseAgent, ProfessionalInputRejected
 from ...domain.data.parcel_data_accessor import ParcelDataAccessor
 from ...domain.other_models.model_5 import EXTERNAL_FIELD_MAP, model_5_execution
+from ...domain.provenance import IMPUTED_INPUT, provenance_map
 
 logger = logging.getLogger(__name__)
 
@@ -174,7 +175,9 @@ class OrganicMatterAgent(BaseAgent):
                 except Exception:
                     parcel = None
                 land_type = (parcel.land_type if parcel else None) or inputs.get("land_type") or "upland"
-                prediction = predict_dose(mapped, land_type)
+                provenance = provenance_map(parcel.soil_indicators or {}) if parcel is not None else {}
+                prediction = predict_dose(mapped, land_type, provenance=provenance)
+                imputed_features = list(prediction.imputed_features)
                 outputs = {
                     "parcel_id": inputs.get("parcel_id"),
                     "organic_matter": mapped.get("SOMbe"),
@@ -187,6 +190,7 @@ class OrganicMatterAgent(BaseAgent):
                     "reason": prediction.reason,
                     "model_version": prediction.model_version,
                     "simulated": prediction.simulated,
+                    "imputed_features": imputed_features,
                 }
                 status = prediction.status
                 simulated = prediction.simulated
@@ -223,7 +227,23 @@ class OrganicMatterAgent(BaseAgent):
                     "simulated": simulated,
                     "data_source": data_source,
                     "model_version": outputs.get("model_version") if isinstance(outputs, dict) else None,
+                    "reason": outputs.get("reason") if isinstance(outputs, dict) else None,
+                    "imputed_features": (
+                        list(outputs.get("imputed_features") or [])
+                        if isinstance(outputs, dict) else []
+                    ),
                 },
+                "issues": (
+                    [{
+                        "code": IMPUTED_INPUT,
+                        "severity": "warning",
+                        "message": (
+                            "预测输入包含区域平均回填或默认取值，已降级标注："
+                            + "、".join(outputs.get("imputed_features") or [])
+                        ),
+                    }]
+                    if isinstance(outputs, dict) and outputs.get("imputed_features") else []
+                ),
                 "data_source": data_source,
                 "persisted": persisted,
             }

@@ -6,6 +6,13 @@ from dataclasses import dataclass
 from datetime import datetime
 from typing import Any, Optional
 
+from ..provenance import (
+    MODEL4_INPUT_SOURCES,
+    MODEL5_FEATURE_SOURCES,
+    PROVENANCE_KEY,
+    map_feature_sources,
+)
+
 logger = logging.getLogger(__name__)
 
 
@@ -195,7 +202,7 @@ class ParcelDataAccessor:
                 "YXL": indicators.get("available_phosphorus"),
                 "SXJ": indicators.get("available_potassium"),
                 "TRRZ": indicators.get("bulk_density"),
-                "YXTCHD": indicators.get("topsoil_thickness"),
+                "YXTCHD": indicators.get("effective_soil_depth", indicators.get("topsoil_thickness")),
                 "GCHD": indicators.get("plow_layer_thickness"),
                 "GCZD": self._to_code("GCZD", indicators.get("soil_texture")),
                 "GGNL": self._to_code("GGNL", indicators.get("irrigation_condition")),
@@ -204,22 +211,13 @@ class ParcelDataAccessor:
                 "ZDGX": self._to_code("ZDGX", indicators.get("soil_structure")),
             }
         elif agent_id == "model-4":
-            return {
-                "SJD": indicators.get("soil_ph"),
-                "Hex": indicators.get("exchangeable_hydrogen"),
-                "Alex": indicators.get("exchangeable_aluminum"),
-            }
+            return map_feature_sources(indicators, MODEL4_INPUT_SOURCES)
         elif agent_id == "model-5":
-            return {
-                "pH": indicators.get("soil_ph"),
-                "SOMbe": indicators.get("organic_matter"),
-                "AK": indicators.get("available_potassium"),
-                "AP": indicators.get("available_phosphorus"),
-                "TN": indicators.get("total_nitrogen"),
-            }
+            return map_feature_sources(indicators, MODEL5_FEATURE_SOURCES)
         elif agent_id == "model-1":
-            # Model-1 需要原始指标 + 映射后的字段
-            return {**indicators,
+            # Model-1 需要原始指标 + 映射后的字段；来源标记属于元数据，不进模型输入
+            base = {key: value for key, value in indicators.items() if key != PROVENANCE_KEY}
+            return {**base,
                     "GCZD": self._to_code("GCZD", indicators.get("soil_texture")),
                     "GGNL": self._to_code("GGNL", indicators.get("irrigation_condition")),
                     "PSNL": self._to_code("PSNL", indicators.get("drainage_capacity")),
