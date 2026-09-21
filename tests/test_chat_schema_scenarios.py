@@ -14,7 +14,7 @@ MODEL_RESULTS = {
     "model-1": ("stability-risk-evaluation", {"region": "440281", "score": 0.82, "grade": "稳定", "modules": {}}),
     "model-2": ("quality-grade-evaluation", {"quality_grade": "3等", "composite_index": 0.76, "indicators": [], "obstacle_degree": []}),
     "model-3": ("obstacle-diagnosis", {"obstacle_type": "酸化", "primary_factors": ["pH"], "secondary_factors": [], "obstacle_degrees": [], "obstacle_levels": [], "obstacle_combination": "pH"}),
-    "model-4": ("acidification-remediation", {"acidification_level": "中度", "background_acid": 1.0, "acid_deposition_input": 2.0, "crop_acid_output": 3.0, "nitrogen_cycle_acid": 4.0, "agricultural_acid": 5.0, "soil_conditioner_dosage": 6.0, "woody_peat_dosage": 7.0, "sub_model": "upland"}),
+    "model-4": ("acidification-remediation", {"acidification_level": "中度", "background_acid": 1.0, "acid_deposition_input": 2.0, "crop_acid_output": 3.0, "nitrogen_cycle_acid": 4.0, "agricultural_acid": 5.0, "soil_conditioner_dosage": 6.0, "woody_peat_dosage": 7.0, "sub_model": "upland", "imputed_inputs": []}),
     "model-5": ("organic-matter-improvement", {"soc_prediction": 20.1, "dose_prediction": 9.2, "soc_confidence": 0.91, "dose_confidence": 0.88, "region": "lechang", "land_type": "paddy", "imputed_features": []}),
 }
 

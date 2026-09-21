@@ -614,7 +614,7 @@ def test_render_parcel_indicators_table_parcel():
                     "organic_matter": 18.0,
                     "available_potassium": 120.0,
                     "available_phosphorus": 15.0,
-                    "total_nitrogen": 1.2,
+                    "total_n": 1.2,
                 },
             }
         ],
@@ -625,6 +625,7 @@ def test_render_parcel_indicators_table_parcel():
     assert "5.50" in html
     assert "有机质" in html
     assert "18.00" in html
+    assert "全氮" in html
 
 
 def test_render_parcel_indicators_table_empty():
@@ -785,3 +786,110 @@ class _NullCtx:
         return self
     def __exit__(self, *args):
         return False
+
+
+# ---------------------------------------------------------------------------
+# 回填输入下的用量置空（Model-4 / Model-5）
+# ---------------------------------------------------------------------------
+
+def _record_with_provenance(parcel_id: str = "P001") -> dict:
+    return {
+        "parcel_id": parcel_id,
+        "land_type": "upland",
+        "fertilizer_type": "compound",
+        "target_ph": 6.5,
+        "soil_indicators": {
+            "soil_ph": 5.31,
+            "organic_matter": 29.34,
+            "available_potassium": 45.48,
+            "available_phosphorus": 35.48,
+            "total_n": 1.4055,
+            "exchangeable_hydrogen": 0.2949,
+            "exchangeable_aluminum": 4.0262,
+            "target_ph": 6.5,
+            "fertilizer_type": "compound",
+            "provenance": {
+                "soil_ph": "measured",
+                "organic_matter": "measured",
+                "available_potassium": "measured",
+                "available_phosphorus": "measured",
+                "total_n": "region_mean_backfill",
+                "exchangeable_hydrogen": "region_mean_backfill",
+                "exchangeable_aluminum": "region_mean_backfill",
+                "target_ph": "default",
+                "fertilizer_type": "default",
+            },
+        },
+    }
+
+
+def test_compute_model4_nulls_dosage_when_inputs_imputed():
+    """Model-4 补算：输入含回填/默认取值时用量置空并列出被回填输入。"""
+    from src.ai_culti_demo.report_context import _compute_model4
+
+    out = _compute_model4(_record_with_provenance())
+    assert out is not None
+    assert out["lime_dosage"] is None
+    assert out["organic_fertilizer_dosage"] is None
+    assert sorted(out["imputed_inputs"]) == [
+        "exchangeable_aluminum", "exchangeable_hydrogen", "fertilizer_type", "target_ph",
+    ]
+    assert out["soil_ph"] == 5.31  # 实测指标照常展示
+
+
+def test_compute_model4_keeps_dosage_when_inputs_measured():
+    """来源全部为实测时，用量照常给出。"""
+    from src.ai_culti_demo.report_context import _compute_model4
+
+    record = _record_with_provenance()
+    record["soil_indicators"]["provenance"] = {
+        key: "measured" for key in record["soil_indicators"]["provenance"]
+    }
+    out = _compute_model4(record)
+    assert out is not None
+    assert out["imputed_inputs"] == []
+    assert out["lime_dosage"] is not None
+    assert out["organic_fertilizer_dosage"] is not None
+
+
+def test_compute_model5_nulls_dose_when_tn_imputed():
+    """Model-5 补算：全氮为回填值时用量置空并返回 imputed_features。"""
+    from pathlib import Path
+
+    import pytest as _pytest
+
+    from src.ai_culti_demo.report_context import _compute_model5_for_parcel
+
+    artifact = Path(__file__).resolve().parents[1] / "data" / "model_artifacts" / "upland_dose_rf.joblib"
+    if not artifact.exists():
+        _pytest.skip("缺少 upland Dose RF 模型文件")
+
+    out = _compute_model5_for_parcel(_record_with_provenance())
+    assert out is not None
+    assert out["imputed_features"] == ["TN"]
+    assert out["organic_fertilizer_dosage"] is None
+    assert out["organic_matter"] == 29.34
+
+
+def test_acidification_table_shows_unavailable_for_imputed_row():
+    """输入含回填时，用量表不再展示数字，并给出原因说明。"""
+    from src.ai_culti_demo.report_templates import render_acidification_dosage_table
+
+    html = render_acidification_dosage_table({
+        "model_results": {
+            "model-4": [{
+                "parcel_id": "P001",
+                "soil_ph": 5.31,
+                "exchangeable_hydrogen": 0.2949,
+                "exchangeable_aluminum": 4.0262,
+                "lime_dosage": 5047.92,
+                "organic_fertilizer_dosage": 11671.28,
+                "imputed_inputs": ["exchangeable_aluminum", "target_ph"],
+                "source": "computed",
+            }]
+        }
+    })
+    assert "暂无可靠估计" in html
+    assert "5047" not in html
+    assert "11671" not in html
+    assert "区域平均回填或默认取值" in html
