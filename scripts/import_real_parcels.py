@@ -100,6 +100,10 @@ def build_soil_indicators(row):
             fval = to_float(val)
             if fval is not None:
                 indicators[v3_field] = fval
+    # Public statistics use canonical names while model adapters continue to
+    # accept the historical aliases.
+    if "topsoil_thickness" in indicators:
+        indicators["effective_soil_depth"] = indicators["topsoil_thickness"]
     # Model-4/5 默认值（源数据不含 target_ph/fertilizer_type，由 Model-4 交互层调整）
     indicators.setdefault("target_ph", 6.5)
     indicators.setdefault("fertilizer_type", "compound")

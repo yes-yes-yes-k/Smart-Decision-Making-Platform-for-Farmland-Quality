@@ -1,7 +1,23 @@
 from datetime import datetime, timezone
 from types import SimpleNamespace
 
-from framework.api.services.farmland_statistics import _parcel_response, summarize_rows
+import json
+
+import pytest
+
+from framework.api.services import farmland_statistics as service
+from framework.api.services.farmland_statistics import _parcel_response, list_boundaries, summarize_rows
+
+
+class _MappingResult:
+    def __init__(self, rows):
+        self._rows = rows
+
+    def mappings(self):
+        return self
+
+    def all(self):
+        return self._rows
 
 
 def test_summary_is_area_weighted_and_keeps_unclassified_separate():
@@ -59,3 +75,103 @@ def test_parcel_response_uses_null_area_when_geometry_is_missing():
     response = _parcel_response(parcel, area_mu=None)
 
     assert response["areaMu"] is None
+
+
+def test_metric_catalog_is_grouped_ordered_and_reports_observed_years(monkeypatch):
+    monkeypatch.setattr(service, "_catalog_rows", lambda: [
+        {
+            "data_year": 2024,
+            "soil_indicators": {
+                "soil_ph": 5.8,
+                "organic_matter": 18.0,
+                "soil_texture": "壤土",
+                "irrigation_condition": "满足",
+            },
+            "quality_grade": "4等",
+            "composite_index": 0.76,
+        },
+        {
+            "data_year": 2021,
+            "soil_indicators": {"soil_ph": 5.6, "total_n": 1.1},
+            "quality_grade": "5等",
+            "composite_index": 0.71,
+        },
+    ])
+
+    catalog = service.metric_metadata()
+    metrics = {item["metricKey"]: item for item in catalog["metrics"]}
+
+    assert catalog["classificationVersion"] == "2026-09-21.1"
+    assert [group["key"] for group in catalog["groups"]] == [
+        "quality_evaluation", "soil_nutrients", "physical_properties",
+        "pollution_status", "farmland_conditions",
+    ]
+    assert catalog["defaultYear"] == 2024
+    assert metrics["soil_ph"]["label"] == "土壤 pH"
+    assert metrics["soil_ph"]["dataYears"] == [2024, 2021]
+    assert metrics["total_nitrogen"]["dataYears"] == [2021]
+    assert metrics["total_nitrogen"]["availability"] == "partial"
+    assert metrics["cadmium"]["availability"] == "unavailable"
+
+
+def test_summary_supports_categorical_metrics():
+    result = summarize_rows([
+        {"area_mu": 2, "soil_indicators": {"soil_texture": "壤土"}},
+        {"area_mu": 1, "soil_indicators": {"soil_texture": "砂土"}},
+        {"area_mu": 3, "soil_indicators": {"soil_texture": "壤土"}},
+    ], ["soil_texture"], data_year=2024)
+
+    metric = result["metrics"][0]
+    distribution = {item["key"]: item for item in metric["distribution"]}
+    assert metric["valueType"] == "category"
+    assert metric["dataYear"] == 2024
+    assert metric["table"]["average"] is None
+    assert distribution["壤土"]["parcelCount"] == 2
+    assert distribution["壤土"]["areaMu"] == 5.0
+
+
+def test_scope_contract_echoes_normalized_viewport():
+    _sql, _params, scope = service._scope_sql({
+        "type": "viewport", "bbox": [113, 24, 114, 25],
+    })
+    assert scope == {
+        "scopeVersion": 1,
+        "type": "viewport",
+        "bbox": [113.0, 24.0, 114.0, 25.0],
+        "srid": 4326,
+    }
+
+
+def test_boundaries_respect_min_zoom_without_database(monkeypatch):
+    monkeypatch.setattr(
+        service.db.session,
+        "execute",
+        lambda *_args, **_kwargs: pytest.fail("low zoom must not query the database"),
+    )
+    result = list_boundaries("village", zoom="10")
+    assert result["suppressedByZoom"] is True
+    assert result["features"] == []
+
+
+def test_boundaries_return_hierarchical_geojson(monkeypatch):
+    rows = [{
+        "object_type": "township",
+        "object_id": "440281001",
+        "display_name": "乐城街道",
+        "area_code": "440281001",
+        "parent_object_type": "county",
+        "parent_object_id": "440281",
+        "metadata": {"selectable": True},
+        "geometry": json.dumps({"type": "MultiPolygon", "coordinates": []}),
+    }]
+    monkeypatch.setattr(
+        service.db.session, "execute", lambda *_args, **_kwargs: _MappingResult(rows),
+    )
+    result = list_boundaries(
+        "township", parent_type="county", parent_id="440281",
+        bbox="112,24,114,26", zoom="10",
+    )
+    feature = result["features"][0]
+    assert feature["properties"]["parentId"] == "440281"
+    assert feature["properties"]["minZoom"] == 9
+    assert feature["geometry"]["type"] == "MultiPolygon"

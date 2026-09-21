@@ -11,9 +11,12 @@ from framework.api.services.farmland_statistics import (
     StatisticsError,
     aggregate_statistics,
     get_parcel_summary,
+    list_available_years,
+    list_boundaries,
     list_regions,
     metric_metadata,
     pick_parcel,
+    query_parcels,
 )
 
 
@@ -47,6 +50,18 @@ def get_metrics():
     return _success(metric_metadata())
 
 
+@farmland_statistics_bp.route("/years", methods=["GET"])
+@jwt_required()
+def get_years():
+    try:
+        return _success(list_available_years())
+    except StatisticsError as error:
+        return _handle_error(error)
+    except Exception:
+        logger.exception("Unexpected farmland year-list failure")
+        return _internal_error()
+
+
 @farmland_statistics_bp.route("/regions", methods=["GET"])
 @jwt_required()
 def get_regions():
@@ -64,6 +79,24 @@ def get_regions():
         return _internal_error()
 
 
+@farmland_statistics_bp.route("/boundaries", methods=["GET"])
+@jwt_required()
+def get_boundaries():
+    try:
+        return _success(list_boundaries(
+            region_type=request.args.get("region_type"),
+            parent_type=request.args.get("parent_type"),
+            parent_id=request.args.get("parent_id"),
+            bbox=request.args.get("bbox"),
+            zoom=request.args.get("zoom"),
+        ))
+    except StatisticsError as error:
+        return _handle_error(error)
+    except Exception:
+        logger.exception("Unexpected farmland boundary-list failure")
+        return _internal_error()
+
+
 @farmland_statistics_bp.route("/aggregate", methods=["POST"])
 @jwt_required()
 def aggregate():
@@ -76,11 +109,27 @@ def aggregate():
         return _internal_error()
 
 
+@farmland_statistics_bp.route("/parcels/query", methods=["POST"])
+@jwt_required()
+def query_parcel_list():
+    try:
+        return _success(query_parcels(request.get_json(silent=True)))
+    except StatisticsError as error:
+        return _handle_error(error)
+    except Exception:
+        logger.exception("Unexpected parcel-query failure")
+        return _internal_error()
+
+
 @farmland_statistics_bp.route("/parcels/<parcel_id>", methods=["GET"])
 @jwt_required()
 def get_parcel(parcel_id):
     try:
-        return _success(get_parcel_summary(parcel_id))
+        year = request.args.get("year")
+        return _success(
+            get_parcel_summary(parcel_id, year=year) if year is not None
+            else get_parcel_summary(parcel_id)
+        )
     except StatisticsError as error:
         return _handle_error(error)
     except Exception:
@@ -93,6 +142,10 @@ def get_parcel(parcel_id):
 def pick():
     body = request.get_json(silent=True) or {}
     try:
+        if "year" in body:
+            return _success(pick_parcel(
+                body.get("longitude"), body.get("latitude"), year=body.get("year"),
+            ))
         return _success(pick_parcel(body.get("longitude"), body.get("latitude")))
     except StatisticsError as error:
         return _handle_error(error)

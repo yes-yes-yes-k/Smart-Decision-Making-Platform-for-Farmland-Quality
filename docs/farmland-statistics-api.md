@@ -1,442 +1,192 @@
-# 耕地统计接口设计与口径
+# 耕地地图统计 API
 
-## 已确定口径
+统一前缀：`/api/v1/farmland-statistics`。所有接口需要 JWT。
 
-- 统计范围支持行政区域和当前地图视窗。行政区域已支持县、镇、村；地图缩放或平移后，前端在 `moveend` 事件调用视窗统计即可联动更新。
-- 地块与范围只要实际相交即纳入“地块数”，面积按裁剪到范围内的部分计算，避免跨行政边界或视窗边缘的面积被重复计入。
-- 平均值按裁剪后的地块面积加权。接口同时返回有效指标面积/数量和未分类面积/数量，缺失值或非正值不会悄悄进入最低档。
-- 柱状图和饼图共用 `distribution`，柱状图使用 `parcelCount`，饼图可按 `areaMu` 或 `parcelCount` 展示。
-- 所有最高档不设上限。有机质大于 40、有效磷大于 40 均继续使用各自“高”档颜色，不新增颜色。
-- 有效土层厚度对接现有数据字段 `topsoil_thickness`；接口对外名称为 `effective_soil_depth`。
-- 73 个村间争议面以 `zone` 保存并标记为不可选择，不强行归入任何普通村。
-- 地块详情和点选响应中的 `areaMu` 是完整地块测地面积换算的亩数，不受当前视窗或行政区边界裁剪；几何缺失时为 `null`。
+## 版本与口径
 
-## 接口输入输出示例
+- 指标配置版本：`2026-09-21.1`。
+- 不指定 `year` 时使用 `/years` 返回的 `defaultYear`。
+- 年度指标来自 `parcel_history_snapshot`，地块几何来自 `parcel_info`。
+- 统计响应必须回传规范化后的 `scope`；当前 `scopeVersion=1`。
+- 数值指标按范围内裁剪面积加权，分类指标返回分类计数和面积分布。
+- 未入库的污染监测指标返回 `availability=unavailable`，不得生成或推断数值。
 
-所有接口使用现有 JWT 鉴权，统一前缀为 `/api/v1/farmland-statistics`。以下响应中的统计值取自当前开发数据库，仅用于说明字段结构；数据库更新后数值可能变化。
+## 1. 指标目录
 
-请求头：
+`GET /metrics`
 
-```http
-Authorization: Bearer <token>
-Content-Type: application/json
-```
-
-### 1. 获取指标配置
-
-**GET** `/api/v1/farmland-statistics/metrics`
-
-用途：返回 8 项指标的名称、单位、精度、分档边界和颜色。前端图例应直接使用此接口，避免重复维护分档。
-
-输入示例：
-
-```http
-GET /api/v1/farmland-statistics/metrics
-Authorization: Bearer <token>
-```
-
-该接口没有查询参数和请求体。
-
-成功输出（200，以下只展示 `soil_ph`；实际 `data` 包含全部 8 项指标）：
+响应 `data` 为对象：
 
 ```json
 {
-  "status": "ok",
-  "data": [
+  "classificationVersion": "2026-09-21.1",
+  "groups": [
     {
-      "key": "soil_ph",
-      "label": "酸化 pH 情况",
-      "sourceField": "soil_ph",
-      "unit": "pH",
-      "decimals": 2,
-      "buckets": [
-        {
-          "key": "very_strong_acid",
-          "label": "极强酸性",
-          "rangeLabel": "<4.5",
-          "color": "#B2182B",
-          "lower": null,
-          "upper": 4.5,
-          "lowerInclusive": false,
-          "upperInclusive": false
-        },
-        {
-          "key": "strong_acid",
-          "label": "强酸性",
-          "rangeLabel": "[4.5,5.5)",
-          "color": "#EF8A62",
-          "lower": 4.5,
-          "upper": 5.5,
-          "lowerInclusive": true,
-          "upperInclusive": false
-        },
-        {
-          "key": "acid",
-          "label": "酸性",
-          "rangeLabel": "[5.5,6.5)",
-          "color": "#FDDBC7",
-          "lower": 5.5,
-          "upper": 6.5,
-          "lowerInclusive": true,
-          "upperInclusive": false
-        },
-        {
-          "key": "neutral",
-          "label": "中性",
-          "rangeLabel": "[6.5,7.5]",
-          "color": "#92C5DE",
-          "lower": 6.5,
-          "upper": 7.5,
-          "lowerInclusive": true,
-          "upperInclusive": true
-        },
-        {
-          "key": "alkaline",
-          "label": "碱性",
-          "rangeLabel": ">7.5",
-          "color": "#2166AC",
-          "lower": 7.5,
-          "upper": null,
-          "lowerInclusive": false,
-          "upperInclusive": false
-        }
-      ]
+      "key": "soil_nutrients",
+      "label": "土壤养分",
+      "order": 20,
+      "metrics": ["organic_matter", "total_nitrogen", "available_phosphorus", "available_potassium"]
     }
-  ]
-}
-```
-
-`lower` 或 `upper` 为 `null` 表示该方向不设边界。最高档的 `upper` 均为 `null`，例如有机质超过 40 仍使用“高”档颜色。
-
-### 2. 查询行政区域目录
-
-**GET** `/api/v1/farmland-statistics/regions`
-
-查询参数：
-
-| 参数 | 类型 | 必填 | 说明 |
-|------|------|------|------|
-| `parent_type` | string | 否 | 父级类型，必须和 `parent_id` 同时提供 |
-| `parent_id` | string | 否 | 父级对象 ID，必须和 `parent_type` 同时提供 |
-| `include_disputes` | boolean | 否 | 是否包含不可选择的争议区，默认 `false` |
-
-输入示例——查询乐昌市下的镇：
-
-```http
-GET /api/v1/farmland-statistics/regions?parent_type=county&parent_id=440281
-Authorization: Bearer <token>
-```
-
-成功输出（200，节选）：
-
-```json
-{
-  "status": "ok",
-  "data": [
-    {
-      "regionType": "township",
-      "regionId": "440281001",
-      "displayName": "乐城街道",
-      "areaCode": "440281001",
-      "parentType": "county",
-      "parentId": "440281",
-      "selectable": true,
-      "hasGeometry": true
-    },
-    {
-      "regionType": "township",
-      "regionId": "440281102",
-      "displayName": "北乡镇",
-      "areaCode": "440281102",
-      "parentType": "county",
-      "parentId": "440281",
-      "selectable": true,
-      "hasGeometry": true
-    }
-  ]
-}
-```
-
-查询乐城街道下的村：
-
-```http
-GET /api/v1/farmland-statistics/regions?parent_type=township&parent_id=440281001
-```
-
-默认不返回 `zone` 类型的村间争议区。仅管理或核查界面需要时传 `include_disputes=true`。
-
-### 3. 聚合耕地统计
-
-**POST** `/api/v1/farmland-statistics/aggregate`
-
-用途：按行政区域或地图视窗裁剪地块，生成表格、柱状图和饼图共用的数据。
-
-输入示例 A——按村统计 pH：
-
-```json
-{
-  "scope": {
-    "type": "administrative_region",
-    "region_type": "village",
-    "region_id": "440281001201"
-  },
-  "metrics": ["soil_ph"]
-}
-```
-
-输入示例 B——按当前地图视窗统计多个指标：
-
-```json
-{
-  "scope": {
-    "type": "viewport",
-    "bbox": [113.0, 24.0, 114.0, 25.0]
-  },
+  ],
   "metrics": [
-    "soil_ph",
-    "organic_matter",
-    "available_phosphorus"
-  ]
-}
-```
-
-`bbox` 使用 WGS84（EPSG:4326），顺序为 `[minLon, minLat, maxLon, maxLat]`。`metrics` 可传 `"all"`，也可传非空指标 key 数组；省略时统计全部 8 项。
-
-成功输出（200，对应输入示例 A）：
-
-```json
-{
-  "status": "ok",
-  "data": {
-    "dataAsOf": "2026-09-08T19:52:36.326614+08:00",
-    "scopeSummary": {
-      "parcelCount": 1,
-      "totalAreaMu": 88.6022
-    },
-    "metrics": [
-      {
-        "key": "soil_ph",
-        "label": "酸化 pH 情况",
-        "unit": "pH",
-        "table": {
-          "average": 5.32,
-          "totalAreaMu": 88.6022,
-          "parcelCount": 1,
-          "validAreaMu": 88.6022,
-          "validParcelCount": 1,
-          "range": {
-            "min": 5.32,
-            "max": 5.32
-          }
-        },
-        "distribution": [
-          {
-            "key": "very_strong_acid",
-            "label": "极强酸性",
-            "rangeLabel": "<4.5",
-            "color": "#B2182B",
-            "lower": null,
-            "upper": 4.5,
-            "lowerInclusive": false,
-            "upperInclusive": false,
-            "parcelCount": 0,
-            "areaMu": 0.0,
-            "countPercent": 0.0,
-            "areaPercent": 0.0
-          },
-          {
-            "key": "strong_acid",
-            "label": "强酸性",
-            "rangeLabel": "[4.5,5.5)",
-            "color": "#EF8A62",
-            "lower": 4.5,
-            "upper": 5.5,
-            "lowerInclusive": true,
-            "upperInclusive": false,
-            "parcelCount": 1,
-            "areaMu": 88.6022,
-            "countPercent": 100.0,
-            "areaPercent": 100.0
-          },
-          {
-            "key": "acid",
-            "label": "酸性",
-            "rangeLabel": "[5.5,6.5)",
-            "color": "#FDDBC7",
-            "lower": 5.5,
-            "upper": 6.5,
-            "lowerInclusive": true,
-            "upperInclusive": false,
-            "parcelCount": 0,
-            "areaMu": 0.0,
-            "countPercent": 0.0,
-            "areaPercent": 0.0
-          },
-          {
-            "key": "neutral",
-            "label": "中性",
-            "rangeLabel": "[6.5,7.5]",
-            "color": "#92C5DE",
-            "lower": 6.5,
-            "upper": 7.5,
-            "lowerInclusive": true,
-            "upperInclusive": true,
-            "parcelCount": 0,
-            "areaMu": 0.0,
-            "countPercent": 0.0,
-            "areaPercent": 0.0
-          },
-          {
-            "key": "alkaline",
-            "label": "碱性",
-            "rangeLabel": ">7.5",
-            "color": "#2166AC",
-            "lower": 7.5,
-            "upper": null,
-            "lowerInclusive": false,
-            "upperInclusive": false,
-            "parcelCount": 0,
-            "areaMu": 0.0,
-            "countPercent": 0.0,
-            "areaPercent": 0.0
-          }
-        ],
-        "unclassified": {
-          "parcelCount": 0,
-          "areaMu": 0.0
-        }
+    {
+      "metricKey": "soil_ph",
+      "label": "土壤 pH",
+      "groupKey": "physical_properties",
+      "order": 10,
+      "valueType": "number",
+      "availability": "available",
+      "dataYears": [2024, 2021, 2018],
+      "coverageByYear": {
+        "2024": {"valueCount": 5488, "parcelCount": 5488, "percent": 100.0}
       }
-    ],
-    "scope": {
-      "type": "administrative_region",
-      "regionType": "village",
-      "regionId": "440281001201",
-      "displayName": "榴村"
     }
-  }
+  ],
+  "availableYears": [
+    {"year": 2024, "parcelCount": 5488, "selectable": true}
+  ],
+  "defaultYear": 2024
 }
 ```
 
-主要输出字段：
+分组顺序固定为：质量评价、土壤养分、理化性质、污染状况、农田条件。`availability` 取值为 `available`、`partial`、`unavailable` 或数据库不可访问时的 `unknown`。
 
-| 字段 | 用途 |
-|------|------|
-| `scopeSummary` | 当前统计范围内的全部地块数和裁剪后总面积 |
-| `table.average` | 当前指标按裁剪后面积加权的平均值 |
-| `table.totalAreaMu` / `parcelCount` | 表格展示的总面积和地块数 |
-| `table.validAreaMu` / `validParcelCount` | 当前指标有有效值的面积和地块数 |
-| `table.range` | 当前指标有效值的最小值和最大值 |
-| `distribution` | 等级有序数组；柱状图使用 `parcelCount`，饼图可使用 `areaMu` 或 `parcelCount` |
-| `unclassified` | 缺失、无法解析或未落入有效正值区间的数据 |
+## 2. 可选年份
 
-地图缩放或平移后，前端在 `moveend` 使用新 bbox 重新调用本接口。建议做 300–500 ms 防抖并取消已经过期的请求。
-
-### 4. 获取地块详情
-
-**GET** `/api/v1/farmland-statistics/parcels/{parcel_id}`
-
-输入示例：
-
-```http
-GET /api/v1/farmland-statistics/parcels/1007
-Authorization: Bearer <token>
-```
-
-成功输出（200）：
+`GET /years`
 
 ```json
 {
   "status": "ok",
   "data": {
-    "parcelId": "1007",
-    "areaCode": "440281",
-    "areaMu": 379.8501,
-    "qualityGrade": 8,
-    "organicMatter": 19.178225,
-    "soilPh": 5.578967,
-    "availablePhosphorus": 27.682971
+    "years": [
+      {"year": 2024, "parcelCount": 5488, "selectable": true},
+      {"year": 2021, "parcelCount": 5488, "selectable": true},
+      {"year": 2018, "parcelCount": 5488, "selectable": true}
+    ],
+    "defaultYear": 2024
   }
 }
 ```
 
-`areaMu` 为完整地块面积，单位为亩并保留 4 位小数；它不同于聚合统计中按范围裁剪后的面积。地块几何缺失时 `areaMu` 返回 `null`。指标缺失时，相应字段也返回 `null`，字段本身不会省略。
+## 3. 层级行政区域
 
-### 5. 按经纬度点选地块
+`GET /regions?parent_type=county&parent_id=440281`
 
-**POST** `/api/v1/farmland-statistics/parcels/pick`
+支持 `province`、`city`、`county`、`township`、`village` 和争议区 `zone`。`parent_type` 与 `parent_id` 必须同时提供；默认排除 `zone`。
 
-输入示例：
+## 4. 行政边界
+
+`GET /boundaries?region_type=township&parent_type=county&parent_id=440281&zoom=10`
+
+可选参数：
+
+- `bbox=minLon,minLat,maxLon,maxLat`
+- `zoom=0..24`
+
+响应为 GeoJSON `FeatureCollection`，并返回 `selectable`、父级、最小显示层级和是否截断。
+
+## 5. 统一统计范围
+
+所有统计和批量地块查询共用以下三种 `scope`：
+
+```json
+{"type": "administrative_region", "region_type": "county", "region_id": "440281"}
+```
+
+```json
+{"type": "viewport", "bbox": [113.0, 24.0, 114.0, 25.0]}
+```
+
+```json
+{"type": "parcel", "parcel_id": "1007"}
+```
+
+服务端会验证并在响应中回传规范化的范围，例如：
 
 ```json
 {
-  "longitude": 113.084486,
-  "latitude": 25.094996
+  "scopeVersion": 1,
+  "type": "administrative_region",
+  "regionType": "county",
+  "regionId": "440281",
+  "displayName": "乐昌市"
 }
 ```
 
-成功输出（200）：
+## 6. 按范围和年份统计
+
+`POST /aggregate`
 
 ```json
 {
-  "status": "ok",
-  "data": {
-    "parcelId": "1007",
-    "areaCode": "440281",
-    "areaMu": 379.8501,
-    "qualityGrade": 8,
-    "organicMatter": 19.178225,
-    "soilPh": 5.578967,
-    "availablePhosphorus": 27.682971
-  }
+  "scope": {"type": "viewport", "bbox": [113.0, 24.0, 114.0, 25.0]},
+  "year": 2021,
+  "metrics": ["soil_ph", "organic_matter", "soil_texture"]
 }
 ```
 
-若多个地块同时覆盖该点，返回面积最小的地块；未命中返回 404。
+响应包含：
 
-### 错误输出
+- `classificationVersion`
+- `dataYear`
+- 规范化 `scope`
+- `scopeSummary`
+- 按指标返回的 `table`、`distribution` 和 `unclassified`
 
-统计业务错误使用统一包络：
+数值指标的 `table.average` 为面积加权平均；分类指标的 `average` 为 `null`，`distribution` 返回各类别地块数、面积和百分比。
+
+## 7. 按范围查询地块
+
+`POST /parcels/query`
 
 ```json
 {
-  "status": "error",
-  "code": "invalid_scope",
-  "message": "请求必须包含 scope 对象"
+  "scope": {"type": "administrative_region", "region_type": "township", "region_id": "440281001"},
+  "year": 2024,
+  "metrics": ["quality_grade", "soil_ph", "soil_texture"],
+  "geometry": "centroid",
+  "limit": 100,
+  "offset": 0
 }
 ```
 
-区域存在但尚未导入边界时：
+`geometry` 支持 `centroid` 和 `none`；`limit` 最大 500。响应回传 `scope`、`dataYear`、地块指标、几何和分页状态。
+
+## 8. 地块详情和地图点选
+
+- `GET /parcels/{parcel_id}?year=2021`
+- `POST /parcels/pick`
+
+点选请求：
 
 ```json
-{
-  "status": "error",
-  "code": "region_geometry_missing",
-  "message": "指定行政区域尚未导入边界"
-}
+{"longitude": 113.084486, "latitude": 25.094996, "year": 2021}
 ```
 
-点选未命中时：
+详情响应返回完整指标对象，每项包含名称、分组、值类型、值、单位和可用的分级/颜色信息，同时保留原有 `qualityGrade`、`organicMatter`、`soilPh`、`availablePhosphorus` 兼容字段。
 
-```json
-{
-  "status": "error",
-  "code": "parcel_not_found",
-  "message": "该位置未命中地块"
-}
+## 9. 数据规范化
+
+历史数据可先预览再执行字段规范化：
+
+```powershell
+python scripts/migrate_farmland_indicator_data.py
+python scripts/migrate_farmland_indicator_data.py --apply
 ```
 
-| HTTP 状态码 | 常见 code | 说明 |
-|-------------|-----------|------|
-| 400 | `invalid_parent`、`invalid_request`、`invalid_scope`、`invalid_metrics`、`invalid_coordinate` | 输入参数无效 |
-| 401 | JWT 默认 `msg` 响应 | 未携带或无法验证 Token |
-| 404 | `region_not_found`、`parcel_not_found` | 区域或地块不存在，或点选未命中 |
-| 409 | `region_geometry_missing` | 区域存在但尚未导入边界 |
-| 500 | `internal_error` | 统计服务内部错误 |
-| 503 | `statistics_unavailable` | 区域目录、空间统计或点选服务暂时不可用 |
+脚本只进行现有值的别名复制：
 
-## 当前数据结论与后续替换点
+- `topsoil_thickness` → `effective_soil_depth`
+- `total_n` → `total_nitrogen`
 
-- 当前 5488 个地块不是单一县数据，而是分布在韶关多个县区并少量延伸到英德；此前 `area_code` 全部硬编码为新丰县 `440233`。
-- 已按广东县界做空间审计，自动纠正仅限主导县覆盖比例不低于 95% 的地块。低置信地块保留原值并进入人工复核清单。
-- 当前地块指标来自测试数据，接口可用于开发联调，但生产展示前仍需确认正式地块和指标数据源。
-- 当前乐昌边界已切换登记为土壤所提供的广东 L2/L3/L4 数据源。该数据的几何沿袭信息指向 2016 年、导出元数据为 2020 年；它与此前乐昌独立边界逐要素完全相同。拿到真正更新的权威边界后，应沿用同一导入和差异审计流程替换。
+脚本不会填造重金属监测值、污染风险结论或其他源数据中不存在的指标。
+
+## 错误码
+
+| HTTP | code | 含义 |
+|---:|---|---|
+| 400 | `invalid_scope`、`invalid_metrics`、`invalid_year`、`invalid_bbox` | 请求参数无效 |
+| 404 | `year_not_available`、`parcel_year_not_found`、`region_not_found`、`parcel_not_found` | 对象或年度数据不存在 |
+| 409 | `region_geometry_missing`、`parcel_geometry_missing` | 对象存在但缺少几何 |
+| 503 | `statistics_unavailable` | 数据库或空间统计服务暂时不可用 |
