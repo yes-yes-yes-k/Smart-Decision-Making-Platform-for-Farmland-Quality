@@ -103,7 +103,7 @@ def audit_indicator_rows(rows: Iterable[Mapping[str, Any]]) -> dict[str, Any]:
         non_empty_count = 0
         parse_failure_count = 0
         unclassified_count = 0
-        values: list[float] = []
+        values: list[Any] = []
         data_sources: Counter = Counter()
         years: Counter = Counter()
         imputed: Counter = Counter()
@@ -120,7 +120,7 @@ def audit_indicator_rows(rows: Iterable[Mapping[str, Any]]) -> dict[str, Any]:
                 parse_failure_count += 1
             if value is not None:
                 values.append(value)
-                if definition.classify(value) is None:
+                if definition.buckets and definition.classify(value) is None:
                     unclassified_count += 1
 
             provenance = metric_provenance(indicators, metric_key)
@@ -146,6 +146,10 @@ def audit_indicator_rows(rows: Iterable[Mapping[str, Any]]) -> dict[str, Any]:
         if data_sources.get("unknown", 0):
             quality_flags.append("provenance_missing")
 
+        numeric_values = [
+            value for value in values
+            if isinstance(value, (int, float)) and not isinstance(value, bool)
+        ]
         metrics.append({
             "metricKey": metric_key,
             "label": definition.label,
@@ -156,8 +160,8 @@ def audit_indicator_rows(rows: Iterable[Mapping[str, Any]]) -> dict[str, Any]:
             "parseableCount": len(values),
             "parseFailureCount": parse_failure_count,
             "unclassifiedCount": unclassified_count,
-            "min": min(values) if values else None,
-            "max": max(values) if values else None,
+            "min": min(numeric_values) if numeric_values else None,
+            "max": max(numeric_values) if numeric_values else None,
             "uniqueValueCount": unique_count,
             "qualityFlags": quality_flags,
             "provenance": {

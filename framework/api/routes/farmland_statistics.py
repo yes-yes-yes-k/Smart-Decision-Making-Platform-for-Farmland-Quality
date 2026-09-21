@@ -15,11 +15,13 @@ from framework.api.services.farmland_statistics import (
     aggregate_statistics,
     get_parcel_summary,
     indicator_quality_audit,
+    list_available_years,
     list_boundaries,
     list_regions,
     list_viewport_parcels,
     metric_metadata,
     pick_parcel,
+    query_parcels,
 )
 
 
@@ -85,6 +87,18 @@ def get_metrics():
     return _success(metric_metadata())
 
 
+@farmland_statistics_bp.route("/years", methods=["GET"])
+@jwt_required()
+def get_years():
+    try:
+        return _success(list_available_years())
+    except StatisticsError as error:
+        return _handle_error(error)
+    except Exception:
+        logger.exception("Unexpected farmland year-list failure")
+        return _internal_error()
+
+
 @farmland_statistics_bp.route("/regions", methods=["GET"])
 @jwt_required()
 def get_regions():
@@ -136,7 +150,11 @@ def aggregate():
 @jwt_required()
 def get_parcel(parcel_id):
     try:
-        return _success(get_parcel_summary(parcel_id))
+        year = request.args.get("year")
+        metric_key = request.args.get("metric", request.args.get("metric_key"))
+        if year is None and metric_key is None:
+            return _success(get_parcel_summary(parcel_id))
+        return _success(get_parcel_summary(parcel_id, year=year, metric_key=metric_key))
     except StatisticsError as error:
         return _handle_error(error)
     except Exception:
@@ -151,16 +169,29 @@ def pick():
     try:
         if not _PICK_LIMITER.allow(_request_key()):
             raise StatisticsError("rate_limited", "点选请求过于频繁，请稍后重试", 429)
-        return _success(pick_parcel(
-            body.get("longitude"),
-            body.get("latitude"),
-            metric_key=body.get("metric", body.get("metric_key")),
-            tolerance_meters=body.get("toleranceMeters", body.get("tolerance_meters", 0)),
-        ))
+        kwargs = {
+            "metric_key": body.get("metric", body.get("metric_key")),
+            "tolerance_meters": body.get("toleranceMeters", body.get("tolerance_meters", 0)),
+        }
+        if "year" in body:
+            kwargs["year"] = body.get("year")
+        return _success(pick_parcel(body.get("longitude"), body.get("latitude"), **kwargs))
     except StatisticsError as error:
         return _handle_error(error)
     except Exception:
         logger.exception("Unexpected parcel-pick failure")
+        return _internal_error()
+
+
+@farmland_statistics_bp.route("/parcels/query", methods=["POST"])
+@jwt_required()
+def query_parcel_list():
+    try:
+        return _success(query_parcels(request.get_json(silent=True)))
+    except StatisticsError as error:
+        return _handle_error(error)
+    except Exception:
+        logger.exception("Unexpected parcel-query failure")
         return _internal_error()
 
 

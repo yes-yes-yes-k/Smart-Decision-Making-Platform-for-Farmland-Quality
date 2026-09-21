@@ -3,7 +3,9 @@
 from .indicator_definitions import (
     CLASSIFICATION_VERSION,
     INDICATOR_DEFINITIONS,
+    INDICATOR_GROUPS,
     BucketDefinition,
+    IndicatorGroup,
     IndicatorDefinition,
     classify_indicator,
     get_indicator_definition,
@@ -18,7 +20,9 @@ from .quality_audit import (
 __all__ = [
     "CLASSIFICATION_VERSION",
     "INDICATOR_DEFINITIONS",
+    "INDICATOR_GROUPS",
     "BucketDefinition",
+    "IndicatorGroup",
     "IndicatorDefinition",
     "classify_indicator",
     "get_indicator_definition",

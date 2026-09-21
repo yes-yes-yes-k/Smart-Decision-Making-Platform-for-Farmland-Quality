@@ -89,13 +89,17 @@ def test_parcel_response_includes_full_geometry_area_in_mu():
     assert response["bulkDensity"] == 1.31
     assert response["plowLayerThickness"] == 20
     assert response["effectiveSoilDepth"] == 80
-    assert set(response["metrics"]) == {
+    assert {
         "quality_grade", "soil_ph", "organic_matter", "available_phosphorus",
         "available_potassium", "bulk_density", "plow_layer_thickness",
         "effective_soil_depth",
-    }
+    }.issubset(response["metrics"])
     assert response["metrics"]["available_potassium"] == {
         "metricKey": "available_potassium",
+        "label": "速效钾含量",
+        "groupKey": "soil_nutrients",
+        "order": 40,
+        "valueType": "number",
         "value": 82.5,
         "unit": "mg/kg",
         "bucketKey": "medium_low",
@@ -123,7 +127,10 @@ def test_classification_version_is_shared_by_metadata_summary_and_parcel():
     summary = summarize_rows([], ["soil_ph"])
     parcel = SimpleNamespace(parcel_id="P3", area_code="440281", soil_indicators={})
 
-    assert {item["classificationVersion"] for item in metadata} == {CLASSIFICATION_VERSION}
+    assert metadata["classificationVersion"] == CLASSIFICATION_VERSION
+    assert {item["classificationVersion"] for item in metadata["metrics"]} == {
+        CLASSIFICATION_VERSION
+    }
     assert summary["classificationVersion"] == CLASSIFICATION_VERSION
     assert _parcel_response(parcel, None)["classificationVersion"] == CLASSIFICATION_VERSION
 
@@ -378,6 +385,7 @@ def test_polygon_scope_validates_and_normalizes_geometry(monkeypatch):
     assert "ST_ForcePolygonCCW" in query
     assert json.loads(params["geojson"]) == geometry
     assert response == {
+        "scopeVersion": 1,
         "type": "polygon",
         "geometryType": "Polygon",
         "vertexCount": 4,
@@ -402,3 +410,68 @@ def test_polygon_scope_rejects_invalid_geojson_before_database(monkeypatch, geom
         _scope_sql({"type": "polygon", "geometry": geometry})
 
     assert error.value.code == "invalid_geometry"
+
+
+def test_metric_catalog_is_grouped_ordered_and_reports_observed_years(monkeypatch):
+    monkeypatch.setattr(service, "_catalog_rows", lambda: [
+        {
+            "data_year": 2024,
+            "soil_indicators": {
+                "soil_ph": 5.8,
+                "organic_matter": 18.0,
+                "soil_texture": "壤土",
+                "irrigation_condition": "满足",
+            },
+            "quality_grade": "4等",
+            "composite_index": 0.76,
+        },
+        {
+            "data_year": 2021,
+            "soil_indicators": {"soil_ph": 5.6, "total_n": 1.1},
+            "quality_grade": "5等",
+            "composite_index": 0.71,
+        },
+    ])
+
+    catalog = metric_metadata()
+    metrics = {item["metricKey"]: item for item in catalog["metrics"]}
+
+    assert catalog["classificationVersion"] == "2026-09-21.1"
+    assert [group["key"] for group in catalog["groups"]] == [
+        "quality_evaluation", "soil_nutrients", "physical_properties",
+        "pollution_status", "farmland_conditions",
+    ]
+    assert catalog["defaultYear"] == 2024
+    assert metrics["soil_ph"]["label"] == "土壤 pH"
+    assert metrics["soil_ph"]["dataYears"] == [2024, 2021]
+    assert metrics["total_nitrogen"]["dataYears"] == [2021]
+    assert metrics["total_nitrogen"]["availability"] == "partial"
+    assert metrics["cadmium"]["availability"] == "unavailable"
+
+
+def test_summary_supports_categorical_metrics():
+    result = summarize_rows([
+        {"area_mu": 2, "soil_indicators": {"soil_texture": "壤土"}},
+        {"area_mu": 1, "soil_indicators": {"soil_texture": "砂土"}},
+        {"area_mu": 3, "soil_indicators": {"soil_texture": "壤土"}},
+    ], ["soil_texture"], data_year=2024)
+
+    metric = result["metrics"][0]
+    distribution = {item["key"]: item for item in metric["distribution"]}
+    assert metric["valueType"] == "category"
+    assert metric["dataYear"] == 2024
+    assert metric["table"]["average"] is None
+    assert distribution["壤土"]["parcelCount"] == 2
+    assert distribution["壤土"]["areaMu"] == 5.0
+
+
+def test_scope_contract_echoes_normalized_viewport():
+    _sql, _params, scope = _scope_sql({
+        "type": "viewport", "bbox": [113, 24, 114, 25],
+    })
+    assert scope == {
+        "scopeVersion": 1,
+        "type": "viewport",
+        "bbox": [113.0, 24.0, 114.0, 25.0],
+        "srid": 4326,
+    }

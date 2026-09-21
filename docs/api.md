@@ -1125,20 +1125,26 @@ Model-4 无空间对象情景试算：
 
 **GET** `/api/v1/farmland-statistics/metrics`
 
-返回 8 项指标的名称、规范来源字段、兼容来源字段、单位、精度、分级区间、颜色和 `classificationVersion`。前端应以此响应生成图例，版本变化时刷新缓存，避免重复硬编码。所有最高档均不封顶，例如有机质大于 40 仍属于“高”档并使用统一颜色。
+返回指标分组、排序、值类型、可用性、数据年份、覆盖率、规范/兼容来源字段、单位、精度、分级区间、颜色和 `classificationVersion=2026-09-21.1`。前端应以此响应生成图例并在版本变化时刷新缓存。
 
 指标 key：
 
 | key | 指标 | 单位 | 分级区间 |
 |-----|------|------|----------|
 | `quality_grade` | 耕地质量等级 | 等 | 1–10 等，各等级单独分档 |
-| `soil_ph` | 酸化 pH 情况 | pH | 极强酸性 `<4.5`；强酸性 `[4.5,5.5)`；酸性 `[5.5,6.5)`；中性 `[6.5,7.5]`；碱性 `>7.5` |
+| `soil_ph` | 土壤 pH | pH | 极强酸性 `<4.5`；强酸性 `[4.5,5.5)`；酸性 `[5.5,6.5)`；中性 `[6.5,7.5]`；碱性 `>7.5` |
 | `organic_matter` | 有机质含量 | g/kg | 低 `(0,10]`；中低 `(10,20]`；中高 `(20,25]`；高 `(25,+∞)` |
 | `available_phosphorus` | 有效磷含量 | mg/kg | 低 `(0,10]`；中低 `(10,20]`；中高 `(20,35]`；高 `(35,+∞)` |
 | `available_potassium` | 速效钾含量 | mg/kg | 低 `(0,50]`；中低 `(50,100]`；中高 `(100,150]`；高 `(150,+∞)` |
 | `bulk_density` | 土壤容重 | g/cm³ | 极低 `(0,0.9)`；低 `[0.9,0.95)`；偏低 `[0.95,1)`；正常 `[1,1.2]`；偏高 `(1.2,1.3]`；高 `(1.3,1.4]`；极高 `(1.4,+∞)` |
 | `plow_layer_thickness` | 耕层厚度 | cm | 极低 `(0,10]`；低 `(10,15]`；中 `(15,20)`；高 `[20,+∞)` |
 | `effective_soil_depth` | 有效土层厚度 | cm | 极低 `(0,60)`；低 `[60,80)`；中 `[80,100)`；高 `[100,+∞)` |
+
+### 获取可选年份
+
+**GET** `/api/v1/farmland-statistics/years`
+
+返回调查年份、各年度地块数量和 `defaultYear`。不传 `year` 时，统计、详情和点选默认使用最新可选年份。
 
 ### 查询行政区域
 
@@ -1183,6 +1189,7 @@ GET /api/v1/farmland-statistics/boundaries?region_type=township&parent_type=coun
     "region_type": "village",
     "region_id": "440281001208"
   },
+  "year": 2024,
   "metrics": "all"
 }
 ```
@@ -1237,7 +1244,8 @@ GET /api/v1/farmland-statistics/boundaries?region_type=township&parent_type=coun
 {
   "status": "ok",
   "data": {
-    "classificationVersion": "2026-09-18.1",
+    "classificationVersion": "2026-09-21.1",
+    "dataYear": 2024,
     "dataAsOf": "2026-09-11T10:20:30",
     "scopeSummary": {"parcelCount": 2, "totalAreaMu": 18.5},
     "metrics": [{
@@ -1270,6 +1278,7 @@ GET /api/v1/farmland-statistics/boundaries?region_type=township&parent_type=coun
       "unclassified": {"parcelCount": 0, "areaMu": 0.0}
     }],
     "scope": {
+      "scopeVersion": 1,
       "type": "administrative_region",
       "regionType": "village",
       "regionId": "440281001208",
@@ -1290,11 +1299,12 @@ GET /api/v1/farmland-statistics/boundaries?region_type=township&parent_type=coun
   "longitude": 113.35,
   "latitude": 25.13,
   "metric": "soil_ph",
-  "toleranceMeters": 8
+  "toleranceMeters": 8,
+  "year": 2024
 }
 ```
 
-传 `metric` 时只返回当前指标的值、等级、颜色及来源信息；省略时保持原有全部 8 项响应。`toleranceMeters` 默认为 0、最大 50 米，精确覆盖优先，否则返回容差内最近地块。每项指标均返回 `dataSource`、`measurementYear`、`isImputed`、`imputationMethod` 和 `qualityFlag`。接口有 5 秒短时缓存及每用户 120 次/分钟保护。
+传 `metric` 时只返回当前指标的值、等级、颜色及来源信息；省略时返回完整指标响应。`toleranceMeters` 默认为 0、最大 50 米，精确覆盖优先，否则返回容差内最近地块。每项指标均返回 `dataSource`、`measurementYear`、`isImputed`、`imputationMethod` 和 `qualityFlag`。接口有 5 秒短时缓存及每用户 120 次/分钟保护。
 
 ### 获取视口轻量地块要素
 
@@ -1310,13 +1320,19 @@ GET /api/v1/farmland-statistics/parcels/viewport?bbox=113,24,114,25&metric=soil_
 
 **GET** `/api/v1/farmland-statistics/quality/audit`
 
-返回 8 项指标的非空率、可解析数、范围、唯一值数、异常/未分类数量和来源分布。当前审计已将耕层厚度标记为常量值、有效土层厚度标记为低变异。结果缓存 5 分钟。
+返回全部指标的非空率、可解析数、范围、唯一值数、异常/未分类数量和来源分布。结果缓存 5 分钟。
 
 ### 获取地块详情
 
-**GET** `/api/v1/farmland-statistics/parcels/{parcel_id}`
+**GET** `/api/v1/farmland-statistics/parcels/{parcel_id}?year=2021`
 
 返回字段与点选接口相同，供已知地块 ID 时直接加载详情。
+
+### 按统一范围查询地块
+
+**POST** `/api/v1/farmland-statistics/parcels/query`
+
+复用聚合接口的 `scope` 和 `year`，支持按行政区域、多区域、自定义多边形、视窗或单地块查询，并回传规范化 `scope`、指标和分页状态。
 
 ### 统计接口错误码
 

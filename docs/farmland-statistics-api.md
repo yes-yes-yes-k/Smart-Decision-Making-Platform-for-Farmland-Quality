@@ -12,6 +12,10 @@
 - 地块详情和点选响应中的 `areaMu` 是完整地块测地面积换算的亩数，不受当前视窗或行政区边界裁剪；几何缺失时为 `null`。
 - 指标配置、聚合统计和地块详情统一返回 `classificationVersion`。客户端发现版本变化时应刷新图例和专题样式缓存。
 - 行政区统计支持单区域、同层级多区域联合，以及用户圈选的 Polygon/MultiPolygon；联合区域先去重合并再裁剪地块。
+- 指标配置版本为 `2026-09-21.1`，指标按质量评价、土壤养分、理化性质、污染状况和农田条件分组。
+- 不指定 `year` 时使用 `/years` 返回的 `defaultYear`；年度指标来自 `parcel_history_snapshot`。
+- 所有统计范围响应包含 `scopeVersion=1`，并回传服务端验证、规范化后的 `scope`。
+- 未入库的污染监测指标明确返回 `availability=unavailable`，不得生成或推断监测值。
 
 ## 接口输入输出示例
 
@@ -28,7 +32,7 @@ Content-Type: application/json
 
 **GET** `/api/v1/farmland-statistics/metrics`
 
-用途：返回 8 项指标的名称、单位、精度、分档边界、颜色和配置版本。前端图例应直接使用此接口，避免重复维护分档。
+用途：返回指标分组、排序、值类型、可用性、数据年份、覆盖率、分档边界、颜色和配置版本。
 
 输入示例：
 
@@ -39,18 +43,27 @@ Authorization: Bearer <token>
 
 该接口没有查询参数和请求体。
 
-成功输出（200，以下只展示 `soil_ph`；实际 `data` 包含全部 8 项指标）：
+成功输出（200，节选）：
 
 ```json
 {
   "status": "ok",
-  "data": [
-    {
+  "data": {
+    "classificationVersion": "2026-09-21.1",
+    "groups": [
+      {"key": "physical_properties", "label": "理化性质", "order": 30, "metrics": ["soil_ph"]}
+    ],
+    "metrics": [{
       "key": "soil_ph",
       "metricKey": "soil_ph",
-      "classificationVersion": "2026-09-18.1",
-      "label": "酸化 pH 情况",
+      "classificationVersion": "2026-09-21.1",
+      "label": "土壤 pH",
       "sourceField": "soil_ph",
+      "groupKey": "physical_properties",
+      "order": 10,
+      "valueType": "number",
+      "availability": "available",
+      "dataYears": [2024, 2021, 2018],
       "unit": "pH",
       "decimals": 2,
       "buckets": [
@@ -105,14 +118,24 @@ Authorization: Bearer <token>
           "upperInclusive": false
         }
       ]
-    }
-  ]
+    }],
+    "availableYears": [
+      {"year": 2024, "parcelCount": 5488, "selectable": true}
+    ],
+    "defaultYear": 2024
+  }
 }
 ```
 
 `lower` 或 `upper` 为 `null` 表示该方向不设边界。最高档的 `upper` 均为 `null`，例如有机质超过 40 仍使用“高”档颜色。
 
-### 2. 查询行政区域目录
+### 2. 可选年份
+
+**GET** `/api/v1/farmland-statistics/years`
+
+返回可选调查年份、各年度地块数和默认年份。统计、地块详情、点选及批量地块查询均接受 `year`。
+
+### 3. 查询行政区域目录
 
 **GET** `/api/v1/farmland-statistics/regions`
 
@@ -205,6 +228,7 @@ GET /api/v1/farmland-statistics/boundaries?region_type=township&parent_type=coun
     "region_type": "village",
     "region_id": "440281001201"
   },
+  "year": 2024,
   "metrics": ["soil_ph"]
 }
 ```
@@ -217,6 +241,7 @@ GET /api/v1/farmland-statistics/boundaries?region_type=township&parent_type=coun
     "type": "viewport",
     "bbox": [113.0, 24.0, 114.0, 25.0]
   },
+  "year": 2021,
   "metrics": [
     "soil_ph",
     "organic_matter",
@@ -225,7 +250,7 @@ GET /api/v1/farmland-statistics/boundaries?region_type=township&parent_type=coun
 }
 ```
 
-`bbox` 使用 WGS84（EPSG:4326），顺序为 `[minLon, minLat, maxLon, maxLat]`。`metrics` 可传 `"all"`，也可传非空指标 key 数组；省略时统计全部 8 项。
+`bbox` 使用 WGS84（EPSG:4326），顺序为 `[minLon, minLat, maxLon, maxLat]`。`metrics` 可传 `"all"`，也可传非空指标 key 数组；省略时按元数据分组顺序统计全部指标。
 
 输入示例 C——多个同级行政区联合统计：
 
@@ -265,7 +290,8 @@ GET /api/v1/farmland-statistics/boundaries?region_type=township&parent_type=coun
 {
   "status": "ok",
   "data": {
-    "classificationVersion": "2026-09-18.1",
+    "classificationVersion": "2026-09-21.1",
+    "dataYear": 2024,
     "dataAsOf": "2026-09-08T19:52:36.326614+08:00",
     "scopeSummary": {
       "parcelCount": 1,
@@ -275,7 +301,7 @@ GET /api/v1/farmland-statistics/boundaries?region_type=township&parent_type=coun
       {
         "key": "soil_ph",
         "metricKey": "soil_ph",
-        "label": "酸化 pH 情况",
+        "label": "土壤 pH",
         "unit": "pH",
         "table": {
           "average": 5.32,
@@ -367,6 +393,7 @@ GET /api/v1/farmland-statistics/boundaries?region_type=township&parent_type=coun
       }
     ],
     "scope": {
+      "scopeVersion": 1,
       "type": "administrative_region",
       "regionType": "village",
       "regionId": "440281001201",
@@ -394,12 +421,12 @@ GET /api/v1/farmland-statistics/boundaries?region_type=township&parent_type=coun
 
 ### 4. 获取地块详情
 
-**GET** `/api/v1/farmland-statistics/parcels/{parcel_id}`
+**GET** `/api/v1/farmland-statistics/parcels/{parcel_id}?year=2021`
 
 输入示例：
 
 ```http
-GET /api/v1/farmland-statistics/parcels/1007
+GET /api/v1/farmland-statistics/parcels/1007?year=2021
 Authorization: Bearer <token>
 ```
 
@@ -409,7 +436,8 @@ Authorization: Bearer <token>
 {
   "status": "ok",
   "data": {
-    "classificationVersion": "2026-09-18.1",
+    "classificationVersion": "2026-09-21.1",
+    "dataYear": 2021,
     "parcelId": "1007",
     "areaCode": "440281",
     "areaMu": 379.8501,
@@ -454,7 +482,8 @@ Authorization: Bearer <token>
   "longitude": 113.084486,
   "latitude": 25.094996,
   "metric": "soil_ph",
-  "toleranceMeters": 8
+  "toleranceMeters": 8,
+  "year": 2024
 }
 ```
 
@@ -464,7 +493,8 @@ Authorization: Bearer <token>
 {
   "status": "ok",
   "data": {
-    "classificationVersion": "2026-09-18.1",
+    "classificationVersion": "2026-09-21.1",
+    "dataYear": 2024,
     "parcelId": "1007",
     "areaCode": "440281",
     "areaMu": 379.8501,
@@ -491,9 +521,26 @@ Authorization: Bearer <token>
 }
 ```
 
-`metric` 省略时仍返回原有全部 8 项指标结构，以保持兼容。`toleranceMeters` 默认为 0、最大 50 米；精确命中优先，否则返回容差内最近地块。若多个地块同时覆盖该点，返回面积最小的地块；未命中返回 404。接口有 5 秒短时缓存和每用户 120 次/分钟保护，不应由浏览器无防抖地逐次响应 `mousemove`。
+`metric` 省略时返回完整指标结构。`toleranceMeters` 默认为 0、最大 50 米；精确命中优先，否则返回容差内最近地块。若多个地块同时覆盖该点，返回面积最小的地块；未命中返回 404。接口有 5 秒短时缓存和每用户 120 次/分钟保护，不应由浏览器无防抖地逐次响应 `mousemove`。
 
-### 6. 当前视口轻量地块要素
+### 6. 按统一范围查询地块
+
+**POST** `/api/v1/farmland-statistics/parcels/query`
+
+```json
+{
+  "scope": {"type": "parcel", "parcel_id": "1007"},
+  "year": 2024,
+  "metrics": ["quality_grade", "soil_ph", "soil_texture"],
+  "geometry": "centroid",
+  "limit": 100,
+  "offset": 0
+}
+```
+
+该接口复用聚合统计的 `scope` 契约，响应回传规范化 `scope`、`dataYear`、地块指标、几何和分页状态。
+
+### 7. 当前视口轻量地块要素
 
 **GET** `/api/v1/farmland-statistics/parcels/viewport`
 
@@ -504,7 +551,7 @@ GET /api/v1/farmland-statistics/parcels/viewport?bbox=113,24,114,25&metric=soil_
 | 参数 | 必填 | 说明 |
 |---|---|---|
 | `bbox` | 是 | WGS84 `minLon,minLat,maxLon,maxLat` |
-| `metric` | 是 | 8 项规范指标之一 |
+| `metric` | 是 | 指标目录中的规范指标之一 |
 | `geometry` | 否 | `centroid`（默认）、`simplified` 或 `none` |
 | `zoom` | 否 | `simplified` 模式的简化尺度，默认 14 |
 | `limit` | 否 | 默认 2000，最大 5000 |
@@ -515,7 +562,7 @@ GET /api/v1/farmland-statistics/parcels/viewport?bbox=113,24,114,25&metric=soil_
 
 **GET** `/api/v1/farmland-statistics/quality/audit`
 
-返回全部 8 项指标的非空率、可解析数量、最小值、最大值、唯一值数量、未分类数量、质量标记及来源分布，结果缓存 5 分钟。当前审计识别出：
+返回全部指标的非空率、可解析数量、最小值、最大值、唯一值数量、未分类数量、质量标记及来源分布，结果缓存 5 分钟。当前审计识别出：
 
 - 耕层厚度全部为 20 cm，`qualityFlags` 包含 `constant_value`。
 - 有效土层厚度仅 4 个唯一值，`qualityFlags` 包含 `low_variability`。

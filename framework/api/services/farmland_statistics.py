@@ -17,6 +17,7 @@ import sqlalchemy as sa
 from framework.domain.statistics import (
     CLASSIFICATION_VERSION,
     INDICATOR_DEFINITIONS,
+    INDICATOR_GROUPS,
     audit_indicator_rows,
     get_indicator_definition,
     metric_provenance,
@@ -25,6 +26,7 @@ from framework.models import ParcelInfo, SpatialRegionCatalog, db
 
 
 MU_PER_SQUARE_METRE = 1.0 / 666.6666666666666
+SCOPE_VERSION = 1
 REGION_TYPES = {"province", "city", "county", "township", "village", "zone"}
 BOUNDARY_MIN_ZOOM = {
     "province": 3,
@@ -35,6 +37,7 @@ BOUNDARY_MIN_ZOOM = {
     "zone": 12,
 }
 MAX_BOUNDARY_FEATURES = 5000
+MAX_PARCEL_QUERY_LIMIT = 500
 MAX_SELECTED_REGIONS = 100
 MAX_CUSTOM_GEOMETRY_VERTICES = 5000
 MAX_CUSTOM_GEOMETRY_AREA_SQ_KM = 200_000.0
@@ -84,14 +87,6 @@ class StatisticsError(Exception):
         self.http_status = http_status
 
 
-def metric_metadata() -> list[dict[str, Any]]:
-    return [{
-        **definition.as_dict(),
-        "metricKey": definition.key,
-        "classificationVersion": CLASSIFICATION_VERSION,
-    } for definition in INDICATOR_DEFINITIONS.values()]
-
-
 def _round(value: float | None, decimals: int = 4) -> float | None:
     return None if value is None else round(value, decimals)
 
@@ -116,15 +111,146 @@ def _isoformat(value: Any) -> str | None:
     return str(value)
 
 
+def _row_indicators(row: Mapping[str, Any]) -> dict[str, Any]:
+    indicators = _json_object(row.get("soil_indicators"))
+    if row.get("quality_grade") is not None:
+        indicators["quality_grade"] = row["quality_grade"]
+    if row.get("composite_index") is not None:
+        indicators["composite_index"] = row["composite_index"]
+    return indicators
+
+
+def _catalog_rows() -> list[Mapping[str, Any]] | None:
+    try:
+        return db.session.execute(sa.text("""
+            SELECT survey_year AS data_year, soil_indicators, quality_grade, composite_index
+            FROM parcel_history_snapshot
+            ORDER BY survey_year, parcel_id
+        """)).mappings().all()
+    except (sa.exc.SQLAlchemyError, RuntimeError):
+        return None
+
+
+def _year_summaries(rows: Iterable[Mapping[str, Any]]) -> list[dict[str, Any]]:
+    counts: Counter[int] = Counter()
+    for row in rows:
+        year = row.get("data_year")
+        if isinstance(year, int):
+            counts[year] += 1
+    return [
+        {"year": year, "parcelCount": counts[year], "selectable": True}
+        for year in sorted(counts, reverse=True)
+    ]
+
+
+def metric_metadata() -> dict[str, Any]:
+    rows = _catalog_rows()
+    years = _year_summaries(rows or [])
+    counts: dict[str, Counter[int]] = {key: Counter() for key in INDICATOR_DEFINITIONS}
+    totals: Counter[int] = Counter()
+    if rows is not None:
+        for row in rows:
+            year = row.get("data_year")
+            if not isinstance(year, int):
+                continue
+            totals[year] += 1
+            indicators = _row_indicators(row)
+            for key, definition in INDICATOR_DEFINITIONS.items():
+                if definition.parse(definition.value_from(indicators)) is not None:
+                    counts[key][year] += 1
+
+    group_order = {group.key: group.order for group in INDICATOR_GROUPS}
+    metrics = []
+    for definition in sorted(
+        INDICATOR_DEFINITIONS.values(),
+        key=lambda item: (group_order[item.group_key], item.order),
+    ):
+        observed = counts[definition.key]
+        data_years = sorted(observed, reverse=True)
+        observed_count = sum(observed.values())
+        possible_count = sum(totals.values())
+        if rows is None:
+            availability = "unknown"
+        elif observed_count == 0:
+            availability = "unavailable"
+        elif possible_count and observed_count < possible_count:
+            availability = "partial"
+        else:
+            availability = "available"
+        metrics.append({
+            **definition.as_dict(),
+            "metricKey": definition.key,
+            "classificationVersion": CLASSIFICATION_VERSION,
+            "availability": availability,
+            "dataYears": data_years,
+            "coverageByYear": {
+                str(year): {
+                    "valueCount": observed[year],
+                    "parcelCount": totals[year],
+                    "percent": _round(observed[year] * 100 / totals[year], 2) if totals[year] else 0.0,
+                }
+                for year in data_years
+            },
+        })
+
+    group_metrics: dict[str, list[str]] = {group.key: [] for group in INDICATOR_GROUPS}
+    for metric in metrics:
+        group_metrics[metric["groupKey"]].append(metric["metricKey"])
+    groups = [
+        {**group.as_dict(), "metrics": group_metrics[group.key]}
+        for group in sorted(INDICATOR_GROUPS, key=lambda item: item.order)
+    ]
+    return {
+        "classificationVersion": CLASSIFICATION_VERSION,
+        "groups": groups,
+        "metrics": metrics,
+        "availableYears": years,
+        "defaultYear": years[0]["year"] if years else None,
+    }
+
+
+def list_available_years() -> dict[str, Any]:
+    try:
+        rows = db.session.execute(sa.text("""
+            SELECT survey_year AS year, COUNT(*) AS parcel_count
+            FROM parcel_history_snapshot
+            GROUP BY survey_year
+            ORDER BY survey_year DESC
+        """)).mappings().all()
+    except sa.exc.SQLAlchemyError as exc:
+        raise StatisticsError("statistics_unavailable", "数据年份服务暂时不可用", 503) from exc
+    years = [
+        {"year": int(row["year"]), "parcelCount": int(row["parcel_count"]), "selectable": True}
+        for row in rows
+    ]
+    return {"years": years, "defaultYear": years[0]["year"] if years else None}
+
+
+def _resolve_year(value: Any) -> int | None:
+    available = list_available_years()
+    selectable = {item["year"] for item in available["years"]}
+    if value in (None, ""):
+        return available["defaultYear"]
+    if isinstance(value, bool):
+        raise StatisticsError("invalid_year", "year 必须为四位年份")
+    try:
+        year = int(value)
+    except (TypeError, ValueError) as exc:
+        raise StatisticsError("invalid_year", "year 必须为四位年份") from exc
+    if year < 1900 or year > 2100:
+        raise StatisticsError("invalid_year", "year 必须为 1900 到 2100 之间的四位年份")
+    if year not in selectable:
+        raise StatisticsError("year_not_available", f"年份 {year} 没有可用地块数据", 404)
+    return year
+
+
 def summarize_rows(
     rows: Iterable[Mapping[str, Any]],
     metric_keys: Iterable[str],
+    *,
+    data_year: int | None = None,
 ) -> dict[str, Any]:
-    """Build table, bar-chart and pie-chart data from clipped parcel rows.
-
-    ``area_mu`` is the area of each parcel after clipping it to the requested
-    administrative boundary or viewport. Averages are area weighted.
-    """
+    """Build area-weighted numeric and area/count categorical summaries."""
     materialized = [dict(row) for row in rows]
     total_area = sum(max(float(row.get("area_mu") or 0), 0) for row in materialized)
     data_as_of_values = [row.get("updated_at") for row in materialized if row.get("updated_at")]
@@ -133,11 +259,13 @@ def summarize_rows(
 
     for metric_key in metric_keys:
         definition = get_indicator_definition(metric_key)
+        numeric_values: list[tuple[float, float]] = []
+        category_values: Counter[str] = Counter()
+        category_areas: Counter[str] = Counter()
         bucket_values = {
             bucket.key: {"parcelCount": 0, "areaMu": 0.0}
             for bucket in definition.buckets
         }
-        values: list[tuple[float, float]] = []
         unclassified_count = 0
         unclassified_area = 0.0
         provenance_counts = {
@@ -149,27 +277,35 @@ def summarize_rows(
         }
 
         for row in materialized:
-            indicators = _json_object(row.get("soil_indicators"))
+            indicators = _row_indicators(row)
             provenance = metric_provenance(indicators, metric_key)
             for field, counter in provenance_counts.items():
                 value = provenance[field]
                 counter["unknown" if value is None else value] += 1
             parsed = definition.parse(definition.value_from(indicators))
             area_mu = max(float(row.get("area_mu") or 0), 0)
-            bucket = definition.classify(parsed)
-            if parsed is None or bucket is None:
+            if parsed is None:
                 unclassified_count += 1
                 unclassified_area += area_mu
                 continue
-            values.append((parsed, area_mu))
-            bucket_values[bucket.key]["parcelCount"] += 1
-            bucket_values[bucket.key]["areaMu"] += area_mu
+            if definition.value_type == "category":
+                category = str(parsed)
+                category_values[category] += 1
+                category_areas[category] += area_mu
+                continue
+            numeric = float(parsed)
+            if definition.buckets:
+                bucket = definition.classify(numeric)
+                if bucket is None:
+                    unclassified_count += 1
+                    unclassified_area += area_mu
+                    continue
+                bucket_values[bucket.key]["parcelCount"] += 1
+                bucket_values[bucket.key]["areaMu"] += area_mu
+            numeric_values.append((numeric, area_mu))
 
-        valid_count = len(values)
-        valid_area = sum(area for _, area in values)
-        weighted_sum = sum(value * area for value, area in values)
-        weighted_average = weighted_sum / valid_area if valid_area > 0 else None
-        raw_values = [value for value, _ in values]
+        valid_count = len(numeric_values) + sum(category_values.values())
+        valid_area = sum(area for _, area in numeric_values) + sum(category_areas.values())
 
         def uniform_value(field: str) -> Any:
             values_with_counts = provenance_counts[field]
@@ -178,24 +314,52 @@ def summarize_rows(
             value = next(iter(values_with_counts))
             return None if value == "unknown" else value
 
-        buckets = []
-        for bucket in definition.buckets:
-            aggregate = bucket_values[bucket.key]
-            count = aggregate["parcelCount"]
-            area = aggregate["areaMu"]
-            buckets.append({
-                **bucket.as_dict(),
-                "parcelCount": count,
-                "areaMu": _round(area),
-                "countPercent": _round(count * 100 / valid_count) if valid_count else 0.0,
-                "areaPercent": _round(area * 100 / valid_area) if valid_area else 0.0,
-            })
+        if definition.value_type == "category":
+            distribution = [
+                {
+                    "key": value,
+                    "label": value,
+                    "rangeLabel": value,
+                    "color": None,
+                    "parcelCount": category_values[value],
+                    "areaMu": _round(category_areas[value]),
+                    "countPercent": _round(category_values[value] * 100 / valid_count) if valid_count else 0.0,
+                    "areaPercent": _round(category_areas[value] * 100 / valid_area) if valid_area else 0.0,
+                }
+                for value in sorted(category_values)
+            ]
+            average = None
+            value_range = {"min": None, "max": None}
+        else:
+            weighted_sum = sum(value * area for value, area in numeric_values)
+            average = weighted_sum / valid_area if valid_area > 0 else None
+            raw_values = [value for value, _ in numeric_values]
+            value_range = {
+                "min": _round(min(raw_values), definition.decimals) if raw_values else None,
+                "max": _round(max(raw_values), definition.decimals) if raw_values else None,
+            }
+            distribution = []
+            for bucket in definition.buckets:
+                aggregate = bucket_values[bucket.key]
+                count = aggregate["parcelCount"]
+                area = aggregate["areaMu"]
+                distribution.append({
+                    **bucket.as_dict(),
+                    "parcelCount": count,
+                    "areaMu": _round(area),
+                    "countPercent": _round(count * 100 / valid_count) if valid_count else 0.0,
+                    "areaPercent": _round(area * 100 / valid_area) if valid_area else 0.0,
+                })
 
         summaries.append({
             "key": definition.key,
             "metricKey": definition.key,
             "label": definition.label,
             "unit": definition.unit,
+            "groupKey": definition.group_key,
+            "order": definition.order,
+            "valueType": definition.value_type,
+            "dataYear": data_year,
             "dataSource": uniform_value("dataSource") or (
                 "mixed" if len(provenance_counts["dataSource"]) > 1 else None
             ),
@@ -210,18 +374,14 @@ def summarize_rows(
                 for field, counter in provenance_counts.items()
             },
             "table": {
-                "average": _round(weighted_average, definition.decimals),
+                "average": _round(average, definition.decimals),
                 "totalAreaMu": _round(total_area),
                 "parcelCount": len(materialized),
                 "validAreaMu": _round(valid_area),
                 "validParcelCount": valid_count,
-                "range": {
-                    "min": _round(min(raw_values), definition.decimals) if raw_values else None,
-                    "max": _round(max(raw_values), definition.decimals) if raw_values else None,
-                },
+                "range": value_range,
             },
-            # One ordered series serves the horizontal bars and pie slices.
-            "distribution": buckets,
+            "distribution": distribution,
             "unclassified": {
                 "parcelCount": unclassified_count,
                 "areaMu": _round(unclassified_area),
@@ -230,6 +390,7 @@ def summarize_rows(
 
     return {
         "classificationVersion": CLASSIFICATION_VERSION,
+        "dataYear": data_year,
         "dataAsOf": _isoformat(data_as_of),
         "scopeSummary": {
             "parcelCount": len(materialized),
@@ -242,7 +403,13 @@ def summarize_rows(
 def _metric_keys(payload: Mapping[str, Any]) -> list[str]:
     requested = payload.get("metrics", "all")
     if requested == "all" or requested is None:
-        return list(INDICATOR_DEFINITIONS)
+        group_order = {group.key: group.order for group in INDICATOR_GROUPS}
+        return [
+            item.key for item in sorted(
+                INDICATOR_DEFINITIONS.values(),
+                key=lambda item: (group_order[item.group_key], item.order),
+            )
+        ]
     if not isinstance(requested, list) or not requested:
         raise StatisticsError("invalid_metrics", "metrics 必须为 all 或非空指标数组")
     unknown = [key for key in requested if key not in INDICATOR_DEFINITIONS]
@@ -444,6 +611,7 @@ def _scope_sql(scope: Mapping[str, Any]) -> tuple[str, dict[str, Any], dict[str,
                  AND enabled = TRUE AND geom IS NOT NULL LIMIT 1""",
             {"region_type": region_type, "region_id": region_id},
             {
+                "scopeVersion": SCOPE_VERSION,
                 "type": scope_type,
                 "regionType": region_type,
                 "regionId": region_id,
@@ -490,6 +658,7 @@ def _scope_sql(scope: Mapping[str, Any]) -> tuple[str, dict[str, Any], dict[str,
                  AND enabled = TRUE AND geom IS NOT NULL""",
             {"region_type": region_type, "region_ids": region_ids},
             {
+                "scopeVersion": SCOPE_VERSION,
                 "type": scope_type,
                 "regionType": region_type,
                 "regionIds": region_ids,
@@ -534,6 +703,7 @@ def _scope_sql(scope: Mapping[str, Any]) -> tuple[str, dict[str, Any], dict[str,
                      ) AS geom""",
             {"geojson": geojson},
             {
+                "scopeVersion": SCOPE_VERSION,
                 "type": scope_type,
                 "geometryType": geometry["type"],
                 "vertexCount": vertex_count,
@@ -553,12 +723,63 @@ def _scope_sql(scope: Mapping[str, Any]) -> tuple[str, dict[str, Any], dict[str,
         return (
             "SELECT ST_MakeEnvelope(:min_lon, :min_lat, :max_lon, :max_lat, 4326) AS geom",
             {"min_lon": min_lon, "min_lat": min_lat, "max_lon": max_lon, "max_lat": max_lat},
-            {"type": scope_type, "bbox": [min_lon, min_lat, max_lon, max_lat], "srid": 4326},
+            {
+                "scopeVersion": SCOPE_VERSION,
+                "type": scope_type,
+                "bbox": [min_lon, min_lat, max_lon, max_lat],
+                "srid": 4326,
+            },
+        )
+
+    if scope_type == "parcel":
+        parcel_id = str(scope.get("parcel_id") or scope.get("parcelId") or "")
+        if not parcel_id:
+            raise StatisticsError("invalid_scope", "地块范围必须包含 parcel_id")
+        try:
+            exists = db.session.execute(sa.text("""
+                SELECT area_code, geom IS NOT NULL AS has_geom
+                FROM parcel_info WHERE parcel_id = :parcel_id LIMIT 1
+            """), {"parcel_id": parcel_id}).mappings().first()
+        except sa.exc.SQLAlchemyError as exc:
+            raise StatisticsError("statistics_unavailable", "地块服务暂时不可用", 503) from exc
+        if exists is None:
+            raise StatisticsError("parcel_not_found", "地块不存在", 404)
+        if not exists["has_geom"]:
+            raise StatisticsError("parcel_geometry_missing", "地块尚未导入几何", 409)
+        return (
+            "SELECT geom FROM parcel_info WHERE parcel_id = :scope_parcel_id AND geom IS NOT NULL LIMIT 1",
+            {"scope_parcel_id": parcel_id},
+            {
+                "scopeVersion": SCOPE_VERSION,
+                "type": scope_type,
+                "parcelId": parcel_id,
+                "areaCode": exists["area_code"],
+            },
         )
 
     raise StatisticsError(
         "invalid_scope",
-        "scope.type 仅支持 administrative_region、administrative_regions、polygon 或 viewport",
+        "scope.type 仅支持 administrative_region、administrative_regions、polygon、viewport 或 parcel",
+    )
+
+
+def _dataset_sql(year: int | None) -> tuple[str, dict[str, Any]]:
+    if year is None:
+        return (
+            """SELECT p.id AS parcel_pk, p.parcel_id, p.area_code, p.geom,
+                      p.soil_indicators, NULL::text AS quality_grade,
+                      NULL::double precision AS composite_index, p.updated_at
+               FROM parcel_info AS p""",
+            {},
+        )
+    return (
+        """SELECT p.id AS parcel_pk, p.parcel_id, p.area_code, p.geom,
+                  h.soil_indicators, h.quality_grade, h.composite_index,
+                  h.created_at AS updated_at
+           FROM parcel_info AS p
+           JOIN parcel_history_snapshot AS h ON h.parcel_id = p.parcel_id
+           WHERE h.survey_year = :data_year""",
+        {"data_year": year},
     )
 
 
@@ -568,8 +789,10 @@ def aggregate_statistics(payload: Mapping[str, Any] | None) -> dict[str, Any]:
     scope = payload.get("scope")
     if not isinstance(scope, Mapping):
         raise StatisticsError("invalid_scope", "请求必须包含 scope 对象")
+    year = _resolve_year(payload.get("year"))
     metric_keys = _metric_keys(payload)
-    scope_query, params, scope_response = _scope_sql(scope)
+    scope_query, scope_params, scope_response = _scope_sql(scope)
+    dataset_query, dataset_params = _dataset_sql(year)
     sql = sa.text(f"""
         WITH scope AS MATERIALIZED ({scope_query}),
         scope_parts AS MATERIALIZED (
@@ -577,14 +800,15 @@ def aggregate_statistics(payload: Mapping[str, Any] | None) -> dict[str, Any]:
             FROM scope
             WHERE geom IS NOT NULL AND NOT ST_IsEmpty(geom)
         ),
+        data AS MATERIALIZED ({dataset_query}),
         clipped AS MATERIALIZED (
-            SELECT p.id AS parcel_pk,
-                   ST_Intersection(p.geom, scope_parts.geom) AS clipped_geom
-            FROM parcel_info AS p
+            SELECT data.parcel_pk,
+                   ST_Intersection(data.geom, scope_parts.geom) AS clipped_geom
+            FROM data
             JOIN scope_parts
-              ON p.geom && scope_parts.geom
-             AND ST_Intersects(p.geom, scope_parts.geom)
-            WHERE p.geom IS NOT NULL
+              ON data.geom && scope_parts.geom
+             AND ST_Intersects(data.geom, scope_parts.geom)
+            WHERE data.geom IS NOT NULL
         ),
         parcel_areas AS (
             SELECT parcel_pk,
@@ -593,19 +817,20 @@ def aggregate_statistics(payload: Mapping[str, Any] | None) -> dict[str, Any]:
             WHERE NOT ST_IsEmpty(clipped_geom)
             GROUP BY parcel_pk
         )
-        SELECT p.parcel_id, p.area_code, p.soil_indicators, p.updated_at,
+        SELECT data.parcel_id, data.area_code, data.soil_indicators,
+               data.quality_grade, data.composite_index, data.updated_at,
                parcel_areas.area_mu
         FROM parcel_areas
-        JOIN parcel_info AS p ON p.id = parcel_areas.parcel_pk
+        JOIN data ON data.parcel_pk = parcel_areas.parcel_pk
         WHERE parcel_areas.area_mu > 0
-        ORDER BY p.parcel_id
+        ORDER BY data.parcel_id
     """)
-    params["mu_per_sqm"] = MU_PER_SQUARE_METRE
+    params = {**scope_params, **dataset_params, "mu_per_sqm": MU_PER_SQUARE_METRE}
     try:
         rows = db.session.execute(sql, params).mappings().all()
     except sa.exc.SQLAlchemyError as exc:
         raise StatisticsError("statistics_unavailable", "空间统计服务暂时不可用", 503) from exc
-    result = summarize_rows(rows, metric_keys)
+    result = summarize_rows(rows, metric_keys, data_year=year)
     result["scope"] = scope_response
     return result
 
@@ -683,9 +908,15 @@ def _metric_response(metric_key: str, indicators: Mapping[str, Any]) -> dict[str
     definition = get_indicator_definition(metric_key)
     value = definition.parse(definition.value_from(dict(indicators)))
     bucket = definition.classify(value)
+    if isinstance(value, float):
+        value = _round(value, definition.decimals)
     return {
         "metricKey": definition.key,
-        "value": _round(value, definition.decimals),
+        "label": definition.label,
+        "groupKey": definition.group_key,
+        "order": definition.order,
+        "valueType": definition.value_type,
+        "value": value,
         "unit": definition.unit,
         "bucketKey": bucket.key if bucket else None,
         "bucketLabel": bucket.label if bucket else None,
@@ -695,47 +926,121 @@ def _metric_response(metric_key: str, indicators: Mapping[str, Any]) -> dict[str
     }
 
 
+def _parcel_payload(
+    parcel_id: str,
+    area_code: str | None,
+    indicators: Mapping[str, Any],
+    area_mu: float | None,
+    data_year: int | None,
+    metric_keys: Iterable[str] | None = None,
+    metric_key: str | None = None,
+) -> dict[str, Any]:
+    keys = list(metric_keys) if metric_keys is not None else _metric_keys({"metrics": "all"})
+    metrics = {key: _metric_response(key, indicators) for key in keys}
+    if metric_key is not None:
+        return {
+            "classificationVersion": CLASSIFICATION_VERSION,
+            "parcelId": parcel_id,
+            "areaCode": area_code,
+            "areaMu": _round(area_mu),
+            "dataYear": data_year,
+            "metric": metrics[metric_key],
+        }
+    response = {
+        "classificationVersion": CLASSIFICATION_VERSION,
+        "parcelId": parcel_id,
+        "areaCode": area_code,
+        "areaMu": _round(area_mu),
+        "dataYear": data_year,
+        "metrics": metrics,
+    }
+    for legacy_key, key in (
+        ("qualityGrade", "quality_grade"),
+        ("organicMatter", "organic_matter"),
+        ("soilPh", "soil_ph"),
+        ("availablePhosphorus", "available_phosphorus"),
+        ("availablePotassium", "available_potassium"),
+        ("bulkDensity", "bulk_density"),
+        ("plowLayerThickness", "plow_layer_thickness"),
+        ("effectiveSoilDepth", "effective_soil_depth"),
+    ):
+        if key in metrics:
+            response[legacy_key] = metrics[key]["value"]
+    return response
+
+
 def _parcel_response(
     parcel: ParcelInfo,
     area_mu: float | None,
     metric_key: str | None = None,
+    *,
+    data_year: int | None = None,
+    metric_keys: Iterable[str] | None = None,
 ) -> dict[str, Any]:
     indicators = _json_object(parcel.soil_indicators)
-    if metric_key is not None:
-        return {
-            "classificationVersion": CLASSIFICATION_VERSION,
-            "parcelId": parcel.parcel_id,
-            "areaCode": parcel.area_code,
-            "areaMu": _round(area_mu),
-            "metric": _metric_response(metric_key, indicators),
-        }
-
-    metrics = {
-        definition.key: _metric_response(definition.key, indicators)
-        for definition in INDICATOR_DEFINITIONS.values()
-    }
-    return {
-        "classificationVersion": CLASSIFICATION_VERSION,
-        "parcelId": parcel.parcel_id,
-        "areaCode": parcel.area_code,
-        "areaMu": _round(area_mu),
-        "qualityGrade": indicators.get("quality_grade"),
-        "organicMatter": metrics["organic_matter"]["value"],
-        "soilPh": metrics["soil_ph"]["value"],
-        "availablePhosphorus": metrics["available_phosphorus"]["value"],
-        "availablePotassium": metrics["available_potassium"]["value"],
-        "bulkDensity": metrics["bulk_density"]["value"],
-        "plowLayerThickness": metrics["plow_layer_thickness"]["value"],
-        "effectiveSoilDepth": metrics["effective_soil_depth"]["value"],
-        "metrics": metrics,
-    }
+    if getattr(parcel, "quality_grade", None) is not None:
+        indicators["quality_grade"] = parcel.quality_grade
+    if getattr(parcel, "composite_index", None) is not None:
+        indicators["composite_index"] = parcel.composite_index
+    return _parcel_payload(
+        parcel.parcel_id,
+        parcel.area_code,
+        indicators,
+        area_mu,
+        data_year,
+        metric_keys,
+        metric_key,
+    )
 
 
-def get_parcel_summary(parcel_id: str) -> dict[str, Any]:
-    parcel = ParcelInfo.query.filter_by(parcel_id=parcel_id).first()
-    if parcel is None:
-        raise StatisticsError("parcel_not_found", "地块不存在", 404)
-    return _parcel_response(parcel, _parcel_area_mu(parcel.parcel_id))
+def get_parcel_summary(
+    parcel_id: str,
+    year: Any = None,
+    metric_key: Any = None,
+) -> dict[str, Any]:
+    validated_metric = _validated_metric_key(metric_key)
+    data_year = _resolve_year(year)
+    if data_year is None:
+        parcel = ParcelInfo.query.filter_by(parcel_id=parcel_id).first()
+        if parcel is None:
+            raise StatisticsError("parcel_not_found", "地块不存在", 404)
+        keys = [validated_metric] if validated_metric else None
+        return _parcel_response(
+            parcel,
+            _parcel_area_mu(parcel.parcel_id),
+            validated_metric,
+            data_year=None,
+            metric_keys=keys,
+        )
+    try:
+        row = db.session.execute(sa.text("""
+            SELECT p.parcel_id, p.area_code, h.soil_indicators, h.quality_grade,
+                   h.composite_index,
+                   CASE WHEN p.geom IS NULL THEN NULL
+                        ELSE ST_Area(p.geom::geography) * :mu_per_sqm END AS area_mu
+            FROM parcel_info AS p
+            JOIN parcel_history_snapshot AS h ON h.parcel_id = p.parcel_id
+            WHERE p.parcel_id = :parcel_id AND h.survey_year = :data_year
+            LIMIT 1
+        """), {
+            "parcel_id": parcel_id,
+            "data_year": data_year,
+            "mu_per_sqm": MU_PER_SQUARE_METRE,
+        }).mappings().first()
+    except sa.exc.SQLAlchemyError as exc:
+        raise StatisticsError("statistics_unavailable", "地块详情服务暂时不可用", 503) from exc
+    if row is None:
+        raise StatisticsError("parcel_year_not_found", f"地块在 {data_year} 年没有可用数据", 404)
+    keys = [validated_metric] if validated_metric else None
+    return _parcel_payload(
+        row["parcel_id"],
+        row["area_code"],
+        _row_indicators(row),
+        None if row["area_mu"] is None else float(row["area_mu"]),
+        data_year,
+        keys,
+        validated_metric,
+    )
 
 
 def pick_parcel(
@@ -743,6 +1048,7 @@ def pick_parcel(
     latitude: Any,
     metric_key: Any = None,
     tolerance_meters: Any = 0,
+    year: Any = None,
 ) -> dict[str, Any]:
     try:
         lon, lat = float(longitude), float(latitude)
@@ -761,37 +1067,41 @@ def pick_parcel(
             f"toleranceMeters 必须在 0 到 {MAX_PICK_TOLERANCE_METERS:g} 之间",
         )
 
-    cache_key = (round(lon, 7), round(lat, 7), round(tolerance, 2), metric_key)
+    data_year = _resolve_year(year)
+    cache_key = (round(lon, 7), round(lat, 7), round(tolerance, 2), metric_key, data_year)
     cached = _PICK_CACHE.get(cache_key)
     if cached is not None:
         return cached
 
     tolerance_degrees = tolerance / 111_320.0
+    dataset_query, dataset_params = _dataset_sql(data_year)
     try:
-        selected = db.session.execute(sa.text("""
+        selected = db.session.execute(sa.text(f"""
             WITH target AS (
                 SELECT ST_SetSRID(ST_Point(:lon, :lat), 4326) AS geom
-            )
-            SELECT p.parcel_id,
-                   ST_Area(p.geom::geography) * :mu_per_sqm AS area_mu,
-                   ST_Covers(p.geom, target.geom) AS exact_hit,
-                   CASE WHEN ST_Covers(p.geom, target.geom) THEN 0.0
-                        ELSE ST_Distance(p.geom::geography, target.geom::geography)
+            ),
+            data AS MATERIALIZED ({dataset_query})
+            SELECT data.parcel_id,
+                   ST_Area(data.geom::geography) * :mu_per_sqm AS area_mu,
+                   ST_Covers(data.geom, target.geom) AS exact_hit,
+                   CASE WHEN ST_Covers(data.geom, target.geom) THEN 0.0
+                        ELSE ST_Distance(data.geom::geography, target.geom::geography)
                    END AS distance_meters
-            FROM parcel_info AS p
+            FROM data
             CROSS JOIN target
-            WHERE p.geom IS NOT NULL
-              AND p.geom && ST_Expand(target.geom, :tolerance_degrees)
+            WHERE data.geom IS NOT NULL
+              AND data.geom && ST_Expand(target.geom, :tolerance_degrees)
               AND (
-                    ST_Covers(p.geom, target.geom)
+                    ST_Covers(data.geom, target.geom)
                     OR (:tolerance > 0 AND ST_DWithin(
-                        p.geom::geography, target.geom::geography, :tolerance
+                        data.geom::geography, target.geom::geography, :tolerance
                     ))
               )
             ORDER BY exact_hit DESC, distance_meters,
-                     ST_Area(p.geom::geography), p.parcel_id
+                     ST_Area(data.geom::geography), data.parcel_id
             LIMIT 1
         """), {
+            **dataset_params,
             "lon": lon,
             "lat": lat,
             "tolerance": tolerance,
@@ -800,10 +1110,9 @@ def pick_parcel(
         }).mappings().first()
     except sa.exc.SQLAlchemyError as exc:
         raise StatisticsError("statistics_unavailable", "地块点选服务暂时不可用", 503) from exc
-    parcel = ParcelInfo.query.filter_by(parcel_id=selected["parcel_id"]).first() if selected else None
-    if parcel is None:
+    if selected is None:
         raise StatisticsError("parcel_not_found", "该位置未命中地块", 404)
-    result = _parcel_response(parcel, float(selected["area_mu"]), metric_key)
+    result = get_parcel_summary(selected["parcel_id"], data_year, metric_key)
     result["hit"] = {
         "mode": "exact" if selected["exact_hit"] else "nearest",
         "distanceMeters": _round(float(selected["distance_meters"] or 0), 3),
@@ -811,6 +1120,81 @@ def pick_parcel(
     }
     _PICK_CACHE.set(cache_key, result, PICK_CACHE_TTL_SECONDS)
     return result
+
+
+def query_parcels(payload: Mapping[str, Any] | None) -> dict[str, Any]:
+    if not isinstance(payload, Mapping):
+        raise StatisticsError("invalid_request", "请求体必须为 JSON 对象")
+    scope = payload.get("scope")
+    if not isinstance(scope, Mapping):
+        raise StatisticsError("invalid_scope", "请求必须包含 scope 对象")
+    metric_keys = _metric_keys(payload)
+    data_year = _resolve_year(payload.get("year"))
+    try:
+        limit = int(payload.get("limit", 100))
+        offset = int(payload.get("offset", 0))
+    except (TypeError, ValueError) as exc:
+        raise StatisticsError("invalid_pagination", "limit 和 offset 必须为整数") from exc
+    if not 1 <= limit <= MAX_PARCEL_QUERY_LIMIT or offset < 0:
+        raise StatisticsError(
+            "invalid_pagination",
+            f"limit 必须为 1-{MAX_PARCEL_QUERY_LIMIT}，offset 不能小于 0",
+        )
+    geometry_mode = str(payload.get("geometry", "centroid"))
+    if geometry_mode not in {"none", "centroid"}:
+        raise StatisticsError("invalid_geometry_mode", "geometry 仅支持 none 或 centroid")
+    geometry_sql = "NULL" if geometry_mode == "none" else "ST_AsGeoJSON(ST_PointOnSurface(data.geom))"
+    scope_query, scope_params, scope_response = _scope_sql(scope)
+    dataset_query, dataset_params = _dataset_sql(data_year)
+    sql = sa.text(f"""
+        WITH scope AS MATERIALIZED ({scope_query}),
+        data AS MATERIALIZED ({dataset_query}),
+        matched AS (
+            SELECT data.*,
+                   ST_Area(ST_Intersection(data.geom, scope.geom)::geography) * :mu_per_sqm AS area_mu,
+                   {geometry_sql} AS geometry
+            FROM data CROSS JOIN scope
+            WHERE data.geom IS NOT NULL
+              AND data.geom && scope.geom
+              AND ST_Intersects(data.geom, scope.geom)
+        )
+        SELECT parcel_id, area_code, soil_indicators, quality_grade, composite_index,
+               updated_at, area_mu, geometry
+        FROM matched WHERE area_mu > 0
+        ORDER BY parcel_id LIMIT :query_limit OFFSET :query_offset
+    """)
+    params = {
+        **scope_params,
+        **dataset_params,
+        "mu_per_sqm": MU_PER_SQUARE_METRE,
+        "query_limit": limit + 1,
+        "query_offset": offset,
+    }
+    try:
+        rows = db.session.execute(sql, params).mappings().all()
+    except sa.exc.SQLAlchemyError as exc:
+        raise StatisticsError("statistics_unavailable", "地块查询服务暂时不可用", 503) from exc
+    has_more = len(rows) > limit
+    items = []
+    for row in rows[:limit]:
+        item = _parcel_payload(
+            row["parcel_id"],
+            row["area_code"],
+            _row_indicators(row),
+            float(row["area_mu"]),
+            data_year,
+            metric_keys,
+        )
+        geometry = row["geometry"]
+        item["geometry"] = json.loads(geometry) if isinstance(geometry, str) else geometry
+        items.append(item)
+    return {
+        "scope": scope_response,
+        "dataYear": data_year,
+        "classificationVersion": CLASSIFICATION_VERSION,
+        "items": items,
+        "pagination": {"limit": limit, "offset": offset, "hasMore": has_more},
+    }
 
 
 def list_viewport_parcels(

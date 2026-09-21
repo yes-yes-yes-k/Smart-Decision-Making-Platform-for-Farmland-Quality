@@ -167,3 +167,43 @@ def test_pick_rate_limit_returns_429_and_retry_after(monkeypatch):
     assert response.status_code == 429
     assert response.headers["Retry-After"] == "1"
     assert response.get_json()["code"] == "rate_limited"
+
+
+def test_years_endpoint_returns_selectable_years(monkeypatch):
+    client, headers = _client()
+    monkeypatch.setattr(routes, "list_available_years", lambda: {
+        "years": [{"year": 2024, "parcelCount": 5488, "selectable": True}],
+        "defaultYear": 2024,
+    })
+    response = client.get("/stats/years", headers=headers)
+    assert response.status_code == 200
+    assert response.get_json()["data"]["defaultYear"] == 2024
+
+
+def test_parcel_query_uses_same_scope_contract(monkeypatch):
+    client, headers = _client()
+    monkeypatch.setattr(routes, "query_parcels", lambda body: {
+        "scope": body["scope"], "dataYear": body["year"], "items": [],
+    })
+    body = {
+        "scope": {"type": "viewport", "bbox": [113, 24, 114, 25]},
+        "year": 2024,
+        "metrics": ["soil_ph"],
+    }
+    response = client.post("/stats/parcels/query", json=body, headers=headers)
+    assert response.status_code == 200
+    assert response.get_json()["data"]["scope"] == body["scope"]
+
+
+def test_parcel_detail_forwards_selected_year(monkeypatch):
+    client, headers = _client()
+    captured = {}
+
+    def fake_summary(parcel_id, *, year, metric_key):
+        captured.update(parcel_id=parcel_id, year=year, metric_key=metric_key)
+        return {"parcelId": parcel_id, "dataYear": int(year)}
+
+    monkeypatch.setattr(routes, "get_parcel_summary", fake_summary)
+    response = client.get("/stats/parcels/1007?year=2021", headers=headers)
+    assert response.status_code == 200
+    assert captured == {"parcel_id": "1007", "year": "2021", "metric_key": None}
