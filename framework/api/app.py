@@ -106,6 +106,47 @@ def _ensure_kb_message_columns(app: Flask):
                 conn.execute(sa_text(ddl))
 
 
+def _ensure_kb_report_columns(app: Flask):
+    """启动时自动给 kb_report 补 scope_json 列（无损，列已存在跳过）。
+
+    PostgreSQL / MySQL / SQLite 都兼容，避免漏跑迁移导致 500 "column scope_json does not exist"。
+    """
+    from sqlalchemy import text as sa_text
+    from sqlalchemy import inspect as sa_inspect
+
+    with app.app_context():
+        engine = db.engine
+        dialect = engine.dialect.name
+
+        if not sa_inspect(engine).has_table("kb_report"):
+            return
+
+        def _has_column(table: str, column: str) -> bool:
+            with engine.connect() as conn:
+                if dialect in ("mysql", "postgresql"):
+                    row = conn.execute(sa_text(
+                        "SELECT COUNT(*) FROM information_schema.COLUMNS "
+                        "WHERE table_schema = current_schema() AND table_name = :t AND column_name = :c"
+                    ), {"t": table, "c": column}).fetchone()
+                    return (row[0] if isinstance(row, tuple) else row[0]) > 0
+                # sqlite
+                rows = conn.execute(sa_text(f"PRAGMA table_info(`{table}`)")).fetchall()
+                return any(str(r[1]).lower() == column.lower() for r in rows)
+
+        if _has_column("kb_report", "scope_json"):
+            return
+
+        ddl = {
+            "postgresql": 'ALTER TABLE kb_report ADD COLUMN scope_json TEXT',
+            "mysql": 'ALTER TABLE kb_report ADD COLUMN scope_json TEXT NULL COMMENT \'范围 scope 序列化 JSON\'',
+            "sqlite": 'ALTER TABLE kb_report ADD COLUMN scope_json TEXT',
+        }.get(dialect)
+        if not ddl:
+            return
+        with engine.begin() as conn:
+            conn.execute(sa_text(ddl))
+
+
 def _ensure_analysis_context_compatibility(app: Flask):
     """启动期只补可空列和新表；约束替换留给正式迁移脚本。"""
     from scripts.migrate_analysis_context import (
@@ -133,6 +174,7 @@ def create_app(config_name: str = 'default') -> Flask:
 
     # 注册蓝图之前先把 ORM 需要的列补齐，防止首次请求 SELECT 时爆 no such column
     _ensure_kb_message_columns(app)
+    _ensure_kb_report_columns(app)
     _ensure_analysis_context_compatibility(app)
 
     app.register_blueprint(auth_bp, url_prefix='/api/v1/auth')
