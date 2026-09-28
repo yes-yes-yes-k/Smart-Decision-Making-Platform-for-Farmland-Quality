@@ -475,3 +475,67 @@ def test_scope_contract_echoes_normalized_viewport():
         "bbox": [113.0, 24.0, 114.0, 25.0],
         "srid": 4326,
     }
+
+
+def test_live_query_materializes_clip_and_short_circuits_contained_parcels():
+    sql = str(service._live_statistics_sql(
+        "SELECT geom FROM region",
+        "SELECT 1 AS parcel_pk, 'P1' AS parcel_id, NULL AS area_code, "
+        "NULL AS geom, '{}'::json AS soil_indicators, NULL::text AS quality_grade, "
+        "NULL::double precision AS composite_index, NULL::timestamptz AS updated_at",
+    ))
+
+    assert "scope AS MATERIALIZED" in sql
+    assert "data AS MATERIALIZED" in sql
+    assert "clipped AS MATERIALIZED" in sql
+    assert "parcel_areas AS MATERIALIZED" in sql
+    assert "ST_CoveredBy(data.geom, scope.geom)" in sql
+    assert sql.count("ST_Intersection(data.geom, scope.geom)") == 1
+    assert sql.count("ST_Area(clipped_geom::geography)") == 1
+
+
+def test_aggregate_uses_precomputed_rows_for_administrative_region(monkeypatch):
+    timestamp = datetime(2024, 1, 2, tzinfo=timezone.utc)
+    cached_rows = [{
+        "parcel_id": "P1",
+        "area_code": "440281",
+        "area_mu": 2.0,
+        "soil_indicators": {"soil_ph": 5.5},
+        "quality_grade": None,
+        "composite_index": None,
+        "updated_at": timestamp,
+    }]
+    monkeypatch.setattr(service, "_resolve_year", lambda _value: 2024)
+    monkeypatch.setattr(
+        service,
+        "_scope_sql",
+        lambda _scope: (
+            "SELECT geom FROM unused",
+            {},
+            {
+                "scopeVersion": 1,
+                "type": "administrative_region",
+                "regionType": "county",
+                "regionId": "440281",
+                "displayName": "test",
+            },
+        ),
+    )
+    monkeypatch.setattr(service, "_dataset_sql", lambda _year: ("SELECT 1", {}))
+    monkeypatch.setattr(
+        service,
+        "_precomputed_statistics_rows",
+        lambda _scope, _dataset, _params: cached_rows,
+    )
+
+    result = service.aggregate_statistics({
+        "scope": {
+            "type": "administrative_region",
+            "region_type": "county",
+            "region_id": "440281",
+        },
+        "metrics": ["soil_ph"],
+    })
+
+    assert result["scopeSummary"] == {"parcelCount": 1, "totalAreaMu": 2.0}
+    assert result["metrics"][0]["table"]["average"] == 5.5

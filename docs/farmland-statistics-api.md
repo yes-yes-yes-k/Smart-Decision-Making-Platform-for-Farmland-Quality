@@ -16,6 +16,29 @@
 - 不指定 `year` 时使用 `/years` 返回的 `defaultYear`；年度指标来自 `parcel_history_snapshot`。
 - 所有统计范围响应包含 `scopeVersion=1`，并回传服务端验证、规范化后的 `scope`。
 - 未入库的污染监测指标明确返回 `availability=unavailable`，不得生成或推断监测值。
+- 行政区域统计优先读取 `farmland_region_parcel_area` 预计算关系；地图视窗仍实时计算。缓存缺失或检测到区域/地块版本变化时，接口会自动回退到实时空间裁剪，不会返回过期结果。
+
+## 行政区域预计算缓存
+
+首次部署本版本或行政区边界、地块几何发生变化后，执行：
+
+```bash
+python scripts/precompute_farmland_region_parcels.py
+```
+
+默认重建省、市、县、镇、村五级区域。只重建指定层级时可重复传入
+`--region-type`，例如：
+
+```bash
+python scripts/precompute_farmland_region_parcels.py \
+  --region-type county \
+  --region-type township \
+  --region-type village
+```
+
+构建在单一数据库事务内完成：先生成临时关系，再原子替换目标层级缓存。
+`farmland_region_precompute_state` 保存区域更新时间、地块数量及地块最大更新时间；
+任一版本标记不匹配时，API 自动使用实时查询，直至缓存重新构建。
 
 ## 接口输入输出示例
 
