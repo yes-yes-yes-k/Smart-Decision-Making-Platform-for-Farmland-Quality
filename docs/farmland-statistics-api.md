@@ -10,6 +10,29 @@
 - 有效土层厚度对接现有数据字段 `topsoil_thickness`；接口对外名称为 `effective_soil_depth`。
 - 73 个村间争议面以 `zone` 保存并标记为不可选择，不强行归入任何普通村。
 - 地块详情和点选响应中的 `areaMu` 是完整地块测地面积换算的亩数，不受当前视窗或行政区边界裁剪；几何缺失时为 `null`。
+- 行政区域统计优先读取 `farmland_region_parcel_area` 预计算关系；地图视窗仍实时计算。缓存缺失或检测到区域/地块版本变化时，接口会自动回退到实时空间裁剪，不会返回过期结果。
+
+## 行政区域预计算缓存
+
+首次部署本版本或行政区边界、地块几何发生变化后，执行：
+
+```bash
+python scripts/precompute_farmland_region_parcels.py
+```
+
+默认重建省、市、县、镇、村五级区域。只重建指定层级时可重复传入
+`--region-type`，例如：
+
+```bash
+python scripts/precompute_farmland_region_parcels.py \
+  --region-type county \
+  --region-type township \
+  --region-type village
+```
+
+构建在单一数据库事务内完成：先生成临时关系，再原子替换目标层级缓存。
+`farmland_region_precompute_state` 保存区域更新时间、地块数量及地块最大更新时间；
+任一版本标记不匹配时，API 自动使用实时查询，直至缓存重新构建。
 
 ## 接口输入输出示例
 

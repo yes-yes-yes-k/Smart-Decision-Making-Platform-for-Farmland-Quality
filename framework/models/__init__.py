@@ -33,4 +33,6 @@ from .thematic_model import (
     ModelVersionHistory,
     AreaCodeRegionMap,
     SpatialRegionCatalog,
+    FarmlandRegionParcelArea,
+    FarmlandRegionPrecomputeState,
 )

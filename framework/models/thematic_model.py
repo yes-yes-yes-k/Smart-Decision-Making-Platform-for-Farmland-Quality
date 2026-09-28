@@ -568,3 +568,41 @@ class SpatialRegionCatalog(db.Model):
         db.Index("idx_spatial_region_catalog_enabled", "enabled"),
         db.Index("idx_spatial_region_catalog_geom", "geom", postgresql_using="gist"),
     )
+
+
+class FarmlandRegionParcelArea(db.Model):
+    """Precomputed positive-area intersections between regions and parcels."""
+
+    __tablename__ = "farmland_region_parcel_area"
+
+    region_type = db.Column(db.String(16), primary_key=True)
+    region_id = db.Column(db.String(64), primary_key=True)
+    parcel_id = db.Column(db.String(64), primary_key=True)
+    area_mu = db.Column(db.Float, nullable=False)
+    computed_at = db.Column(
+        db.DateTime(timezone=True),
+        nullable=False,
+        server_default=db.func.current_timestamp(),
+    )
+
+    __table_args__ = (
+        db.Index("idx_farmland_region_parcel_area_parcel", "parcel_id"),
+    )
+
+
+class FarmlandRegionPrecomputeState(db.Model):
+    """Source-version marker for one region's precomputed parcel relations."""
+
+    __tablename__ = "farmland_region_precompute_state"
+
+    region_type = db.Column(db.String(16), primary_key=True)
+    region_id = db.Column(db.String(64), primary_key=True)
+    region_updated_at = db.Column(db.DateTime(timezone=True), nullable=False)
+    source_parcel_count = db.Column(db.Integer, nullable=False)
+    source_parcel_max_updated_at = db.Column(db.DateTime(timezone=True))
+    relation_count = db.Column(db.Integer, nullable=False)
+    computed_at = db.Column(
+        db.DateTime(timezone=True),
+        nullable=False,
+        server_default=db.func.current_timestamp(),
+    )

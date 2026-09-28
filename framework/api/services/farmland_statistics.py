@@ -210,6 +210,93 @@ def _scope_sql(scope: Mapping[str, Any]) -> tuple[str, dict[str, Any], dict[str,
     raise StatisticsError("invalid_scope", "scope.type 仅支持 administrative_region 或 viewport")
 
 
+def _live_statistics_sql(scope_query: str) -> sa.TextClause:
+    """Build the spatial fallback query while evaluating each clip only once."""
+    return sa.text(f"""
+        WITH scope AS MATERIALIZED ({scope_query}),
+        clipped AS MATERIALIZED (
+            SELECT p.parcel_id, p.area_code, p.soil_indicators, p.updated_at,
+                   CASE
+                     WHEN ST_CoveredBy(p.geom, scope.geom) THEN p.geom
+                     ELSE ST_Intersection(p.geom, scope.geom)
+                   END AS clipped_geom
+            FROM parcel_info AS p
+            CROSS JOIN scope
+            WHERE p.geom IS NOT NULL
+              AND p.geom && scope.geom
+              AND ST_Intersects(p.geom, scope.geom)
+        ),
+        measured AS MATERIALIZED (
+            SELECT parcel_id, area_code, soil_indicators, updated_at,
+                   ST_Area(clipped_geom::geography) * :mu_per_sqm AS area_mu
+            FROM clipped
+            WHERE NOT ST_IsEmpty(clipped_geom)
+        )
+        SELECT parcel_id, area_code, soil_indicators, updated_at, area_mu
+        FROM measured
+        WHERE area_mu > 0
+        ORDER BY parcel_id
+    """)
+
+
+def _precomputed_statistics_rows(
+    scope_response: Mapping[str, Any],
+) -> list[Mapping[str, Any]] | None:
+    """Return fresh precomputed rows, or ``None`` when live fallback is needed."""
+    if scope_response.get("type") != "administrative_region":
+        return None
+    if db.engine.dialect.name != "postgresql":
+        return None
+
+    tables = db.session.execute(sa.text("""
+        SELECT to_regclass('farmland_region_parcel_area') AS area_table,
+               to_regclass('farmland_region_precompute_state') AS state_table
+    """)).mappings().one()
+    if tables["area_table"] is None or tables["state_table"] is None:
+        return None
+
+    params = {
+        "region_type": scope_response["regionType"],
+        "region_id": scope_response["regionId"],
+    }
+    state = db.session.execute(sa.text("""
+        WITH parcel_source AS (
+            SELECT COUNT(*)::integer AS parcel_count,
+                   MAX(updated_at) AS parcel_max_updated_at
+            FROM parcel_info
+            WHERE geom IS NOT NULL
+        )
+        SELECT state.relation_count
+        FROM farmland_region_precompute_state AS state
+        JOIN spatial_region_catalog AS region
+          ON region.object_type = state.region_type
+         AND region.object_id = state.region_id
+         AND region.enabled = TRUE
+        CROSS JOIN parcel_source
+        WHERE state.region_type = :region_type
+          AND state.region_id = :region_id
+          AND state.region_updated_at IS NOT DISTINCT FROM region.updated_at
+          AND state.source_parcel_count = parcel_source.parcel_count
+          AND state.source_parcel_max_updated_at IS NOT DISTINCT FROM parcel_source.parcel_max_updated_at
+    """), params).mappings().first()
+    if state is None:
+        return None
+
+    rows = db.session.execute(sa.text("""
+        SELECT parcel.parcel_id, parcel.area_code, parcel.soil_indicators,
+               parcel.updated_at, cached.area_mu
+        FROM farmland_region_parcel_area AS cached
+        JOIN parcel_info AS parcel ON parcel.parcel_id = cached.parcel_id
+        WHERE cached.region_type = :region_type
+          AND cached.region_id = :region_id
+          AND cached.area_mu > 0
+        ORDER BY parcel.parcel_id
+    """), params).mappings().all()
+    if len(rows) != state["relation_count"]:
+        return None
+    return rows
+
+
 def aggregate_statistics(payload: Mapping[str, Any] | None) -> dict[str, Any]:
     if not isinstance(payload, Mapping):
         raise StatisticsError("invalid_request", "请求体必须为 JSON 对象")
@@ -218,27 +305,13 @@ def aggregate_statistics(payload: Mapping[str, Any] | None) -> dict[str, Any]:
         raise StatisticsError("invalid_scope", "请求必须包含 scope 对象")
     metric_keys = _metric_keys(payload)
     scope_query, params, scope_response = _scope_sql(scope)
-    sql = sa.text(f"""
-        WITH scope AS ({scope_query}),
-        scoped AS (
-            SELECT p.parcel_id, p.area_code, p.soil_indicators, p.updated_at,
-                   ST_Intersection(p.geom, scope.geom) AS clipped_geom
-            FROM parcel_info AS p
-            CROSS JOIN scope
-            WHERE p.geom IS NOT NULL
-              AND p.geom && scope.geom
-              AND ST_Intersects(p.geom, scope.geom)
-        )
-        SELECT parcel_id, area_code, soil_indicators, updated_at,
-               ST_Area(clipped_geom::geography) * :mu_per_sqm AS area_mu
-        FROM scoped
-        WHERE NOT ST_IsEmpty(clipped_geom)
-          AND ST_Area(clipped_geom::geography) > 0
-        ORDER BY parcel_id
-    """)
-    params["mu_per_sqm"] = MU_PER_SQUARE_METRE
     try:
-        rows = db.session.execute(sql, params).mappings().all()
+        rows = _precomputed_statistics_rows(scope_response)
+        if rows is None:
+            params["mu_per_sqm"] = MU_PER_SQUARE_METRE
+            rows = db.session.execute(
+                _live_statistics_sql(scope_query), params
+            ).mappings().all()
     except sa.exc.SQLAlchemyError as exc:
         raise StatisticsError("statistics_unavailable", "空间统计服务暂时不可用", 503) from exc
     result = summarize_rows(rows, metric_keys)

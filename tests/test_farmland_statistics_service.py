@@ -1,6 +1,7 @@
 from datetime import datetime, timezone
 from types import SimpleNamespace
 
+from framework.api.services import farmland_statistics
 from framework.api.services.farmland_statistics import _parcel_response, summarize_rows
 
 
@@ -59,3 +60,56 @@ def test_parcel_response_uses_null_area_when_geometry_is_missing():
     response = _parcel_response(parcel, area_mu=None)
 
     assert response["areaMu"] is None
+
+
+def test_live_query_materializes_clip_and_short_circuits_contained_parcels():
+    sql = str(farmland_statistics._live_statistics_sql("SELECT geom FROM region"))
+
+    assert "scope AS MATERIALIZED" in sql
+    assert "clipped AS MATERIALIZED" in sql
+    assert "measured AS MATERIALIZED" in sql
+    assert "ST_CoveredBy(p.geom, scope.geom)" in sql
+    assert sql.count("ST_Intersection(p.geom, scope.geom)") == 1
+    assert sql.count("ST_Area(clipped_geom::geography)") == 1
+
+
+def test_aggregate_uses_precomputed_rows_for_administrative_region(monkeypatch):
+    timestamp = datetime(2024, 1, 2, tzinfo=timezone.utc)
+    cached_rows = [{
+        "parcel_id": "P1",
+        "area_code": "440281",
+        "area_mu": 2.0,
+        "soil_indicators": {"soil_ph": 5.5},
+        "updated_at": timestamp,
+    }]
+    monkeypatch.setattr(
+        farmland_statistics,
+        "_scope_sql",
+        lambda _scope: (
+            "SELECT geom FROM unused",
+            {},
+            {
+                "type": "administrative_region",
+                "regionType": "county",
+                "regionId": "440281",
+                "displayName": "test",
+            },
+        ),
+    )
+    monkeypatch.setattr(
+        farmland_statistics,
+        "_precomputed_statistics_rows",
+        lambda _scope: cached_rows,
+    )
+
+    result = farmland_statistics.aggregate_statistics({
+        "scope": {
+            "type": "administrative_region",
+            "region_type": "county",
+            "region_id": "440281",
+        },
+        "metrics": ["soil_ph"],
+    })
+
+    assert result["scopeSummary"] == {"parcelCount": 1, "totalAreaMu": 2.0}
+    assert result["metrics"][0]["table"]["average"] == 5.5
