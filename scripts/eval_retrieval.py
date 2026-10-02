@@ -5,7 +5,11 @@
 from __future__ import annotations
 import argparse
 import json
+import os
+import sys
 import yaml
+
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from framework.vector_store.chroma_store import vector_store
 from framework.rag.category_router import route_category
@@ -23,7 +27,9 @@ def evaluate(queries, top_k=5):
     for q in queries:
         normalized = q["query"]
         category = route_category(normalized)
-        retrieval = vector_store.hybrid_search(normalized, category=category, top_k=top_k)
+        retrieval = vector_store.hybrid_search(
+            normalized, category=category, n_results=top_k,
+        )
         retrieved_doc_names = [r.get("metadata", {}).get("source") for r in retrieval.get("results", [])]
         expected = set(q.get("expected_doc_ids") or [])
         # hit@K: 命中任一 expected

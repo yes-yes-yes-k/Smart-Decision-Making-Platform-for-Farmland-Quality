@@ -23,7 +23,7 @@ def _make_hit(source, chunk_index, page, content="chunk内容"):
 def test_chat_sources_include_chunk_index_and_page(monkeypatch):
     rag = RAGChain.__new__(RAGChain)
     # mock _retrieve_documents 返回 2 个命中
-    rag._retrieve_documents = lambda q, v: {
+    rag._retrieve_documents = lambda q, v, user_id=None: {
         "results": [
             _make_hit("doc_a.pdf", 0, 1),
             _make_hit("doc_a.pdf", 1, 5),
@@ -47,7 +47,7 @@ def test_chat_sources_include_chunk_index_and_page(monkeypatch):
 
 def test_chat_sources_metadata_missing_degrades_to_none(monkeypatch):
     rag = RAGChain.__new__(RAGChain)
-    rag._retrieve_documents = lambda q, v: {
+    rag._retrieve_documents = lambda q, v, user_id=None: {
         "results": [
             {"content": "c", "metadata": {"source": "old.pdf"}},  # 旧数据无 chunk_index/page
         ],
@@ -64,7 +64,7 @@ def test_chat_sources_metadata_missing_degrades_to_none(monkeypatch):
 
 def test_chat_stream_sources_same_structure_as_chat(monkeypatch):
     rag = RAGChain.__new__(RAGChain)
-    rag._retrieve_documents = lambda q, v: {
+    rag._retrieve_documents = lambda q, v, user_id=None: {
         "results": [_make_hit("x.pdf", 4, 9)],
         "count": 1,
     }
@@ -91,7 +91,7 @@ def test_chat_stream_sources_same_structure_as_chat(monkeypatch):
 
 def test_chat_no_retrieval_returns_empty_sources(monkeypatch):
     rag = RAGChain.__new__(RAGChain)
-    rag._retrieve_documents = lambda q, v: {"results": [], "count": 0}
+    rag._retrieve_documents = lambda q, v, user_id=None: {"results": [], "count": 0}
     rag.llm_service = type("_L", (), {"generate": lambda self, p, h=None: {"success": True, "content": "ans", "model": "m"}})()
 
     result = rag.chat("问题")
@@ -100,7 +100,7 @@ def test_chat_no_retrieval_returns_empty_sources(monkeypatch):
 
 def test_multiple_chunks_same_doc_different_pages(monkeypatch):
     rag = RAGChain.__new__(RAGChain)
-    rag._retrieve_documents = lambda q, v: {
+    rag._retrieve_documents = lambda q, v, user_id=None: {
         "results": [
             _make_hit("same.pdf", 0, 1),
             _make_hit("same.pdf", 1, 1),
@@ -123,7 +123,7 @@ def test_multiple_chunks_same_doc_different_pages(monkeypatch):
 def test_source_field_missing(monkeypatch):
     # metadata 完全缺失 source 字段
     rag = RAGChain.__new__(RAGChain)
-    rag._retrieve_documents = lambda q, v: {
+    rag._retrieve_documents = lambda q, v, user_id=None: {
         "results": [{"content": "c", "metadata": {}}],
         "count": 1,
     }
@@ -139,7 +139,7 @@ def test_source_field_missing(monkeypatch):
 def test_metadata_none_entirely(monkeypatch):
     # result.metadata 为 None
     rag = RAGChain.__new__(RAGChain)
-    rag._retrieve_documents = lambda q, v: {
+    rag._retrieve_documents = lambda q, v, user_id=None: {
         "results": [{"content": "c", "metadata": None}],
         "count": 1,
     }

@@ -9,6 +9,7 @@ from framework.vector_store.chroma_store import (
     slugify,
     collection_name_for,
 )
+from framework.rag.category_router import route_category
 
 
 class FakeCollection:
@@ -20,7 +21,7 @@ class FakeClient:
     def __init__(self):
         self.created = []
 
-    def create_collection(self, name, embedding_function=None):
+    def get_or_create_collection(self, name, embedding_function=None):
         self.created.append(name)
         return FakeCollection(name)
 
@@ -79,3 +80,9 @@ def test_targeted_collection_hit_and_miss():
     # 空 / other → 全库回退
     assert store._targeted_collection(None) is None
     assert store._targeted_collection("other") is None
+
+
+def test_new_agent_domain_routing():
+    assert route_category("镉污染的空间风险如何评估") == "heavy_metal"
+    assert route_category("未来粮食产能预测") == "food_security"
+    assert route_category("耕地质量全链条分析") == "cultivated_land_quality"

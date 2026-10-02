@@ -155,6 +155,7 @@ def upload_document():
             doc_name=file.filename,
             category=category,
             treatment_type=treatment_type,
+            owner_id=int(user_id),
         )
 
         return jsonify({"status": "ok", "data": document.to_dict(), "message": "文档上传成功，正在后台处理"}), 202
@@ -189,7 +190,7 @@ def delete_document(id):
     document = Document.query.filter_by(id=id, create_by=user_id).first()
     if document:
         try:
-            vector_store.delete_by_source(document.doc_name)
+            vector_store.delete_by_document_id(document.id, int(user_id))
         except Exception:
             pass
 

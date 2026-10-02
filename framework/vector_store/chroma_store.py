@@ -1,7 +1,7 @@
 from __future__ import annotations
 import os
 import re
-import shutil
+import uuid
 from typing import Optional, List, Dict, Any
 import chromadb
 from chromadb.api.types import EmbeddingFunction, Documents, Embeddings
@@ -71,75 +71,42 @@ class ChromaVectorStore:
                 )
             )
 
-            need_recreate = False
-            try:
-                existing = self._client.get_collection(name=default_name)
-                existing_ef = None
-                if hasattr(existing, 'metadata') and existing.metadata:
-                    existing_ef = existing.metadata.get("embedding_function", None)
-                print(f"[Chroma] 检测到旧集合，embedding_function={existing_ef}")
-                if existing_ef != "noop":
-                    print(f"[Chroma] 需要重建集合以使用自定义 embedding function")
-                    need_recreate = True
-            except Exception:
-                print(f"[Chroma] 集合不存在或无法读取，将直接创建")
-                pass
+            # Never delete or recreate a persisted collection during application startup.
+            # Chroma stores embedding-function configuration outside collection.metadata in
+            # some versions, so metadata is not a safe compatibility signal.
+            for item in self._client.list_collections():
+                name = item.name if hasattr(item, "name") else str(item)
+                self._collections[name] = self._client.get_collection(
+                    name=name, embedding_function=NoOpEmbeddingFunction())
 
-            if need_recreate:
-                try:
-                    self._client.delete_collection(name=default_name)
-                    print(f"[Chroma] 旧集合已删除")
-                except Exception as e:
-                    print(f"[Chroma] 删除旧集合失败: {e}，尝试删除整个持久化目录")
-                    try:
-                        shutil.rmtree(persist_dir, ignore_errors=True)
-                        os.makedirs(persist_dir, exist_ok=True)
-                        self._client = chromadb.PersistentClient(
-                            path=persist_dir,
-                            settings=Settings(
-                                anonymized_telemetry=False,
-                                allow_reset=False,
-                            )
-                        )
-                        print(f"[Chroma] 持久化目录已清理")
-                    except Exception as e2:
-                        print(f"[Chroma] 删除持久化目录失败: {e2}")
-
-            try:
-                # 用 get_or_create：重启后集合已持久化，create_collection 会抛
-                # "already exists" 并误入清库分支，导致向量被全部删除
+            if default_name not in self._collections:
                 self._collections[default_name] = self._client.get_or_create_collection(
-                    name=default_name,
-                    embedding_function=NoOpEmbeddingFunction(),
-                )
-                print(f"[Chroma] 集合 '{default_name}' 初始化完成")
-            except Exception as e:
-                # 创建失败，常见于旧版本 ChromaDB 写入的元数据不兼容
-                # （如 KeyError: '_type'）。清理持久化目录后重试一次。
-                print(f"[Chroma] 创建集合失败: {e}，清理持久化目录后重试")
-                try:
-                    # 先释放旧 client，避免 Windows 文件锁导致 rmtree 不彻底
-                    self._client = None
-                    shutil.rmtree(persist_dir, ignore_errors=True)
-                    os.makedirs(persist_dir, exist_ok=True)
-                    self._client = chromadb.PersistentClient(
-                        path=persist_dir,
-                        settings=Settings(
-                            anonymized_telemetry=False,
-                            allow_reset=False,
-                        )
-                    )
-                    self._collections[default_name] = self._client.create_collection(
-                        name=default_name,
-                        embedding_function=NoOpEmbeddingFunction(),
-                    )
-                    print(f"[Chroma] 集合 '{default_name}' 初始化完成（已重建持久化目录）")
-                except Exception as e2:
-                    print(f"Chroma初始化失败: {e2}")
+                    name=default_name, embedding_function=NoOpEmbeddingFunction())
+
+            self._rebuild_bm25_indexes()
+            print(
+                f"[Chroma] 已加载 {len(self._collections)} 个集合: "
+                f"{', '.join(sorted(self._collections))}"
+            )
         except Exception as e:
             print(f"Chroma初始化失败: {e}")
             import traceback
             traceback.print_exc()
+
+    def _rebuild_bm25_indexes(self) -> None:
+        """Restore the in-memory BM25 sidecar from persisted Chroma documents."""
+        self._bm25 = {}
+        for name, collection in self._collections.items():
+            store = BM25Store()
+            try:
+                data = collection.get(include=["documents", "metadatas"])
+                documents = data.get("documents") or []
+                metadatas = data.get("metadatas") or []
+                if documents:
+                    store.add_documents(documents, metadatas)
+            except Exception as exc:
+                print(f"[BM25] 集合 {name} 重建失败: {exc}")
+            self._bm25[name] = store
 
     def _get_collection(self, category: Optional[str] = None):
         """按 category 懒获取 collection（空/other → 默认 enterprise_kb）。
@@ -153,6 +120,7 @@ class ChromaVectorStore:
             collection = self._client.get_or_create_collection(
                 name=name, embedding_function=NoOpEmbeddingFunction())
             self._collections[name] = collection
+            self._bm25.setdefault(name, BM25Store())
         return self._collections[name]
 
     def _targeted_collection(self, category: Optional[str] = None):
@@ -179,18 +147,52 @@ class ChromaVectorStore:
             return 0
 
         try:
+            if not texts or any(not isinstance(text, str) or not text.strip() for text in texts):
+                print("[Chroma] 文档内容为空或类型非法，跳过向量化")
+                return 0
+
+            clean_metadatas: List[Dict[str, Any]] = []
+            for metadata in metadatas or [{} for _ in texts]:
+                clean_metadatas.append({
+                    key: value for key, value in dict(metadata or {}).items()
+                    if value is not None and isinstance(value, (str, int, float, bool))
+                })
+            if len(clean_metadatas) != len(texts):
+                print("[Chroma] metadata 数量与文档数量不一致")
+                return 0
+
+            resolved_ids = ids or [uuid.uuid4().hex for _ in texts]
+            if len(resolved_ids) != len(texts) or len(set(resolved_ids)) != len(resolved_ids):
+                print("[Chroma] 文档 ID 数量不一致或存在重复")
+                return 0
+
             # 直接获取 embeddings，不通过 ChromaDB 的 embedding_function
             embeddings = embedding_service.embed_documents(texts)
+            if len(embeddings) != len(texts) or any(not vector for vector in embeddings):
+                print("[Chroma] embedding 返回数量不足或包含空向量")
+                return 0
 
             collection = self._get_collection(category)
+            existing = collection.get(ids=resolved_ids, include=["metadatas"])
+            if existing.get("ids"):
+                print(f"[Chroma] 检测到重复文档 ID，拒绝整批写入: {existing['ids']}")
+                return 0
+
+            count_before = collection.count()
             collection.add(
-                ids=ids or [f"doc_{i}" for i in range(len(texts))],
+                ids=resolved_ids,
                 embeddings=embeddings,
                 documents=texts,
-                metadatas=metadatas or [],
+                metadatas=clean_metadatas,
             )
-            self._bm25_for(category).add_documents(texts, metadatas)
-            return len(texts)
+            added_count = collection.count() - count_before
+            if added_count != len(texts):
+                print(
+                    f"[Chroma] 写入数量不一致: expected={len(texts)} actual={added_count}"
+                )
+                return 0
+            self._bm25_for(category).add_documents(texts, clean_metadatas)
+            return added_count
         except Exception as e:
             print(f"添加文档失败: {e}")
             return 0
@@ -202,7 +204,7 @@ class ChromaVectorStore:
         results = collection.query(
             query_embeddings=[query_embedding],
             n_results=n_results,
-            where=filters,
+            where=filters or None,
         )
         formatted: List[Dict] = []
         for i in range(len(results.get("documents", []))):
@@ -249,7 +251,7 @@ class ChromaVectorStore:
         Config.HYBRID_SEARCH_ENABLED=False 时回退纯向量单路（回滚路径）。
         """
         if not Config.HYBRID_SEARCH_ENABLED:
-            return self.search(query, n_results, filters)
+            return self.search(query, n_results, filters, category)
 
         vector_res = self.search(query, n_results, filters, category)
         bm25_docs = self._bm25_search(query, n_results, filters, category)
@@ -301,6 +303,25 @@ class ChromaVectorStore:
                 store.delete_by_source(source_doc_name)
             except Exception as e:
                 print(f"BM25 删除失败: {e}")
+        return total_removed
+
+    def delete_by_document_id(self, document_id: int, owner_id: Optional[int] = None) -> int:
+        """Delete one logical document without affecting same-named documents."""
+        if not self._collections:
+            return 0
+        where: Dict[str, Any] = {"document_id": document_id}
+        if owner_id is not None:
+            where = {"$and": [where, {"owner_id": owner_id}]}
+        total_removed = 0
+        for name, collection in self._collections.items():
+            try:
+                count_before = collection.count()
+                collection.delete(where=where)
+                total_removed += count_before - collection.count()
+            except Exception as exc:
+                print(f"删除 document_id={document_id} 失败 ({name}): {exc}")
+        for store in self._bm25.values():
+            store.delete_by_document_id(document_id, owner_id)
         return total_removed
 
     def get_collection_stats(self) -> Dict[str, Any]:

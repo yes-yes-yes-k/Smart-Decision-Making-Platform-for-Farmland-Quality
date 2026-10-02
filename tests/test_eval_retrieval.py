@@ -23,7 +23,7 @@ def test_evaluate_hit_rate_and_mrr(monkeypatch):
         {"query": "Q2", "expected_doc_ids": ["b.pdf"]},
     ]
 
-    def _fake_hybrid_search(self, query, category=None, top_k=5, **kw):
+    def _fake_hybrid_search(self, query, category=None, n_results=5, **kw):
         if query == "Q1":
             return {"results": [
                 {"metadata": {"source": "a.pdf"}},
@@ -60,7 +60,7 @@ def test_evaluate_no_hit(monkeypatch):
     monkeypatch.setattr(eval_retrieval, "route_category", lambda q: "other")
 
     class _FakeVS:
-        def hybrid_search(self, query, category=None, top_k=5, **kw):
+        def hybrid_search(self, query, category=None, n_results=5, **kw):
             return {"results": [{"metadata": {"source": "c.pdf"}}]}
     monkeypatch.setattr(eval_retrieval, "vector_store", _FakeVS())
 
@@ -77,7 +77,7 @@ def test_evaluate_empty_expected(monkeypatch):
     monkeypatch.setattr(eval_retrieval, "route_category", lambda q: "other")
 
     class _FakeVS:
-        def hybrid_search(self, query, category=None, top_k=5, **kw):
+        def hybrid_search(self, query, category=None, n_results=5, **kw):
             return {"results": [{"metadata": {"source": "a.pdf"}}]}
     monkeypatch.setattr(eval_retrieval, "vector_store", _FakeVS())
 
@@ -85,3 +85,22 @@ def test_evaluate_empty_expected(monkeypatch):
     # 空 expected → 无命中
     assert result["summary"]["hit_rate"] == 0.0
     assert result["queries"][0]["hit"] is False
+
+
+def test_evaluate_uses_vector_store_n_results_parameter(monkeypatch):
+    captured = {}
+    monkeypatch.setattr(eval_retrieval, "route_category", lambda q: "acidification")
+
+    class _FakeVS:
+        def hybrid_search(self, query, *, category=None, n_results=20):
+            captured.update({
+                "query": query, "category": category, "n_results": n_results,
+            })
+            return {"results": []}
+
+    monkeypatch.setattr(eval_retrieval, "vector_store", _FakeVS())
+    evaluate([{"query": "酸化", "expected_doc_ids": []}], top_k=7)
+
+    assert captured == {
+        "query": "酸化", "category": "acidification", "n_results": 7,
+    }

@@ -22,6 +22,11 @@ def test_hit_replacement_cjk_embedded():
     assert normalize_query("土壤可交换氢含量偏高") == "土壤交换性氢含量偏高"
 
 
+def test_new_agent_domain_synonyms():
+    assert normalize_query("Cd污染风险") == "镉污染风险"
+    assert normalize_query("粮食生产能力预测") == "粮食产能预测"
+
+
 def test_unmatched_passthrough():
     # 规范词本身 / 未收录词 → 原样
     assert normalize_query("交换性氢") == "交换性氢"

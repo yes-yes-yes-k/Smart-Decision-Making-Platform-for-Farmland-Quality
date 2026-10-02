@@ -173,7 +173,11 @@ class MultiAgentOrchestrator:
             if route == "rag_chat":
                 # ✅ RAG 路径：使用流式检索 + 流式 LLM 生成，替代原来的阻塞式 rag_chat_node
                 from framework.rag.chain import rag_chain
-                for item in rag_chain.chat_stream(question, conversation_history=conversation_history):
+                for item in rag_chain.chat_stream(
+                    question,
+                    conversation_history=conversation_history,
+                    user_id=state.get("user_id"),
+                ):
                     if item["type"] == "token":
                         full_answer += item["content"]
                         yield {"type": "token", "content": item["content"]}

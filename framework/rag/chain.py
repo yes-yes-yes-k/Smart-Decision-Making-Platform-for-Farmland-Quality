@@ -20,22 +20,47 @@ class RAGChain:
         if not file_paths:
             return mapping
         try:
+            from flask import has_app_context
+            if has_app_context():
+                from sqlalchemy import or_
+                from framework.models.document import Document
+                rows = Document.query.filter(or_(
+                    Document.file_path.in_(file_paths),
+                    Document.doc_name.in_(file_paths),
+                )).all()
+                for row in rows:
+                    mapping[row.file_path] = row.doc_name
+                    mapping[row.doc_name] = row.doc_name
+                return mapping
+        except Exception:
+            pass
+        try:
             db_path = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(__file__))), 'instance', 'development.db')
             if not os.path.exists(db_path):
                 return mapping
             conn = sqlite3.connect(db_path)
             cursor = conn.cursor()
             placeholders = ','.join('?' * len(file_paths))
-            cursor.execute(f"SELECT file_path, doc_name FROM kb_document WHERE file_path IN ({placeholders})", file_paths)
+            cursor.execute(
+                f"SELECT file_path, doc_name FROM kb_document "
+                f"WHERE file_path IN ({placeholders}) OR doc_name IN ({placeholders})",
+                file_paths + file_paths,
+            )
             for row in cursor.fetchall():
                 mapping[row[0]] = row[1]
+                mapping[row[1]] = row[1]
             conn.close()
         except Exception:
             pass
         return mapping
 
-    def chat(self, query: str, conversation_history: Optional[List[Dict]] = None, valid_doc_names: Optional[set] = None) -> Dict[str, Any]:
-        retrieval_results = self._retrieve_documents(query, valid_doc_names)
+    def chat(
+        self, query: str, conversation_history: Optional[List[Dict]] = None,
+        valid_doc_names: Optional[set] = None, user_id: Optional[int] = None,
+    ) -> Dict[str, Any]:
+        retrieval_results = self._retrieve_documents(
+            query, valid_doc_names, user_id=user_id,
+        )
 
         if retrieval_results["count"] == 0:
             llm_response = self.llm_service.generate(query, conversation_history)
@@ -65,7 +90,7 @@ class RAGChain:
         for result in retrieval_results["results"]:
             metadata = result.get("metadata") or {}
             source = metadata.get("source", "unknown")
-            doc_name = name_mapping.get(source, source)
+            doc_name = metadata.get("doc_name") or name_mapping.get(source, source)
             sources.append({
                 "doc_name": doc_name,
                 "chunk_index": metadata.get("chunk_index"),
@@ -80,13 +105,23 @@ class RAGChain:
             "retrieved_count": retrieval_results["count"],
         }
 
-    def search_documents(self, query: str, *, valid_doc_names: Optional[set] = None) -> List[Dict[str, Any]]:
+    def search_documents(
+        self, query: str, *, valid_doc_names: Optional[set] = None,
+        user_id: Optional[int] = None,
+    ) -> List[Dict[str, Any]]:
         """Return raw local retrieval results; never invoke an LLM fallback."""
-        return list(self._retrieve_documents(query, valid_doc_names)["results"])
+        return list(self._retrieve_documents(
+            query, valid_doc_names, user_id=user_id,
+        )["results"])
 
-    def chat_stream(self, query: str, conversation_history: Optional[List[Dict]] = None, valid_doc_names: Optional[set] = None):
+    def chat_stream(
+        self, query: str, conversation_history: Optional[List[Dict]] = None,
+        valid_doc_names: Optional[set] = None, user_id: Optional[int] = None,
+    ):
         """流式版本的 chat：检索文档后，使用流式 LLM 生成回答，逐 token yield"""
-        retrieval_results = self._retrieve_documents(query, valid_doc_names)
+        retrieval_results = self._retrieve_documents(
+            query, valid_doc_names, user_id=user_id,
+        )
 
         if retrieval_results["count"] == 0:
             # 未找到文档，流式调用 LLM 通用知识
@@ -115,7 +150,7 @@ class RAGChain:
         for result in retrieval_results["results"]:
             metadata = result.get("metadata") or {}
             source = metadata.get("source", "unknown")
-            doc_name = name_mapping.get(source, source)
+            doc_name = metadata.get("doc_name") or name_mapping.get(source, source)
             sources.append({
                 "doc_name": doc_name,
                 "chunk_index": metadata.get("chunk_index"),
@@ -129,10 +164,28 @@ class RAGChain:
         for chunk in self.llm_service.generate_stream(prompt, conversation_history):
             yield {"type": "token", "content": chunk}
 
-    def _retrieve_documents(self, query: str, valid_doc_names: Optional[set]) -> Dict[str, Any]:
+    @staticmethod
+    def _build_filters(
+        valid_doc_names: Optional[set], user_id: Optional[int],
+    ) -> Optional[Dict[str, Any]]:
+        clauses: List[Dict[str, Any]] = []
+        if user_id is not None:
+            clauses.append({"owner_id": int(user_id)})
+        if valid_doc_names:
+            clauses.append({"source": {"$in": sorted(valid_doc_names)}})
+        if not clauses:
+            return None
+        if len(clauses) == 1:
+            return clauses[0]
+        return {"$and": clauses}
+
+    def _retrieve_documents(
+        self, query: str, valid_doc_names: Optional[set], *,
+        user_id: Optional[int] = None,
+    ) -> Dict[str, Any]:
         normalized_query = normalize_query(query)
         category = route_category(normalized_query)
-        filters = {"source": {"$in": list(valid_doc_names)}} if valid_doc_names else None
+        filters = self._build_filters(valid_doc_names, user_id)
         recalled = self.vector_store.hybrid_search(
             query=normalized_query, n_results=Config.RECALL_TOP_K, filters=filters,
             category=category)
