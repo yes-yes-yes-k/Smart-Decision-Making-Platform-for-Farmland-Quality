@@ -19,18 +19,22 @@ _WORKER = concurrent.futures.ThreadPoolExecutor(
 )
 
 
-def submit_ingest(document_id, file_path, file_type, doc_name, category, treatment_type):
+def submit_ingest(
+    document_id, file_path, file_type, doc_name, category, treatment_type, owner_id,
+):
     """非阻塞提交入库任务；立即返回。
 
     上传路由调用本函数后立即返回 202，状态机由 worker 内部推进。
     """
     _WORKER.submit(
         _ingest,
-        document_id, file_path, file_type, doc_name, category, treatment_type,
+        document_id, file_path, file_type, doc_name, category, treatment_type, owner_id,
     )
 
 
-def _ingest(document_id, file_path, file_type, doc_name, category, treatment_type):
+def _ingest(
+    document_id, file_path, file_type, doc_name, category, treatment_type, owner_id,
+):
     """入库 worker 主体。异常时记录 traceback 并推进到 failed，避免文档永久停留 processing。"""
     # 在 worker 线程内推送 app context（Flask-SQLAlchemy 需要）
     # 延迟导入避免循环依赖：docs.py → ingestion_worker → app.py → docs.py
@@ -51,27 +55,49 @@ def _ingest(document_id, file_path, file_type, doc_name, category, treatment_typ
                 chunks = split_text(pages or "")
                 pages_meta = [None] * len(chunks)
 
-            metadatas = [{
-                "source": doc_name,
-                "category": category,
-                "treatment_type": treatment_type,
-                "chunk_index": i,
-                "page": pages_meta[i],
-            } for i in range(len(chunks))]
+            if not chunks:
+                raise ValueError("文档解析后没有可索引内容")
+
+            metadatas = []
+            for i in range(len(chunks)):
+                metadata = {
+                    "source": doc_name,
+                    "doc_name": doc_name,
+                    "document_id": int(document_id),
+                    "owner_id": int(owner_id),
+                    "category": category or "other",
+                    "chunk_index": i,
+                }
+                if treatment_type:
+                    metadata["treatment_type"] = treatment_type
+                if pages_meta[i] is not None:
+                    metadata["page"] = int(pages_meta[i])
+                metadatas.append(metadata)
+
+            chunk_ids = [f"doc-{document_id}-chunk-{i}" for i in range(len(chunks))]
 
             added_count = 0
             if chunks:
-                added_count = vector_store.add_documents(chunks, metadatas, category=category)
+                added_count = vector_store.add_documents(
+                    chunks, metadatas, ids=chunk_ids, category=category,
+                )
+            if added_count != len(chunks):
+                raise RuntimeError(
+                    f"知识库写入不完整: expected={len(chunks)}, actual={added_count}"
+                )
 
             # 更新 chunk_count + 推进到 completed
             doc = db.session.query(Document).get(document_id)
-            if doc:
-                doc.chunk_count = len(chunks)
-                doc.status = Document.STATUS_COMPLETED
-                db.session.commit()
+            if not doc:
+                raise RuntimeError(f"文档记录不存在: document_id={document_id}")
+            doc.chunk_count = len(chunks)
+            doc.status = Document.STATUS_COMPLETED
+            db.session.commit()
         except Exception:
             traceback.print_exc()
             try:
+                db.session.rollback()
+                vector_store.delete_by_document_id(int(document_id), int(owner_id))
                 doc = db.session.query(Document).get(document_id)
                 if doc:
                     doc.status = Document.STATUS_FAILED
@@ -82,6 +108,7 @@ def _ingest(document_id, file_path, file_type, doc_name, category, treatment_typ
 
 def _set_status(document_id, status):
     doc = db.session.query(Document).get(document_id)
-    if doc:
-        doc.status = status
-        db.session.commit()
+    if not doc:
+        raise RuntimeError(f"文档记录不存在: document_id={document_id}")
+    doc.status = status
+    db.session.commit()

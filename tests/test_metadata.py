@@ -25,6 +25,9 @@ class CaptureVectorStore:
     def delete_by_source(self, source_doc_name):
         return 0
 
+    def delete_by_document_id(self, document_id, owner_id=None):
+        return 0
+
 
 @pytest.fixture
 def client(monkeypatch):
@@ -106,6 +109,8 @@ def test_upload_writes_chunk_metadata(client):
         assert meta["category"] == "acidification"
         assert meta["treatment_type"] == "regulation"
         assert meta["chunk_index"] == i
+        assert meta["document_id"] == resp.get_json()["data"]["id"]
+        assert meta["owner_id"] == client._admin_id
     # page 字段由 worker 写入（txt 无页码，值为 None）；section 不写入
     assert metadatas[0].get("page") is None
     assert "section" not in metadatas[0]

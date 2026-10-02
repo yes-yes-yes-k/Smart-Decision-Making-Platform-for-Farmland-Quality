@@ -42,12 +42,12 @@ def test_hybrid_search_disabled_falls_back_to_vector(monkeypatch):
     store = ChromaVectorStore.__new__(ChromaVectorStore)
     calls = {}
 
-    def fake_search(query, n_results, filters=None):
-        calls["args"] = (query, n_results, filters)
+    def fake_search(query, n_results, filters=None, category=None):
+        calls["args"] = (query, n_results, filters, category)
         return {"results": [], "count": 0}
 
     store.search = fake_search
     result = store.hybrid_search("查询", n_results=20, filters=None)
 
     assert result == {"results": [], "count": 0}
-    assert calls["args"] == ("查询", 20, None)
+    assert calls["args"] == ("查询", 20, None, None)

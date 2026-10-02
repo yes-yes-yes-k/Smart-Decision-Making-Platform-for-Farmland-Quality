@@ -78,7 +78,7 @@ def build_comprehensive_graph(services:ComprehensiveServices,checkpointer):
         return {"task_results":{k:v.model_dump(mode="json") for k,v in outcome.results.items()},"task_attempts":outcome.attempts,"degradations":list(outcome.degradations),"interaction_state":"failed" if core_failed else "researching"}
     def research_node(state):
         results={k:TaskResult.model_validate(v) for k,v in state["task_results"].items()}; claims=canonical_claims_from_results(results)
-        outcome=services.researcher.research_safe(task_results=results,claims=claims)
+        outcome=services.researcher.research_safe(task_results=results,claims=claims,user_id=state.get("user_id"))
         degradations=list(state.get("degradations",[]))+([outcome.degradation] if outcome.degradation else [])
         return {"canonical_claims":claims,"evidence_items":[x.model_dump(mode="json") for x in outcome.bundle.items],"unsupported_claims":list(outcome.bundle.unsupported_claims),"degradations":degradations,"interaction_state":"reporting"}
     def report_node(state):

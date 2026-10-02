@@ -28,6 +28,11 @@ class MockVectorStore:
             raise RuntimeError("mock vector store failure")
         return 0
 
+    def delete_by_document_id(self, document_id, owner_id=None):
+        if self._should_fail:
+            raise RuntimeError("mock vector store failure")
+        return 0
+
     def set_fail(self, should_fail):
         self._should_fail = should_fail
 

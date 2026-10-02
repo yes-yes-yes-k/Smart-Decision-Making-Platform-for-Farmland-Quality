@@ -229,7 +229,11 @@ def rag_chat_node(state: MultiAgentState) -> MultiAgentState:
         }
 
     try:
-        result = rag_chain.chat(question, conversation_history=conversation_history)
+        result = rag_chain.chat(
+            question,
+            conversation_history=conversation_history,
+            user_id=state.get("user_id"),
+        )
         return {
             **state,
             "rag_response": result,
