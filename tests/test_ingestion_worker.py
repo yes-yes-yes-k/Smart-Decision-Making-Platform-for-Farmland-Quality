@@ -36,6 +36,11 @@ def _patch_app_context(monkeypatch):
     app_module = types.ModuleType("framework.api.app")
     app_module.create_app = lambda: _StubApp()
     monkeypatch.setitem(sys.modules, "framework.api.app", app_module)
+    monkeypatch.setattr(
+        ingestion_worker,
+        "assign_labels_for_ingestion",
+        lambda *args, **kwargs: list(kwargs.get("explicit_labels") or []),
+    )
 
 
 def test_ingest_success_transitions_pending_to_completed(monkeypatch):
@@ -50,6 +55,8 @@ def test_ingest_success_transitions_pending_to_completed(monkeypatch):
         def add_documents(self, chunks, metadatas, ids=None, category=None):
             assert ids == ["doc-1-chunk-0", "doc-1-chunk-1"]
             assert all(m["owner_id"] == 7 for m in metadatas)
+            assert all(m["visibility_scope"] == "private" for m in metadatas)
+            assert all(m["domain_cultivated_land_quality"] is True for m in metadatas)
             assert all("treatment_type" not in m for m in metadatas)
             return len(chunks)
         def delete_by_document_id(self, document_id, owner_id=None):

@@ -3,6 +3,7 @@ from .user import User
 from .conversation import Conversation
 from .message import Message
 from .document import Document
+from .document_label import DocumentLabel
 from .data_file import DataFile
 from .soil_data import (
     ThirdSurveyTopsoil,

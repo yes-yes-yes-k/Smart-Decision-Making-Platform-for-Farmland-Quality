@@ -80,6 +80,8 @@ def test_targeted_collection_hit_and_miss():
     # 空 / other → 全库回退
     assert store._targeted_collection(None) is None
     assert store._targeted_collection("other") is None
+    # 多标签领域必须跨 collection 检索，不能只看文档的主分类集合。
+    assert store._targeted_collection("heavy_metal") is None
 
 
 def test_new_agent_domain_routing():

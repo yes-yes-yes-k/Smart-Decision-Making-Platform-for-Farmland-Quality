@@ -8,6 +8,7 @@ from framework.rag.reranker import rerank_service
 from framework.rag.synonyms import normalize_query
 from framework.rag.category_router import route_category
 from framework.config import Config
+from framework.knowledge.taxonomy import DOMAIN_CODES
 
 class RAGChain:
     def __init__(self):
@@ -167,10 +168,18 @@ class RAGChain:
     @staticmethod
     def _build_filters(
         valid_doc_names: Optional[set], user_id: Optional[int],
+        domain_code: Optional[str] = None,
     ) -> Optional[Dict[str, Any]]:
         clauses: List[Dict[str, Any]] = []
         if user_id is not None:
-            clauses.append({"owner_id": int(user_id)})
+            clauses.append({"$or": [
+                {"visibility_scope": "public"},
+                {"owner_id": int(user_id)},
+            ]})
+        else:
+            clauses.append({"visibility_scope": "public"})
+        if domain_code in DOMAIN_CODES:
+            clauses.append({f"domain_{domain_code}": True})
         if valid_doc_names:
             clauses.append({"source": {"$in": sorted(valid_doc_names)}})
         if not clauses:
@@ -185,7 +194,7 @@ class RAGChain:
     ) -> Dict[str, Any]:
         normalized_query = normalize_query(query)
         category = route_category(normalized_query)
-        filters = self._build_filters(valid_doc_names, user_id)
+        filters = self._build_filters(valid_doc_names, user_id, category)
         recalled = self.vector_store.hybrid_search(
             query=normalized_query, n_results=Config.RECALL_TOP_K, filters=filters,
             category=category)

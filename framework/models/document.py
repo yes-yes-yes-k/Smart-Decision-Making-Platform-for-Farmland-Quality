@@ -19,13 +19,25 @@ class Document(db.Model):
     status = db.Column(db.SmallInteger, default=1, comment='状态')
     category = db.Column(db.String(30), default='other', comment='文档分类')
     treatment_type = db.Column(db.String(30), nullable=True, comment='治理类型')
+    visibility_scope = db.Column(
+        db.String(20), nullable=False, default='private', comment='可见范围: public/private'
+    )
     file_hash = db.Column(db.String(64), nullable=True, comment='文件内容SHA-256哈希')
     create_by = db.Column(db.Integer, nullable=False, comment='上传者用户ID')
     create_time = db.Column(db.DateTime, default=db.func.current_timestamp(), comment='上传时间')
     update_time = db.Column(db.DateTime, default=db.func.current_timestamp(), onupdate=db.func.current_timestamp(), comment='更新时间')
 
-    def to_dict(self):
-        return {
+    labels = db.relationship(
+        'DocumentLabel', backref='document', lazy='select',
+        cascade='all, delete-orphan', passive_deletes=True,
+    )
+
+    def to_dict(self, include_pending: bool = True):
+        approved = sorted(
+            label.label_code for label in self.labels
+            if label.review_status == 'approved'
+        )
+        data = {
             'id': self.id,
             'doc_name': self.doc_name,
             'file_type': self.file_type,
@@ -35,8 +47,17 @@ class Document(db.Model):
             'status': self.status,
             'category': self.category,
             'treatment_type': self.treatment_type,
+            'visibility_scope': self.visibility_scope,
+            'domain_labels': [label for label in approved if '.' not in label],
+            'topic_labels': [label for label in approved if '.' in label],
             'file_hash': self.file_hash,
             'create_by': self.create_by,
             'create_time': self.create_time.strftime('%Y-%m-%d %H:%M:%S') if self.create_time else None,
             'update_time': self.update_time.strftime('%Y-%m-%d %H:%M:%S') if self.update_time else None
         }
+        if include_pending:
+            data['pending_labels'] = [
+                label.to_dict() for label in self.labels
+                if label.review_status == 'pending'
+            ]
+        return data

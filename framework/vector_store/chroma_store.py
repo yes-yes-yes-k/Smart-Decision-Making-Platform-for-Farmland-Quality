@@ -9,6 +9,7 @@ from chromadb.config import Settings
 from framework.config import Config
 from framework.embedding.service import embedding_service
 from framework.vector_store.bm25_store import BM25Store
+from framework.knowledge.taxonomy import DOMAIN_CODES
 
 
 class NoOpEmbeddingFunction(EmbeddingFunction[Documents]):
@@ -121,6 +122,11 @@ class ChromaVectorStore:
     def _targeted_collection(self, category: Optional[str] = None):
         """category 具体且对应 collection 已存在 → 返回；否则 None（全库回退）。"""
         if not category or category.strip().lower() == "other":
+            return None
+        # A document may carry several approved domain labels while its chunks
+        # remain stored once in the original primary collection. Domain queries
+        # therefore scan collections and rely on boolean metadata filters.
+        if category.strip().lower() in DOMAIN_CODES:
             return None
         return self._collections.get(collection_name_for(category))
 
@@ -318,6 +324,39 @@ class ChromaVectorStore:
         for store in self._bm25.values():
             store.delete_by_document_id(document_id, owner_id)
         return total_removed
+
+    def update_document_metadata(
+        self, document_id: int, updates: Dict[str, Any],
+        owner_id: Optional[int] = None, rebuild_indexes: bool = True,
+    ) -> int:
+        """Update metadata for every chunk of one logical document."""
+        if not self._collections:
+            return 0
+        where: Dict[str, Any] = {"document_id": int(document_id)}
+        if owner_id is not None:
+            where = {"$and": [where, {"owner_id": int(owner_id)}]}
+        updated = 0
+        for name, collection in self._collections.items():
+            try:
+                data = collection.get(where=where, include=["metadatas"])
+                ids = data.get("ids") or []
+                if not ids:
+                    continue
+                metadatas = []
+                for metadata in data.get("metadatas") or []:
+                    merged = dict(metadata or {})
+                    merged.update({
+                        key: value for key, value in updates.items()
+                        if value is not None and isinstance(value, (str, int, float, bool))
+                    })
+                    metadatas.append(merged)
+                collection.update(ids=ids, metadatas=metadatas)
+                updated += len(ids)
+            except Exception as exc:
+                print(f"更新 document_id={document_id} 元数据失败 ({name}): {exc}")
+        if updated and rebuild_indexes:
+            self._rebuild_bm25_indexes()
+        return updated
 
     def get_collection_stats(self) -> Dict[str, Any]:
         if not self._collections:

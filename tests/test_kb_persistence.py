@@ -73,3 +73,35 @@ def test_delete_by_document_id_respects_owner(monkeypatch, tmp_path):
     assert remaining["metadatas"] == [
         {"source": "same.pdf", "document_id": 2, "owner_id": 2}
     ]
+
+
+def test_update_document_metadata_updates_chroma_and_bm25(monkeypatch, tmp_path):
+    monkeypatch.setattr(Config, "CHROMA_PERSIST_DIR", str(tmp_path / "chroma"))
+    _patch_embeddings(monkeypatch)
+    store = ChromaVectorStore()
+    store.add_documents(
+        ["镉污染风险评价"],
+        [{"source": "risk.pdf", "document_id": 7, "owner_id": 1}],
+        ids=["doc-7-chunk-0"],
+        category="cultivated_land_quality",
+    )
+
+    assert store.update_document_metadata(7, {
+        "visibility_scope": "public",
+        "domain_heavy_metal": True,
+    }, owner_id=1) == 1
+
+    metadata = store._get_collection("cultivated_land_quality").get(
+        ids=["doc-7-chunk-0"], include=["metadatas"],
+    )["metadatas"][0]
+    assert metadata["visibility_scope"] == "public"
+    assert metadata["domain_heavy_metal"] is True
+    results = store._bm25_search(
+        "镉污染", 5,
+        {"$and": [
+            {"visibility_scope": "public"},
+            {"domain_heavy_metal": True},
+        ]},
+        "heavy_metal",
+    )
+    assert results[0]["metadata"]["document_id"] == 7
