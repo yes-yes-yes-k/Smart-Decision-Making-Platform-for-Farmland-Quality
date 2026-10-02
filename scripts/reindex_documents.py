@@ -15,6 +15,7 @@ from framework.config import Config
 from framework.upload.chunker import split_text, split_text_with_pages
 from framework.upload.document_parser import parse_document
 from framework.vector_store.chroma_store import vector_store
+from framework.knowledge.service import vector_access_metadata
 
 STATUS_COMPLETED = 1
 STATUS_FAILED = 3
@@ -28,14 +29,33 @@ def _database_path() -> str:
 
 def _load_documents(conn: sqlite3.Connection) -> list[dict]:
     conn.row_factory = sqlite3.Row
+    columns = {row[1] for row in conn.execute("PRAGMA table_info(kb_document)")}
+    visibility_expr = "visibility_scope" if "visibility_scope" in columns else "'private' AS visibility_scope"
     rows = conn.execute(
-        """
-        SELECT id, doc_name, file_path, file_type, category, treatment_type, create_by
+        f"""
+        SELECT id, doc_name, file_path, file_type, category, treatment_type, create_by,
+               {visibility_expr}
         FROM kb_document
         ORDER BY id
         """
     ).fetchall()
-    return [dict(row) for row in rows]
+    has_labels = conn.execute(
+        "SELECT 1 FROM sqlite_master WHERE type='table' AND name='kb_document_label'"
+    ).fetchone() is not None
+    documents = []
+    for row in rows:
+        record = dict(row)
+        record["approved_labels"] = []
+        if has_labels:
+            record["approved_labels"] = [
+                item[0] for item in conn.execute(
+                    "SELECT label_code FROM kb_document_label "
+                    "WHERE document_id=? AND review_status='approved'",
+                    (record["id"],),
+                ).fetchall()
+            ]
+        documents.append(record)
+    return documents
 
 
 def _chunks_for(path: str, file_type: str):
@@ -84,6 +104,9 @@ def reindex_documents() -> dict:
             if not chunks:
                 raise ValueError("文档解析后没有可索引内容")
             metadatas = []
+            access_metadata = vector_access_metadata(
+                record["visibility_scope"], record["approved_labels"],
+            )
             for index, page in enumerate(pages):
                 metadata = {
                     "source": record["doc_name"],
@@ -92,6 +115,7 @@ def reindex_documents() -> dict:
                     "owner_id": owner_id,
                     "category": record["category"] or "other",
                     "chunk_index": index,
+                    **access_metadata,
                 }
                 if record["treatment_type"]:
                     metadata["treatment_type"] = record["treatment_type"]

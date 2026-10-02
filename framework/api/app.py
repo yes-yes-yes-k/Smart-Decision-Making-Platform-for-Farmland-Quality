@@ -148,6 +148,26 @@ def _ensure_kb_report_columns(app: Flask):
             conn.execute(sa_text(ddl))
 
 
+def _ensure_kb_taxonomy_schema(app: Flask):
+    """Add the non-destructive KB ACL column and label table when upgrading."""
+    from sqlalchemy import inspect as sa_inspect
+    from sqlalchemy import text as sa_text
+    from framework.models.document_label import DocumentLabel
+
+    with app.app_context():
+        inspector = sa_inspect(db.engine)
+        if not inspector.has_table("kb_document"):
+            return
+        columns = {column["name"] for column in inspector.get_columns("kb_document")}
+        if "visibility_scope" not in columns:
+            with db.engine.begin() as connection:
+                connection.execute(sa_text(
+                    "ALTER TABLE kb_document ADD COLUMN visibility_scope "
+                    "VARCHAR(20) NOT NULL DEFAULT 'private'"
+                ))
+        DocumentLabel.__table__.create(bind=db.engine, checkfirst=True)
+
+
 def _ensure_analysis_context_compatibility(app: Flask):
     """启动期只补可空列和新表；约束替换留给正式迁移脚本。"""
     from scripts.migrate_analysis_context import (
@@ -198,6 +218,8 @@ def create_app(config_name: str = 'default') -> Flask:
     db.init_app(app)
     init_comprehensive_checkpointer(app)
     init_comprehensive_workflow(app)
+
+    _ensure_kb_taxonomy_schema(app)
 
     # 注册蓝图之前先把 ORM 需要的列补齐，防止首次请求 SELECT 时爆 no such column
     _ensure_kb_message_columns(app)

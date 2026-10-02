@@ -6,12 +6,15 @@ worker 线程内推送独立 Flask app context（Flask-SQLAlchemy 需要）。
 from __future__ import annotations
 import concurrent.futures
 import traceback
+from typing import Iterable, Optional
 
 from framework.models.user import db
 from framework.models.document import Document
 from framework.upload.document_parser import parse_document
 from framework.upload.chunker import split_text, split_text_with_pages
 from framework.vector_store.chroma_store import vector_store
+from framework.knowledge.service import assign_labels_for_ingestion, vector_access_metadata
+from framework.knowledge.taxonomy import expand_with_parent_domains, primary_domain_for_category
 
 # 模块级 worker：与 data_trigger.py 的 ThreadPoolExecutor 模式同源
 _WORKER = concurrent.futures.ThreadPoolExecutor(
@@ -21,6 +24,7 @@ _WORKER = concurrent.futures.ThreadPoolExecutor(
 
 def submit_ingest(
     document_id, file_path, file_type, doc_name, category, treatment_type, owner_id,
+    visibility_scope="private", domain_labels: Optional[Iterable[str]] = None,
 ):
     """非阻塞提交入库任务；立即返回。
 
@@ -29,11 +33,13 @@ def submit_ingest(
     _WORKER.submit(
         _ingest,
         document_id, file_path, file_type, doc_name, category, treatment_type, owner_id,
+        visibility_scope, list(domain_labels or []),
     )
 
 
 def _ingest(
     document_id, file_path, file_type, doc_name, category, treatment_type, owner_id,
+    visibility_scope="private", domain_labels: Optional[Iterable[str]] = None,
 ):
     """入库 worker 主体。异常时记录 traceback 并推进到 failed，避免文档永久停留 processing。"""
     # 在 worker 线程内推送 app context（Flask-SQLAlchemy 需要）
@@ -58,6 +64,13 @@ def _ingest(
             if not chunks:
                 raise ValueError("文档解析后没有可索引内容")
 
+            explicit_labels = list(domain_labels or [])
+            primary_domain = primary_domain_for_category(category)
+            if primary_domain and primary_domain not in explicit_labels:
+                explicit_labels.append(primary_domain)
+            approved_labels = expand_with_parent_domains(explicit_labels)
+            access_metadata = vector_access_metadata(visibility_scope, approved_labels)
+
             metadatas = []
             for i in range(len(chunks)):
                 metadata = {
@@ -67,6 +80,7 @@ def _ingest(
                     "owner_id": int(owner_id),
                     "category": category or "other",
                     "chunk_index": i,
+                    **access_metadata,
                 }
                 if treatment_type:
                     metadata["treatment_type"] = treatment_type
@@ -75,6 +89,13 @@ def _ingest(
                 metadatas.append(metadata)
 
             chunk_ids = [f"doc-{document_id}-chunk-{i}" for i in range(len(chunks))]
+
+            assign_labels_for_ingestion(
+                int(document_id),
+                explicit_labels=approved_labels,
+                text="\n".join(chunks),
+                actor_id=int(owner_id),
+            )
 
             added_count = 0
             if chunks:
