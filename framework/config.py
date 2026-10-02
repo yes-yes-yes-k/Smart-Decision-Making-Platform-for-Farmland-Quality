@@ -91,6 +91,7 @@ class Config:
     SILICONFLOW_API_KEY = os.environ.get('SILICONFLOW_API_KEY', '')
     SILICONFLOW_CHAT_MODEL = os.environ.get('SILICONFLOW_CHAT_MODEL') or 'deepseek-ai/DeepSeek-V3'
     SILICONFLOW_EMBED_MODEL = os.environ.get('SILICONFLOW_EMBED_MODEL') or 'BAAI/bge-m3'
+    SILICONFLOW_EMBED_BATCH_SIZE = int(os.environ.get('SILICONFLOW_EMBED_BATCH_SIZE') or 32)
     SILICONFLOW_BASE_URL = os.environ.get('SILICONFLOW_BASE_URL') or 'https://api.siliconflow.cn/v1'
     # 聊天接口的整体时延由单次最终总结调用控制。DeepSeek-V4-Flash 公测期响应较慢，
     # 20s 会频繁触发超时降级导致"对话无法使用"；放宽到 90s 并允许 1 次重试。

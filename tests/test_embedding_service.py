@@ -79,6 +79,15 @@ def test_embed_documents_empty_string_is_valid(svc):
     assert svc._calls == [["", "  ", "正常文本"]]
 
 
+def test_embed_documents_batches_large_requests(svc):
+    svc._batch_size = 2
+
+    result = svc.embed_documents(["a", "b", "c", "d", "e"])
+
+    assert all(_dim(vector) > 0 for vector in result)
+    assert svc._calls == [["a", "b"], ["c", "d"], ["e"]]
+
+
 # ── embed_query 输入校验 ──────────────────────────────────────────
 
 def test_embed_query_none_returns_empty(svc):
