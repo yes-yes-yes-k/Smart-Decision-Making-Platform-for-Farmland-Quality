@@ -34,7 +34,13 @@ def _parse_domain_labels():
             values = json.loads(raw)
         else:
             values = raw.split(',')
-    return normalize_label_codes(values)
+    labels = normalize_label_codes(values)
+    non_domain_labels = [label for label in labels if label not in DOMAIN_CODES]
+    if non_domain_labels:
+        raise ValueError(
+            "domain_labels 仅支持一级领域: " + ", ".join(non_domain_labels)
+        )
+    return labels
 
 
 def _admin_required():
@@ -150,6 +156,11 @@ def upload_document():
             domain_labels = _parse_domain_labels()
         except (ValueError, TypeError, json.JSONDecodeError) as exc:
             return jsonify({"status": "error", "message": str(exc)}), 400
+        if category not in DATA_CATEGORIES and not domain_labels:
+            return jsonify({
+                "status": "error",
+                "message": "知识文档必须通过 domain_labels 明确指定至少一个一级领域",
+            }), 400
         print(f"[上传接口] 开始处理 - 文件名: {file.filename}, 大小: {file.content_length}, 分类: {category}, 治理类型: {treatment_type}", flush=True)
 
         new_filename, file_path, file_hash = save_uploaded_file(file)

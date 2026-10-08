@@ -3,7 +3,6 @@ from __future__ import annotations
 from typing import Iterable, List
 
 from framework.knowledge.taxonomy import (
-    classify_label_candidates,
     domain_metadata,
     expand_with_parent_domains,
     label_level,
@@ -63,7 +62,11 @@ def assign_labels_for_ingestion(
     text: str,
     actor_id: int,
 ) -> List[str]:
-    """Persist approved explicit labels and pending automatic candidates."""
+    """Persist only labels explicitly supplied with the upload request.
+
+    ``text`` remains in the signature for compatibility with existing callers,
+    but ingestion deliberately does not classify it or create review candidates.
+    """
     approved = expand_with_parent_domains(explicit_labels)
     for code in approved:
         _upsert_assignment(
@@ -73,17 +76,6 @@ def assign_labels_for_ingestion(
             source=DocumentLabel.SOURCE_MANUAL,
             actor_id=actor_id,
             confidence=1.0,
-        )
-
-    for candidate in classify_label_candidates(text, exclude=approved):
-        _upsert_assignment(
-            document_id,
-            candidate["label_code"],
-            status=DocumentLabel.STATUS_PENDING,
-            source=DocumentLabel.SOURCE_AUTOMATIC,
-            actor_id=actor_id,
-            confidence=candidate["confidence"],
-            evidence=candidate["evidence"],
         )
     db.session.flush()
     return approved

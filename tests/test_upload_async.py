@@ -1,10 +1,12 @@
 """测试上传接口异步化：文档类返回 202 + status=0，并提交后台 worker。"""
 import sys
 import os
+from types import SimpleNamespace
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 import pytest
 from flask import Flask
+from werkzeug.datastructures import MultiDict
 from framework.api.routes import docs as docs_route
 from framework.models.user import db
 from framework.upload import ingestion_worker
@@ -22,12 +24,17 @@ def _stub_app_ctx(monkeypatch):
     import flask_jwt_extended
     monkeypatch.setattr(_jwt_vd, "verify_jwt_in_request", lambda *a, **kw: None)
     monkeypatch.setattr(flask_jwt_extended, "verify_jwt_in_request", lambda *a, **kw: None)
+    monkeypatch.setattr(
+        docs_route,
+        "_current_user",
+        lambda: SimpleNamespace(is_admin=lambda: True),
+    )
     with app.app_context():
         with app.test_request_context():
             yield
 
 
-def _make_request(filename, category):
+def _make_request(filename, category, domain_labels=None):
     class _File:
         def __init__(self, name, size):
             self.filename = name
@@ -36,7 +43,9 @@ def _make_request(filename, category):
         method = "POST"
         path = "/upload"
         files = {"file": _File(filename, 100)}
-        form = {"category": category}
+        form = MultiDict({"category": category})
+        if domain_labels:
+            form.add("domain_labels", domain_labels)
     return _Req()
 
 
@@ -68,7 +77,10 @@ def test_upload_document_returns_202_and_submits(monkeypatch, tmp_path):
     monkeypatch.setattr(ingestion_worker, "submit_ingest",
                         lambda **kw: submitted.update(kw))
 
-    monkeypatch.setattr(docs_route, "request", _make_request("test.pdf", "acidification"))
+    monkeypatch.setattr(
+        docs_route, "request",
+        _make_request("test.pdf", "acidification", "cultivated_land_quality"),
+    )
     monkeypatch.setattr(docs_route, "get_jwt_identity", lambda: 1)
     monkeypatch.setattr(docs_route.os.path, "getsize", lambda p: 100)
 
@@ -81,6 +93,7 @@ def test_upload_document_returns_202_and_submits(monkeypatch, tmp_path):
     assert body["data"]["status"] == docs_route.Document.STATUS_PENDING
     assert submitted.get("document_id") == 42
     assert submitted.get("doc_name") == "test.pdf"
+    assert submitted.get("domain_labels") == ["cultivated_land_quality"]
 
 
 def test_upload_data_file_stays_sync(monkeypatch, tmp_path):
