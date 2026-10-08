@@ -14,7 +14,7 @@ from framework.upload.document_parser import parse_document
 from framework.upload.chunker import split_text, split_text_with_pages
 from framework.vector_store.chroma_store import vector_store
 from framework.knowledge.service import assign_labels_for_ingestion, vector_access_metadata
-from framework.knowledge.taxonomy import expand_with_parent_domains, primary_domain_for_category
+from framework.knowledge.taxonomy import expand_with_parent_domains
 
 # 模块级 worker：与 data_trigger.py 的 ThreadPoolExecutor 模式同源
 _WORKER = concurrent.futures.ThreadPoolExecutor(
@@ -64,10 +64,10 @@ def _ingest(
             if not chunks:
                 raise ValueError("文档解析后没有可索引内容")
 
+            # Domain membership comes exclusively from the upload request.
+            # ``category`` remains a physical collection/legacy grouping field
+            # and must not silently grant a knowledge-domain label.
             explicit_labels = list(domain_labels or [])
-            primary_domain = primary_domain_for_category(category)
-            if primary_domain and primary_domain not in explicit_labels:
-                explicit_labels.append(primary_domain)
             approved_labels = expand_with_parent_domains(explicit_labels)
             access_metadata = vector_access_metadata(visibility_scope, approved_labels)
 

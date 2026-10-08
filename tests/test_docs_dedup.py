@@ -113,7 +113,10 @@ def _upload(client, token, filename, content):
     resp = client.post(
         '/api/v1/docs/upload',
         headers={'Authorization': f'Bearer {token}'},
-        data={'file': (io.BytesIO(content), filename)},
+        data={
+            'file': (io.BytesIO(content), filename),
+            'domain_labels': 'cultivated_land_quality',
+        },
         content_type='multipart/form-data'
     )
     return resp

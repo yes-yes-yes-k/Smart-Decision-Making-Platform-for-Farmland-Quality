@@ -69,7 +69,10 @@ def test_ingest_success_transitions_pending_to_completed(monkeypatch):
     monkeypatch.setattr(ingestion_worker.db.session, "query", lambda *a: _FakeQuery())
     monkeypatch.setattr(ingestion_worker.db.session, "commit", lambda: setattr(fake, "_committed", True))
 
-    _ingest(1, "/tmp/x.pdf", "pdf", "x.pdf", "acidification", None, 7)
+    _ingest(
+        1, "/tmp/x.pdf", "pdf", "x.pdf", "acidification", None, 7,
+        domain_labels=["cultivated_land_quality"],
+    )
 
     assert fake.status == Document.STATUS_COMPLETED
     assert fake.chunk_count == 2
