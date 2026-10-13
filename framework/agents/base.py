@@ -1,5 +1,6 @@
 from __future__ import annotations
 from abc import ABC, abstractmethod
+from functools import wraps
 from typing import Any, Dict, List, Optional
 import logging
 import uuid
@@ -16,6 +17,33 @@ class ProfessionalInputRejected(ValueError):
 
 class BaseAgent(ABC):
     """智能体抽象基类，定义统一接口。"""
+
+    def __init_subclass__(cls, **kwargs):
+        """Route every concrete Model-1..6 ``execute`` through one result layer.
+
+        Wrapping here covers manager calls, function tools and direct agent
+        calls without requiring each model implementation to duplicate cache,
+        fingerprint and version handling.
+        """
+        super().__init_subclass__(**kwargs)
+        implementation = cls.__dict__.get("execute")
+        if implementation is None or getattr(implementation, "_versioned_execution", False):
+            return
+
+        @wraps(implementation)
+        def versioned_execute(self, *args, **call_kwargs):
+            payload = args[0] if args else call_kwargs.get("task", call_kwargs.get("data"))
+            if not isinstance(payload, dict):
+                payload = {}
+            from framework.domain.assessment.versioned_results import execute_versioned
+            return execute_versioned(
+                self,
+                payload,
+                lambda: implementation(self, *args, **call_kwargs),
+            )
+
+        versioned_execute._versioned_execution = True
+        cls.execute = versioned_execute
 
     def __init__(self, name: str, description: str, model_id: str, domain: str):
         self.name = name

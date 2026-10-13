@@ -7,7 +7,7 @@
 - 障碍诊断 (diagnosis_row: 主要/次要因子识别)
 """
 from __future__ import annotations
-from typing import Dict, List, Tuple, Any
+from typing import Dict, List, Any
 
 from framework.domain.calculations.coefficients import (
     MODEL3_COEFFICIENTS, MODEL3_WEIGHTS,
@@ -15,16 +15,6 @@ from framework.domain.calculations.coefficients import (
     CONCEPT_INDICATORS,
 )
 from framework.domain.calculations.region_mapping_service import get_region_mapping
-
-# GCZD/DXBW 标记为 "by_membership": 按隶属度值判定障碍等级的阈值
-# (移植自 config.py calc_obstacle_level 中的 GCZD/DXBW 分支)
-# 区间为闭区间 [lower, upper]，按 heavy→moderate→light→none 优先匹配
-MEMBERSHIP_OBSTACLE_THRESHOLDS: Dict[str, Dict[str, List[Tuple[float, float]]]] = {
-    "GCZD": {"heavy": [(0.4, 0.6)], "moderate": [(0.6, 0.7)],
-             "light": [(0.75, 0.85)], "none": [(0.9, 1.0)]},
-    "DXBW": {"heavy": [(0.2, 0.5)], "moderate": [(0.5, 0.68)],
-             "light": [(0.7, 0.8)], "none": [(0.9, 1.0)]},
-}
 
 _LEVEL_LABELS = {"heavy": "重度障碍", "moderate": "中度障碍",
                  "light": "轻度障碍", "none": "无障碍"}
@@ -75,17 +65,6 @@ def calc_discrete(code, coef: Dict) -> float:
     return coef.get(code, 0.0)
 
 
-def _match_ranges(value: float, ranges: List[Tuple[Any, Any]]) -> bool:
-    """闭区间 [lower, upper] 匹配，None 表示该侧无界。"""
-    for lower, upper in ranges:
-        if lower is not None and value < lower:
-            continue
-        if upper is not None and value > upper:
-            continue
-        return True
-    return False
-
-
 def calc_obstacle_level(indicator: str, value, membership=None):
     """按阈值判定障碍等级（移植自 config.py calc_obstacle_level）。
 
@@ -109,31 +88,91 @@ def calc_obstacle_level(indicator: str, value, membership=None):
     if thresholds == "by_membership":
         if membership is None:
             return None
-        mem_thresholds = MEMBERSHIP_OBSTACLE_THRESHOLDS.get(indicator)
-        if mem_thresholds is None:
+        try:
+            membership = float(membership)
+        except (TypeError, ValueError):
             return None
-        for level in _LEVEL_ORDER:
-            if _match_ranges(membership, mem_thresholds.get(level, [])):
-                return _LEVEL_LABELS[level]
+        # 严格复制原模型的开闭区间，避免 0.5/0.6 等边界同时
+        # 命中两个等级后被错分到更重的等级。
+        if indicator == "GCZD":
+            if 0.4 <= membership < 0.6:
+                return _LEVEL_LABELS["heavy"]
+            if 0.6 <= membership <= 0.7:
+                return _LEVEL_LABELS["moderate"]
+            if 0.75 <= membership <= 0.85:
+                return _LEVEL_LABELS["light"]
+            if 0.9 <= membership <= 1.0:
+                return _LEVEL_LABELS["none"]
+        elif indicator == "DXBW":
+            if 0.2 <= membership < 0.5:
+                return _LEVEL_LABELS["heavy"]
+            if 0.5 <= membership <= 0.68:
+                return _LEVEL_LABELS["moderate"]
+            if 0.7 <= membership <= 0.8:
+                return _LEVEL_LABELS["light"]
+            if 0.9 <= membership <= 1.0:
+                return _LEVEL_LABELS["none"]
         return None
 
     # 概念指标按代码列表判定
-    if isinstance(value, str):
+    if indicator in CONCEPT_INDICATORS:
         for level in _LEVEL_ORDER:
             if value in thresholds.get(level, []):
                 return _LEVEL_LABELS[level]
         return None
 
-    # 数值指标按区间判定
+    # 数值指标按原模型的精确开闭区间判定。
     if value is None:
         return None
     try:
         v = float(value)
     except (TypeError, ValueError):
         return None
-    for level in _LEVEL_ORDER:
-        if _match_ranges(v, thresholds.get(level, [])):
-            return _LEVEL_LABELS[level]
+    if indicator == "SJD":
+        if v <= 4.5 or v > 9.5:
+            return _LEVEL_LABELS["heavy"]
+        if v <= 5.5 or v > 8.5:
+            return _LEVEL_LABELS["moderate"]
+        if v < 6.5 or v > 7.5:
+            return _LEVEL_LABELS["light"]
+        return _LEVEL_LABELS["none"]
+    if indicator in {"YJZ", "YXL", "SXJ"}:
+        cutoffs = {
+            "YJZ": (10.0, 20.0, 25.0),
+            "YXL": (10.0, 20.0, 35.0),
+            "SXJ": (50.0, 100.0, 150.0),
+        }[indicator]
+        if v <= cutoffs[0]:
+            return _LEVEL_LABELS["heavy"]
+        if v <= cutoffs[1]:
+            return _LEVEL_LABELS["moderate"]
+        if v <= cutoffs[2]:
+            return _LEVEL_LABELS["light"]
+        return _LEVEL_LABELS["none"]
+    if indicator == "TRRZ":
+        if v <= 0.9 or v > 1.4:
+            return _LEVEL_LABELS["heavy"]
+        if v < 0.95 or v > 1.3:
+            return _LEVEL_LABELS["moderate"]
+        if v < 1.0 or v > 1.2:
+            return _LEVEL_LABELS["light"]
+        return _LEVEL_LABELS["none"]
+    if indicator == "GCHD":
+        if v <= 10:
+            return _LEVEL_LABELS["heavy"]
+        if v <= 15:
+            return _LEVEL_LABELS["moderate"]
+        if v < 20:
+            return _LEVEL_LABELS["light"]
+        return _LEVEL_LABELS["none"]
+    if indicator == "YXTCHD":
+        if v < 60:
+            return _LEVEL_LABELS["heavy"]
+        if v < 80:
+            return _LEVEL_LABELS["moderate"]
+        if v < 100:
+            return _LEVEL_LABELS["light"]
+        return _LEVEL_LABELS["none"]
     return None
 
 

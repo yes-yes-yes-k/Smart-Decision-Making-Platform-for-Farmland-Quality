@@ -14,6 +14,7 @@ from typing import Any
 
 import sqlalchemy as sa
 
+from framework.domain.assessment.versioned_results import business_result
 from framework.domain.statistics import (
     CLASSIFICATION_VERSION,
     INDICATOR_DEFINITIONS,
@@ -117,6 +118,13 @@ def _row_indicators(row: Mapping[str, Any]) -> dict[str, Any]:
         indicators["quality_grade"] = row["quality_grade"]
     if row.get("composite_index") is not None:
         indicators["composite_index"] = row["composite_index"]
+    if "assessment_result" in row:
+        assessment = business_result(_json_object(row.get("assessment_result")))
+        # Current computed values have one publication source.  A missing
+        # versioned assessment remains unclassified instead of falling back to
+        # an imported/stale snapshot.
+        indicators["quality_grade"] = assessment.get("quality_grade")
+        indicators["composite_index"] = assessment.get("composite_index")
     return indicators
 
 
@@ -768,13 +776,23 @@ def _dataset_sql(year: int | None) -> tuple[str, dict[str, Any]]:
         return (
             """SELECT p.id AS parcel_pk, p.parcel_id, p.area_code, p.geom,
                       p.soil_indicators, NULL::text AS quality_grade,
-                      NULL::double precision AS composite_index, p.updated_at
-               FROM parcel_info AS p""",
+                      NULL::double precision AS composite_index,
+                      COALESCE(assessment.result_payload, '{}'::jsonb) AS assessment_result,
+                      assessment.calculated_at AS assessment_calculated_at,
+                      GREATEST(p.updated_at, assessment.calculated_at) AS updated_at
+               FROM parcel_info AS p
+               LEFT JOIN versioned_model_result AS assessment
+                 ON assessment.agent_id = 'model-2'
+                AND assessment.subject_type = 'parcel'
+                AND assessment.subject_id = p.parcel_id
+                AND assessment.is_current = TRUE""",
             {},
         )
     return (
         """SELECT p.id AS parcel_pk, p.parcel_id, p.area_code, p.geom,
                   h.soil_indicators, h.quality_grade, h.composite_index,
+                  NULL::jsonb AS assessment_result,
+                  NULL::timestamp with time zone AS assessment_calculated_at,
                   h.created_at AS updated_at
            FROM parcel_info AS p
            JOIN parcel_history_snapshot AS h ON h.parcel_id = p.parcel_id
@@ -807,7 +825,9 @@ def _live_statistics_sql(scope_query: str, dataset_query: str) -> sa.TextClause:
             WHERE NOT ST_IsEmpty(clipped_geom)
         )
         SELECT data.parcel_id, data.area_code, data.soil_indicators,
-               data.quality_grade, data.composite_index, data.updated_at,
+               data.quality_grade, data.composite_index,
+               data.assessment_result, data.assessment_calculated_at,
+               data.updated_at,
                parcel_areas.area_mu
         FROM parcel_areas
         JOIN data ON data.parcel_pk = parcel_areas.parcel_pk
@@ -871,7 +891,9 @@ def _precomputed_statistics_rows(
     rows = db.session.execute(sa.text(f"""
         WITH data AS MATERIALIZED ({dataset_query})
         SELECT data.parcel_id, data.area_code, data.soil_indicators,
-               data.quality_grade, data.composite_index, data.updated_at,
+               data.quality_grade, data.composite_index,
+               data.assessment_result, data.assessment_calculated_at,
+               data.updated_at,
                cached.area_mu
         FROM farmland_region_parcel_area AS cached
         JOIN data ON data.parcel_id = cached.parcel_id
@@ -1049,13 +1071,19 @@ def _parcel_response(
     *,
     data_year: int | None = None,
     metric_keys: Iterable[str] | None = None,
+    assessment: Mapping[str, Any] | None = None,
+    version: Mapping[str, Any] | None = None,
 ) -> dict[str, Any]:
     indicators = _json_object(parcel.soil_indicators)
     if getattr(parcel, "quality_grade", None) is not None:
         indicators["quality_grade"] = parcel.quality_grade
     if getattr(parcel, "composite_index", None) is not None:
         indicators["composite_index"] = parcel.composite_index
-    return _parcel_payload(
+    if assessment is not None:
+        calculated = dict(assessment)
+        indicators["quality_grade"] = calculated.get("quality_grade")
+        indicators["composite_index"] = calculated.get("composite_index")
+    response = _parcel_payload(
         parcel.parcel_id,
         parcel.area_code,
         indicators,
@@ -1064,6 +1092,20 @@ def _parcel_response(
         metric_keys,
         metric_key,
     )
+    if version:
+        response["qualityAssessment"] = dict(version)
+    return response
+
+
+def _calculated_grade(parcel: ParcelInfo) -> tuple[dict[str, Any], dict[str, Any]]:
+    """Ensure and return the Model-2 publication shared by map and agent."""
+    from framework.agents.specialized.grade_agent import FarmlandGradeAgent
+
+    execution = FarmlandGradeAgent().execute({
+        "parcel_id": parcel.parcel_id,
+        "area_code": parcel.area_code,
+    })
+    return business_result(execution), dict(execution.get("versioned_result") or {})
 
 
 def get_parcel_summary(
@@ -1078,12 +1120,15 @@ def get_parcel_summary(
         if parcel is None:
             raise StatisticsError("parcel_not_found", "地块不存在", 404)
         keys = [validated_metric] if validated_metric else None
+        assessment, version = _calculated_grade(parcel)
         return _parcel_response(
             parcel,
             _parcel_area_mu(parcel.parcel_id),
             validated_metric,
             data_year=None,
             metric_keys=keys,
+            assessment=assessment,
+            version=version,
         )
     try:
         row = db.session.execute(sa.text("""
@@ -1232,6 +1277,7 @@ def query_parcels(payload: Mapping[str, Any] | None) -> dict[str, Any]:
               AND ST_Intersects(data.geom, scope.geom)
         )
         SELECT parcel_id, area_code, soil_indicators, quality_grade, composite_index,
+               assessment_result, assessment_calculated_at,
                updated_at, area_mu, geometry
         FROM matched WHERE area_mu > 0
         ORDER BY parcel_id LIMIT :query_limit OFFSET :query_offset

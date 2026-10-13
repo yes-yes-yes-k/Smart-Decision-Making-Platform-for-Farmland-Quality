@@ -39,6 +39,8 @@ class StabilityRiskAgent(BaseAgent):
             if indicators is not None:
                 inputs = dict(indicators)
                 inputs["parcel_id"] = str(parcel_id)
+                if context.get("area_code") is not None:
+                    inputs["area_code"] = context["area_code"]
                 inputs["data_source"] = "db"
                 return inputs
 
@@ -79,6 +81,7 @@ class StabilityRiskAgent(BaseAgent):
             if data_source == "db":
                 # DB 路径：调用 calculate_stability
                 from framework.domain.calculations.stability_calculation import calculate_stability
+                from framework.domain.assessment.versioned_results import business_result, get_current_result
                 from framework.models.thematic_model import ParcelHistorySnapshot, ParcelInfo
                 from framework.models.user import db
                 accessor = ParcelDataAccessor()
@@ -116,10 +119,15 @@ class StabilityRiskAgent(BaseAgent):
                         # geometry 类型下 1000 表示 1000 度（覆盖全球）
                         neighbor_rows = db.session.execute(
                             sa_text(
-                                "SELECT parcel_id, soil_indicators "
-                                "FROM parcel_info "
-                                "WHERE parcel_id != :pid "
-                                "AND ST_DWithin(geom::geography, "
+                                "SELECT p.parcel_id, v.result_payload "
+                                "FROM parcel_info AS p "
+                                "LEFT JOIN versioned_model_result AS v "
+                                "ON v.agent_id = 'model-2' "
+                                "AND v.subject_type = 'parcel' "
+                                "AND v.subject_id = p.parcel_id "
+                                "AND v.is_current = TRUE "
+                                "WHERE p.parcel_id != :pid "
+                                "AND ST_DWithin(p.geom::geography, "
                                 "ST_GeomFromText(:wkt, 4326)::geography, :radius)"
                             ),
                             {
@@ -134,7 +142,7 @@ class StabilityRiskAgent(BaseAgent):
                         neighbors = [
                             {
                                 "parcel_id": r[0],
-                                "quality_grade": (r[1] or {}).get("quality_grade") if isinstance(r[1], dict) else None,
+                                "quality_grade": business_result(r[1]).get("quality_grade"),
                             }
                             for r in neighbor_rows
                         ]
@@ -142,10 +150,15 @@ class StabilityRiskAgent(BaseAgent):
                         db.session.rollback()
                         neighbors = []
                 # 计算稳定性
+                grade_result = business_result(get_current_result("model-2", parcel_id))
+                quality_index = grade_result.get("composite_index")
+                quality_grade = grade_result.get("quality_grade")
+                if quality_index is None or quality_grade is None:
+                    raise RuntimeError("Model-2 版本化质量结果未就绪")
                 parcel_info = {
                     "indicators": mapped,
-                    "quality_index": inputs.get("quality_index", 0.5),
-                    "quality_grade": inputs.get("quality_grade", "5"),
+                    "quality_index": quality_index,
+                    "quality_grade": quality_grade,
                     "area_code": inputs.get("area_code", "440281"),
                 }
                 stability_result = calculate_stability(parcel_info, history_data, neighbors)

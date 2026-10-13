@@ -27,22 +27,18 @@ from framework.models import AreaCodeRegionMap  # noqa: E402
 logger = logging.getLogger("init_region_mappings")
 
 # 初始映射数据：area_code → {region_name, primary, secondary, ejnyq_idx}
-# 乐昌(440281) 与 新丰(440233) 均属华南区(HN)/南岭丘陵山地林农区(NL, ejnyq_idx=3)
+# 与模型 2 原始 CSV 的 XQMCcode/EJNYQcode 对照一致。
 INITIAL_REGION_MAPPINGS = [
-    {
-        "area_code": "440281",
-        "region_name": "乐昌市",
-        "primary": "HN",
-        "secondary": "NL",
-        "ejnyq_idx": 3,
-    },
-    {
-        "area_code": "440233",
-        "region_name": "新丰县",
-        "primary": "HN",
-        "secondary": "NL",
-        "ejnyq_idx": 3,
-    },
+    {"area_code": "440203", "region_name": "武江区", "primary": "HN", "secondary": "MNY", "ejnyq_idx": 0},
+    {"area_code": "440204", "region_name": "浈江区", "primary": "HN", "secondary": "NL", "ejnyq_idx": 3},
+    {"area_code": "440205", "region_name": "曲江区", "primary": "HN", "secondary": "NL", "ejnyq_idx": 3},
+    {"area_code": "440222", "region_name": "始兴县", "primary": "HN", "secondary": "NL", "ejnyq_idx": 3},
+    {"area_code": "440224", "region_name": "仁化县", "primary": "HN", "secondary": "NL", "ejnyq_idx": 3},
+    {"area_code": "440229", "region_name": "翁源县", "primary": "HN", "secondary": "NL", "ejnyq_idx": 3},
+    {"area_code": "440232", "region_name": "乳源瑶族自治县", "primary": "HN", "secondary": "NL", "ejnyq_idx": 3},
+    {"area_code": "440233", "region_name": "新丰县", "primary": "HN", "secondary": "NL", "ejnyq_idx": 3},
+    {"area_code": "440281", "region_name": "乐昌市", "primary": "HN", "secondary": "NL", "ejnyq_idx": 3},
+    {"area_code": "440282", "region_name": "南雄市", "primary": "HN", "secondary": "NL", "ejnyq_idx": 3},
 ]
 
 

@@ -10,6 +10,8 @@ from copy import deepcopy
 from dataclasses import dataclass
 from typing import Any, Dict, Iterable, List, Mapping, Optional, Tuple
 
+from framework.domain.public_field_labels import translate_public_text
+
 
 SCHEMA_VERSION = "2.0"
 LEGACY_SCHEMA_VERSION = "1.0"
@@ -310,6 +312,7 @@ def normalize_execution(agent: Any, payload: Optional[Mapping[str, Any]], execut
     model_id = _canonical_model_id(agent)
     agent_key = _agent_id(agent)
     metadata = execution.get("metadata") if isinstance(execution.get("metadata"), Mapping) else {}
+    versioned = execution.get("versioned_result") if isinstance(execution.get("versioned_result"), Mapping) else {}
     source = str(execution.get("data_source") or metadata.get("data_source") or "unknown")
     simulated = bool(execution.get("simulated", metadata.get("simulated", False)))
     raw_result = execution.get("result") if isinstance(execution.get("result"), Mapping) else {}
@@ -319,6 +322,7 @@ def normalize_execution(agent: Any, payload: Optional[Mapping[str, Any]], execut
         or metadata.get("model_version")
         or raw_result.get("model_version")
         or nested_metadata.get("model_version")
+        or versioned.get("modelVersion")
     )
 
     if agent_key == "model-6" or model_id == "comprehensive-fertility-improvement":
@@ -399,6 +403,10 @@ def normalize_execution(agent: Any, payload: Optional[Mapping[str, Any]], execut
             "data_source": source,
             "simulated": simulated,
             "model_version": model_version,
+            "calculation_result_id": versioned.get("resultId"),
+            "coefficient_version": versioned.get("coefficientVersion"),
+            "input_hash": versioned.get("inputHash"),
+            "calculated_at": versioned.get("calculatedAt"),
         },
         "issues": issues,
     }
@@ -541,7 +549,8 @@ def deterministic_answer(model_result: Mapping[str, Any]) -> str:
             parts.append(f"{label}：{value}")
     if result.get("primary_factors"):
         parts.append(f"主要障碍因素：{result['primary_factors']}")
-    return "；".join(parts) or "模型已完成分析，但没有可展示的关键指标。"
+    answer = "；".join(parts) or "模型已完成分析，但没有可展示的关键指标。"
+    return translate_public_text(answer)
 
 
 __all__ = [
