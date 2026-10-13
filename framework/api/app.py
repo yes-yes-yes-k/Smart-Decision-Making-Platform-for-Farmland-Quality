@@ -162,6 +162,32 @@ def _ensure_analysis_context_compatibility(app: Flask):
             ensure_execution_log_provenance(connection)
 
 
+def _ensure_versioned_model_results(app: Flask) -> None:
+    """Create the additive shared publication table during rolling upgrades."""
+    from framework.models.thematic_model import VersionedModelResult
+    from sqlalchemy import text as sa_text
+
+    with app.app_context():
+        VersionedModelResult.__table__.create(bind=db.engine, checkfirst=True)
+        if db.engine.dialect.name == "postgresql":
+            with db.engine.begin() as connection:
+                connection.execute(sa_text(
+                    "ALTER TABLE model_execution_log "
+                    "ALTER COLUMN model_version TYPE VARCHAR(128)"
+                ))
+                connection.execute(sa_text(
+                    "CREATE INDEX IF NOT EXISTS idx_parcel_info_geom_geography "
+                    "ON parcel_info USING GIST ((geom::geography)) "
+                    "WHERE geom IS NOT NULL"
+                ))
+                connection.execute(sa_text(
+                    "CREATE UNIQUE INDEX IF NOT EXISTS "
+                    "uk_versioned_model_result_one_current "
+                    "ON versioned_model_result (agent_id, subject_type, subject_id) "
+                    "WHERE is_current = TRUE"
+                ))
+
+
 def create_app(config_name: str = 'default') -> Flask:
     app = Flask(__name__)
     app.config.from_object(config_map[config_name])
@@ -176,6 +202,7 @@ def create_app(config_name: str = 'default') -> Flask:
     _ensure_kb_message_columns(app)
     _ensure_kb_report_columns(app)
     _ensure_analysis_context_compatibility(app)
+    _ensure_versioned_model_results(app)
 
     app.register_blueprint(auth_bp, url_prefix='/api/v1/auth')
     app.register_blueprint(chat_bp, url_prefix='/api/v1/chat')

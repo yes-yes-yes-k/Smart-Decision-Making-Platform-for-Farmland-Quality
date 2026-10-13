@@ -1,9 +1,15 @@
 # tests/calculations/test_grade_calculation.py
 import math
+from pathlib import Path
+
+import pytest
 from framework.domain.calculations.grade_calculation import (
-    membership_numeric, membership_concept, evaluate_land_quality, determine_grade
+    membership_numeric, membership_concept, evaluate_land_quality, determine_grade,
+    determine_model2_grade,
 )
-from framework.domain.calculations.coefficients import MODEL2_COEFFICIENTS, GRADE_CONFIG
+from framework.domain.calculations.coefficients import (
+    MODEL2_COEFFICIENTS, MODEL2_GRADE_LIMITS, GRADE_CONFIG,
+)
 
 def test_peak_type_sjd_at_optimal():
     """SJD 峰型: u=c=6.7 时隶属度=1.0."""
@@ -59,3 +65,73 @@ def test_evaluate_land_quality_lechang():
     assert 0.0 <= quality_index <= 1.0
     assert grade in [str(i) for i in range(1, 11)]
     assert len(memberships) == 12
+
+
+def test_model2_grade_uses_secondary_region_limits():
+    """Model-2 等级必须使用二级农业区原始 limits。"""
+    assert determine_model2_grade(0.9170, MODEL2_GRADE_LIMITS[3]) == "1"
+    assert determine_model2_grade(0.7532, MODEL2_GRADE_LIMITS[3]) == "8"
+    assert determine_model2_grade(0.7199, MODEL2_GRADE_LIMITS[3]) == "10"
+
+
+def test_parcel_2038_matches_reference_model2_port():
+    """地块 2038 的在线计算与原 Model-2 Python 移植结果一致。"""
+    indicators = {
+        "SJD": 5.504503, "YJZ": 31.80049, "YXL": 50.578899,
+        "SXJ": 51.145582, "TRRZ": 1.16, "YXTCHD": 100.0, "GCHD": 20.0,
+        "GCZD": "RT", "PSNL": "M", "GGNL": "US", "DXBW": "MSM",
+        "ZDGX": "TLBC",
+    }
+
+    quality_index, grade, memberships = evaluate_land_quality(indicators, "440205")
+
+    assert quality_index == pytest.approx(0.7531518984529598)
+    assert grade == "8"
+    # 排水、灌溉和南岭地形隶属度的顺序/系数不得再交换。
+    assert memberships[8:11] == [0.8, 0.3, 0.45]
+
+
+def test_online_model2_matches_reference_engine_for_deployed_csv():
+    """在线 DB 计算与已验证的原 Model-2 引擎逐地块数值等价。"""
+    from ai_culti_demo.farmland_grade_eval.config import EvaluationConfig
+    from ai_culti_demo.farmland_grade_eval.data_loader import load_parcels_from_csv
+    from ai_culti_demo.farmland_grade_eval.evaluation import (
+        evaluate_land_quality as evaluate_reference,
+    )
+
+    csv_path = (
+        Path(__file__).resolve().parents[2]
+        / "bin" / "farmland_quality_eval" / "Farmland_quality_Level_Database.csv"
+    )
+    parcels = load_parcels_from_csv(str(csv_path))
+    area_codes = {
+        1: "440281", 2: "440232", 3: "440224", 4: "440282", 5: "440222",
+        6: "440233", 7: "440205", 8: "440203", 9: "440204", 10: "440229",
+    }
+    textures = ["SRST", "SRT", "RT", "FRT", "SNRT", "NRT", "FNRT", "SNT", "RNT", "FNT", "NT", "ZNT"]
+    drainage = ["CM", "M", "JM", "BM"]
+    irrigation = ["FS", "S", "BS", "US"]
+    terrains = ["PLT", "PMG", "PUG", "WVB", "MB", "LHR", "MPH", "UHR", "MSL", "MSM", "MSU"]
+    structures = ["TLBC", "St", "IL", "Ct", "TCBL", "TL", "Lt"]
+    config = EvaluationConfig()
+
+    for parcel in parcels:
+        expected = evaluate_reference(config, parcel)
+        indicators = {
+            "SJD": parcel.sjd, "YJZ": parcel.yjz, "YXL": parcel.yxl,
+            "SXJ": parcel.sxj, "TRRZ": parcel.trrz,
+            "YXTCHD": parcel.yxtchd, "GCHD": parcel.gchd,
+            "GCZD": textures[parcel.zdgc - 1],
+            "PSNL": drainage[parcel.psnl - 1],
+            "GGNL": irrigation[parcel.ggnl - 1],
+            "DXBW": terrains[parcel.dxbw - 1],
+            "ZDGX": structures[parcel.zdgx - 1],
+        }
+
+        actual_index, actual_grade, actual_memberships = evaluate_land_quality(
+            indicators, area_codes[parcel.xqmc]
+        )
+
+        assert actual_index == pytest.approx(expected.quality_index), parcel.tybh
+        assert actual_grade == str(expected.grade), parcel.tybh
+        assert actual_memberships == pytest.approx(expected.y), parcel.tybh

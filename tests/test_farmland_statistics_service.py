@@ -59,11 +59,37 @@ def test_summary_is_area_weighted_and_keeps_unclassified_separate():
 
 def test_summary_parses_json_text_and_quality_grade():
     result = summarize_rows([
-        {"parcel_id": "P1", "area_mu": 2, "soil_indicators": '{"quality_grade": "8等"}'},
+        {
+            "parcel_id": "P1",
+            "area_mu": 2,
+            "soil_indicators": '{"quality_grade": "9等"}',
+            "assessment_result": {
+                "result": {"quality_grade": 8, "composite_index": 0.7532},
+            },
+        },
     ], ["quality_grade"])
     metric = result["metrics"][0]
     assert metric["table"]["average"] == 8.0
     assert metric["distribution"][7]["parcelCount"] == 1
+
+
+def test_parcel_response_uses_passed_versioned_assessment():
+    parcel = SimpleNamespace(
+        parcel_id="2038",
+        area_code="440205",
+        soil_indicators={"quality_grade": 9, "composite_index": 0.42},
+    )
+
+    response = _parcel_response(
+        parcel,
+        area_mu=1737.44,
+        assessment={"quality_grade": 8, "composite_index": 0.7532},
+        version={"resultId": 12, "modelVersion": "quality-grade-2.1.0"},
+    )
+
+    assert response["qualityGrade"] == 8
+    assert response["metrics"]["quality_grade"]["value"] == 8
+    assert response["qualityAssessment"]["resultId"] == 12
 
 
 def test_parcel_response_includes_full_geometry_area_in_mu():

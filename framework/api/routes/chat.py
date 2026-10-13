@@ -7,6 +7,10 @@ from framework.agents.orchestrator import multi_agent_orchestrator
 from framework.agents.orchestrator import runtime_from_current_app
 from framework.agents.workflows.comprehensive.runtime import WorkflowConflict, WorkflowNotFound, CheckpointerUnavailable
 from framework.analysis_context.errors import AnalysisContextError
+from framework.domain.public_field_labels import (
+    PublicTextStreamTranslator,
+    translate_public_text,
+)
 from framework.api.services import chat_request_service
 from framework.observability.analysis_context_metrics import (
     EVENT_ERROR_409, EVENT_ERROR_422, EVENT_ERROR_503,
@@ -40,9 +44,12 @@ def _serialize_chat_response(
     routing_status = result.get("routing_status", routing.get("status", "normal")) if isinstance(result, dict) else "normal"
     data = {
         "message_id": message_id,
-        "answer": result.get("answer", "") if isinstance(result, dict) else "",
+        "answer": translate_public_text(result.get("answer", "")) if isinstance(result, dict) else "",
         "sources": result.get("sources", []) if isinstance(result, dict) else [],
-        "recommendations": result.get("recommendations", []) if isinstance(result, dict) else [],
+        "recommendations": [
+            translate_public_text(item) if isinstance(item, str) else item
+            for item in ((result.get("recommendations") or []) if isinstance(result, dict) else [])
+        ],
         "routing": {
             "question_type": question_type,
             "status": routing_status,
@@ -134,7 +141,13 @@ def get_messages(id):
     conversation = Conversation.query.filter_by(id=id, user_id=user_id).first()
     if not conversation:
         return jsonify({"status": "error", "message": "对话不存在"}), 404
-    return jsonify({"status": "ok", "data": [m.to_dict() for m in conversation.messages]})
+    messages = []
+    for message in conversation.messages:
+        payload = message.to_dict()
+        if message.role == "assistant":
+            payload["content"] = translate_public_text(payload.get("content", ""))
+        messages.append(payload)
+    return jsonify({"status": "ok", "data": messages})
 
 @chat_bp.route('/', methods=['POST'])
 @jwt_required()
@@ -199,16 +212,22 @@ def chat_stream():
     app = current_app._get_current_object()
 
     def event_stream():
+        public_text = PublicTextStreamTranslator()
         try:
             for item in multi_agent_orchestrator.run_stream(
                 prepared.orchestrator_request, conversation_history=prepared.history,
             ):
                 item_type = item.get("type")
                 if item_type == "token":
-                    yield f"data: {json.dumps({'event': 'token', 'content': item['content']})}\n\n"
+                    content = public_text.feed(item.get("content", ""))
+                    if content:
+                        yield f"data: {json.dumps({'event': 'token', 'content': content}, ensure_ascii=False)}\n\n"
                 elif item_type == "meta":
                     yield f"data: {json.dumps({'event': 'meta', 'data': item.get('data', {})})}\n\n"
                 elif item_type == "done":
+                    pending_text = public_text.flush()
+                    if pending_text:
+                        yield f"data: {json.dumps({'event': 'token', 'content': pending_text}, ensure_ascii=False)}\n\n"
                     data_payload = item.get("data", {})
                     app_ctx = app.app_context()
                     app_ctx.push()

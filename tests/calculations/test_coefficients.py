@@ -15,6 +15,16 @@ def test_area_to_region_lechang():
     assert info["primary"] == "HN"
     assert info["ejnyq_idx"] == 3
 
+
+def test_area_to_region_covers_all_imported_shaoguan_counties():
+    imported_codes = {
+        "440203", "440204", "440205", "440222", "440224",
+        "440229", "440232", "440233", "440281", "440282",
+    }
+    assert imported_codes <= AREA_TO_REGION.keys()
+    assert AREA_TO_REGION["440203"]["ejnyq_idx"] == 0  # 武江区/MNY
+    assert AREA_TO_REGION["440205"]["ejnyq_idx"] == 3  # 曲江区/NL
+
 def test_model2_coefficients_has_4_regions():
     """Model-2 系数有 4 个二级农业区 (index 0-3)."""
     assert len(MODEL2_COEFFICIENTS) == 4

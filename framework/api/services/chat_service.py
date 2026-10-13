@@ -15,6 +15,7 @@ from framework.analysis_context.contracts import AnalysisContext
 from framework.analysis_context.errors import AnalysisObjectInvalid
 from framework.analysis_context.provenance import ResultProvenanceBuilder
 from framework.analysis_context.service import AnalysisContextService
+from framework.domain.public_field_labels import translate_public_text
 from framework.models import Conversation, Message, ParcelInfo, db
 from framework.observability.analysis_context_metrics import (
     EVENT_LEGACY_FIELD_USED,
@@ -48,7 +49,13 @@ class ChatRequestService:
         if response_payload is not None:
             response = InteractionResponse.model_validate(response_payload)
             conversation = self._get_or_create_owned_conversation(user_id, body, "综合诊断恢复")
-            history=[{"role":item.role,"content":item.content} for item in conversation.messages]
+            history=[{
+                "role": item.role,
+                "content": (
+                    translate_public_text(item.content)
+                    if item.role == "assistant" else item.content
+                ),
+            } for item in conversation.messages]
             snapshot={"mode":"spatial","version":conversation.context_version or 0,"object":deepcopy(conversation.analysis_object)}
             return PreparedChat(conversation,None,history,{"conversation_id":conversation.id,"user_id":user_id},snapshot,response)
         question = body.get("message", "")
@@ -58,7 +65,13 @@ class ChatRequestService:
         try:
             conversation = self._get_or_create_owned_conversation(user_id, body, question)
             history = [
-                {"role": item.role, "content": item.content}
+                {
+                    "role": item.role,
+                    "content": (
+                        translate_public_text(item.content)
+                        if item.role == "assistant" else item.content
+                    ),
+                }
                 for item in conversation.messages
             ]
             resolved = self._context_service.resolve(
@@ -229,6 +242,15 @@ class ChatRequestService:
                 answer = normalized.get("answer", "")
                 if answer and not answer.startswith(title):
                     normalized["answer"] = f"{title}\n\n{answer}"
+        normalized["answer"] = translate_public_text(normalized.get("answer", ""))
+        if isinstance(normalized.get("report_draft"), str):
+            normalized["report_draft"] = translate_public_text(normalized["report_draft"])
+        recommendations = normalized.get("recommendations")
+        if isinstance(recommendations, list):
+            normalized["recommendations"] = [
+                translate_public_text(item) if isinstance(item, str) else item
+                for item in recommendations
+            ]
         return normalized
 
     @staticmethod

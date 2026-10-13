@@ -8,8 +8,8 @@
 from __future__ import annotations
 from typing import List, Tuple
 from framework.domain.calculations.coefficients import (
-    MODEL2_COEFFICIENTS, GRADE_CONFIG,
-    NUMERIC_INDICATORS, CONCEPT_INDICATORS, PEAK_TYPE_INDICES,
+    MODEL2_COEFFICIENTS, MODEL2_GRADE_LIMITS,
+    NUMERIC_INDICATORS, PEAK_TYPE_INDICES,
 )
 from framework.domain.calculations.region_mapping_service import get_region_mapping
 
@@ -74,6 +74,18 @@ def determine_grade(quality_index: float, bounds: list, labels: list) -> str:
     return grade
 
 
+def determine_model2_grade(quality_index: float, limits: list[float]) -> str:
+    """按 Model-2 原始降序分界判定 1–10 等。
+
+    ``limits[0]`` 是 1 等下限，``limits[8]`` 是 9 等下限；
+    低于所有分界时为 10 等。
+    """
+    for grade, lower_bound in enumerate(limits, start=1):
+        if quality_index >= lower_bound:
+            return str(grade)
+    return "10"
+
+
 def evaluate_land_quality(indicators: dict, area_code: str) -> Tuple[float, str, List[float]]:
     """12 指标加权综合评价（移植自 evaluation.py evaluate_land_quality）。
 
@@ -86,7 +98,6 @@ def evaluate_land_quality(indicators: dict, area_code: str) -> Tuple[float, str,
     """
     region = get_region_mapping(area_code)
     ejnyq_idx = region["ejnyq_idx"]
-    primary = region["primary"]
     coef = MODEL2_COEFFICIENTS[ejnyq_idx]
 
     # 7 个数值指标隶属度
@@ -99,9 +110,16 @@ def evaluate_land_quality(indicators: dict, area_code: str) -> Tuple[float, str,
         ut2 = coef["ut2"][i]
         memberships.append(membership_numeric(u, a, c, ut1, ut2, i))
 
-    # 5 个概念指标隶属度
-    concept_mem_keys = ["mem_zdgc", "mem_ggnl", "mem_psnl", "mem_dxbw", "mem_zdgx"]
-    for abbr, mem_key in zip(CONCEPT_INDICATORS, concept_mem_keys):
+    # 5 个概念指标必须保持 Model-2 原始顺序：
+    # GCZD, PSNL, GGNL, DXBW, ZDGX。排水/灌溉顺序颠倒会将两者的权重交换。
+    concept_memberships = (
+        ("GCZD", "mem_zdgc"),
+        ("PSNL", "mem_psnl"),
+        ("GGNL", "mem_ggnl"),
+        ("DXBW", "mem_dxbw"),
+        ("ZDGX", "mem_zdgx"),
+    )
+    for abbr, mem_key in concept_memberships:
         code = indicators.get(abbr)
         memberships.append(membership_concept(code, coef[mem_key]))
 
@@ -110,7 +128,19 @@ def evaluate_land_quality(indicators: dict, area_code: str) -> Tuple[float, str,
     quality_index = sum(m * w for m, w in zip(memberships, weights))
 
     # 等级判定
-    bounds, labels = GRADE_CONFIG[primary]
-    grade = determine_grade(quality_index, bounds, labels)
+    grade = determine_model2_grade(quality_index, MODEL2_GRADE_LIMITS[ejnyq_idx])
 
     return quality_index, grade, memberships
+
+
+def evaluate_soil_indicators(
+    soil_indicators: dict, area_code: str
+) -> Tuple[float, str, List[float]]:
+    """从 ``parcel_info.soil_indicators`` 执行统一的 Model-2 评价。
+
+    地图查询与智能体共用此入口，避免各自复制字段映射和等级分界。
+    """
+    from framework.domain.data.parcel_data_accessor import ParcelDataAccessor
+
+    mapped = ParcelDataAccessor()._map_indicators_to_inputs(soil_indicators, "model-2")
+    return evaluate_land_quality(mapped, area_code)

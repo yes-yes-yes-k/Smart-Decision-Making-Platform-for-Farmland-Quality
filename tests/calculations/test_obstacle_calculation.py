@@ -94,6 +94,19 @@ def test_obstacle_level_dxbw_by_membership():
     assert calc_obstacle_level("DXBW", "LHR", 0.6) == "中度障碍"
 
 
+def test_obstacle_level_exact_boundaries_follow_reference_model():
+    """边界值不得因闭区间重叠落入错误的更重等级。"""
+    assert calc_obstacle_level("GCZD", "SNT", 0.6) == "中度障碍"
+    assert calc_obstacle_level("DXBW", "MPH", 0.5) == "中度障碍"
+    assert calc_obstacle_level("TRRZ", 0.95) == "轻度障碍"
+    assert calc_obstacle_level("TRRZ", 1.0) == "无障碍"
+    assert calc_obstacle_level("TRRZ", 1.2) == "无障碍"
+    assert calc_obstacle_level("GCHD", 20) == "无障碍"
+    assert calc_obstacle_level("YXTCHD", 60) == "中度障碍"
+    assert calc_obstacle_level("YXTCHD", 80) == "轻度障碍"
+    assert calc_obstacle_level("YXTCHD", 100) == "无障碍"
+
+
 # ---------- calc_obstacle_degree 障碍度计算 ----------
 
 def test_obstacle_degree_sums_to_one():
