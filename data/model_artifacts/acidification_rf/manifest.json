@@ -1,0 +1,47 @@
+{
+  "manifest_version": 1,
+  "models": [
+    {
+      "model_id": 33,
+      "data_type": "reduce",
+      "land_type": "dryland",
+      "artifact_path": "model_33_reduce_dryland.pkl",
+      "source_model_file_path": "pkl\\rf_model_1101_1958.pkl",
+      "sha256": "F1D7205653B191EA2E93601889D8E21C51402632527592121D061201DAB30D0C",
+      "verified_at": "2026-09-27",
+      "source": "D:\\work\\suan\\AcidificationModel\\api\\SoilAcidification.db Models.ModelID=33; read-only verification",
+      "artifact_size_bytes": 26247,
+      "serialization_format": "pickle",
+      "serialization_protocol": 5,
+      "serialized_with_scikit_learn": "1.9.0"
+    },
+    {
+      "model_id": 35,
+      "data_type": "reflux",
+      "land_type": "dryland",
+      "artifact_path": "model_35_reflux_dryland.pkl",
+      "source_model_file_path": "pkl\\rf_model_1102_0855.pkl",
+      "sha256": "DDF5992746512EBB156388FE201ACB87C80ED37750AD295D82D7F54296EEFB44",
+      "verified_at": "2026-09-27",
+      "source": "D:\\work\\suan\\AcidificationModel\\api\\SoilAcidification.db Models.ModelID=35; read-only verification",
+      "artifact_size_bytes": 10917,
+      "serialization_format": "pickle",
+      "serialization_protocol": 5,
+      "serialized_with_scikit_learn": "1.9.0"
+    },
+    {
+      "model_id": 38,
+      "data_type": "reflux",
+      "land_type": "paddy_field",
+      "artifact_path": "model_38_reflux_paddy_field.pkl",
+      "source_model_file_path": "D:\\work\\suan\\AcidificationModel\\pkl\\rf_model_0516_2024.pkl",
+      "sha256": "9AFB968F72A8CDBBFC202D389A2209B5BAAAB227239F413FB3075E892E23DF4F",
+      "verified_at": "2026-09-27",
+      "source": "D:\\work\\suan\\AcidificationModel\\api\\SoilAcidification.db Models.ModelID=38; read-only verification",
+      "artifact_size_bytes": 1991132,
+      "serialization_format": "pickle",
+      "serialization_protocol": 5,
+      "serialized_with_scikit_learn": "1.9.0"
+    }
+  ]
+}
