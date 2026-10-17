@@ -164,7 +164,7 @@ def _bucket(
 
 
 QUALITY_COLORS = (
-    "#1A9850", "#45B966", "#75C96F", "#A6D96A", "#D9EF8B",
+    "#0078C8", "#0F8BD8", "#2CA6E3", "#66C3EE", "#9CD7F4",
     "#FEE08B", "#FDAE61", "#F46D43", "#D73027", "#8E1B1B",
 )
 
@@ -225,7 +225,7 @@ INDICATOR_DEFINITIONS: dict[str, IndicatorDefinition] = {
             _bucket("low", "低", "(0,10]", "#D73027", 0, 10, upper_inclusive=True),
             _bucket("medium_low", "中低", "(10,20]", "#FC8D59", 10, 20, upper_inclusive=True),
             _bucket("medium_high", "中高", "(20,25]", "#FEE08B", 20, 25, upper_inclusive=True),
-            _bucket("high", "高", "(25,+∞)", "#1A9850", lower=25),
+            _bucket("high", "高", "(25,+∞)", "#0078C8", lower=25),
         ),
     ),
     "total_nitrogen": IndicatorDefinition(
@@ -240,7 +240,7 @@ INDICATOR_DEFINITIONS: dict[str, IndicatorDefinition] = {
             _bucket("low", "低", "(0,10]", "#D73027", 0, 10, upper_inclusive=True),
             _bucket("medium_low", "中低", "(10,20]", "#FC8D59", 10, 20, upper_inclusive=True),
             _bucket("medium_high", "中高", "(20,35]", "#FEE08B", 20, 35, upper_inclusive=True),
-            _bucket("high", "高", "(35,+∞)", "#1A9850", lower=35),
+            _bucket("high", "高", "(35,+∞)", "#0078C8", lower=35),
         ),
     ),
     "available_potassium": IndicatorDefinition(
@@ -250,7 +250,7 @@ INDICATOR_DEFINITIONS: dict[str, IndicatorDefinition] = {
             _bucket("low", "低", "(0,50]", "#D73027", 0, 50, upper_inclusive=True),
             _bucket("medium_low", "中低", "(50,100]", "#FC8D59", 50, 100, upper_inclusive=True),
             _bucket("medium_high", "中高", "(100,150]", "#FEE08B", 100, 150, upper_inclusive=True),
-            _bucket("high", "高", "(150,+∞)", "#1A9850", lower=150),
+            _bucket("high", "高", "(150,+∞)", "#0078C8", lower=150),
         ),
     ),
     "bulk_density": IndicatorDefinition(
@@ -260,7 +260,7 @@ INDICATOR_DEFINITIONS: dict[str, IndicatorDefinition] = {
             _bucket("very_low", "极低", "(0,0.9)", "#2166AC", 0, 0.9),
             _bucket("low", "低", "[0.9,0.95)", "#67A9CF", 0.9, 0.95, lower_inclusive=True),
             _bucket("slightly_low", "偏低", "[0.95,1)", "#D1E5F0", 0.95, 1, lower_inclusive=True),
-            _bucket("normal", "正常", "[1,1.2]", "#A6D96A", 1, 1.2, lower_inclusive=True, upper_inclusive=True),
+            _bucket("normal", "正常", "[1,1.2]", "#7ED1D1", 1, 1.2, lower_inclusive=True, upper_inclusive=True),
             _bucket("slightly_high", "偏高", "(1.2,1.3]", "#FEE08B", 1.2, 1.3, upper_inclusive=True),
             _bucket("high", "高", "(1.3,1.4]", "#FDAE61", 1.3, 1.4, upper_inclusive=True),
             _bucket("very_high", "极高", "(1.4,+∞)", "#D73027", lower=1.4),
@@ -273,7 +273,7 @@ INDICATOR_DEFINITIONS: dict[str, IndicatorDefinition] = {
             _bucket("very_low", "极低", "(0,10]", "#D73027", 0, 10, upper_inclusive=True),
             _bucket("low", "低", "(10,15]", "#FC8D59", 10, 15, upper_inclusive=True),
             _bucket("medium", "中", "(15,20)", "#FEE08B", 15, 20),
-            _bucket("high", "高", "[20,+∞)", "#1A9850", lower=20, lower_inclusive=True),
+            _bucket("high", "高", "[20,+∞)", "#0078C8", lower=20, lower_inclusive=True),
         ),
     ),
     "effective_soil_depth": IndicatorDefinition(
@@ -283,7 +283,7 @@ INDICATOR_DEFINITIONS: dict[str, IndicatorDefinition] = {
             _bucket("very_low", "极低", "(0,60)", "#D73027", 0, 60),
             _bucket("low", "低", "[60,80)", "#FC8D59", 60, 80, lower_inclusive=True),
             _bucket("medium", "中", "[80,100)", "#FEE08B", 80, 100, lower_inclusive=True),
-            _bucket("high", "高", "[100,+∞)", "#1A9850", lower=100, lower_inclusive=True),
+            _bucket("high", "高", "[100,+∞)", "#0078C8", lower=100, lower_inclusive=True),
         ),
     ),
     "soil_texture": IndicatorDefinition(

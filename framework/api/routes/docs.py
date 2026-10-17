@@ -19,7 +19,25 @@ def get_documents():
     user_id = get_jwt_identity()
     page = request.args.get('page', 1, type=int)
     page_size = request.args.get('page_size', 20, type=int)
+
+    doc_type = request.args.get('doc_type')
     category = request.args.get('category')
+
+    # 展示分类过滤：传入 doc_type 时按 Document.doc_type 过滤（前端知识库列表）
+    if doc_type is not None:
+        doc_type_list = [dt.strip() for dt in doc_type.split(',') if dt.strip()] if doc_type else []
+        query = Document.query.filter_by(create_by=user_id)
+        if doc_type_list:
+            query = query.filter(Document.doc_type.in_(doc_type_list))
+        query = query.order_by(Document.create_time.desc())
+        pagination = query.paginate(page=page, per_page=page_size, error_out=False)
+        return jsonify({
+            "status": "ok",
+            "data": {
+                "list": [d.to_dict() for d in pagination.items],
+                "total": pagination.total
+            }
+        })
 
     category_list = [c.strip() for c in category.split(',') if c.strip()] if category else []
 
@@ -38,7 +56,7 @@ def get_documents():
             }
         })
 
-    # 文档分类查 Document 表，排除数据文件分类
+    # 文档分类查 Document 表，排除数据文件分类（兼容旧 category 语义）
     query = Document.query.filter_by(create_by=user_id)
     query = query.filter(Document.category.notin_(DATA_CATEGORIES))
     doc_categories = [c for c in category_list if c not in DATA_CATEGORIES]
@@ -123,6 +141,7 @@ def upload_document():
             file_hash=file_hash,
             category=category,
             treatment_type=treatment_type,
+            doc_type=request.form.get('doc_type') or 'other',
             create_by=user_id,
         )
         db.session.add(document)

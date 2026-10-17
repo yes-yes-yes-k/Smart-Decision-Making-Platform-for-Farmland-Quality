@@ -19,6 +19,7 @@ class Document(db.Model):
     status = db.Column(db.SmallInteger, default=1, comment='状态')
     category = db.Column(db.String(30), default='other', comment='文档分类')
     treatment_type = db.Column(db.String(30), nullable=True, comment='治理类型')
+    doc_type = db.Column(db.String(30), default='other', comment='展示分类: regulation-规范标准, scheme-方案, report-报告, academic_paper-学术论文, other-其他 (前端列表按此展示; category 保留耕地质量语义)')
     file_hash = db.Column(db.String(64), nullable=True, comment='文件内容SHA-256哈希')
     create_by = db.Column(db.Integer, nullable=False, comment='上传者用户ID')
     create_time = db.Column(db.DateTime, default=db.func.current_timestamp(), comment='上传时间')
@@ -35,6 +36,7 @@ class Document(db.Model):
             'status': self.status,
             'category': self.category,
             'treatment_type': self.treatment_type,
+            'doc_type': self.doc_type,
             'file_hash': self.file_hash,
             'create_by': self.create_by,
             'create_time': self.create_time.strftime('%Y-%m-%d %H:%M:%S') if self.create_time else None,
