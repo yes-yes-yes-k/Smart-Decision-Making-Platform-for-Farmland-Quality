@@ -106,7 +106,9 @@ class ChromaVectorStore:
                         print(f"[Chroma] 删除持久化目录失败: {e2}")
 
             try:
-                self._collections[default_name] = self._client.create_collection(
+                # 用 get_or_create：重启后集合已持久化，create_collection 会抛
+                # "already exists" 并误入清库分支，导致向量被全部删除
+                self._collections[default_name] = self._client.get_or_create_collection(
                     name=default_name,
                     embedding_function=NoOpEmbeddingFunction(),
                 )
@@ -140,10 +142,15 @@ class ChromaVectorStore:
             traceback.print_exc()
 
     def _get_collection(self, category: Optional[str] = None):
-        """按 category 懒创建/获取 collection（空/other → 默认 enterprise_kb）。"""
+        """按 category 懒获取 collection（空/other → 默认 enterprise_kb）。
+
+        必须用 get_or_create_collection：collection 持久化在 chroma.sqlite3，
+        进程重启后内存缓存为空，若用 create_collection 会对已存在的同名
+        collection 抛 "Collection already exists"。
+        """
         name = collection_name_for(category)
         if name not in self._collections:
-            collection = self._client.create_collection(
+            collection = self._client.get_or_create_collection(
                 name=name, embedding_function=NoOpEmbeddingFunction())
             self._collections[name] = collection
         return self._collections[name]

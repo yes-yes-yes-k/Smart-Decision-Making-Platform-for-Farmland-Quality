@@ -51,12 +51,14 @@ def _ingest(document_id, file_path, file_type, doc_name, category, treatment_typ
                 chunks = split_text(pages or "")
                 pages_meta = [None] * len(chunks)
 
+            # Chroma metadata 只接受 str/int/float/bool，None 会触发
+            # "Cannot convert Python object to MetadataValue"，必须清洗为空串/占位值
             metadatas = [{
                 "source": doc_name,
-                "category": category,
-                "treatment_type": treatment_type,
+                "category": category or "",
+                "treatment_type": treatment_type or "",
                 "chunk_index": i,
-                "page": pages_meta[i],
+                "page": pages_meta[i] if pages_meta[i] is not None else -1,
             } for i in range(len(chunks))]
 
             added_count = 0

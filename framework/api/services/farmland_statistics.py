@@ -121,10 +121,12 @@ def _row_indicators(row: Mapping[str, Any]) -> dict[str, Any]:
     if "assessment_result" in row:
         assessment = business_result(_json_object(row.get("assessment_result")))
         # Current computed values have one publication source.  A missing
-        # versioned assessment remains unclassified instead of falling back to
-        # an imported/stale snapshot.
-        indicators["quality_grade"] = assessment.get("quality_grade")
-        indicators["composite_index"] = assessment.get("composite_index")
+        # versioned assessment (e.g. the historical snapshot branch) must not
+        # wipe the snapshot's own quality_grade/composite_index; only override
+        # when an assessment with actual content is present.
+        if assessment:
+            indicators["quality_grade"] = assessment.get("quality_grade")
+            indicators["composite_index"] = assessment.get("composite_index")
     return indicators
 
 
