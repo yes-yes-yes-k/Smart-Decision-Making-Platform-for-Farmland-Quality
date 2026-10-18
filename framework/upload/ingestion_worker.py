@@ -15,6 +15,7 @@ from framework.upload.chunker import split_text, split_text_with_pages
 from framework.vector_store.chroma_store import vector_store
 from framework.knowledge.service import assign_labels_for_ingestion, vector_access_metadata
 from framework.knowledge.taxonomy import expand_with_parent_domains
+from framework.rag.kg_runtime import stable_document_key
 
 # 模块级 worker：与 data_trigger.py 的 ThreadPoolExecutor 模式同源
 _WORKER = concurrent.futures.ThreadPoolExecutor(
@@ -77,6 +78,7 @@ def _ingest(
                     "source": doc_name,
                     "doc_name": doc_name,
                     "document_id": int(document_id),
+                    "document_key": stable_document_key(doc_name),
                     "owner_id": int(owner_id),
                     "category": category or "other",
                     "chunk_index": i,

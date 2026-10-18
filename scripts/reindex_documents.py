@@ -107,11 +107,13 @@ def reindex_documents() -> dict:
             access_metadata = vector_access_metadata(
                 record["visibility_scope"], record["approved_labels"],
             )
+            from framework.rag.kg_runtime import stable_document_key
             for index, page in enumerate(pages):
                 metadata = {
                     "source": record["doc_name"],
                     "doc_name": record["doc_name"],
                     "document_id": document_id,
+                    "document_key": stable_document_key(record["doc_name"]),
                     "owner_id": owner_id,
                     "category": record["category"] or "other",
                     "chunk_index": index,

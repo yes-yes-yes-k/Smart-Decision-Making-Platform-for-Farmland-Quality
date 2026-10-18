@@ -14,6 +14,7 @@ from .nodes import (
     route_after_requirement,
     needs_input_node,
     execute_models,
+    retrieve_professional_evidence,
     llm_generate,
     rag_chat_node,
     boundary_pending_node,
@@ -65,6 +66,7 @@ class MultiAgentOrchestrator:
         graph.add_node("analysis_requirement", analysis_requirement_node)
         graph.add_node("needs_input", needs_input_node)
         graph.add_node("execute_models", execute_models)
+        graph.add_node("retrieve_professional_evidence", retrieve_professional_evidence)
         graph.add_node("llm_generate", llm_generate)
         graph.add_node("rag_chat", rag_chat_node)
         graph.add_node("boundary_pending", boundary_pending_node)
@@ -87,7 +89,8 @@ class MultiAgentOrchestrator:
             },
         )
 
-        graph.add_edge("execute_models", "llm_generate")
+        graph.add_edge("execute_models", "retrieve_professional_evidence")
+        graph.add_edge("retrieve_professional_evidence", "llm_generate")
         graph.add_edge("llm_generate", "aggregate_results")
         graph.add_edge("rag_chat", "aggregate_results")
         graph.add_edge("boundary_pending", "aggregate_results")
@@ -149,6 +152,7 @@ class MultiAgentOrchestrator:
 
             full_answer = ""
             sources = []
+            retrieval_meta = {}
 
             if route == "needs_input":
                 state = needs_input_node(state)
@@ -177,21 +181,31 @@ class MultiAgentOrchestrator:
                     question,
                     conversation_history=conversation_history,
                     user_id=state.get("user_id"),
+                    conversation_id=state.get("conversation_id"),
                 ):
                     if item["type"] == "token":
                         full_answer += item["content"]
                         yield {"type": "token", "content": item["content"]}
                     elif item["type"] == "meta":
                         sources = item.get("sources", [])
-                        yield {"type": "meta", "data": {"sources": sources}}
+                        retrieval_meta = item.get("retrieval", {})
+                        yield {"type": "meta", "data": {
+                            "sources": sources, "retrieval": retrieval_meta,
+                        }}
             elif route == "boundary_pending":
                 state = boundary_pending_node(state)
                 full_answer = state["model_results"]["data"]["summary"]
             else:
                 # 模型路径：先执行模型（阻塞），再流式生成
                 state = execute_models(state)
+                state = retrieve_professional_evidence(state)
                 model_results = state.get("model_results", {})
                 rag_response = state.get("rag_response", {})
+                retrieval_meta = (
+                    rag_response.get("retrieval")
+                    or rag_response.get("diagnostics")
+                    or {}
+                )
 
                 # 收集 sources（复刻 aggregate_results 的逻辑）
                 agent_data = model_results if isinstance(model_results, dict) else {}
@@ -213,13 +227,19 @@ class MultiAgentOrchestrator:
                             aid: llm_context(item)
                             for aid, item in agent_data.get("models", {}).items()
                         }
+                        evidence_context = str(
+                            state.get("rag_response", {}).get("context") or ""
+                        )
                         prompt = (
                             "你是耕地质量与土壤改良领域的助手。请基于专业智能体结果，"
                             "整合成一份准确、简洁、可执行的中文答复。不要编造未提供的数据，"
                             "保留明确的数值、单位和建议。回复中必须使用中文标准字段名称，"
                             "不得向用户展示 GGNL、DXBW、SXJ 等模型内部字段缩写。\n"
+                            "知识图谱证据只能解释专业模型结果，不得覆盖模型实际计算值；"
+                            "若证据不足，应省略扩展解释。指标分类角色与指标获取方式是独立维度。\n"
                             f"用户问题：{question}\n"
-                            f"专业模型紧凑结果：{contexts}"
+                            f"专业模型紧凑结果：{contexts}\n"
+                            f"经权限过滤的知识图谱/知识库证据：{evidence_context or '无'}"
                         )
                         from framework.llm.service import llm_service
                         try:
@@ -258,6 +278,7 @@ class MultiAgentOrchestrator:
                         "question_type": question_type,
                         "status": state.get("routing_status", "normal"),
                     },
+                    "retrieval": retrieval_meta,
                 },
             }
         except Exception as e:

@@ -265,6 +265,98 @@ class ChromaVectorStore:
         fused = fused[:n_results]
         return {"results": fused, "count": len(fused)}
 
+    @staticmethod
+    def _combine_filters(
+        left: Optional[Dict[str, Any]], right: Optional[Dict[str, Any]],
+    ) -> Optional[Dict[str, Any]]:
+        clauses: List[Dict[str, Any]] = []
+        for value in (left, right):
+            if not value:
+                continue
+            if set(value) == {"$and"} and isinstance(value["$and"], list):
+                clauses.extend(value["$and"])
+            else:
+                clauses.append(value)
+        if not clauses:
+            return None
+        if len(clauses) == 1:
+            return clauses[0]
+        return {"$and": clauses}
+
+    def get_by_references(
+        self,
+        references: List[Dict[str, Any]],
+        *,
+        filters: Optional[Dict[str, Any]] = None,
+        category: Optional[str] = None,
+        n_results: int = 20,
+    ) -> List[Dict[str, Any]]:
+        """Resolve graph evidence to persisted chunks under normal ACL filters."""
+        clauses: List[Dict[str, Any]] = []
+        seen = set()
+        for reference in references:
+            document_id = reference.get("document_id")
+            document_key = reference.get("document_key")
+            identity_terms: List[Dict[str, Any]] = []
+            if document_id is not None:
+                identity_terms.append({"document_id": int(document_id)})
+            if document_key:
+                identity_terms.append({"document_key": str(document_key)})
+            if not identity_terms:
+                continue
+            identity_clause = (
+                identity_terms[0] if len(identity_terms) == 1
+                else {"$or": identity_terms}
+            )
+            locator_terms: List[Dict[str, Any]] = []
+            if reference.get("chunk_index") is not None:
+                locator_terms.append({"chunk_index": int(reference["chunk_index"])})
+            if reference.get("page") is not None:
+                locator_terms.append({"page": int(reference["page"])})
+            terms: List[Dict[str, Any]] = [identity_clause]
+            if locator_terms:
+                terms.append(
+                    locator_terms[0] if len(locator_terms) == 1
+                    else {"$or": locator_terms}
+                )
+            clause = terms[0] if len(terms) == 1 else {"$and": terms}
+            signature = repr(clause)
+            if signature not in seen:
+                seen.add(signature)
+                clauses.append(clause)
+        if not clauses or not self._collections:
+            return []
+        reference_filter = clauses[0] if len(clauses) == 1 else {"$or": clauses}
+        where = self._combine_filters(filters, reference_filter)
+
+        target = self._targeted_collection(category)
+        collections = [target] if target is not None else list(self._collections.values())
+        formatted: List[Dict[str, Any]] = []
+        result_keys = set()
+        for collection in collections:
+            try:
+                data = collection.get(
+                    where=where, include=["documents", "metadatas"],
+                )
+            except Exception as exc:
+                print(f"按图谱证据读取分块失败: {exc}")
+                continue
+            documents = data.get("documents") or []
+            metadatas = data.get("metadatas") or []
+            for index, content in enumerate(documents):
+                metadata = metadatas[index] if index < len(metadatas) else {}
+                key = (
+                    metadata.get("document_id"), metadata.get("page"),
+                    metadata.get("chunk_index"), content,
+                )
+                if key in result_keys:
+                    continue
+                result_keys.add(key)
+                formatted.append({"content": content, "metadata": metadata})
+                if len(formatted) >= n_results:
+                    return formatted
+        return formatted
+
     def _bm25_search(self, query: str, n_results: int, filters: Optional[Dict],
                      category: Optional[str] = None) -> List[Dict]:
         """BM25 召回：category 定向时单库；否则聚合所有分领域 BM25 后取 top-n。"""
