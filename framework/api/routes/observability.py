@@ -19,6 +19,7 @@ from framework.observability.analysis_context_metrics import (
     summarize_analysis_context_events,
 )
 from framework.observability.schema_metrics import snapshot_schema_metrics
+from framework.rag.kg_runtime import kg_metrics
 
 observability_bp = Blueprint('observability', __name__)
 
@@ -77,5 +78,29 @@ def dashboard():
             "execution_statistics": execution_statistics,
             "confusion_matrices": matrices,
             "schema_metrics": snapshot_schema_metrics(),
+            "knowledge_graph_metrics": kg_metrics.snapshot(),
         },
     })
+
+
+@observability_bp.route('/knowledge-graph/health', methods=['GET'])
+@jwt_required()
+def knowledge_graph_health():
+    """Return release checksum/schema readiness and rollout configuration."""
+    from framework.rag.chain import rag_chain
+    data = rag_chain.health()
+    graph_ready = bool(data.get("graph", {}).get("ready"))
+    mode = data.get("rollout_mode")
+    # Shadow/off deployments remain available while an invalid candidate is
+    # investigated. Canary/enabled deployments must fail readiness.
+    http_status = 200 if graph_ready or mode in {"off", "shadow"} else 503
+    return jsonify({
+        "status": "ok" if http_status == 200 else "error",
+        "data": data,
+    }), http_status
+
+
+@observability_bp.route('/knowledge-graph/metrics', methods=['GET'])
+@jwt_required()
+def knowledge_graph_metrics():
+    return jsonify({"status": "ok", "data": kg_metrics.snapshot()})

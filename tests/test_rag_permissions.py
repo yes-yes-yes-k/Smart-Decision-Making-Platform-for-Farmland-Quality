@@ -15,7 +15,8 @@ def test_retrieval_combines_public_and_owner_access(monkeypatch):
 
     result = rag._retrieve_documents("酸化", None, user_id=42)
 
-    assert result == {"results": [], "count": 0}
+    assert result["results"] == []
+    assert result["count"] == 0
     assert captured["filters"] == {
         "$or": [
             {"visibility_scope": "public"},

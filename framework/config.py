@@ -5,6 +5,7 @@ from typing import Optional
 ENV = os.environ.get('FLASK_ENV') or os.environ.get('ENV') or 'development'
 
 class Config:
+    PROJECT_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
     SECRET_KEY = os.environ.get('SECRET_KEY')
     if not SECRET_KEY:
         if ENV == 'production':
@@ -78,6 +79,41 @@ class Config:
     RERANK_ENABLED = os.environ.get("RERANK_ENABLED", "true").lower() == "true"
     RERANK_MODEL = os.environ.get("RERANK_MODEL") or "BAAI/bge-reranker-v2-m3"
     RERANK_TIMEOUT = int(os.environ.get("RERANK_TIMEOUT") or 30)
+
+    # 经材料核验的耕地质量最小知识图谱。图谱只提供证据定位，实际内容仍
+    # 必须从带权限过滤的向量库读取；关闭后完整回退到原混合检索链路。
+    KG_RETRIEVAL_ENABLED = os.environ.get(
+        "KG_RETRIEVAL_ENABLED", "true"
+    ).lower() == "true"
+    KG_GRAPH_PATH = os.environ.get("KG_GRAPH_PATH") or os.path.join(
+        PROJECT_ROOT,
+        "artifacts",
+        "minimal_kg",
+        "cultivated_land_minimal_graph_v0.4.json",
+    )
+    KG_RETRIEVAL_TOP_K = int(os.environ.get("KG_RETRIEVAL_TOP_K") or 5)
+    KG_MANIFEST_PATH = os.environ.get("KG_MANIFEST_PATH") or os.path.splitext(
+        KG_GRAPH_PATH
+    )[0] + ".manifest.json"
+    KG_EXPECTED_SHA256 = os.environ.get("KG_EXPECTED_SHA256") or ""
+    KG_ROLLOUT_MODE = os.environ.get("KG_ROLLOUT_MODE") or (
+        "enabled" if ENV != "production" else "shadow"
+    )
+    if KG_ROLLOUT_MODE not in {"off", "shadow", "canary", "enabled"}:
+        raise ValueError("KG_ROLLOUT_MODE must be off, shadow, canary, or enabled")
+    KG_CANARY_PERCENT = int(os.environ.get("KG_CANARY_PERCENT") or 10)
+    if not 0 <= KG_CANARY_PERCENT <= 100:
+        raise ValueError("KG_CANARY_PERCENT must be between 0 and 100")
+    KG_CANARY_USER_IDS = tuple(
+        int(value) for value in os.environ.get("KG_CANARY_USER_IDS", "").split(",")
+        if value.strip()
+    )
+    KG_PROFESSIONAL_EVIDENCE_ENABLED = os.environ.get(
+        "KG_PROFESSIONAL_EVIDENCE_ENABLED", "true"
+    ).lower() == "true"
+    KG_FAIL_CLOSED_AUTHORITATIVE = os.environ.get(
+        "KG_FAIL_CLOSED_AUTHORITATIVE", "true"
+    ).lower() == "true"
 
     MAX_CONCURRENT_MODELS = int(os.environ.get('MAX_CONCURRENT_MODELS') or '0')
 
