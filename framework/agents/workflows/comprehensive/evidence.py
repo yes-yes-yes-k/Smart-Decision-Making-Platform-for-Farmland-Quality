@@ -32,13 +32,13 @@ class EvidenceUnavailable(RuntimeError): pass
 
 class EvidenceResearcher:
     def __init__(self,runner,rag): self._runner,self._rag=runner,rag
-    def research(self,*,task_results:dict[str,TaskResult],claims:list[dict[str,str]])->EvidenceBundle:
+    def research(self,*,task_results:dict[str,TaskResult],claims:list[dict[str,str]],user_id:int|None=None)->EvidenceBundle:
         allowed={c["claim_id"] for c in claims}
         queries=self._runner.generate(role="researcher",prompt=f"{RESEARCHER_PROMPT.system}\nclaims={claims}",schema=EvidenceQueries)
         items=[]; supported=set()
         for query in queries.queries:
             if query.claim_id not in allowed: continue
-            for hit in self._rag.search_documents(query.query):
+            for hit in self._rag.search_documents(query.query,user_id=user_id):
                 meta=hit.get("metadata") or {}; source=str(meta.get("source") or "unknown")
                 source_id=f"{source}:{meta.get('chunk_index','x')}:{meta.get('page','x')}"
                 items.append(EvidenceItem(source_id=source_id,doc_name=str(meta.get("doc_name") or source),chunk_index=meta.get("chunk_index"),page=meta.get("page"),claim_ids=(query.claim_id,),score=hit.get("score")))

@@ -1,0 +1,4512 @@
+{
+  "schema_version": "minimal-cultivated-land-kg-v0.4",
+  "generated_at": "2026-10-18T17:46:01.630013+08:00",
+  "source_graph": "artifacts/minimal_kg/cultivated_land_minimal_graph_v0.2.json",
+  "scope": {
+    "entity_types": [
+      "indicator",
+      "obstacle",
+      "measure",
+      "standard"
+    ],
+    "relation_types": [
+      "addresses",
+      "improves_indicator",
+      "characterized_by",
+      "includes_indicator",
+      "prescribes_measurement",
+      "assessment_basis",
+      "classifies_basic_indicator",
+      "classifies_regional_supplementary_indicator",
+      "assigns_by_field_survey",
+      "assigns_by_laboratory_test"
+    ],
+    "review_status": "material_confirmed",
+    "note": "仅纳入通过或修改后通过的关系证据；驳回项保留在review_audit中。",
+    "formal_entity_policy": "正式实体必须至少参与一条带页码证据的正式关系；否则进入candidate_entities。",
+    "standard_indicator_semantics": {
+      "indicator_classification": [
+        "basic",
+        "regional_supplementary"
+      ],
+      "acquisition_mode": [
+        "field_survey",
+        "laboratory_test"
+      ],
+      "dimensions_are_independent": true
+    }
+  },
+  "corpus": [
+    {
+      "document_id": 3,
+      "title": "耕地地力调查与质量评价技术规程 NY/T 1634-2008",
+      "role": "standard"
+    },
+    {
+      "document_id": 4,
+      "title": "耕地质量等级 GB/T 33469-2016",
+      "role": "standard"
+    },
+    {
+      "document_id": 11,
+      "title": "补充耕地质量鉴定技术规范 试行",
+      "role": "standard"
+    },
+    {
+      "document_id": 13,
+      "title": "广东省补充耕地质量验收细则 试行",
+      "role": "policy"
+    },
+    {
+      "document_id": 14,
+      "title": "广东省补充耕地质量鉴定技术规范 试行",
+      "role": "standard"
+    },
+    {
+      "document_id": 15,
+      "title": "主要红壤区坡耕地土壤质量评价与障碍因子识别",
+      "role": "research"
+    },
+    {
+      "document_id": 16,
+      "title": "云贵高原耕地质量评估 障碍因子及产能提升潜力分析",
+      "role": "research"
+    },
+    {
+      "document_id": 17,
+      "title": "县域耕地质量评价方法比选与优化研究",
+      "role": "research"
+    },
+    {
+      "document_id": 21,
+      "title": "岭南山地丘陵区耕地质量评价指标体系研究",
+      "role": "research"
+    },
+    {
+      "document_id": 23,
+      "title": "基于耕地综合质量的高标准农田建设与监测研究",
+      "role": "research"
+    },
+    {
+      "document_id": 24,
+      "title": "富锦市耕地质量评价与提升对策研究",
+      "role": "research"
+    },
+    {
+      "document_id": 27,
+      "title": "新疆耕地质量等级评价及障碍因素诊断研究",
+      "role": "research"
+    },
+    {
+      "document_id": 28,
+      "title": "罗定市耕地质量时空分异特征及障碍因素诊断",
+      "role": "research"
+    },
+    {
+      "document_id": 29,
+      "title": "耕地质量等级提升的土地整治项目设计关键技术研究",
+      "role": "research"
+    },
+    {
+      "document_id": 30,
+      "title": "酸性红壤地区耕地健康评价及定向培育研究",
+      "role": "research"
+    }
+  ],
+  "entities": [
+    {
+      "id": "indicator:available_k",
+      "type": "indicator",
+      "name": "速效钾",
+      "aliases": [
+        "速效钾",
+        "有效钾"
+      ],
+      "status": "approved",
+      "review": {
+        "sample_id": "KG-011",
+        "decision": "通过",
+        "verified_by": "Codex（材料级核验）",
+        "verified_at": "2026-10-09"
+      }
+    },
+    {
+      "id": "indicator:available_p",
+      "type": "indicator",
+      "name": "有效磷",
+      "aliases": [
+        "有效磷",
+        "速效磷"
+      ],
+      "status": "approved",
+      "review": {
+        "sample_id": "KG-008",
+        "decision": "通过",
+        "verified_by": "Codex（材料级核验）",
+        "verified_at": "2026-10-09"
+      }
+    },
+    {
+      "id": "indicator:bulk_density",
+      "type": "indicator",
+      "name": "土壤容重",
+      "aliases": [
+        "土壤容重",
+        "容重"
+      ],
+      "status": "approved",
+      "review": {
+        "sample_id": "KG-003",
+        "decision": "通过",
+        "verified_by": "Codex（材料级核验）",
+        "verified_at": "2026-10-09"
+      }
+    },
+    {
+      "id": "indicator:cec",
+      "type": "indicator",
+      "name": "阳离子交换量",
+      "aliases": [
+        "阳离子交换量",
+        "阳离子交换容量",
+        "CEC"
+      ],
+      "status": "approved",
+      "review": {
+        "sample_id": "KG-012",
+        "decision": "通过",
+        "verified_by": "Codex（材料级核验）",
+        "verified_at": "2026-10-09"
+      },
+      "retrieval_terms": [
+        "保肥能力",
+        "交换容量"
+      ]
+    },
+    {
+      "id": "indicator:drainage",
+      "type": "indicator",
+      "name": "排水能力",
+      "aliases": [
+        "排水能力"
+      ],
+      "related_terms": [
+        {
+          "term": "排涝能力",
+          "relation": "相关能力"
+        },
+        {
+          "term": "排水条件",
+          "relation": "条件描述"
+        }
+      ],
+      "status": "approved_with_revision",
+      "review": {
+        "sample_id": "KG-006",
+        "decision": "修改后通过",
+        "verified_by": "Codex（材料级核验）",
+        "verified_at": "2026-10-09"
+      }
+    },
+    {
+      "id": "indicator:effective_depth",
+      "type": "indicator",
+      "name": "有效土层厚度",
+      "aliases": [
+        "有效土层厚度",
+        "有效土层"
+      ],
+      "status": "approved",
+      "review": {
+        "sample_id": "KG-007",
+        "decision": "通过",
+        "verified_by": "Codex（材料级核验）",
+        "verified_at": "2026-10-09"
+      }
+    },
+    {
+      "id": "indicator:irrigation",
+      "type": "indicator",
+      "name": "灌溉能力",
+      "aliases": [
+        "灌溉能力"
+      ],
+      "related_terms": [
+        {
+          "term": "灌溉保证率",
+          "relation": "量化指标"
+        },
+        {
+          "term": "灌溉保障率",
+          "relation": "量化指标"
+        }
+      ],
+      "status": "approved_with_revision",
+      "review": {
+        "sample_id": "KG-009",
+        "decision": "修改后通过",
+        "verified_by": "Codex（材料级核验）",
+        "verified_at": "2026-10-09"
+      }
+    },
+    {
+      "id": "indicator:organic_matter",
+      "type": "indicator",
+      "name": "土壤有机质",
+      "aliases": [
+        "土壤有机质",
+        "有机质"
+      ],
+      "status": "approved",
+      "review": {
+        "sample_id": "KG-004",
+        "decision": "通过",
+        "verified_by": "Codex（材料级核验）",
+        "verified_at": "2026-10-09"
+      }
+    },
+    {
+      "id": "indicator:plough_depth",
+      "type": "indicator",
+      "name": "耕层厚度",
+      "aliases": [
+        "耕层厚度"
+      ],
+      "related_terms": [
+        {
+          "term": "有效耕层厚度",
+          "relation": "限定指标"
+        }
+      ],
+      "status": "approved_with_revision",
+      "review": {
+        "sample_id": "KG-010",
+        "decision": "修改后通过",
+        "verified_by": "Codex（材料级核验）",
+        "verified_at": "2026-10-09"
+      }
+    },
+    {
+      "id": "indicator:soil_ph",
+      "type": "indicator",
+      "name": "土壤pH",
+      "aliases": [
+        "土壤pH",
+        "pH值",
+        "酸碱度"
+      ],
+      "status": "approved",
+      "review": {
+        "sample_id": "KG-002",
+        "decision": "通过",
+        "verified_by": "Codex（材料级核验）",
+        "verified_at": "2026-10-09"
+      }
+    },
+    {
+      "id": "indicator:texture",
+      "type": "indicator",
+      "name": "土壤质地",
+      "aliases": [
+        "土壤质地",
+        "耕层土壤质地"
+      ],
+      "related_terms": [
+        {
+          "term": "机械组成",
+          "relation": "检测与表征概念"
+        }
+      ],
+      "status": "approved_with_revision",
+      "review": {
+        "sample_id": "KG-005",
+        "decision": "修改后通过",
+        "verified_by": "Codex（材料级核验）",
+        "verified_at": "2026-10-09"
+      },
+      "retrieval_terms": [
+        "耕层质地"
+      ]
+    },
+    {
+      "id": "indicator:total_n",
+      "type": "indicator",
+      "name": "全氮",
+      "aliases": [
+        "土壤全氮",
+        "全氮"
+      ],
+      "status": "approved",
+      "review": {
+        "sample_id": "KG-001",
+        "decision": "通过",
+        "verified_by": "Codex（材料级核验）",
+        "verified_at": "2026-10-09"
+      },
+      "retrieval_terms": [
+        "氮素水平",
+        "氮含量"
+      ]
+    },
+    {
+      "id": "measure:conservation_tillage",
+      "type": "measure",
+      "name": "保护性耕作",
+      "aliases": [
+        "保护性耕作"
+      ],
+      "related_terms": [
+        {
+          "term": "免耕",
+          "relation": "下位措施"
+        },
+        {
+          "term": "少耕",
+          "relation": "下位措施"
+        },
+        {
+          "term": "覆盖耕作",
+          "relation": "下位措施"
+        }
+      ],
+      "status": "approved_with_revision",
+      "review": {
+        "sample_id": "KG-013",
+        "decision": "修改后通过",
+        "verified_by": "Codex（材料级核验）",
+        "verified_at": "2026-10-09"
+      },
+      "retrieval_terms": [
+        "少耕",
+        "减少有机质消耗"
+      ]
+    },
+    {
+      "id": "measure:deep_loosening",
+      "type": "measure",
+      "name": "深松",
+      "aliases": [
+        "深松"
+      ],
+      "related_terms": [
+        {
+          "term": "深松深耕",
+          "relation": "组合措施"
+        }
+      ],
+      "status": "approved_with_revision",
+      "review": {
+        "decision": "修改后通过",
+        "derived_from": "术语边界修订",
+        "verified_by": "Codex（材料级核验）",
+        "verified_at": "2026-10-09"
+      },
+      "retrieval_terms": [
+        "破除犁底层",
+        "机械松土"
+      ]
+    },
+    {
+      "id": "measure:deep_tillage",
+      "type": "measure",
+      "name": "深松深耕",
+      "aliases": [
+        "深松深耕"
+      ],
+      "related_terms": [
+        {
+          "term": "深松",
+          "relation": "组成措施"
+        },
+        {
+          "term": "深耕",
+          "relation": "组成措施"
+        },
+        {
+          "term": "深翻",
+          "relation": "深耕方式"
+        }
+      ],
+      "status": "approved_with_revision",
+      "review": {
+        "sample_id": "KG-019",
+        "decision": "修改后通过",
+        "verified_by": "Codex（材料级核验）",
+        "verified_at": "2026-10-09"
+      },
+      "retrieval_terms": [
+        "机械改土",
+        "疏松耕层"
+      ]
+    },
+    {
+      "id": "measure:drainage_project",
+      "type": "measure",
+      "name": "排灌工程改良",
+      "aliases": [
+        "排灌工程改良",
+        "灌溉与排水工程"
+      ],
+      "related_terms": [
+        {
+          "term": "排涝",
+          "relation": "实施功能"
+        },
+        {
+          "term": "完善排水",
+          "relation": "实施描述"
+        }
+      ],
+      "retrieval_terms": [
+        "排水沟",
+        "降低地下水位",
+        "防止渍害",
+        "内涝治理",
+        "排灌工程",
+        "排水工程"
+      ],
+      "status": "approved",
+      "review": {
+        "decision": "通过",
+        "verified_by": "Codex（材料级核验）",
+        "verified_at": "2026-10-15",
+        "basis": "source_material"
+      }
+    },
+    {
+      "id": "measure:formula_fertilization",
+      "type": "measure",
+      "name": "测土配方施肥",
+      "aliases": [
+        "测土配方施肥",
+        "配方施肥"
+      ],
+      "related_terms": [
+        {
+          "term": "精准施肥",
+          "relation": "相关上位技术"
+        }
+      ],
+      "status": "approved_with_revision",
+      "review": {
+        "sample_id": "KG-018",
+        "decision": "修改后通过",
+        "verified_by": "Codex（材料级核验）",
+        "verified_at": "2026-10-09"
+      },
+      "retrieval_terms": [
+        "平衡施肥",
+        "施肥管理",
+        "按需施肥",
+        "施肥怎么配"
+      ]
+    },
+    {
+      "id": "measure:green_manure",
+      "type": "measure",
+      "name": "绿肥种植",
+      "aliases": [
+        "绿肥种植",
+        "种植绿肥"
+      ],
+      "related_terms": [
+        {
+          "term": "绿肥还田",
+          "relation": "后续工序"
+        }
+      ],
+      "status": "approved_with_revision",
+      "review": {
+        "sample_id": "KG-021",
+        "decision": "修改后通过",
+        "verified_by": "Codex（材料级核验）",
+        "verified_at": "2026-10-09"
+      },
+      "retrieval_terms": [
+        "种绿肥",
+        "绿肥翻埋",
+        "绿肥"
+      ]
+    },
+    {
+      "id": "measure:guest_soil",
+      "type": "measure",
+      "name": "客土改良",
+      "aliases": [
+        "客土改良"
+      ],
+      "related_terms": [
+        {
+          "term": "客土置换",
+          "relation": "具体实施方式"
+        },
+        {
+          "term": "换土",
+          "relation": "具体实施方式"
+        }
+      ],
+      "status": "approved_with_revision",
+      "review": {
+        "sample_id": "KG-015",
+        "decision": "修改后通过",
+        "verified_by": "Codex（材料级核验）",
+        "verified_at": "2026-10-09"
+      },
+      "retrieval_terms": [
+        "引入客土",
+        "掺土改良",
+        "外面运土",
+        "外来土掺入"
+      ]
+    },
+    {
+      "id": "measure:liming",
+      "type": "measure",
+      "name": "施用石灰",
+      "aliases": [
+        "施用石灰",
+        "石灰调酸",
+        "石灰改良"
+      ],
+      "status": "approved",
+      "review": {
+        "sample_id": "KG-017",
+        "decision": "通过",
+        "verified_by": "Codex（材料级核验）",
+        "verified_at": "2026-10-09"
+      },
+      "retrieval_terms": [
+        "调酸",
+        "中和土壤酸性",
+        "撒石灰"
+      ]
+    },
+    {
+      "id": "measure:no_till",
+      "type": "measure",
+      "name": "免耕",
+      "aliases": [
+        "免耕"
+      ],
+      "related_terms": [
+        {
+          "term": "保护性耕作",
+          "relation": "上位措施"
+        }
+      ],
+      "status": "approved_with_revision",
+      "review": {
+        "decision": "修改后通过",
+        "derived_from": "术语边界修订",
+        "verified_by": "Codex（材料级核验）",
+        "verified_at": "2026-10-09"
+      },
+      "retrieval_terms": [
+        "少扰动耕作",
+        "少扰动",
+        "不翻耕"
+      ]
+    },
+    {
+      "id": "measure:organic_fertilizer",
+      "type": "measure",
+      "name": "增施有机肥",
+      "aliases": [
+        "增施有机肥",
+        "施用有机肥",
+        "有机肥培肥"
+      ],
+      "status": "approved",
+      "review": {
+        "sample_id": "KG-014",
+        "decision": "通过",
+        "verified_by": "Codex（材料级核验）",
+        "verified_at": "2026-10-09"
+      },
+      "retrieval_terms": [
+        "培肥",
+        "补充肥力",
+        "农家肥"
+      ]
+    },
+    {
+      "id": "measure:soil_conditioner",
+      "type": "measure",
+      "name": "施用土壤调理剂",
+      "aliases": [
+        "施用土壤调理剂",
+        "土壤调理剂"
+      ],
+      "related_terms": [
+        {
+          "term": "改土剂",
+          "relation": "相关称谓"
+        },
+        {
+          "term": "调理剂改良",
+          "relation": "实施描述"
+        }
+      ],
+      "status": "approved_with_revision",
+      "review": {
+        "sample_id": "KG-016",
+        "decision": "修改后通过",
+        "verified_by": "Codex（材料级核验）",
+        "verified_at": "2026-10-09"
+      },
+      "retrieval_terms": [
+        "调理剂",
+        "调酸材料"
+      ]
+    },
+    {
+      "id": "measure:straw_return",
+      "type": "measure",
+      "name": "秸秆还田",
+      "aliases": [
+        "秸秆还田"
+      ],
+      "related_terms": [
+        {
+          "term": "腐熟还田",
+          "relation": "实施方式"
+        }
+      ],
+      "status": "approved_with_revision",
+      "review": {
+        "sample_id": "KG-020",
+        "decision": "修改后通过",
+        "verified_by": "Codex（材料级核验）",
+        "verified_at": "2026-10-09"
+      },
+      "retrieval_terms": [
+        "提高缓冲能力",
+        "农作物秸秆"
+      ]
+    },
+    {
+      "id": "obstacle:acidification",
+      "type": "obstacle",
+      "name": "土壤酸化",
+      "aliases": [
+        "土壤酸化",
+        "酸化障碍"
+      ],
+      "related_terms": [
+        {
+          "term": "pH偏低",
+          "relation": "状态表现"
+        },
+        {
+          "term": "酸性障碍",
+          "relation": "障碍表现"
+        }
+      ],
+      "status": "approved_with_revision",
+      "review": {
+        "sample_id": "KG-027",
+        "decision": "修改后通过",
+        "verified_by": "Codex（材料级核验）",
+        "verified_at": "2026-10-09"
+      }
+    },
+    {
+      "id": "obstacle:compaction",
+      "type": "obstacle",
+      "name": "土壤板结",
+      "aliases": [
+        "土壤板结",
+        "土壤紧实",
+        "紧实化"
+      ],
+      "related_terms": [
+        {
+          "term": "容重过高",
+          "relation": "表征指标"
+        }
+      ],
+      "status": "approved_with_revision",
+      "review": {
+        "sample_id": "KG-025",
+        "decision": "修改后通过",
+        "verified_by": "Codex（材料级核验）",
+        "verified_at": "2026-10-09"
+      },
+      "retrieval_terms": [
+        "板结",
+        "土发硬",
+        "地发硬",
+        "硬邦邦",
+        "犁底层太硬"
+      ]
+    },
+    {
+      "id": "obstacle:erosion",
+      "type": "obstacle",
+      "name": "土壤侵蚀",
+      "aliases": [
+        "土壤侵蚀"
+      ],
+      "related_terms": [
+        {
+          "term": "水土流失",
+          "relation": "相关过程"
+        },
+        {
+          "term": "表土流失",
+          "relation": "表现"
+        }
+      ],
+      "status": "approved_with_revision",
+      "review": {
+        "sample_id": "KG-024",
+        "decision": "修改后通过",
+        "verified_by": "Codex（材料级核验）",
+        "verified_at": "2026-10-09"
+      },
+      "retrieval_terms": [
+        "侵蚀退化",
+        "坡地冲刷"
+      ]
+    },
+    {
+      "id": "obstacle:low_organic_matter",
+      "type": "obstacle",
+      "name": "有机质不足",
+      "aliases": [
+        "有机质不足",
+        "有机质偏低",
+        "有机质含量低"
+      ],
+      "status": "approved",
+      "review": {
+        "sample_id": "KG-029",
+        "decision": "通过",
+        "verified_by": "Codex（材料级核验）",
+        "verified_at": "2026-10-09"
+      },
+      "retrieval_terms": [
+        "有机质消耗",
+        "有机质少",
+        "地力差"
+      ]
+    },
+    {
+      "id": "obstacle:nutrient_deficiency",
+      "type": "obstacle",
+      "name": "养分缺乏",
+      "aliases": [
+        "养分缺乏",
+        "养分不足"
+      ],
+      "related_terms": [
+        {
+          "term": "肥力不足",
+          "relation": "更宽泛障碍"
+        },
+        {
+          "term": "土壤贫瘠",
+          "relation": "更宽泛障碍"
+        }
+      ],
+      "status": "approved_with_revision",
+      "review": {
+        "sample_id": "KG-023",
+        "decision": "修改后通过",
+        "verified_by": "Codex（材料级核验）",
+        "verified_at": "2026-10-09"
+      }
+    },
+    {
+      "id": "obstacle:nutrient_imbalance",
+      "type": "obstacle",
+      "name": "养分失衡",
+      "aliases": [
+        "养分失衡",
+        "养分不协调",
+        "比例失衡"
+      ],
+      "status": "approved",
+      "review": {
+        "sample_id": "KG-022",
+        "decision": "通过",
+        "verified_by": "Codex（材料级核验）",
+        "verified_at": "2026-10-09"
+      },
+      "retrieval_terms": [
+        "肥料配比不合理",
+        "施肥比例不合理",
+        "养分过剩或匮乏",
+        "施肥乱",
+        "有的过量有的不足"
+      ]
+    },
+    {
+      "id": "obstacle:poor_drainage",
+      "type": "obstacle",
+      "name": "排水不良",
+      "aliases": [
+        "排水不良",
+        "排涝困难"
+      ],
+      "related_terms": [
+        {
+          "term": "渍害",
+          "relation": "结果"
+        },
+        {
+          "term": "涝害",
+          "relation": "结果"
+        }
+      ],
+      "status": "approved_with_revision",
+      "review": {
+        "sample_id": "KG-028",
+        "decision": "修改后通过",
+        "verified_by": "Codex（材料级核验）",
+        "verified_at": "2026-10-09"
+      },
+      "retrieval_terms": [
+        "排水不畅",
+        "田里积水",
+        "田里老积水",
+        "容易内涝",
+        "水排不出去"
+      ]
+    },
+    {
+      "id": "obstacle:salinization",
+      "type": "obstacle",
+      "name": "土壤盐渍化",
+      "aliases": [
+        "土壤盐渍化",
+        "盐渍化"
+      ],
+      "related_terms": [
+        {
+          "term": "盐碱化",
+          "relation": "组合概念"
+        },
+        {
+          "term": "盐分障碍",
+          "relation": "上位障碍"
+        }
+      ],
+      "status": "approved_with_revision",
+      "review": {
+        "sample_id": "KG-026",
+        "decision": "修改后通过",
+        "verified_by": "Codex（材料级核验）",
+        "verified_at": "2026-10-09"
+      }
+    },
+    {
+      "id": "obstacle:shallow_plough",
+      "type": "obstacle",
+      "name": "耕层变浅",
+      "aliases": [
+        "耕层变浅",
+        "耕层浅薄"
+      ],
+      "related_terms": [
+        {
+          "term": "有效土层不足",
+          "relation": "相关但不同障碍"
+        }
+      ],
+      "status": "approved_with_revision",
+      "review": {
+        "sample_id": "KG-030",
+        "decision": "修改后通过",
+        "verified_by": "Codex（材料级核验）",
+        "verified_at": "2026-10-09"
+      },
+      "retrieval_terms": [
+        "土层太薄",
+        "耕层太薄",
+        "耕层不够厚"
+      ]
+    },
+    {
+      "id": "standard:doc-11",
+      "type": "standard",
+      "name": "补充耕地质量鉴定技术规范 试行",
+      "aliases": [
+        "补充耕地质量鉴定技术规范",
+        "补充耕地鉴定技术规范",
+        "补充耕地鉴定规范"
+      ],
+      "document_id": 11,
+      "status": "approved",
+      "review": {
+        "sample_id": "KG-035",
+        "decision": "通过",
+        "verified_by": "Codex（材料级核验）",
+        "verified_at": "2026-10-09"
+      }
+    },
+    {
+      "id": "standard:doc-13",
+      "type": "standard",
+      "name": "广东省补充耕地质量验收细则 试行",
+      "aliases": [
+        "广东省补充耕地质量验收细则",
+        "广东补充耕地质量验收细则",
+        "广东补充耕地验收细则",
+        "广东补充耕地验收",
+        "广东省验收细则"
+      ],
+      "document_id": 13,
+      "status": "approved",
+      "review": {
+        "sample_id": "KG-032",
+        "decision": "通过",
+        "verified_by": "Codex（材料级核验）",
+        "verified_at": "2026-10-09"
+      }
+    },
+    {
+      "id": "standard:doc-14",
+      "type": "standard",
+      "name": "广东省补充耕地质量鉴定技术规范 试行",
+      "aliases": [
+        "广东省补充耕地质量鉴定技术规范",
+        "广东补充耕地质量鉴定技术规范",
+        "广东补充耕地鉴定技术规范",
+        "广东补充耕地鉴定规范",
+        "广东补充耕地鉴定",
+        "广东省鉴定规范",
+        "广东鉴定"
+      ],
+      "document_id": 14,
+      "status": "approved",
+      "review": {
+        "sample_id": "KG-031",
+        "decision": "通过",
+        "verified_by": "Codex（材料级核验）",
+        "verified_at": "2026-10-09"
+      }
+    },
+    {
+      "id": "standard:doc-3",
+      "type": "standard",
+      "name": "耕地地力调查与质量评价技术规程 NY/T 1634-2008",
+      "aliases": [
+        "NY/T 1634",
+        "NY/T 1634-2008",
+        "耕地地力调查与质量评价技术规程",
+        "耕地地力评价规程"
+      ],
+      "document_id": 3,
+      "status": "approved",
+      "review": {
+        "sample_id": "KG-033",
+        "decision": "通过",
+        "verified_by": "Codex（材料级核验）",
+        "verified_at": "2026-10-09"
+      }
+    },
+    {
+      "id": "standard:doc-4",
+      "type": "standard",
+      "name": "耕地质量等级 GB/T 33469-2016",
+      "aliases": [
+        "GB/T 33469",
+        "GB/T 33469-2016",
+        "耕地质量等级",
+        "耕地质量等级国家标准"
+      ],
+      "document_id": 4,
+      "status": "approved",
+      "review": {
+        "sample_id": "KG-034",
+        "decision": "通过",
+        "verified_by": "Codex（材料级核验）",
+        "verified_at": "2026-10-09"
+      }
+    }
+  ],
+  "relations": [
+    {
+      "id": "rel:c091fea7959dbdf2",
+      "type": "addresses",
+      "source": "measure:conservation_tillage",
+      "target": "obstacle:low_organic_matter",
+      "status": "approved_with_revision",
+      "review_sample_ids": [
+        "OM-027"
+      ],
+      "evidence": [
+        {
+          "document_id": 30,
+          "document_title": "酸性红壤地区耕地健康评价及定向培育研究",
+          "page": 74,
+          "chunk_index": null,
+          "quote": "发展的目标而起到积极的作用。 与常规耕作方式相比,少耕、免耕等方式均能增加土壤大团聚体,减少土壤团聚 体分裂与表层土有机质消耗,保护菌根网络,有利于增加土壤微生物含量与生物 多样性。此外,减少化肥施用量,增加有机肥、绿肥、微生物肥料的投入可以增 加土壤功能微生物活性和丰度。限制污染物与生活污水排放,减少农药施用可以 增加土壤微生物多样性。提高农业景观多样性,增加作物种类、增加防护林与杂 草种类也可以增加土壤生态系统中的生物多样性。 5.4 耕地利用方式优化 结合先前的研究可知,牛田镇处于南方的丘陵地区,土地中存在较多的红壤, 盛产蔬菜以及水稻等作物。然而受到诸多因素的影响,导致耕地质量不高,影响 到了农作物的产量以及品质。该区域的主要耕地质量问题为稻田土壤酸化、潜育 化,且存在地温低、深泥脚、硫化氢等有害气体问题突出,山区耕地土层薄、地 块小、石块含量多,土壤有机质含量低,季节性干旱严重。因此为了提高当地的 耕地质量,应该从如下方面开展相关的工作: (1)将建设用地耕作层剥离再利用。“耕地是最宝贵的资源”,宝贵之处 在于耕作层土壤。耕作层土壤是耕地地力载体,肥沃土壤的形成往往需要数百年 66",
+          "review_status": "approved_with_revision",
+          "review_sample_id": "OM-027",
+          "review_note": "改为保护性耕作有助于缓解有机质不足。",
+          "evidence_id": "evidence:635d16370aee69b0c72a1be5",
+          "quote_sha256": "d0d0592991b550835ee760a2d6f81a2969d82b99896937eb7bcc347fea37a804",
+          "document_key": "document:0b64dd22d398db8a608cf4a0"
+        }
+      ],
+      "supporting_document_count": 1,
+      "confidence": 0.85,
+      "review": {
+        "verified_by": "Codex（材料级核验）",
+        "verified_at": "2026-10-09",
+        "basis": "source_material"
+      }
+    },
+    {
+      "id": "rel:0fa82c25f87b948b",
+      "type": "addresses",
+      "source": "measure:deep_loosening",
+      "target": "obstacle:compaction",
+      "status": "approved_with_revision",
+      "review_sample_ids": [
+        "OM-002",
+        "OM-030"
+      ],
+      "evidence": [
+        {
+          "document_id": 29,
+          "document_title": "耕地质量等级提升的土地整治项目设计关键技术研究",
+          "page": 54,
+          "chunk_index": null,
+          "quote": "对于酸化土壤的改良主要采用添加 Na CO 、Ca(OH) 2 3 2 等土壤改良剂来改善耕地的土壤透水性、偷气性。对于土壤有机质含量较低的问 题,一般通过施用农家肥、秸秆还田、种植绿肥翻埋还田、施用土壤改良剂、测 土培肥等技术可以有效提升土壤有机质含量。对于土壤板结和退化可采用免耕技 术、深松技术来解决。对于土壤重金属污染的耕",
+          "review_status": "approved_with_revision",
+          "review_sample_id": "OM-002",
+          "review_note": "收窄为土壤板结—深松。",
+          "evidence_id": "evidence:cccb6f2c2212df84ac70cda3",
+          "quote_sha256": "413a015ec6fb9e95e2db0bf094fe1b73a368eba1351d4c4674985bdaf3cc2217",
+          "document_key": "document:1c227df51164f2156f35c9e4"
+        },
+        {
+          "document_id": 29,
+          "document_title": "耕地质量等级提升的土地整治项目设计关键技术研究",
+          "page": 54,
+          "chunk_index": null,
+          "quote": "Na CO 、Ca(OH) 2 3 2 等土壤改良剂来改善耕地的土壤透水性、偷气性。对于土壤有机质含量较低的问 题,一般通过施用农家肥、秸秆还田、种植绿肥翻埋还田、施用土壤改良剂、测 土培肥等技术可以有效提升土壤有机质含量。对于土壤板结和退化可采用免耕技 术、深松技术来解决。对于土壤重金属污染的耕地则有目的截断污染源,将土壤 中的重金属用生物或者化学方法萃取出来。 土壤改良工程一般持续较长时间,需要通过不断的投入才能产能较为理想的 效果。 土壤改良工程施用土壤改良剂有可能产生次生污染,从而降低耕地质量。 3.3.6 因素改造可行性分析 40",
+          "review_status": "approved_with_revision",
+          "review_sample_id": "OM-030",
+          "review_note": "收窄为土壤板结—深松。",
+          "evidence_id": "evidence:e415e5a2822bec83b44d8c6e",
+          "quote_sha256": "64c27789f920f4cb30c95e4e05b0d9e757c28e3618462276faf121e0c087924a",
+          "document_key": "document:1c227df51164f2156f35c9e4"
+        }
+      ],
+      "supporting_document_count": 1,
+      "confidence": 0.85,
+      "review": {
+        "verified_by": "Codex（材料级核验）",
+        "verified_at": "2026-10-09",
+        "basis": "source_material"
+      }
+    },
+    {
+      "id": "rel:c00808f7cccaa063",
+      "type": "addresses",
+      "source": "measure:deep_tillage",
+      "target": "obstacle:erosion",
+      "status": "approved",
+      "review_sample_ids": [
+        "OM-004"
+      ],
+      "evidence": [
+        {
+          "document_id": 15,
+          "document_title": "主要红壤区坡耕地土壤质量评价与障碍因子识别",
+          "page": 59,
+          "chunk_index": null,
+          "quote": "华中农业大学2024届硕士研究生学位(毕业)论文 防止水土流失,减少土壤损耗;结合坡面防护工程、雨水集蓄及土地整治措施, 通过深翻改土和引入客土等手段,改善土壤层次结构,提高土壤储水保肥能力, 从而实质性增加有效土层厚度;另外,在耕作措施方面,可采用深松与深耕的耕 作技术打破犁底层,从而提高土壤透气透水性能以及增加耕层厚度,进而改善土 壤结构并减轻侵蚀退化程度(史冬梅等 2017)。 5.2.2 土壤酸化限制型 针对土壤酸化,采取以下措施进行调控:施用石灰作为一种常用的耕地酸化 治理手段,既能有效中和土壤酸性,又可为作物提供必需的钙素营养,并有助于 减轻由土壤酸化引发的作物病害问题(( 曾希柏 2000);加强有机肥料的施用,包 括增加有",
+          "review_status": "approved",
+          "review_sample_id": "OM-004",
+          "review_note": "原文明确深松深耕可减轻侵蚀退化。",
+          "evidence_id": "evidence:33b0d72d436bc4ee4016d50d",
+          "quote_sha256": "b4b6a38800d2becda6ba592d6431b6529381a2d1369e475e5e42b88f2a733e6d",
+          "document_key": "document:d6f09d7353dd4a9463b3e0aa"
+        }
+      ],
+      "supporting_document_count": 1,
+      "confidence": 0.95,
+      "review": {
+        "verified_by": "Codex（材料级核验）",
+        "verified_at": "2026-10-09",
+        "basis": "source_material"
+      }
+    },
+    {
+      "id": "rel:0f4be5e25d694ab8",
+      "type": "addresses",
+      "source": "measure:drainage_project",
+      "target": "obstacle:poor_drainage",
+      "status": "approved",
+      "review_sample_ids": [
+        "V03-E007"
+      ],
+      "evidence": [
+        {
+          "document_id": 29,
+          "document_title": "耕地质量等级提升的土地整治项目设计关键技术研究",
+          "page": 57,
+          "chunk_index": 120,
+          "quote": "灌溉与排水工程可改善灌溉条件、降低地下水位、排涝并防止农作物产生渍害。",
+          "review_status": "approved",
+          "review_sample_id": "V03-E007",
+          "review_note": "v0.3孤立实体证据补强，按原文材料核验。",
+          "evidence_id": "evidence:b89b579710c065301b3a6c68",
+          "quote_sha256": "daf17a288a031c2c6c87baeb810584380c46bfdff8ff7fcd7c7037c51099b5f3",
+          "document_key": "document:1c227df51164f2156f35c9e4"
+        }
+      ],
+      "supporting_document_count": 1,
+      "confidence": 0.9,
+      "review": {
+        "verified_by": "Codex（材料级核验）",
+        "verified_at": "2026-10-15",
+        "basis": "source_material",
+        "note": "排水工程的排涝、防渍功能直接对应排水不良。"
+      }
+    },
+    {
+      "id": "rel:30f42f9a2778f4fb",
+      "type": "addresses",
+      "source": "measure:formula_fertilization",
+      "target": "obstacle:acidification",
+      "status": "approved",
+      "review_sample_ids": [
+        "OM-015"
+      ],
+      "evidence": [
+        {
+          "document_id": 15,
+          "document_title": "主要红壤区坡耕地土壤质量评价与障碍因子识别",
+          "page": 59,
+          "chunk_index": null,
+          "quote": "助于 减轻由土壤酸化引发的作物病害问题(( 曾希柏 2000);加强有机肥料的施用,包 括增加有机肥投放、实践秸秆还田以及种植绿肥等途径,充分利用土壤有机质对 土壤pH值的稳定与缓冲功能,从而提升土壤有机质含量,助力维持土壤酸碱平 衡; 实施平衡施肥,遵循测土配方施肥原则,根据土壤特性和作物生长周期的 需求,适时适度供应养分,通过选择碱性或生理碱性化肥来取代酸性或生理酸性 化肥,尤其注意针对作为土壤酸化主因的长期大量施用氮肥现象,优先选用如尿 素和碳酸氢铵等对土壤酸化影响较低的氮肥品种(徐仁扣等2018)。 5.2.3 土壤养分限制型 调控土壤养分可从土壤监测、合理施肥、生态改良等多维度出发,采取工程、 农艺和生物等措施,提高坡耕地耕层土壤养分含量,改善坡耕地质量。对耕地土 壤进行科学的养分检测,明确土壤氮、磷、钾、有机质等元素的状况,制定个性 化施肥配方(( 杨奇勇等 2010);实施秸秆还田等措施,增加土壤有机质含量,优 化土壤结构,促进养分循环利用效率,同时辅以生物炭、腐熟农家肥等商品有机 肥,以增",
+          "review_status": "approved",
+          "review_sample_id": "OM-015",
+          "review_note": "酸化限制型措施段明确支持测土配方施肥。",
+          "evidence_id": "evidence:3722e11e55fad660fa0d88cf",
+          "quote_sha256": "bc219cc941cf0776a7f4f73a99a059a0d75a21ac6e8ed1b4ed1baae124e5e2ab",
+          "document_key": "document:d6f09d7353dd4a9463b3e0aa"
+        }
+      ],
+      "supporting_document_count": 1,
+      "confidence": 0.95,
+      "review": {
+        "verified_by": "Codex（材料级核验）",
+        "verified_at": "2026-10-09",
+        "basis": "source_material"
+      }
+    },
+    {
+      "id": "rel:e2259384941ce3ea",
+      "type": "addresses",
+      "source": "measure:formula_fertilization",
+      "target": "obstacle:nutrient_deficiency",
+      "status": "approved",
+      "review_sample_ids": [
+        "OM-028"
+      ],
+      "evidence": [
+        {
+          "document_id": 28,
+          "document_title": "罗定市耕地质量时空分异特征及障碍因素诊断",
+          "page": 4,
+          "chunk_index": null,
+          "quote": ", 耕地质量降低的区域主要位于罗定市中部的素龙街道 、 黎少镇 、 连州镇和北部的附城街道 。 2015-2020 年 , 耕地质量降低的区域主要位 于罗定市中部罗平镇 素龙街道和西部的泗纶镇 城市扩张导致耕地破碎化 地 、 。 、 形坡度大 土壤养分不足 以及灌溉条件不足是导致这些区域耕地质量下降的主 、 、 要原因 。 (6)2020 年 , 全市中低产 田 的主要障碍因子为灌溉能力 、 地形部位 、 速效 钾 有效磷 有机质和酸碱度 平均障碍程度多处于轻度水平 而地形部位和灌 、 、 。 , 溉能力分别为中度障碍和重度障碍 障碍类型分区 以 “灌溉能力 地形部位” “地 。 - 、 形部位 灌溉能力” 和 “灌溉能力 速效钾” 类型区为主 主要位于在罗定市东部 - - , 的朗塘镇 船步镇 金鸡镇 西北部的普滨镇 附城街道和西部的龙湾镇 分别 、 、 、 、 , 占中低产田面积的 25. 76% 、 25. 69%和 19 . 08 % 。 其中灌溉能力 、 地形部位和速效 钾是主要的障碍因素 针对灌溉能力 土壤肥力和地形部位为主导的障碍类型区 。 、 , 可以分别通过提升水资源灌溉技术 测土配方施肥或增施有机肥和土地平整等方 、 法进行耕地质量提升 。 关键词 耕地质量评价 线性回归 随机森林回归模型 衔接转换 障碍度模型 : ; ; ; ; II",
+          "review_status": "approved",
+          "review_sample_id": "OM-028",
+          "review_note": "原文将肥力障碍与测土配方施肥直接对应。",
+          "evidence_id": "evidence:60523dd6e34bbfdf65e69ff0",
+          "quote_sha256": "701483ce90db35d3f13cb6238dacb66d18d9f19427a9f25ad8034cdea68b6e7d",
+          "document_key": "document:0b222d860432aca9180499db"
+        }
+      ],
+      "supporting_document_count": 1,
+      "confidence": 0.95,
+      "review": {
+        "verified_by": "Codex（材料级核验）",
+        "verified_at": "2026-10-09",
+        "basis": "source_material"
+      }
+    },
+    {
+      "id": "rel:fe3116ba788a3738",
+      "type": "addresses",
+      "source": "measure:formula_fertilization",
+      "target": "obstacle:nutrient_imbalance",
+      "status": "approved",
+      "review_sample_ids": [
+        "V03-E006"
+      ],
+      "evidence": [
+        {
+          "document_id": 15,
+          "document_title": "主要红壤区坡耕地土壤质量评价与障碍因子识别",
+          "page": 59,
+          "chunk_index": 111,
+          "quote": "采用测土配方施肥方法平衡施肥，无机肥与有机肥相结合，避免养分过剩或匮乏。",
+          "review_status": "approved",
+          "review_sample_id": "V03-E006",
+          "review_note": "v0.3孤立实体证据补强，按原文材料核验。",
+          "evidence_id": "evidence:cff83c74502a96a9ad630137",
+          "quote_sha256": "4e212fb6bd083fdd9c1f1bf7442f88484012a7b136c9c70e0e5cdf67ef2b60e0",
+          "document_key": "document:d6f09d7353dd4a9463b3e0aa"
+        }
+      ],
+      "supporting_document_count": 1,
+      "confidence": 0.9,
+      "review": {
+        "verified_by": "Codex（材料级核验）",
+        "verified_at": "2026-10-15",
+        "basis": "source_material",
+        "note": "测土配方施肥通过避免养分过剩或匮乏来治理养分失衡。"
+      }
+    },
+    {
+      "id": "rel:f3690c33ee8dc897",
+      "type": "addresses",
+      "source": "measure:green_manure",
+      "target": "obstacle:low_organic_matter",
+      "status": "approved",
+      "review_sample_ids": [
+        "V03-E003"
+      ],
+      "evidence": [
+        {
+          "document_id": 29,
+          "document_title": "耕地质量等级提升的土地整治项目设计关键技术研究",
+          "page": 54,
+          "chunk_index": 115,
+          "quote": "对于土壤有机质含量较低的问题，一般通过施用农家肥、秸秆还田、种植绿肥翻埋还田、施用土壤改良剂、测土培肥等技术可以有效提升土壤有机质含量。",
+          "review_status": "approved",
+          "review_sample_id": "V03-E003",
+          "review_note": "v0.3孤立实体证据补强，按原文材料核验。",
+          "evidence_id": "evidence:356a8b236a9983d60b8712fa",
+          "quote_sha256": "bad501d82a2756a5ae4c1529bb054abe7d8b6a999ff21f8f42261232b0664f2f",
+          "document_key": "document:1c227df51164f2156f35c9e4"
+        }
+      ],
+      "supporting_document_count": 1,
+      "confidence": 0.9,
+      "review": {
+        "verified_by": "Codex（材料级核验）",
+        "verified_at": "2026-10-15",
+        "basis": "source_material",
+        "note": "绿肥种植直接对应有机质含量较低问题。"
+      }
+    },
+    {
+      "id": "rel:058b3641c36a3a8c",
+      "type": "addresses",
+      "source": "measure:liming",
+      "target": "obstacle:acidification",
+      "status": "approved",
+      "review_sample_ids": [
+        "KG-037",
+        "OM-001"
+      ],
+      "evidence": [
+        {
+          "document_id": 15,
+          "document_title": "主要红壤区坡耕地土壤质量评价与障碍因子识别",
+          "page": 59,
+          "chunk_index": 110,
+          "quote": "针对土壤酸化,采取以下措施进行调控:施用石灰作为一种常用的耕地酸化",
+          "review_status": "approved",
+          "review_sample_id": "KG-037",
+          "review_note": "原文直接支持改良措施治理障碍因素。",
+          "evidence_id": "evidence:e673a6af07ed7fd0936c1520",
+          "quote_sha256": "915f0191ba72701e7fc90580ffe1b7283c9f36c9b2c43be138c7d848e3c1f89f",
+          "document_key": "document:d6f09d7353dd4a9463b3e0aa"
+        }
+      ],
+      "supporting_document_count": 1,
+      "confidence": 0.95,
+      "review": {
+        "verified_by": "Codex（材料级核验）",
+        "verified_at": "2026-10-09",
+        "basis": "source_material"
+      }
+    },
+    {
+      "id": "rel:810e8d511a70cd3e",
+      "type": "addresses",
+      "source": "measure:no_till",
+      "target": "obstacle:compaction",
+      "status": "approved_with_revision",
+      "review_sample_ids": [
+        "OM-024"
+      ],
+      "evidence": [
+        {
+          "document_id": 29,
+          "document_title": "耕地质量等级提升的土地整治项目设计关键技术研究",
+          "page": 54,
+          "chunk_index": null,
+          "quote": "对于土壤板结和退化可采用免耕技",
+          "review_status": "approved_with_revision",
+          "review_sample_id": "OM-024",
+          "review_note": "收窄为土壤板结—免耕。",
+          "evidence_id": "evidence:a12fc8d62919251b6321aa65",
+          "quote_sha256": "6719496457295734a1c3fb0fb6fa6d0edbd06a63da06b94accf66925c421a4e5",
+          "document_key": "document:1c227df51164f2156f35c9e4"
+        }
+      ],
+      "supporting_document_count": 1,
+      "confidence": 0.85,
+      "review": {
+        "verified_by": "Codex（材料级核验）",
+        "verified_at": "2026-10-09",
+        "basis": "source_material"
+      }
+    },
+    {
+      "id": "rel:33ff419a3c78e3ed",
+      "type": "addresses",
+      "source": "measure:organic_fertilizer",
+      "target": "obstacle:nutrient_deficiency",
+      "status": "approved",
+      "review_sample_ids": [
+        "OM-029"
+      ],
+      "evidence": [
+        {
+          "document_id": 28,
+          "document_title": "罗定市耕地质量时空分异特征及障碍因素诊断",
+          "page": 4,
+          "chunk_index": null,
+          "quote": ", 耕地质量降低的区域主要位于罗定市中部的素龙街道 、 黎少镇 、 连州镇和北部的附城街道 。 2015-2020 年 , 耕地质量降低的区域主要位 于罗定市中部罗平镇 素龙街道和西部的泗纶镇 城市扩张导致耕地破碎化 地 、 。 、 形坡度大 土壤养分不足 以及灌溉条件不足是导致这些区域耕地质量下降的主 、 、 要原因 。 (6)2020 年 , 全市中低产 田 的主要障碍因子为灌溉能力 、 地形部位 、 速效 钾 有效磷 有机质和酸碱度 平均障碍程度多处于轻度水平 而地形部位和灌 、 、 。 , 溉能力分别为中度障碍和重度障碍 障碍类型分区 以 “灌溉能力 地形部位” “地 。 - 、 形部位 灌溉能力” 和 “灌溉能力 速效钾” 类型区为主 主要位于在罗定市东部 - - , 的朗塘镇 船步镇 金鸡镇 西北部的普滨镇 附城街道和西部的龙湾镇 分别 、 、 、 、 , 占中低产田面积的 25. 76% 、 25. 69%和 19 . 08 % 。 其中灌溉能力 、 地形部位和速效 钾是主要的障碍因素 针对灌溉能力 土壤肥力和地形部位为主导的障碍类型区 。 、 , 可以分别通过提升水资源灌溉技术 测土配方施肥或增施有机肥和土地平整等方 、 法进行耕地质量提升 。 关键词 耕地质量评价 线性回归 随机森林回归模型 衔接转换 障碍度模型 : ; ; ; ; II",
+          "review_status": "approved",
+          "review_sample_id": "OM-029",
+          "review_note": "原文将肥力障碍与增施有机肥直接对应。",
+          "evidence_id": "evidence:60523dd6e34bbfdf65e69ff0",
+          "quote_sha256": "701483ce90db35d3f13cb6238dacb66d18d9f19427a9f25ad8034cdea68b6e7d",
+          "document_key": "document:0b222d860432aca9180499db"
+        }
+      ],
+      "supporting_document_count": 1,
+      "confidence": 0.95,
+      "review": {
+        "verified_by": "Codex（材料级核验）",
+        "verified_at": "2026-10-09",
+        "basis": "source_material"
+      }
+    },
+    {
+      "id": "rel:e97eb40d2da004f3",
+      "type": "addresses",
+      "source": "measure:soil_conditioner",
+      "target": "obstacle:acidification",
+      "status": "approved",
+      "review_sample_ids": [
+        "OM-018"
+      ],
+      "evidence": [
+        {
+          "document_id": 16,
+          "document_title": "云贵高原耕地质量评估 障碍因子及产能提升潜力分析",
+          "page": 41,
+          "chunk_index": null,
+          "quote": "域, 应根据养分状况调整农业种植结构和耕作方式[86],制定施用土壤改良剂、土壤 培肥[88]等措施提高土壤肥力改变区域空间分布不均的现象[87]。 (三)加强酸化、水土流失等障碍因素治理 土壤酸化和水土流失是云贵高原两大典型障碍。云贵高原土壤多为酸性土 壤,土壤酸化导致作物生长发育不良和重金属富集[88];云贵高原坡耕地面积占 比较大,地势高低起伏、坡度陡,加上不合理耕作和自然因素等,是水土流失 的主要来源,对作物生长发育以及产量造成一定的影响[89]。因此,我们需要通 过土壤调理剂、增施有机肥等技术对云贵高原酸化土壤进行治理[90][91];同时加 强农田水利工程建设,加大农田防护林种植力度,强化监管,严禁耕地过度开 垦,减少水土流失。 34",
+          "review_status": "approved",
+          "review_sample_id": "OM-018",
+          "review_note": "原文直接表述土壤调理剂治理酸化。",
+          "evidence_id": "evidence:a4425834c0a9d0b8827f0da8",
+          "quote_sha256": "db80c23b7206dddc337fadf14c13a52f85d227830104ec2654bf9595f2ae37b4",
+          "document_key": "document:6e3c7b57fb56eeaf9b3f07d3"
+        }
+      ],
+      "supporting_document_count": 1,
+      "confidence": 0.95,
+      "review": {
+        "verified_by": "Codex（材料级核验）",
+        "verified_at": "2026-10-09",
+        "basis": "source_material"
+      }
+    },
+    {
+      "id": "rel:369ee758119f6ca4",
+      "type": "addresses",
+      "source": "measure:straw_return",
+      "target": "obstacle:acidification",
+      "status": "approved",
+      "review_sample_ids": [
+        "OM-011"
+      ],
+      "evidence": [
+        {
+          "document_id": 15,
+          "document_title": "主要红壤区坡耕地土壤质量评价与障碍因子识别",
+          "page": 59,
+          "chunk_index": null,
+          "quote": "水性能以及增加耕层厚度,进而改善土 壤结构并减轻侵蚀退化程度(史冬梅等 2017)。 5.2.2 土壤酸化限制型 针对土壤酸化,采取以下措施进行调控:施用石灰作为一种常用的耕地酸化 治理手段,既能有效中和土壤酸性,又可为作物提供必需的钙素营养,并有助于 减轻由土壤酸化引发的作物病害问题(( 曾希柏 2000);加强有机肥料的施用,包 括增加有机肥投放、实践秸秆还田以及种植绿肥等途径,充分利用土壤有机质对 土壤pH值的稳定与缓冲功能,从而提升土壤有机质含量,助力维持土壤酸碱平 衡; 实施平衡施肥,遵循测土配方施肥原则,根据土壤特性和作物生长周期的 需求,适时适度供应养分,通过选择碱性或生理碱性化肥来取代酸性或生理酸性 化肥,尤其注意针对作为土壤酸化主因的长期大量施用氮肥现象,优先选用如尿 素和碳酸氢铵等对土壤酸化影响较低的氮肥品种(徐仁扣等2018)。 5.2.3 土壤养分限制型 调控土壤养分可从土壤监测、合理施肥、生态改良等多维度出发,采取工程、 农艺和生物等措施,",
+          "review_status": "approved",
+          "review_sample_id": "OM-011",
+          "review_note": "酸化限制型措施段明确支持秸秆还田。",
+          "evidence_id": "evidence:c59095a750d1fd7b28b04a86",
+          "quote_sha256": "5721f708a5c156c19bfba087b4726a812189b957b86e34082a34590f86fb806f",
+          "document_key": "document:d6f09d7353dd4a9463b3e0aa"
+        }
+      ],
+      "supporting_document_count": 1,
+      "confidence": 0.95,
+      "review": {
+        "verified_by": "Codex（材料级核验）",
+        "verified_at": "2026-10-09",
+        "basis": "source_material"
+      }
+    },
+    {
+      "id": "rel:d557f9945967ab07",
+      "type": "assessment_basis",
+      "source": "standard:doc-3",
+      "target": "obstacle:salinization",
+      "status": "approved_with_revision",
+      "review_sample_ids": [
+        "KG-070"
+      ],
+      "evidence": [
+        {
+          "document_id": 3,
+          "document_title": "耕地地力调查与质量评价技术规程 NY/T 1634-2008",
+          "page": 16,
+          "chunk_index": 26,
+          "quote": "盐碱化程度可依据土样检测结果来判",
+          "review_status": "approved_with_revision",
+          "review_sample_id": "KG-070",
+          "review_note": "将笼统支持关系改为盐碱化程度判定依据。",
+          "evidence_id": "evidence:05082796fdd2580203c4956d",
+          "quote_sha256": "e630782b6072289a255b954bfa5a0913e9443d3a99fbbb5c46621d46609d6aa0",
+          "document_key": "document:a9c4e157f1574a61345a0d6d"
+        }
+      ],
+      "supporting_document_count": 1,
+      "confidence": 0.85,
+      "review": {
+        "verified_by": "Codex（材料级核验）",
+        "verified_at": "2026-10-09",
+        "basis": "source_material"
+      }
+    },
+    {
+      "id": "rel:a7fa385a7d0a486a",
+      "type": "characterized_by",
+      "source": "obstacle:compaction",
+      "target": "indicator:bulk_density",
+      "status": "approved_with_revision",
+      "review_sample_ids": [
+        "KG-036",
+        "KG-071",
+        "KG-072"
+      ],
+      "evidence": [
+        {
+          "document_id": 15,
+          "document_title": "主要红壤区坡耕地土壤质量评价与障碍因子识别",
+          "page": 7,
+          "chunk_index": 15,
+          "quote": "土壤板结问题主要由容重限制,集",
+          "review_status": "approved_with_revision",
+          "review_sample_id": "KG-036",
+          "review_note": "将宽泛的影响关系收窄为土壤板结表现为/伴随土壤容重升高。",
+          "evidence_id": "evidence:f6cbccf5b15db881391c2117",
+          "quote_sha256": "8f19cd4d7bd299b9708e6c50bf03c5857043d8c308f6ba68b539f9a7f4fc0b23",
+          "document_key": "document:d6f09d7353dd4a9463b3e0aa"
+        },
+        {
+          "document_id": 15,
+          "document_title": "主要红壤区坡耕地土壤质量评价与障碍因子识别",
+          "page": 60,
+          "chunk_index": 112,
+          "quote": "(2)土壤养分缺乏、黏粒含量多、容重大、土壤板结是制约红壤坡耕地耕",
+          "review_status": "approved_with_revision",
+          "review_sample_id": "KG-071",
+          "review_note": "将宽泛的影响关系收窄为土壤板结表现为/伴随土壤容重升高。",
+          "evidence_id": "evidence:73a57c65797bcd12c36e6290",
+          "quote_sha256": "68ab95ead970516569eca981f65af0e35ec54b0d8f40843105b5670de802df6c",
+          "document_key": "document:d6f09d7353dd4a9463b3e0aa"
+        },
+        {
+          "document_id": 15,
+          "document_title": "主要红壤区坡耕地土壤质量评价与障碍因子识别",
+          "page": 60,
+          "chunk_index": 112,
+          "quote": "制,主要分布于江西省、广东省和广西省,土壤板结问题主要由容重限制,集中",
+          "review_status": "approved_with_revision",
+          "review_sample_id": "KG-072",
+          "review_note": "将宽泛的影响关系收窄为土壤板结表现为/伴随土壤容重升高。",
+          "evidence_id": "evidence:ba98e5a521a8adab92215e6a",
+          "quote_sha256": "803e34e8ea2dd4559edb50e822abad1cf252ef9b6e7a59ea22c5a6712d4e048f",
+          "document_key": "document:d6f09d7353dd4a9463b3e0aa"
+        }
+      ],
+      "supporting_document_count": 1,
+      "confidence": 0.85,
+      "review": {
+        "verified_by": "Codex（材料级核验）",
+        "verified_at": "2026-10-09",
+        "basis": "source_material"
+      }
+    },
+    {
+      "id": "rel:2f13738db223ce87",
+      "type": "characterized_by",
+      "source": "obstacle:nutrient_deficiency",
+      "target": "indicator:cec",
+      "status": "approved",
+      "review_sample_ids": [
+        "V03-E002"
+      ],
+      "evidence": [
+        {
+          "document_id": 15,
+          "document_title": "主要红壤区坡耕地土壤质量评价与障碍因子识别",
+          "page": 7,
+          "chunk_index": 15,
+          "quote": "坡耕地土壤养分障碍主要由全磷、阳离子交换量低下限制，主要分布于江西省、广东省和广西省。",
+          "review_status": "approved",
+          "review_sample_id": "V03-E002",
+          "review_note": "v0.3孤立实体证据补强，按原文材料核验。",
+          "evidence_id": "evidence:c2d1283bba3104539f2736db",
+          "quote_sha256": "58b06bde6adc825db01b3371d5e13e54ddc52dc2392d5351df854d08cf9132df",
+          "document_key": "document:d6f09d7353dd4a9463b3e0aa"
+        }
+      ],
+      "supporting_document_count": 1,
+      "confidence": 0.9,
+      "review": {
+        "verified_by": "Codex（材料级核验）",
+        "verified_at": "2026-10-15",
+        "basis": "source_material",
+        "note": "阳离子交换量低下被原文直接列为养分障碍限制因素。"
+      }
+    },
+    {
+      "id": "rel:849ac8d18ab20557",
+      "type": "characterized_by",
+      "source": "obstacle:nutrient_deficiency",
+      "target": "indicator:total_n",
+      "status": "approved",
+      "review_sample_ids": [
+        "V03-E001"
+      ],
+      "evidence": [
+        {
+          "document_id": 15,
+          "document_title": "主要红壤区坡耕地土壤质量评价与障碍因子识别",
+          "page": 7,
+          "chunk_index": 14,
+          "quote": "采用障碍度诊断模型进一步分析发现，该区域坡耕地的障碍因素阈值为：土壤全氮、全磷和砾石含量分别小于1.15 g/kg、小于0.45 g/kg和大于2.62%时土壤存在障碍问题。",
+          "review_status": "approved",
+          "review_sample_id": "V03-E001",
+          "review_note": "v0.3孤立实体证据补强，按原文材料核验。",
+          "evidence_id": "evidence:e38f9163e1443aec143b9d2b",
+          "quote_sha256": "ee4bcd615e3fe2fe63673701f3302c7739dc6db2f85dfab6aee63ee58544c849",
+          "document_key": "document:d6f09d7353dd4a9463b3e0aa"
+        }
+      ],
+      "supporting_document_count": 1,
+      "confidence": 0.9,
+      "review": {
+        "verified_by": "Codex（材料级核验）",
+        "verified_at": "2026-10-15",
+        "basis": "source_material",
+        "note": "全氮低于材料阈值可表征养分障碍。"
+      }
+    },
+    {
+      "id": "rel:3d1f6d884a25aa5a",
+      "type": "characterized_by",
+      "source": "obstacle:poor_drainage",
+      "target": "indicator:drainage",
+      "status": "approved",
+      "review_sample_ids": [
+        "V03-E008"
+      ],
+      "evidence": [
+        {
+          "document_id": 29,
+          "document_title": "耕地质量等级提升的土地整治项目设计关键技术研究",
+          "page": 57,
+          "chunk_index": 120,
+          "quote": "部分耕地因为平原地区地势低洼、排水不畅，导致土壤盐渍化和耕地内涝。",
+          "review_status": "approved",
+          "review_sample_id": "V03-E008",
+          "review_note": "v0.3孤立实体证据补强，按原文材料核验。",
+          "evidence_id": "evidence:79900882f08bf9d5aa495232",
+          "quote_sha256": "35fc79fce0f528d3f733aa189e14f9e526a11c0e4d1cb404f76fb841c0f48331",
+          "document_key": "document:1c227df51164f2156f35c9e4"
+        }
+      ],
+      "supporting_document_count": 1,
+      "confidence": 0.9,
+      "review": {
+        "verified_by": "Codex（材料级核验）",
+        "verified_at": "2026-10-15",
+        "basis": "source_material",
+        "note": "排水不畅和内涝用于识别排水不良障碍。"
+      }
+    },
+    {
+      "id": "rel:e29748d3e2d538e9",
+      "type": "characterized_by",
+      "source": "obstacle:shallow_plough",
+      "target": "indicator:plough_depth",
+      "status": "approved",
+      "review_sample_ids": [
+        "V03-E005"
+      ],
+      "evidence": [
+        {
+          "document_id": 15,
+          "document_title": "主要红壤区坡耕地土壤质量评价与障碍因子识别",
+          "page": 59,
+          "chunk_index": 110,
+          "quote": "可采用深松与深耕的耕作技术打破犁底层，从而提高土壤透气透水性能以及增加耕层厚度。",
+          "review_status": "approved",
+          "review_sample_id": "V03-E005",
+          "review_note": "v0.3孤立实体证据补强，按原文材料核验。",
+          "evidence_id": "evidence:8231eb680ad12546cda2e7a3",
+          "quote_sha256": "84e18bba90711b7fbac63f8d9516a0b5ed900105142f44b1b2d461fcf26c1946",
+          "document_key": "document:d6f09d7353dd4a9463b3e0aa"
+        }
+      ],
+      "supporting_document_count": 1,
+      "confidence": 0.9,
+      "review": {
+        "verified_by": "Codex（材料级核验）",
+        "verified_at": "2026-10-15",
+        "basis": "source_material",
+        "note": "耕层浅薄以耕层厚度作为直接表征指标。"
+      }
+    },
+    {
+      "id": "rel:5607979760e1c0f4",
+      "type": "improves_indicator",
+      "source": "measure:guest_soil",
+      "target": "indicator:effective_depth",
+      "status": "approved",
+      "review_sample_ids": [
+        "V03-E004"
+      ],
+      "evidence": [
+        {
+          "document_id": 15,
+          "document_title": "主要红壤区坡耕地土壤质量评价与障碍因子识别",
+          "page": 59,
+          "chunk_index": 110,
+          "quote": "通过深翻改土和引入客土等手段，改善土壤层次结构，提高土壤储水保肥能力，从而实质性增加有效土层厚度。",
+          "review_status": "approved",
+          "review_sample_id": "V03-E004",
+          "review_note": "v0.3孤立实体证据补强，按原文材料核验。",
+          "evidence_id": "evidence:880c728fd34771892752c87b",
+          "quote_sha256": "ffa3b3228bd1f5a61a642aa4f1cfd30fd8ddcad334bc39bc8da57397e710897f",
+          "document_key": "document:d6f09d7353dd4a9463b3e0aa"
+        }
+      ],
+      "supporting_document_count": 1,
+      "confidence": 0.9,
+      "review": {
+        "verified_by": "Codex（材料级核验）",
+        "verified_at": "2026-10-15",
+        "basis": "source_material",
+        "note": "使用措施—指标改善关系，避免把客土强行绑定到单一障碍。"
+      }
+    },
+    {
+      "id": "rel:7b6bc685264abbf9",
+      "type": "includes_indicator",
+      "source": "standard:doc-11",
+      "target": "indicator:effective_depth",
+      "status": "approved_with_revision",
+      "review_sample_ids": [
+        "KG-046"
+      ],
+      "evidence": [
+        {
+          "document_id": 11,
+          "document_title": "补充耕地质量鉴定技术规范 试行",
+          "page": 6,
+          "chunk_index": 5,
+          "quote": "农业生产符合性指标包括但不限于有效土层厚度、土壤有机",
+          "review_status": "approved_with_revision",
+          "review_sample_id": "KG-046",
+          "review_note": "标准关系由定义改为纳入评价指标或规定检测方法。",
+          "evidence_id": "evidence:f117dd479792c4daee75132a",
+          "quote_sha256": "8245134a735f1d7a53ec5582aaf080acb12814352f48231b670b243394dd6559",
+          "document_key": "document:a91feb3ce3931789713eab34"
+        }
+      ],
+      "supporting_document_count": 1,
+      "confidence": 0.85,
+      "review": {
+        "verified_by": "Codex（材料级核验）",
+        "verified_at": "2026-10-09",
+        "basis": "source_material"
+      }
+    },
+    {
+      "id": "rel:99e721a06ccf4433",
+      "type": "includes_indicator",
+      "source": "standard:doc-13",
+      "target": "indicator:effective_depth",
+      "status": "approved_with_revision",
+      "review_sample_ids": [
+        "KG-050"
+      ],
+      "evidence": [
+        {
+          "document_id": 13,
+          "document_title": "广东省补充耕地质量验收细则 试行",
+          "page": 4,
+          "chunk_index": 3,
+          "quote": "农业生产符合性评价指标包括有效土层厚度、土壤有机质含",
+          "review_status": "approved_with_revision",
+          "review_sample_id": "KG-050",
+          "review_note": "标准关系由定义改为纳入评价指标或规定检测方法。",
+          "evidence_id": "evidence:face413f5b58407e6659e614",
+          "quote_sha256": "57feb71bd453c4ba9bd1444363642c56802dd1e07ee13103b2fc55a10228652c",
+          "document_key": "document:f0f24873a4f56aa3908b300d"
+        }
+      ],
+      "supporting_document_count": 1,
+      "confidence": 0.85,
+      "review": {
+        "verified_by": "Codex（材料级核验）",
+        "verified_at": "2026-10-09",
+        "basis": "source_material"
+      }
+    },
+    {
+      "id": "rel:f9c88c11bd6694ff",
+      "type": "includes_indicator",
+      "source": "standard:doc-13",
+      "target": "indicator:organic_matter",
+      "status": "approved_with_revision",
+      "review_sample_ids": [
+        "KG-051"
+      ],
+      "evidence": [
+        {
+          "document_id": 13,
+          "document_title": "广东省补充耕地质量验收细则 试行",
+          "page": 4,
+          "chunk_index": 3,
+          "quote": "农业生产符合性评价指标包括有效土层厚度、土壤有机质含",
+          "review_status": "approved_with_revision",
+          "review_sample_id": "KG-051",
+          "review_note": "标准关系由定义改为纳入评价指标或规定检测方法。",
+          "evidence_id": "evidence:face413f5b58407e6659e614",
+          "quote_sha256": "57feb71bd453c4ba9bd1444363642c56802dd1e07ee13103b2fc55a10228652c",
+          "document_key": "document:f0f24873a4f56aa3908b300d"
+        }
+      ],
+      "supporting_document_count": 1,
+      "confidence": 0.85,
+      "review": {
+        "verified_by": "Codex（材料级核验）",
+        "verified_at": "2026-10-09",
+        "basis": "source_material"
+      }
+    },
+    {
+      "id": "rel:86c8fa5cc3cd0353",
+      "type": "includes_indicator",
+      "source": "standard:doc-14",
+      "target": "indicator:effective_depth",
+      "status": "approved_with_revision",
+      "review_sample_ids": [
+        "KG-056",
+        "KG-080"
+      ],
+      "evidence": [
+        {
+          "document_id": 14,
+          "document_title": "广东省补充耕地质量鉴定技术规范 试行",
+          "page": 3,
+          "chunk_index": 4,
+          "quote": "农业生产符合性指标包括有效土层厚度、土壤",
+          "review_status": "approved_with_revision",
+          "review_sample_id": "KG-056",
+          "review_note": "标准关系由定义改为纳入评价指标或规定检测方法。",
+          "evidence_id": "evidence:0ba13fc31a8f6cbcfd9892f8",
+          "quote_sha256": "e345735431c076fb41ac53c63cc84e0d329a059cd9f8a40b1aec306c2481b2d0",
+          "document_key": "document:2730c13e478fd5527501a76f"
+        },
+        {
+          "document_id": 14,
+          "document_title": "广东省补充耕地质量鉴定技术规范 试行",
+          "page": 3,
+          "chunk_index": 5,
+          "quote": "农业生产符合性指标包括有效土层厚度、土壤有机质含量、地形坡度及田面平整度、土壤侵入",
+          "review_status": "approved_with_revision",
+          "review_sample_id": "KG-080",
+          "review_note": "标准关系由定义改为纳入评价指标或规定检测方法。",
+          "evidence_id": "evidence:9183f44301ebe788e2141451",
+          "quote_sha256": "bd53606319a05508e2f15128b48c67e0540d762d42f06924077510c2c86d3c6f",
+          "document_key": "document:2730c13e478fd5527501a76f"
+        }
+      ],
+      "supporting_document_count": 1,
+      "confidence": 0.85,
+      "review": {
+        "verified_by": "Codex（材料级核验）",
+        "verified_at": "2026-10-09",
+        "basis": "source_material"
+      }
+    },
+    {
+      "id": "rel:a25189da93c4f527",
+      "type": "includes_indicator",
+      "source": "standard:doc-14",
+      "target": "indicator:organic_matter",
+      "status": "approved_with_revision",
+      "review_sample_ids": [
+        "KG-081",
+        "KG-094"
+      ],
+      "evidence": [
+        {
+          "document_id": 14,
+          "document_title": "广东省补充耕地质量鉴定技术规范 试行",
+          "page": 3,
+          "chunk_index": 5,
+          "quote": "农业生产符合性指标包括有效土层厚度、土壤有机质含量、地形坡度及田面平整度、土壤侵入",
+          "review_status": "approved_with_revision",
+          "review_sample_id": "KG-081",
+          "review_note": "标准关系由定义改为纳入评价指标或规定检测方法。",
+          "evidence_id": "evidence:9183f44301ebe788e2141451",
+          "quote_sha256": "bd53606319a05508e2f15128b48c67e0540d762d42f06924077510c2c86d3c6f",
+          "document_key": "document:2730c13e478fd5527501a76f"
+        },
+        {
+          "document_id": 14,
+          "document_title": "广东省补充耕地质量鉴定技术规范 试行",
+          "page": 9,
+          "chunk_index": 16,
+          "quote": "农业生产符合性评价及耕地质量等级评价检测指标包括:土壤酸碱度、土壤有机质、耕层土壤",
+          "review_status": "approved_with_revision",
+          "review_sample_id": "KG-094",
+          "review_note": "标准关系由定义改为纳入评价指标或规定检测方法。",
+          "evidence_id": "evidence:99d3ef04e390082444046021",
+          "quote_sha256": "9a1eda91f109e39204511b091585758e233208929d16c846c21d942b87fb9f6b",
+          "document_key": "document:2730c13e478fd5527501a76f"
+        }
+      ],
+      "supporting_document_count": 1,
+      "confidence": 0.85,
+      "review": {
+        "verified_by": "Codex（材料级核验）",
+        "verified_at": "2026-10-09",
+        "basis": "source_material"
+      }
+    },
+    {
+      "id": "rel:f1d13520fe4de90e",
+      "type": "includes_indicator",
+      "source": "standard:doc-14",
+      "target": "indicator:soil_ph",
+      "status": "approved_with_revision",
+      "review_sample_ids": [
+        "KG-082"
+      ],
+      "evidence": [
+        {
+          "document_id": 14,
+          "document_title": "广东省补充耕地质量鉴定技术规范 试行",
+          "page": 9,
+          "chunk_index": 16,
+          "quote": "农业生产符合性评价及耕地质量等级评价检测指标包括:土壤酸碱度、土壤有机质、耕层土壤",
+          "review_status": "approved_with_revision",
+          "review_sample_id": "KG-082",
+          "review_note": "标准关系由定义改为纳入评价指标或规定检测方法。",
+          "evidence_id": "evidence:99d3ef04e390082444046021",
+          "quote_sha256": "9a1eda91f109e39204511b091585758e233208929d16c846c21d942b87fb9f6b",
+          "document_key": "document:2730c13e478fd5527501a76f"
+        }
+      ],
+      "supporting_document_count": 1,
+      "confidence": 0.85,
+      "review": {
+        "verified_by": "Codex（材料级核验）",
+        "verified_at": "2026-10-09",
+        "basis": "source_material"
+      }
+    },
+    {
+      "id": "rel:044127b8e4d59456",
+      "type": "includes_indicator",
+      "source": "standard:doc-4",
+      "target": "indicator:drainage",
+      "status": "approved_with_revision",
+      "review_sample_ids": [
+        "KG-065"
+      ],
+      "evidence": [
+        {
+          "document_id": 4,
+          "document_title": "耕地质量等级 GB/T 33469-2016",
+          "page": 6,
+          "chunk_index": 9,
+          "quote": "素 灌溉能力 排水能力 农田林网化率等 个指标 区域补充性指标包括耕层厚度 田面坡度 盐渍化",
+          "review_status": "approved_with_revision",
+          "review_sample_id": "KG-065",
+          "review_note": "标准关系由定义改为纳入评价指标或规定检测方法。",
+          "evidence_id": "evidence:fef765149eada45c2c191486",
+          "quote_sha256": "acdaf47061777e1e6fbbd7edd495e6b5658c5e7f167d40ca2b20f1f26fd75e0a",
+          "document_key": "document:e6d376a77f0604747dafdbb7"
+        }
+      ],
+      "supporting_document_count": 1,
+      "confidence": 0.85,
+      "review": {
+        "verified_by": "Codex（材料级核验）",
+        "verified_at": "2026-10-09",
+        "basis": "source_material"
+      }
+    },
+    {
+      "id": "rel:81b176bb7989c3eb",
+      "type": "includes_indicator",
+      "source": "standard:doc-4",
+      "target": "indicator:irrigation",
+      "status": "approved_with_revision",
+      "review_sample_ids": [
+        "KG-066"
+      ],
+      "evidence": [
+        {
+          "document_id": 4,
+          "document_title": "耕地质量等级 GB/T 33469-2016",
+          "page": 6,
+          "chunk_index": 9,
+          "quote": "素 灌溉能力 排水能力 农田林网化率等 个指标 区域补充性指标包括耕层厚度 田面坡度 盐渍化",
+          "review_status": "approved_with_revision",
+          "review_sample_id": "KG-066",
+          "review_note": "标准关系由定义改为纳入评价指标或规定检测方法。",
+          "evidence_id": "evidence:fef765149eada45c2c191486",
+          "quote_sha256": "acdaf47061777e1e6fbbd7edd495e6b5658c5e7f167d40ca2b20f1f26fd75e0a",
+          "document_key": "document:e6d376a77f0604747dafdbb7"
+        }
+      ],
+      "supporting_document_count": 1,
+      "confidence": 0.85,
+      "review": {
+        "verified_by": "Codex（材料级核验）",
+        "verified_at": "2026-10-09",
+        "basis": "source_material"
+      }
+    },
+    {
+      "id": "rel:5e88a7f9ebc436e2",
+      "type": "includes_indicator",
+      "source": "standard:doc-4",
+      "target": "indicator:plough_depth",
+      "status": "approved_with_revision",
+      "review_sample_ids": [
+        "KG-068"
+      ],
+      "evidence": [
+        {
+          "document_id": 4,
+          "document_title": "耕地质量等级 GB/T 33469-2016",
+          "page": 6,
+          "chunk_index": 9,
+          "quote": "素 灌溉能力 排水能力 农田林网化率等 个指标 区域补充性指标包括耕层厚度 田面坡度 盐渍化",
+          "review_status": "approved_with_revision",
+          "review_sample_id": "KG-068",
+          "review_note": "标准关系由定义改为纳入评价指标或规定检测方法。",
+          "evidence_id": "evidence:fef765149eada45c2c191486",
+          "quote_sha256": "acdaf47061777e1e6fbbd7edd495e6b5658c5e7f167d40ca2b20f1f26fd75e0a",
+          "document_key": "document:e6d376a77f0604747dafdbb7"
+        }
+      ],
+      "supporting_document_count": 1,
+      "confidence": 0.85,
+      "review": {
+        "verified_by": "Codex（材料级核验）",
+        "verified_at": "2026-10-09",
+        "basis": "source_material"
+      }
+    },
+    {
+      "id": "rel:b5915f818902e6ad",
+      "type": "prescribes_measurement",
+      "source": "standard:doc-11",
+      "target": "indicator:available_k",
+      "status": "approved_with_revision",
+      "review_sample_ids": [
+        "KG-043"
+      ],
+      "evidence": [
+        {
+          "document_id": 11,
+          "document_title": "补充耕地质量鉴定技术规范 试行",
+          "page": 2,
+          "chunk_index": 1,
+          "quote": "Y/ T 889 土壤速效钾和 缓效钾含量的测定",
+          "review_status": "approved_with_revision",
+          "review_sample_id": "KG-043",
+          "review_note": "标准关系由定义改为纳入评价指标或规定检测方法。",
+          "evidence_id": "evidence:62e3b3b160b0b4b177ef012f",
+          "quote_sha256": "af837b0e527017f44584639c1c3cc35a65e13a77d781de17f43efc11c5f0a349",
+          "document_key": "document:a91feb3ce3931789713eab34"
+        }
+      ],
+      "supporting_document_count": 1,
+      "confidence": 0.85,
+      "review": {
+        "verified_by": "Codex（材料级核验）",
+        "verified_at": "2026-10-09",
+        "basis": "source_material"
+      }
+    },
+    {
+      "id": "rel:bb6e93083cdb2f35",
+      "type": "prescribes_measurement",
+      "source": "standard:doc-11",
+      "target": "indicator:available_p",
+      "status": "approved_with_revision",
+      "review_sample_ids": [
+        "KG-044",
+        "KG-074"
+      ],
+      "evidence": [
+        {
+          "document_id": 11,
+          "document_title": "补充耕地质量鉴定技术规范 试行",
+          "page": 3,
+          "chunk_index": 2,
+          "quote": "Y/ T 1121. 7 土壤检测第 7 部分 : 土壤有效磷的测定",
+          "review_status": "approved_with_revision",
+          "review_sample_id": "KG-044",
+          "review_note": "标准关系由定义改为纳入评价指标或规定检测方法。",
+          "evidence_id": "evidence:c94056a9f07e58e84167d4ff",
+          "quote_sha256": "9785d10893eaadafe7e97a2e953a4e4cc9d6e47993162914add949eb3ca2c2b8",
+          "document_key": "document:a91feb3ce3931789713eab34"
+        },
+        {
+          "document_id": 11,
+          "document_title": "补充耕地质量鉴定技术规范 试行",
+          "page": 14,
+          "chunk_index": 13,
+          "quote": "9.2. 2 土壤有效磷的测定",
+          "review_status": "approved_with_revision",
+          "review_sample_id": "KG-074",
+          "review_note": "标准关系由定义改为纳入评价指标或规定检测方法。",
+          "evidence_id": "evidence:d4dc1a81e7308706e05e4b4c",
+          "quote_sha256": "88bfd1d4f7043ce5c9371d976f2f830e1257360bd7a2304c8d8121cb3afee8c9",
+          "document_key": "document:a91feb3ce3931789713eab34"
+        }
+      ],
+      "supporting_document_count": 1,
+      "confidence": 0.85,
+      "review": {
+        "verified_by": "Codex（材料级核验）",
+        "verified_at": "2026-10-09",
+        "basis": "source_material"
+      }
+    },
+    {
+      "id": "rel:e72f5987e2b800d8",
+      "type": "prescribes_measurement",
+      "source": "standard:doc-11",
+      "target": "indicator:bulk_density",
+      "status": "approved_with_revision",
+      "review_sample_ids": [
+        "KG-045"
+      ],
+      "evidence": [
+        {
+          "document_id": 11,
+          "document_title": "补充耕地质量鉴定技术规范 试行",
+          "page": 3,
+          "chunk_index": 2,
+          "quote": "Y/ T 1121.4 土壤检测第 4 部分 : 土壤容重的测定",
+          "review_status": "approved_with_revision",
+          "review_sample_id": "KG-045",
+          "review_note": "标准关系由定义改为纳入评价指标或规定检测方法。",
+          "evidence_id": "evidence:671afdbc93dde82e87dc8979",
+          "quote_sha256": "2504495c8f676f52e4e0c39ea7a06d7042328245b26dd2276e49c819db3f70ed",
+          "document_key": "document:a91feb3ce3931789713eab34"
+        }
+      ],
+      "supporting_document_count": 1,
+      "confidence": 0.85,
+      "review": {
+        "verified_by": "Codex（材料级核验）",
+        "verified_at": "2026-10-09",
+        "basis": "source_material"
+      }
+    },
+    {
+      "id": "rel:c5c26498c75036d1",
+      "type": "prescribes_measurement",
+      "source": "standard:doc-11",
+      "target": "indicator:organic_matter",
+      "status": "approved_with_revision",
+      "review_sample_ids": [
+        "KG-047",
+        "KG-075"
+      ],
+      "evidence": [
+        {
+          "document_id": 11,
+          "document_title": "补充耕地质量鉴定技术规范 试行",
+          "page": 3,
+          "chunk_index": 2,
+          "quote": "NY/ T 1121.6 土壤检测第 6 部分 : 土壤有机质的测定",
+          "review_status": "approved_with_revision",
+          "review_sample_id": "KG-047",
+          "review_note": "标准关系由定义改为纳入评价指标或规定检测方法。",
+          "evidence_id": "evidence:4695dcd47fed0300dbf3a49d",
+          "quote_sha256": "e58400e6e879e386d7d1740b97a3f6e7e8c321b7700c3b8307f5d210035616b4",
+          "document_key": "document:a91feb3ce3931789713eab34"
+        },
+        {
+          "document_id": 11,
+          "document_title": "补充耕地质量鉴定技术规范 试行",
+          "page": 14,
+          "chunk_index": 13,
+          "quote": "9.2. 1 土壤有机质的 测定",
+          "review_status": "approved_with_revision",
+          "review_sample_id": "KG-075",
+          "review_note": "标准关系由定义改为纳入评价指标或规定检测方法。",
+          "evidence_id": "evidence:91c7426c81b8a876bcd56b05",
+          "quote_sha256": "c2fa6e311cefe895dc751807c1051d58c16a44f625a4f8bd8728c5678fc74a7f",
+          "document_key": "document:a91feb3ce3931789713eab34"
+        }
+      ],
+      "supporting_document_count": 1,
+      "confidence": 0.85,
+      "review": {
+        "verified_by": "Codex（材料级核验）",
+        "verified_at": "2026-10-09",
+        "basis": "source_material"
+      }
+    },
+    {
+      "id": "rel:5217d36bdf5df01d",
+      "type": "prescribes_measurement",
+      "source": "standard:doc-11",
+      "target": "indicator:plough_depth",
+      "status": "approved_with_revision",
+      "review_sample_ids": [
+        "KG-048"
+      ],
+      "evidence": [
+        {
+          "document_id": 11,
+          "document_title": "补充耕地质量鉴定技术规范 试行",
+          "page": 12,
+          "chunk_index": 11,
+          "quote": "区 、华南区需测定耕层厚度 。",
+          "review_status": "approved_with_revision",
+          "review_sample_id": "KG-048",
+          "review_note": "标准关系由定义改为纳入评价指标或规定检测方法。",
+          "evidence_id": "evidence:0f1e49e0ce99f03be60d3809",
+          "quote_sha256": "82204fe699d8e00ef6235573e76c900785f1cb5bae84493fd8171c00afdb5561",
+          "document_key": "document:a91feb3ce3931789713eab34"
+        }
+      ],
+      "supporting_document_count": 1,
+      "confidence": 0.85,
+      "review": {
+        "verified_by": "Codex（材料级核验）",
+        "verified_at": "2026-10-09",
+        "basis": "source_material"
+      }
+    },
+    {
+      "id": "rel:587379790746229b",
+      "type": "prescribes_measurement",
+      "source": "standard:doc-11",
+      "target": "indicator:texture",
+      "status": "approved_with_revision",
+      "review_sample_ids": [
+        "KG-049",
+        "KG-076"
+      ],
+      "evidence": [
+        {
+          "document_id": 11,
+          "document_title": "补充耕地质量鉴定技术规范 试行",
+          "page": 3,
+          "chunk_index": 2,
+          "quote": "Y/ T 1121. 3 土壤检测第 3 部分 : 土壤机械组成的测定",
+          "review_status": "approved_with_revision",
+          "review_sample_id": "KG-049",
+          "review_note": "标准关系由定义改为纳入评价指标或规定检测方法。",
+          "evidence_id": "evidence:83bd68444936a8f57d9e5752",
+          "quote_sha256": "d6d3b2878e7cde0cc477f1d91b9034b2cd1d76c435f97a374cd19ee4e6ba334e",
+          "document_key": "document:a91feb3ce3931789713eab34"
+        },
+        {
+          "document_id": 11,
+          "document_title": "补充耕地质量鉴定技术规范 试行",
+          "page": 15,
+          "chunk_index": 14,
+          "quote": "9. 2.8 耕层土壤质地测定",
+          "review_status": "approved_with_revision",
+          "review_sample_id": "KG-076",
+          "review_note": "标准关系由定义改为纳入评价指标或规定检测方法。",
+          "evidence_id": "evidence:3e8aff3e6ee117cb690e7582",
+          "quote_sha256": "2591812d8202d2b521f37a48d20274d1f35929dac784c9796c2df4dc4b1bb7c3",
+          "document_key": "document:a91feb3ce3931789713eab34"
+        }
+      ],
+      "supporting_document_count": 1,
+      "confidence": 0.85,
+      "review": {
+        "verified_by": "Codex（材料级核验）",
+        "verified_at": "2026-10-09",
+        "basis": "source_material"
+      }
+    },
+    {
+      "id": "rel:73c70ebbe25aede1",
+      "type": "prescribes_measurement",
+      "source": "standard:doc-14",
+      "target": "indicator:available_k",
+      "status": "approved_with_revision",
+      "review_sample_ids": [
+        "KG-052",
+        "KG-077",
+        "KG-091"
+      ],
+      "evidence": [
+        {
+          "document_id": 14,
+          "document_title": "广东省补充耕地质量鉴定技术规范 试行",
+          "page": 1,
+          "chunk_index": 0,
+          "quote": "NY/T 889 土壤速效钾和缓效钾含量的测定",
+          "review_status": "approved_with_revision",
+          "review_sample_id": "KG-052",
+          "review_note": "标准关系由定义改为纳入评价指标或规定检测方法。",
+          "evidence_id": "evidence:58b0fa30b4122f507819f5bd",
+          "quote_sha256": "88e0a114b2388209abbdbe9582959d388e86a9af06bc7fb72bcc0ae216dcdbfc",
+          "document_key": "document:2730c13e478fd5527501a76f"
+        },
+        {
+          "document_id": 14,
+          "document_title": "广东省补充耕地质量鉴定技术规范 试行",
+          "page": 9,
+          "chunk_index": 17,
+          "quote": "9.3.3 土壤速效钾的测定",
+          "review_status": "approved_with_revision",
+          "review_sample_id": "KG-077",
+          "review_note": "标准关系由定义改为纳入评价指标或规定检测方法。",
+          "evidence_id": "evidence:e56e342ca919ff9dee7fd85e",
+          "quote_sha256": "8540b375072a6179795991d19fe7d695a84231ff99c72e5ee90815926b1a1ca0",
+          "document_key": "document:2730c13e478fd5527501a76f"
+        },
+        {
+          "document_id": 14,
+          "document_title": "广东省补充耕地质量鉴定技术规范 试行",
+          "page": 9,
+          "chunk_index": 17,
+          "quote": "按 NY/T 889《土壤速效钾和缓效钾含量的测定》方法测定。",
+          "review_status": "approved_with_revision",
+          "review_sample_id": "KG-091",
+          "review_note": "标准关系由定义改为纳入评价指标或规定检测方法。",
+          "evidence_id": "evidence:872646f66296fb586460a1a6",
+          "quote_sha256": "f4b24264b77c85c3e8f1097f35b42fc70ede777343bf350b4b05a3e448d3be0e",
+          "document_key": "document:2730c13e478fd5527501a76f"
+        }
+      ],
+      "supporting_document_count": 1,
+      "confidence": 0.85,
+      "review": {
+        "verified_by": "Codex（材料级核验）",
+        "verified_at": "2026-10-09",
+        "basis": "source_material"
+      }
+    },
+    {
+      "id": "rel:be8eb116608067be",
+      "type": "prescribes_measurement",
+      "source": "standard:doc-14",
+      "target": "indicator:available_p",
+      "status": "approved_with_revision",
+      "review_sample_ids": [
+        "KG-053",
+        "KG-078",
+        "KG-092"
+      ],
+      "evidence": [
+        {
+          "document_id": 14,
+          "document_title": "广东省补充耕地质量鉴定技术规范 试行",
+          "page": 1,
+          "chunk_index": 0,
+          "quote": "NY/T 1121.7 土壤检测 第7部分:土壤有效磷的测定",
+          "review_status": "approved_with_revision",
+          "review_sample_id": "KG-053",
+          "review_note": "标准关系由定义改为纳入评价指标或规定检测方法。",
+          "evidence_id": "evidence:fdf659fe96ad0d60bba7870a",
+          "quote_sha256": "dfdc33c6920c769c348c37eb3d1bd7ce48e7482abd361afb95d1f3d231e9ab88",
+          "document_key": "document:2730c13e478fd5527501a76f"
+        },
+        {
+          "document_id": 14,
+          "document_title": "广东省补充耕地质量鉴定技术规范 试行",
+          "page": 9,
+          "chunk_index": 17,
+          "quote": "9.3.2 土壤有效磷的测定",
+          "review_status": "approved_with_revision",
+          "review_sample_id": "KG-078",
+          "review_note": "标准关系由定义改为纳入评价指标或规定检测方法。",
+          "evidence_id": "evidence:e32ce09b8d2fd9ec66a39339",
+          "quote_sha256": "3e68686044336ba04970e7ff4e50528bd1091674e9ca59d601f7f48699dd448e",
+          "document_key": "document:2730c13e478fd5527501a76f"
+        },
+        {
+          "document_id": 14,
+          "document_title": "广东省补充耕地质量鉴定技术规范 试行",
+          "page": 9,
+          "chunk_index": 17,
+          "quote": "按 NY/T 1121.7《土壤检测 第 7部分:土壤有效磷的测定》方法测定。",
+          "review_status": "approved_with_revision",
+          "review_sample_id": "KG-092",
+          "review_note": "标准关系由定义改为纳入评价指标或规定检测方法。",
+          "evidence_id": "evidence:ff0f50fe58a3df8965f5b801",
+          "quote_sha256": "41f47697885b2dda84f95961541f7503310551cdc1b470be1478e34ffe646b0f",
+          "document_key": "document:2730c13e478fd5527501a76f"
+        }
+      ],
+      "supporting_document_count": 1,
+      "confidence": 0.85,
+      "review": {
+        "verified_by": "Codex（材料级核验）",
+        "verified_at": "2026-10-09",
+        "basis": "source_material"
+      }
+    },
+    {
+      "id": "rel:acce691bf45c2260",
+      "type": "prescribes_measurement",
+      "source": "standard:doc-14",
+      "target": "indicator:bulk_density",
+      "status": "approved_with_revision",
+      "review_sample_ids": [
+        "KG-054",
+        "KG-079",
+        "KG-093"
+      ],
+      "evidence": [
+        {
+          "document_id": 14,
+          "document_title": "广东省补充耕地质量鉴定技术规范 试行",
+          "page": 1,
+          "chunk_index": 0,
+          "quote": "NY/T 1121.4 土壤检测 第4部分:土壤容重的测定",
+          "review_status": "approved_with_revision",
+          "review_sample_id": "KG-054",
+          "review_note": "标准关系由定义改为纳入评价指标或规定检测方法。",
+          "evidence_id": "evidence:31e2e622e8746bf4555f9695",
+          "quote_sha256": "f5226f3e023ef6a82ed937e1f89744fad362cd906968f617c7ea78f5de06af04",
+          "document_key": "document:2730c13e478fd5527501a76f"
+        },
+        {
+          "document_id": 14,
+          "document_title": "广东省补充耕地质量鉴定技术规范 试行",
+          "page": 9,
+          "chunk_index": 17,
+          "quote": "按 NY/T 1121.4《土壤检测 第 4部分:土壤容重的测定》方法测定。",
+          "review_status": "approved_with_revision",
+          "review_sample_id": "KG-079",
+          "review_note": "标准关系由定义改为纳入评价指标或规定检测方法。",
+          "evidence_id": "evidence:9640478d129e999b5a6b6302",
+          "quote_sha256": "1a55700cbdb593afa441107918c7e9f2abfe6205d7036b999a713f7ae9253742",
+          "document_key": "document:2730c13e478fd5527501a76f"
+        },
+        {
+          "document_id": 14,
+          "document_title": "广东省补充耕地质量鉴定技术规范 试行",
+          "page": 10,
+          "chunk_index": 18,
+          "quote": "按照《耕地质量等级》(GB/T 33469)国家标准执行,其中土壤容重3个平行样检测结果取算术",
+          "review_status": "approved_with_revision",
+          "review_sample_id": "KG-093",
+          "review_note": "标准关系由定义改为纳入评价指标或规定检测方法。",
+          "evidence_id": "evidence:a4dd05421f94fe6a831a212f",
+          "quote_sha256": "d25cea2196808a1f3ccc59ce3a87c2dcb37a9511eae42226cd0769ae70a7a1f3",
+          "document_key": "document:2730c13e478fd5527501a76f"
+        }
+      ],
+      "supporting_document_count": 1,
+      "confidence": 0.85,
+      "review": {
+        "verified_by": "Codex（材料级核验）",
+        "verified_at": "2026-10-09",
+        "basis": "source_material"
+      }
+    },
+    {
+      "id": "rel:41e5eb61530d038c",
+      "type": "prescribes_measurement",
+      "source": "standard:doc-14",
+      "target": "indicator:drainage",
+      "status": "approved_with_revision",
+      "review_sample_ids": [
+        "KG-055"
+      ],
+      "evidence": [
+        {
+          "document_id": 14,
+          "document_title": "广东省补充耕地质量鉴定技术规范 试行",
+          "page": 44,
+          "chunk_index": 79,
+          "quote": "厚度、质地构型、水资源保障条件、排水能力等指标依据实地踏勘情况赋值。",
+          "review_status": "approved_with_revision",
+          "review_sample_id": "KG-055",
+          "review_note": "标准关系由定义改为纳入评价指标或规定检测方法。",
+          "evidence_id": "evidence:fa83c4b1e048c1feba3fc12f",
+          "quote_sha256": "c1afc2ac555b363026739e2485d6823cf7c8afcced4eefaa374d88f459b75396",
+          "document_key": "document:2730c13e478fd5527501a76f"
+        }
+      ],
+      "supporting_document_count": 1,
+      "confidence": 0.85,
+      "review": {
+        "verified_by": "Codex（材料级核验）",
+        "verified_at": "2026-10-09",
+        "basis": "source_material"
+      }
+    },
+    {
+      "id": "rel:ec05041d6674a399",
+      "type": "prescribes_measurement",
+      "source": "standard:doc-14",
+      "target": "indicator:organic_matter",
+      "status": "approved_with_revision",
+      "review_sample_ids": [
+        "KG-057"
+      ],
+      "evidence": [
+        {
+          "document_id": 14,
+          "document_title": "广东省补充耕地质量鉴定技术规范 试行",
+          "page": 1,
+          "chunk_index": 0,
+          "quote": "NY/T 1121.6 土壤检测 第6部分:土壤有机质的测定",
+          "review_status": "approved_with_revision",
+          "review_sample_id": "KG-057",
+          "review_note": "标准关系由定义改为纳入评价指标或规定检测方法。",
+          "evidence_id": "evidence:70f188a29a593825fdb26e27",
+          "quote_sha256": "f90fb34f106d83195b37f5054c8e86a0290db645b3b2508117b01c13d5731d7e",
+          "document_key": "document:2730c13e478fd5527501a76f"
+        }
+      ],
+      "supporting_document_count": 1,
+      "confidence": 0.85,
+      "review": {
+        "verified_by": "Codex（材料级核验）",
+        "verified_at": "2026-10-09",
+        "basis": "source_material"
+      }
+    },
+    {
+      "id": "rel:6b90980691d544af",
+      "type": "prescribes_measurement",
+      "source": "standard:doc-14",
+      "target": "indicator:soil_ph",
+      "status": "approved_with_revision",
+      "review_sample_ids": [
+        "KG-058",
+        "KG-095"
+      ],
+      "evidence": [
+        {
+          "document_id": 14,
+          "document_title": "广东省补充耕地质量鉴定技术规范 试行",
+          "page": 1,
+          "chunk_index": 0,
+          "quote": "NY/T 1121.2 土壤检测 第2部分:土壤pH的测定",
+          "review_status": "approved_with_revision",
+          "review_sample_id": "KG-058",
+          "review_note": "标准关系由定义改为纳入评价指标或规定检测方法。",
+          "evidence_id": "evidence:a004bac6cf5c44100436cd93",
+          "quote_sha256": "0a1f6f690fc700735ac3bc8eb51c0ff5bc73575f2eb03d088a45f0c0f225652c",
+          "document_key": "document:2730c13e478fd5527501a76f"
+        },
+        {
+          "document_id": 14,
+          "document_title": "广东省补充耕地质量鉴定技术规范 试行",
+          "page": 51,
+          "chunk_index": 95,
+          "quote": "46 土壤酸碱度 TRSJD Double M 8 2 检测结果",
+          "review_status": "approved_with_revision",
+          "review_sample_id": "KG-095",
+          "review_note": "标准关系由定义改为纳入评价指标或规定检测方法。",
+          "evidence_id": "evidence:19d1e3897a65127575cbef39",
+          "quote_sha256": "0acb3ddf08f7ef9d5352295dc24b8f582cd7f1c1a170e666150682748832ff87",
+          "document_key": "document:2730c13e478fd5527501a76f"
+        }
+      ],
+      "supporting_document_count": 1,
+      "confidence": 0.85,
+      "review": {
+        "verified_by": "Codex（材料级核验）",
+        "verified_at": "2026-10-09",
+        "basis": "source_material"
+      }
+    },
+    {
+      "id": "rel:e2f09f78b6eb7f41",
+      "type": "prescribes_measurement",
+      "source": "standard:doc-14",
+      "target": "indicator:texture",
+      "status": "approved_with_revision",
+      "review_sample_ids": [
+        "KG-059",
+        "KG-083",
+        "KG-096"
+      ],
+      "evidence": [
+        {
+          "document_id": 14,
+          "document_title": "广东省补充耕地质量鉴定技术规范 试行",
+          "page": 1,
+          "chunk_index": 0,
+          "quote": "NY/T 1121.3 土壤检测 第3部分:土壤机械组成的测定",
+          "review_status": "approved_with_revision",
+          "review_sample_id": "KG-059",
+          "review_note": "标准关系由定义改为纳入评价指标或规定检测方法。",
+          "evidence_id": "evidence:87f051ae7d8b1c8b1da1fe9b",
+          "quote_sha256": "8a98059069538b4da54b8479ae7afbb3921b5cdef5882aa7e9dc35b9dcf9b2be",
+          "document_key": "document:2730c13e478fd5527501a76f"
+        },
+        {
+          "document_id": 14,
+          "document_title": "广东省补充耕地质量鉴定技术规范 试行",
+          "page": 7,
+          "chunk_index": 12,
+          "quote": "位,采用挖掘法或土钻法获取不同层次土壤样品,通过土壤检测或专家鉴定判定土壤质地信息。",
+          "review_status": "approved_with_revision",
+          "review_sample_id": "KG-083",
+          "review_note": "标准关系由定义改为纳入评价指标或规定检测方法。",
+          "evidence_id": "evidence:94ef37c42fc010145ff69c66",
+          "quote_sha256": "15bce10b9c363888c3d0c92550ce3f3c68218cdc641b406e444fc69744c1e783",
+          "document_key": "document:2730c13e478fd5527501a76f"
+        },
+        {
+          "document_id": 14,
+          "document_title": "广东省补充耕地质量鉴定技术规范 试行",
+          "page": 10,
+          "chunk_index": 18,
+          "quote": "9.3.7 耕层土壤质地测定",
+          "review_status": "approved_with_revision",
+          "review_sample_id": "KG-096",
+          "review_note": "标准关系由定义改为纳入评价指标或规定检测方法。",
+          "evidence_id": "evidence:34f992da127b858a5390fdef",
+          "quote_sha256": "eb2f3c6ab4ca4a0ac629547c7448cee2b9416c08004446efcd4a9ce54fcd003c",
+          "document_key": "document:2730c13e478fd5527501a76f"
+        }
+      ],
+      "supporting_document_count": 1,
+      "confidence": 0.85,
+      "review": {
+        "verified_by": "Codex（材料级核验）",
+        "verified_at": "2026-10-09",
+        "basis": "source_material"
+      }
+    },
+    {
+      "id": "rel:17aeb04c960104ce",
+      "type": "prescribes_measurement",
+      "source": "standard:doc-3",
+      "target": "indicator:available_k",
+      "status": "approved_with_revision",
+      "review_sample_ids": [
+        "KG-060",
+        "KG-084"
+      ],
+      "evidence": [
+        {
+          "document_id": 3,
+          "document_title": "耕地地力调查与质量评价技术规程 NY/T 1634-2008",
+          "page": 3,
+          "chunk_index": 3,
+          "quote": "NY/T 889 土壤速效钾和缓效钾含量的测定",
+          "review_status": "approved_with_revision",
+          "review_sample_id": "KG-060",
+          "review_note": "标准关系由定义改为纳入评价指标或规定检测方法。",
+          "evidence_id": "evidence:4fe951564198b9c162f741b0",
+          "quote_sha256": "88e0a114b2388209abbdbe9582959d388e86a9af06bc7fb72bcc0ae216dcdbfc",
+          "document_key": "document:a9c4e157f1574a61345a0d6d"
+        },
+        {
+          "document_id": 3,
+          "document_title": "耕地地力调查与质量评价技术规程 NY/T 1634-2008",
+          "page": 7,
+          "chunk_index": 10,
+          "quote": "7.2.1.7 土壤缓效钾和速效钾的测定",
+          "review_status": "approved_with_revision",
+          "review_sample_id": "KG-084",
+          "review_note": "标准关系由定义改为纳入评价指标或规定检测方法。",
+          "evidence_id": "evidence:d63a6723d70208c96f292702",
+          "quote_sha256": "6f60da8934c7550ba3a069fc1a0c45a7186b80c3e68550f7c3b53642a50b26c9",
+          "document_key": "document:a9c4e157f1574a61345a0d6d"
+        }
+      ],
+      "supporting_document_count": 1,
+      "confidence": 0.85,
+      "review": {
+        "verified_by": "Codex（材料级核验）",
+        "verified_at": "2026-10-09",
+        "basis": "source_material"
+      }
+    },
+    {
+      "id": "rel:3629c3f41b3e6c24",
+      "type": "prescribes_measurement",
+      "source": "standard:doc-3",
+      "target": "indicator:available_p",
+      "status": "approved_with_revision",
+      "review_sample_ids": [
+        "KG-061",
+        "KG-085",
+        "KG-097"
+      ],
+      "evidence": [
+        {
+          "document_id": 3,
+          "document_title": "耕地地力调查与质量评价技术规程 NY/T 1634-2008",
+          "page": 3,
+          "chunk_index": 2,
+          "quote": "NY/T 148 石灰性土壤有效磷测定方法",
+          "review_status": "approved_with_revision",
+          "review_sample_id": "KG-061",
+          "review_note": "标准关系由定义改为纳入评价指标或规定检测方法。",
+          "evidence_id": "evidence:342c6a6cd35da0a9c1dbe59e",
+          "quote_sha256": "935a25d66e608b342686f24efae90dc76c65279ed3574fc41f81306b6454dc24",
+          "document_key": "document:a9c4e157f1574a61345a0d6d"
+        },
+        {
+          "document_id": 3,
+          "document_title": "耕地地力调查与质量评价技术规程 NY/T 1634-2008",
+          "page": 3,
+          "chunk_index": 3,
+          "quote": "NY/T 1121.7 土壤检测 第7部分:酸性土壤有效磷的测定",
+          "review_status": "approved_with_revision",
+          "review_sample_id": "KG-085",
+          "review_note": "标准关系由定义改为纳入评价指标或规定检测方法。",
+          "evidence_id": "evidence:4bce1223084d6f9188660805",
+          "quote_sha256": "7735133adfb1d00310230323483d968acdbe7275103f03e6a5f9c265b02e89ac",
+          "document_key": "document:a9c4e157f1574a61345a0d6d"
+        },
+        {
+          "document_id": 3,
+          "document_title": "耕地地力调查与质量评价技术规程 NY/T 1634-2008",
+          "page": 7,
+          "chunk_index": 10,
+          "quote": "7.2.1.6 土壤有效磷的测定",
+          "review_status": "approved_with_revision",
+          "review_sample_id": "KG-097",
+          "review_note": "标准关系由定义改为纳入评价指标或规定检测方法。",
+          "evidence_id": "evidence:40c8ee6756554ba4c1772175",
+          "quote_sha256": "d6b8a2042fe48d37b052cdfca6206992862b8ee36a33f8a391d8a425debd4688",
+          "document_key": "document:a9c4e157f1574a61345a0d6d"
+        }
+      ],
+      "supporting_document_count": 1,
+      "confidence": 0.85,
+      "review": {
+        "verified_by": "Codex（材料级核验）",
+        "verified_at": "2026-10-09",
+        "basis": "source_material"
+      }
+    },
+    {
+      "id": "rel:0566652cc439a1ef",
+      "type": "prescribes_measurement",
+      "source": "standard:doc-3",
+      "target": "indicator:bulk_density",
+      "status": "approved_with_revision",
+      "review_sample_ids": [
+        "KG-062",
+        "KG-086"
+      ],
+      "evidence": [
+        {
+          "document_id": 3,
+          "document_title": "耕地地力调查与质量评价技术规程 NY/T 1634-2008",
+          "page": 3,
+          "chunk_index": 3,
+          "quote": "NY/T 1121.4 土壤检测 第4部分:土壤容重的测定",
+          "review_status": "approved_with_revision",
+          "review_sample_id": "KG-062",
+          "review_note": "标准关系由定义改为纳入评价指标或规定检测方法。",
+          "evidence_id": "evidence:14f95796edea13064c2b33e5",
+          "quote_sha256": "f5226f3e023ef6a82ed937e1f89744fad362cd906968f617c7ea78f5de06af04",
+          "document_key": "document:a9c4e157f1574a61345a0d6d"
+        },
+        {
+          "document_id": 3,
+          "document_title": "耕地地力调查与质量评价技术规程 NY/T 1634-2008",
+          "page": 6,
+          "chunk_index": 8,
+          "quote": "测定土壤容重等物理性状,须用原状土样,其样品可直接用环刀在各土层中采取。",
+          "review_status": "approved_with_revision",
+          "review_sample_id": "KG-086",
+          "review_note": "标准关系由定义改为纳入评价指标或规定检测方法。",
+          "evidence_id": "evidence:9ceafbde27b0d7077b08b6b2",
+          "quote_sha256": "515a08570b1b484625d09d8f0b7d25a599af8b784ee5068ac8720cd819a4352c",
+          "document_key": "document:a9c4e157f1574a61345a0d6d"
+        }
+      ],
+      "supporting_document_count": 1,
+      "confidence": 0.85,
+      "review": {
+        "verified_by": "Codex（材料级核验）",
+        "verified_at": "2026-10-09",
+        "basis": "source_material"
+      }
+    },
+    {
+      "id": "rel:c6279029fb2e6162",
+      "type": "prescribes_measurement",
+      "source": "standard:doc-3",
+      "target": "indicator:organic_matter",
+      "status": "approved_with_revision",
+      "review_sample_ids": [
+        "KG-063",
+        "KG-087"
+      ],
+      "evidence": [
+        {
+          "document_id": 3,
+          "document_title": "耕地地力调查与质量评价技术规程 NY/T 1634-2008",
+          "page": 3,
+          "chunk_index": 3,
+          "quote": "NY/T 1121.6 土壤检测 第6 部分:土壤有机质的测定",
+          "review_status": "approved_with_revision",
+          "review_sample_id": "KG-063",
+          "review_note": "标准关系由定义改为纳入评价指标或规定检测方法。",
+          "evidence_id": "evidence:5ac41a559fffe4fc2dd4a515",
+          "quote_sha256": "9cd9cb841078a9a4c31089909d1e7039a277ddccb0bd4284a9797bff322a98ff",
+          "document_key": "document:a9c4e157f1574a61345a0d6d"
+        },
+        {
+          "document_id": 3,
+          "document_title": "耕地地力调查与质量评价技术规程 NY/T 1634-2008",
+          "page": 7,
+          "chunk_index": 10,
+          "quote": "7.2.1.3 土壤有机质的测定",
+          "review_status": "approved_with_revision",
+          "review_sample_id": "KG-087",
+          "review_note": "标准关系由定义改为纳入评价指标或规定检测方法。",
+          "evidence_id": "evidence:f8cafc9e5ca460712dabb95c",
+          "quote_sha256": "a93e9b8688b702d85b875a886ff5a972c3137e8099b493aa0b2386cb6643473f",
+          "document_key": "document:a9c4e157f1574a61345a0d6d"
+        }
+      ],
+      "supporting_document_count": 1,
+      "confidence": 0.85,
+      "review": {
+        "verified_by": "Codex（材料级核验）",
+        "verified_at": "2026-10-09",
+        "basis": "source_material"
+      }
+    },
+    {
+      "id": "rel:e2168ef49d3eccd5",
+      "type": "prescribes_measurement",
+      "source": "standard:doc-4",
+      "target": "indicator:bulk_density",
+      "status": "approved_with_revision",
+      "review_sample_ids": [
+        "KG-064",
+        "KG-088",
+        "KG-098"
+      ],
+      "evidence": [
+        {
+          "document_id": 4,
+          "document_title": "耕地质量等级 GB/T 33469-2016",
+          "page": 2,
+          "chunk_index": 3,
+          "quote": "附录 规范性附录 土壤容重的测定",
+          "review_status": "approved_with_revision",
+          "review_sample_id": "KG-064",
+          "review_note": "标准关系由定义改为纳入评价指标或规定检测方法。",
+          "evidence_id": "evidence:4e0b87bb4556758a9d65091c",
+          "quote_sha256": "32a387208b3d15885706194a6e3404309346fb352045f87e1c036a2284c79659",
+          "document_key": "document:e6d376a77f0604747dafdbb7"
+        },
+        {
+          "document_id": 4,
+          "document_title": "耕地质量等级 GB/T 33469-2016",
+          "page": 8,
+          "chunk_index": 12,
+          "quote": "土壤容重的测定方法见附录",
+          "review_status": "approved_with_revision",
+          "review_sample_id": "KG-088",
+          "review_note": "标准关系由定义改为纳入评价指标或规定检测方法。",
+          "evidence_id": "evidence:c02840447d9dcca866c90b6c",
+          "quote_sha256": "9865ecc91791c620098f6d1dd11b695b60fd47980014faca09f9014866b33ba7",
+          "document_key": "document:e6d376a77f0604747dafdbb7"
+        },
+        {
+          "document_id": 4,
+          "document_title": "耕地质量等级 GB/T 33469-2016",
+          "page": 38,
+          "chunk_index": 116,
+          "quote": "本方法除坚硬和易碎的土壤外 适用于各类土壤容重的测定",
+          "review_status": "approved_with_revision",
+          "review_sample_id": "KG-098",
+          "review_note": "标准关系由定义改为纳入评价指标或规定检测方法。",
+          "evidence_id": "evidence:72321fb5972a5e15e7fc3e1d",
+          "quote_sha256": "a61e3c129710f94454ed71ecbe3a3c3057b5607f292671ca825411a0bd745c3c",
+          "document_key": "document:e6d376a77f0604747dafdbb7"
+        }
+      ],
+      "supporting_document_count": 1,
+      "confidence": 0.85,
+      "review": {
+        "verified_by": "Codex（材料级核验）",
+        "verified_at": "2026-10-09",
+        "basis": "source_material"
+      }
+    },
+    {
+      "id": "rel:f56d76f1847d0b72",
+      "type": "prescribes_measurement",
+      "source": "standard:doc-4",
+      "target": "indicator:organic_matter",
+      "status": "approved_with_revision",
+      "review_sample_ids": [
+        "KG-067",
+        "KG-089",
+        "KG-099"
+      ],
+      "evidence": [
+        {
+          "document_id": 4,
+          "document_title": "耕地质量等级 GB/T 33469-2016",
+          "page": 2,
+          "chunk_index": 3,
+          "quote": "附录 规范性附录 土壤有机质的测定",
+          "review_status": "approved_with_revision",
+          "review_sample_id": "KG-067",
+          "review_note": "标准关系由定义改为纳入评价指标或规定检测方法。",
+          "evidence_id": "evidence:2f41fad53fac2f439f6c2f85",
+          "quote_sha256": "1b3dc06656fe25678bf3d35ddebffffa0907f311448a3bbd9968dd62fc4111e7",
+          "document_key": "document:e6d376a77f0604747dafdbb7"
+        },
+        {
+          "document_id": 4,
+          "document_title": "耕地质量等级 GB/T 33469-2016",
+          "page": 8,
+          "chunk_index": 12,
+          "quote": "土壤有机质的测定方法见附录",
+          "review_status": "approved_with_revision",
+          "review_sample_id": "KG-089",
+          "review_note": "标准关系由定义改为纳入评价指标或规定检测方法。",
+          "evidence_id": "evidence:491e15c4abf3da24d8371ce1",
+          "quote_sha256": "4ff062392fdec0d839262c2bfc53f5b6622967442c7e5221651d1daa0f6f8a4f",
+          "document_key": "document:e6d376a77f0604747dafdbb7"
+        },
+        {
+          "document_id": 4,
+          "document_title": "耕地质量等级 GB/T 33469-2016",
+          "page": 30,
+          "chunk_index": 97,
+          "quote": "C82 测定土壤有机质必须采用风干样品 因为水稻土及一些长期渍水的土壤 由于较多的还原性物",
+          "review_status": "approved_with_revision",
+          "review_sample_id": "KG-099",
+          "review_note": "标准关系由定义改为纳入评价指标或规定检测方法。",
+          "evidence_id": "evidence:3de62b7af16520c14f032972",
+          "quote_sha256": "1871e01aef768b99e26cae753a0ad3b606a29588db0440008086160177af17fc",
+          "document_key": "document:e6d376a77f0604747dafdbb7"
+        }
+      ],
+      "supporting_document_count": 1,
+      "confidence": 0.85,
+      "review": {
+        "verified_by": "Codex（材料级核验）",
+        "verified_at": "2026-10-09",
+        "basis": "source_material"
+      }
+    },
+    {
+      "id": "rel:fbaf3534dea7c6ca",
+      "type": "prescribes_measurement",
+      "source": "standard:doc-4",
+      "target": "indicator:texture",
+      "status": "approved_with_revision",
+      "review_sample_ids": [
+        "KG-069",
+        "KG-090",
+        "KG-100"
+      ],
+      "evidence": [
+        {
+          "document_id": 4,
+          "document_title": "耕地质量等级 GB/T 33469-2016",
+          "page": 2,
+          "chunk_index": 3,
+          "quote": "附录 规范性附录 土壤机械组成的测定",
+          "review_status": "approved_with_revision",
+          "review_sample_id": "KG-069",
+          "review_note": "标准关系由定义改为纳入评价指标或规定检测方法。",
+          "evidence_id": "evidence:f1926dc2ee35cc4e29a77475",
+          "quote_sha256": "4241065311e065f8c244853c74ddeff7e902373d32b9dce930cce864b1dae8bd",
+          "document_key": "document:e6d376a77f0604747dafdbb7"
+        },
+        {
+          "document_id": 4,
+          "document_title": "耕地质量等级 GB/T 33469-2016",
+          "page": 8,
+          "chunk_index": 12,
+          "quote": "土壤机械组成分为砂土 砂壤 轻壤 中壤 重壤 黏土等 测定方法见附录",
+          "review_status": "approved_with_revision",
+          "review_sample_id": "KG-090",
+          "review_note": "标准关系由定义改为纳入评价指标或规定检测方法。",
+          "evidence_id": "evidence:cd286733f6de6af0bfa13c6b",
+          "quote_sha256": "54f331cb9d61b2a32745272e1049e9e3eb6b651ae23d659d24d74ea1dc57a780",
+          "document_key": "document:e6d376a77f0604747dafdbb7"
+        },
+        {
+          "document_id": 4,
+          "document_title": "耕地质量等级 GB/T 33469-2016",
+          "page": 31,
+          "chunk_index": 98,
+          "quote": "本方法适用于各类土壤机械组成的测定",
+          "review_status": "approved_with_revision",
+          "review_sample_id": "KG-100",
+          "review_note": "标准关系由定义改为纳入评价指标或规定检测方法。",
+          "evidence_id": "evidence:ea4cfa622edc1d11f99b45df",
+          "quote_sha256": "347840b7910b9b91b41b01a84fd59d86e21fd13bcde7b6cb312e91d66b92ee0f",
+          "document_key": "document:e6d376a77f0604747dafdbb7"
+        }
+      ],
+      "supporting_document_count": 1,
+      "confidence": 0.85,
+      "review": {
+        "verified_by": "Codex（材料级核验）",
+        "verified_at": "2026-10-09",
+        "basis": "source_material"
+      }
+    },
+    {
+      "id": "rel:f47ccb8317bc60aa",
+      "type": "classifies_basic_indicator",
+      "source": "standard:doc-4",
+      "target": "indicator:effective_depth",
+      "display_label": "列为基础性指标",
+      "semantics": {
+        "dimension": "indicator_classification",
+        "value": "basic"
+      },
+      "status": "approved_role_semantics",
+      "evidence": [
+        {
+          "document_id": 4,
+          "document_title": "耕地质量等级 GB/T 33469-2016",
+          "page": 6,
+          "chunk_index": 9,
+          "quote": "基础性指标包括有效土层厚度、有机质含量、耕层质地、土壤容重、灌溉能力、排水能力等13个指标。",
+          "review_status": "approved_role_semantics",
+          "review_note": "v0.4第二阶段依据明确枚举或赋值方式原文细化关系语义。",
+          "evidence_id": "evidence:c478acf5578bdd7fb0803853",
+          "quote_sha256": "c613cf3ebba80341c18afa00feca7f7b00f8031506f965a8d607e2e6b4f4dbc1",
+          "document_key": "document:e6d376a77f0604747dafdbb7"
+        }
+      ],
+      "supporting_document_count": 1,
+      "confidence": 0.95,
+      "review": {
+        "verified_by": "Codex（材料级核验）",
+        "verified_at": "2026-10-18",
+        "basis": "explicit_source_enumeration"
+      }
+    },
+    {
+      "id": "rel:bbf22e7aa41f637e",
+      "type": "classifies_basic_indicator",
+      "source": "standard:doc-4",
+      "target": "indicator:organic_matter",
+      "display_label": "列为基础性指标",
+      "semantics": {
+        "dimension": "indicator_classification",
+        "value": "basic"
+      },
+      "status": "approved_role_semantics",
+      "evidence": [
+        {
+          "document_id": 4,
+          "document_title": "耕地质量等级 GB/T 33469-2016",
+          "page": 6,
+          "chunk_index": 9,
+          "quote": "基础性指标包括有效土层厚度、有机质含量、耕层质地、土壤容重、灌溉能力、排水能力等13个指标。",
+          "review_status": "approved_role_semantics",
+          "review_note": "v0.4第二阶段依据明确枚举或赋值方式原文细化关系语义。",
+          "evidence_id": "evidence:c478acf5578bdd7fb0803853",
+          "quote_sha256": "c613cf3ebba80341c18afa00feca7f7b00f8031506f965a8d607e2e6b4f4dbc1",
+          "document_key": "document:e6d376a77f0604747dafdbb7"
+        }
+      ],
+      "supporting_document_count": 1,
+      "confidence": 0.95,
+      "review": {
+        "verified_by": "Codex（材料级核验）",
+        "verified_at": "2026-10-18",
+        "basis": "explicit_source_enumeration"
+      }
+    },
+    {
+      "id": "rel:b99e2af1d1492be1",
+      "type": "classifies_basic_indicator",
+      "source": "standard:doc-4",
+      "target": "indicator:texture",
+      "display_label": "列为基础性指标",
+      "semantics": {
+        "dimension": "indicator_classification",
+        "value": "basic"
+      },
+      "status": "approved_role_semantics",
+      "evidence": [
+        {
+          "document_id": 4,
+          "document_title": "耕地质量等级 GB/T 33469-2016",
+          "page": 6,
+          "chunk_index": 9,
+          "quote": "基础性指标包括有效土层厚度、有机质含量、耕层质地、土壤容重、灌溉能力、排水能力等13个指标。",
+          "review_status": "approved_role_semantics",
+          "review_note": "v0.4第二阶段依据明确枚举或赋值方式原文细化关系语义。",
+          "evidence_id": "evidence:c478acf5578bdd7fb0803853",
+          "quote_sha256": "c613cf3ebba80341c18afa00feca7f7b00f8031506f965a8d607e2e6b4f4dbc1",
+          "document_key": "document:e6d376a77f0604747dafdbb7"
+        }
+      ],
+      "supporting_document_count": 1,
+      "confidence": 0.95,
+      "review": {
+        "verified_by": "Codex（材料级核验）",
+        "verified_at": "2026-10-18",
+        "basis": "explicit_source_enumeration"
+      }
+    },
+    {
+      "id": "rel:5f1f1c0f7266072c",
+      "type": "classifies_basic_indicator",
+      "source": "standard:doc-4",
+      "target": "indicator:bulk_density",
+      "display_label": "列为基础性指标",
+      "semantics": {
+        "dimension": "indicator_classification",
+        "value": "basic"
+      },
+      "status": "approved_role_semantics",
+      "evidence": [
+        {
+          "document_id": 4,
+          "document_title": "耕地质量等级 GB/T 33469-2016",
+          "page": 6,
+          "chunk_index": 9,
+          "quote": "基础性指标包括有效土层厚度、有机质含量、耕层质地、土壤容重、灌溉能力、排水能力等13个指标。",
+          "review_status": "approved_role_semantics",
+          "review_note": "v0.4第二阶段依据明确枚举或赋值方式原文细化关系语义。",
+          "evidence_id": "evidence:c478acf5578bdd7fb0803853",
+          "quote_sha256": "c613cf3ebba80341c18afa00feca7f7b00f8031506f965a8d607e2e6b4f4dbc1",
+          "document_key": "document:e6d376a77f0604747dafdbb7"
+        }
+      ],
+      "supporting_document_count": 1,
+      "confidence": 0.95,
+      "review": {
+        "verified_by": "Codex（材料级核验）",
+        "verified_at": "2026-10-18",
+        "basis": "explicit_source_enumeration"
+      }
+    },
+    {
+      "id": "rel:e2d331a856247a27",
+      "type": "classifies_basic_indicator",
+      "source": "standard:doc-4",
+      "target": "indicator:irrigation",
+      "display_label": "列为基础性指标",
+      "semantics": {
+        "dimension": "indicator_classification",
+        "value": "basic"
+      },
+      "status": "approved_role_semantics",
+      "evidence": [
+        {
+          "document_id": 4,
+          "document_title": "耕地质量等级 GB/T 33469-2016",
+          "page": 6,
+          "chunk_index": 9,
+          "quote": "基础性指标包括有效土层厚度、有机质含量、耕层质地、土壤容重、灌溉能力、排水能力等13个指标。",
+          "review_status": "approved_role_semantics",
+          "review_note": "v0.4第二阶段依据明确枚举或赋值方式原文细化关系语义。",
+          "evidence_id": "evidence:c478acf5578bdd7fb0803853",
+          "quote_sha256": "c613cf3ebba80341c18afa00feca7f7b00f8031506f965a8d607e2e6b4f4dbc1",
+          "document_key": "document:e6d376a77f0604747dafdbb7"
+        }
+      ],
+      "supporting_document_count": 1,
+      "confidence": 0.95,
+      "review": {
+        "verified_by": "Codex（材料级核验）",
+        "verified_at": "2026-10-18",
+        "basis": "explicit_source_enumeration"
+      }
+    },
+    {
+      "id": "rel:579712559e0bef90",
+      "type": "classifies_basic_indicator",
+      "source": "standard:doc-4",
+      "target": "indicator:drainage",
+      "display_label": "列为基础性指标",
+      "semantics": {
+        "dimension": "indicator_classification",
+        "value": "basic"
+      },
+      "status": "approved_role_semantics",
+      "evidence": [
+        {
+          "document_id": 4,
+          "document_title": "耕地质量等级 GB/T 33469-2016",
+          "page": 6,
+          "chunk_index": 9,
+          "quote": "基础性指标包括有效土层厚度、有机质含量、耕层质地、土壤容重、灌溉能力、排水能力等13个指标。",
+          "review_status": "approved_role_semantics",
+          "review_note": "v0.4第二阶段依据明确枚举或赋值方式原文细化关系语义。",
+          "evidence_id": "evidence:c478acf5578bdd7fb0803853",
+          "quote_sha256": "c613cf3ebba80341c18afa00feca7f7b00f8031506f965a8d607e2e6b4f4dbc1",
+          "document_key": "document:e6d376a77f0604747dafdbb7"
+        }
+      ],
+      "supporting_document_count": 1,
+      "confidence": 0.95,
+      "review": {
+        "verified_by": "Codex（材料级核验）",
+        "verified_at": "2026-10-18",
+        "basis": "explicit_source_enumeration"
+      }
+    },
+    {
+      "id": "rel:4395d1910eae5380",
+      "type": "classifies_regional_supplementary_indicator",
+      "source": "standard:doc-4",
+      "target": "indicator:plough_depth",
+      "display_label": "列为区域补充性指标",
+      "semantics": {
+        "dimension": "indicator_classification",
+        "value": "regional_supplementary"
+      },
+      "status": "approved_role_semantics",
+      "evidence": [
+        {
+          "document_id": 4,
+          "document_title": "耕地质量等级 GB/T 33469-2016",
+          "page": 6,
+          "chunk_index": 9,
+          "quote": "区域补充性指标包括耕层厚度、田面坡度、盐渍化程度、地下水埋深、酸碱度、海拔高度等6个指标。",
+          "review_status": "approved_role_semantics",
+          "review_note": "v0.4第二阶段依据明确枚举或赋值方式原文细化关系语义。",
+          "evidence_id": "evidence:558afba66d75be5a0c664e88",
+          "quote_sha256": "040e3ed7e0f3d7877750f5b2d30eaa5dfbcb683d2d5d530523572c9805fe3b8f",
+          "document_key": "document:e6d376a77f0604747dafdbb7"
+        }
+      ],
+      "supporting_document_count": 1,
+      "confidence": 0.95,
+      "review": {
+        "verified_by": "Codex（材料级核验）",
+        "verified_at": "2026-10-18",
+        "basis": "explicit_source_enumeration"
+      }
+    },
+    {
+      "id": "rel:46a71f8220e55c9c",
+      "type": "classifies_regional_supplementary_indicator",
+      "source": "standard:doc-4",
+      "target": "indicator:soil_ph",
+      "display_label": "列为区域补充性指标",
+      "semantics": {
+        "dimension": "indicator_classification",
+        "value": "regional_supplementary"
+      },
+      "status": "approved_role_semantics",
+      "evidence": [
+        {
+          "document_id": 4,
+          "document_title": "耕地质量等级 GB/T 33469-2016",
+          "page": 6,
+          "chunk_index": 9,
+          "quote": "区域补充性指标包括耕层厚度、田面坡度、盐渍化程度、地下水埋深、酸碱度、海拔高度等6个指标。",
+          "review_status": "approved_role_semantics",
+          "review_note": "v0.4第二阶段依据明确枚举或赋值方式原文细化关系语义。",
+          "evidence_id": "evidence:558afba66d75be5a0c664e88",
+          "quote_sha256": "040e3ed7e0f3d7877750f5b2d30eaa5dfbcb683d2d5d530523572c9805fe3b8f",
+          "document_key": "document:e6d376a77f0604747dafdbb7"
+        }
+      ],
+      "supporting_document_count": 1,
+      "confidence": 0.95,
+      "review": {
+        "verified_by": "Codex（材料级核验）",
+        "verified_at": "2026-10-18",
+        "basis": "explicit_source_enumeration"
+      }
+    },
+    {
+      "id": "rel:97e99732d50439b8",
+      "type": "assigns_by_field_survey",
+      "source": "standard:doc-14",
+      "target": "indicator:effective_depth",
+      "display_label": "依据实地踏勘赋值",
+      "semantics": {
+        "dimension": "acquisition_mode",
+        "value": "field_survey"
+      },
+      "status": "approved_role_semantics",
+      "evidence": [
+        {
+          "document_id": 14,
+          "document_title": "广东省补充耕地质量鉴定技术规范 试行",
+          "page": 44,
+          "chunk_index": 79,
+          "quote": "有效土层厚度、耕层厚度、排水能力等指标依据实地踏勘情况赋值。",
+          "review_status": "approved_role_semantics",
+          "review_note": "v0.4第二阶段依据明确枚举或赋值方式原文细化关系语义。",
+          "evidence_id": "evidence:f2bf6828f6cb1b2ac8fa20bc",
+          "quote_sha256": "acc87bf9dafbd104b49516ec5f71bce4657f106092122c3c02491343e4f25cce",
+          "document_key": "document:2730c13e478fd5527501a76f"
+        }
+      ],
+      "supporting_document_count": 1,
+      "confidence": 0.95,
+      "review": {
+        "verified_by": "Codex（材料级核验）",
+        "verified_at": "2026-10-18",
+        "basis": "explicit_source_enumeration"
+      }
+    },
+    {
+      "id": "rel:8b5efa0ac27fa110",
+      "type": "assigns_by_field_survey",
+      "source": "standard:doc-14",
+      "target": "indicator:plough_depth",
+      "display_label": "依据实地踏勘赋值",
+      "semantics": {
+        "dimension": "acquisition_mode",
+        "value": "field_survey"
+      },
+      "status": "approved_role_semantics",
+      "evidence": [
+        {
+          "document_id": 14,
+          "document_title": "广东省补充耕地质量鉴定技术规范 试行",
+          "page": 44,
+          "chunk_index": 79,
+          "quote": "有效土层厚度、耕层厚度、排水能力等指标依据实地踏勘情况赋值。",
+          "review_status": "approved_role_semantics",
+          "review_note": "v0.4第二阶段依据明确枚举或赋值方式原文细化关系语义。",
+          "evidence_id": "evidence:f2bf6828f6cb1b2ac8fa20bc",
+          "quote_sha256": "acc87bf9dafbd104b49516ec5f71bce4657f106092122c3c02491343e4f25cce",
+          "document_key": "document:2730c13e478fd5527501a76f"
+        }
+      ],
+      "supporting_document_count": 1,
+      "confidence": 0.95,
+      "review": {
+        "verified_by": "Codex（材料级核验）",
+        "verified_at": "2026-10-18",
+        "basis": "explicit_source_enumeration"
+      }
+    },
+    {
+      "id": "rel:b072d69905679ee5",
+      "type": "assigns_by_field_survey",
+      "source": "standard:doc-14",
+      "target": "indicator:drainage",
+      "display_label": "依据实地踏勘赋值",
+      "semantics": {
+        "dimension": "acquisition_mode",
+        "value": "field_survey"
+      },
+      "status": "approved_role_semantics",
+      "evidence": [
+        {
+          "document_id": 14,
+          "document_title": "广东省补充耕地质量鉴定技术规范 试行",
+          "page": 44,
+          "chunk_index": 79,
+          "quote": "有效土层厚度、耕层厚度、排水能力等指标依据实地踏勘情况赋值。",
+          "review_status": "approved_role_semantics",
+          "review_note": "v0.4第二阶段依据明确枚举或赋值方式原文细化关系语义。",
+          "evidence_id": "evidence:f2bf6828f6cb1b2ac8fa20bc",
+          "quote_sha256": "acc87bf9dafbd104b49516ec5f71bce4657f106092122c3c02491343e4f25cce",
+          "document_key": "document:2730c13e478fd5527501a76f"
+        }
+      ],
+      "supporting_document_count": 1,
+      "confidence": 0.95,
+      "review": {
+        "verified_by": "Codex（材料级核验）",
+        "verified_at": "2026-10-18",
+        "basis": "explicit_source_enumeration"
+      }
+    },
+    {
+      "id": "rel:9484763a3a4a9ff6",
+      "type": "assigns_by_laboratory_test",
+      "source": "standard:doc-14",
+      "target": "indicator:soil_ph",
+      "display_label": "依据土壤样品检测结果赋值",
+      "semantics": {
+        "dimension": "acquisition_mode",
+        "value": "laboratory_test"
+      },
+      "status": "approved_role_semantics",
+      "evidence": [
+        {
+          "document_id": 14,
+          "document_title": "广东省补充耕地质量鉴定技术规范 试行",
+          "page": 45,
+          "chunk_index": 80,
+          "quote": "土壤酸碱度、土壤有机质、有效磷、速效钾、耕层质地、土壤容重依据土壤样品检测的结果。",
+          "review_status": "approved_role_semantics",
+          "review_note": "v0.4第二阶段依据明确枚举或赋值方式原文细化关系语义。",
+          "evidence_id": "evidence:995fb37c3f25fa414b14af71",
+          "quote_sha256": "b7ea38dad1df271c3a013008c3aabbbc53d5a620ffd5dd36cd96be3bbd2270c3",
+          "document_key": "document:2730c13e478fd5527501a76f"
+        }
+      ],
+      "supporting_document_count": 1,
+      "confidence": 0.95,
+      "review": {
+        "verified_by": "Codex（材料级核验）",
+        "verified_at": "2026-10-18",
+        "basis": "explicit_source_enumeration"
+      }
+    },
+    {
+      "id": "rel:eb4f1df4113fd847",
+      "type": "assigns_by_laboratory_test",
+      "source": "standard:doc-14",
+      "target": "indicator:organic_matter",
+      "display_label": "依据土壤样品检测结果赋值",
+      "semantics": {
+        "dimension": "acquisition_mode",
+        "value": "laboratory_test"
+      },
+      "status": "approved_role_semantics",
+      "evidence": [
+        {
+          "document_id": 14,
+          "document_title": "广东省补充耕地质量鉴定技术规范 试行",
+          "page": 45,
+          "chunk_index": 80,
+          "quote": "土壤酸碱度、土壤有机质、有效磷、速效钾、耕层质地、土壤容重依据土壤样品检测的结果。",
+          "review_status": "approved_role_semantics",
+          "review_note": "v0.4第二阶段依据明确枚举或赋值方式原文细化关系语义。",
+          "evidence_id": "evidence:995fb37c3f25fa414b14af71",
+          "quote_sha256": "b7ea38dad1df271c3a013008c3aabbbc53d5a620ffd5dd36cd96be3bbd2270c3",
+          "document_key": "document:2730c13e478fd5527501a76f"
+        }
+      ],
+      "supporting_document_count": 1,
+      "confidence": 0.95,
+      "review": {
+        "verified_by": "Codex（材料级核验）",
+        "verified_at": "2026-10-18",
+        "basis": "explicit_source_enumeration"
+      }
+    },
+    {
+      "id": "rel:6aeed0ffa9406931",
+      "type": "assigns_by_laboratory_test",
+      "source": "standard:doc-14",
+      "target": "indicator:available_p",
+      "display_label": "依据土壤样品检测结果赋值",
+      "semantics": {
+        "dimension": "acquisition_mode",
+        "value": "laboratory_test"
+      },
+      "status": "approved_role_semantics",
+      "evidence": [
+        {
+          "document_id": 14,
+          "document_title": "广东省补充耕地质量鉴定技术规范 试行",
+          "page": 45,
+          "chunk_index": 80,
+          "quote": "土壤酸碱度、土壤有机质、有效磷、速效钾、耕层质地、土壤容重依据土壤样品检测的结果。",
+          "review_status": "approved_role_semantics",
+          "review_note": "v0.4第二阶段依据明确枚举或赋值方式原文细化关系语义。",
+          "evidence_id": "evidence:995fb37c3f25fa414b14af71",
+          "quote_sha256": "b7ea38dad1df271c3a013008c3aabbbc53d5a620ffd5dd36cd96be3bbd2270c3",
+          "document_key": "document:2730c13e478fd5527501a76f"
+        }
+      ],
+      "supporting_document_count": 1,
+      "confidence": 0.95,
+      "review": {
+        "verified_by": "Codex（材料级核验）",
+        "verified_at": "2026-10-18",
+        "basis": "explicit_source_enumeration"
+      }
+    },
+    {
+      "id": "rel:60e835703238c883",
+      "type": "assigns_by_laboratory_test",
+      "source": "standard:doc-14",
+      "target": "indicator:available_k",
+      "display_label": "依据土壤样品检测结果赋值",
+      "semantics": {
+        "dimension": "acquisition_mode",
+        "value": "laboratory_test"
+      },
+      "status": "approved_role_semantics",
+      "evidence": [
+        {
+          "document_id": 14,
+          "document_title": "广东省补充耕地质量鉴定技术规范 试行",
+          "page": 45,
+          "chunk_index": 80,
+          "quote": "土壤酸碱度、土壤有机质、有效磷、速效钾、耕层质地、土壤容重依据土壤样品检测的结果。",
+          "review_status": "approved_role_semantics",
+          "review_note": "v0.4第二阶段依据明确枚举或赋值方式原文细化关系语义。",
+          "evidence_id": "evidence:995fb37c3f25fa414b14af71",
+          "quote_sha256": "b7ea38dad1df271c3a013008c3aabbbc53d5a620ffd5dd36cd96be3bbd2270c3",
+          "document_key": "document:2730c13e478fd5527501a76f"
+        }
+      ],
+      "supporting_document_count": 1,
+      "confidence": 0.95,
+      "review": {
+        "verified_by": "Codex（材料级核验）",
+        "verified_at": "2026-10-18",
+        "basis": "explicit_source_enumeration"
+      }
+    },
+    {
+      "id": "rel:1c59eab5ffb7906f",
+      "type": "assigns_by_laboratory_test",
+      "source": "standard:doc-14",
+      "target": "indicator:texture",
+      "display_label": "依据土壤样品检测结果赋值",
+      "semantics": {
+        "dimension": "acquisition_mode",
+        "value": "laboratory_test"
+      },
+      "status": "approved_role_semantics",
+      "evidence": [
+        {
+          "document_id": 14,
+          "document_title": "广东省补充耕地质量鉴定技术规范 试行",
+          "page": 45,
+          "chunk_index": 80,
+          "quote": "土壤酸碱度、土壤有机质、有效磷、速效钾、耕层质地、土壤容重依据土壤样品检测的结果。",
+          "review_status": "approved_role_semantics",
+          "review_note": "v0.4第二阶段依据明确枚举或赋值方式原文细化关系语义。",
+          "evidence_id": "evidence:995fb37c3f25fa414b14af71",
+          "quote_sha256": "b7ea38dad1df271c3a013008c3aabbbc53d5a620ffd5dd36cd96be3bbd2270c3",
+          "document_key": "document:2730c13e478fd5527501a76f"
+        }
+      ],
+      "supporting_document_count": 1,
+      "confidence": 0.95,
+      "review": {
+        "verified_by": "Codex（材料级核验）",
+        "verified_at": "2026-10-18",
+        "basis": "explicit_source_enumeration"
+      }
+    },
+    {
+      "id": "rel:05f8c54e1ba0638b",
+      "type": "assigns_by_laboratory_test",
+      "source": "standard:doc-14",
+      "target": "indicator:bulk_density",
+      "display_label": "依据土壤样品检测结果赋值",
+      "semantics": {
+        "dimension": "acquisition_mode",
+        "value": "laboratory_test"
+      },
+      "status": "approved_role_semantics",
+      "evidence": [
+        {
+          "document_id": 14,
+          "document_title": "广东省补充耕地质量鉴定技术规范 试行",
+          "page": 45,
+          "chunk_index": 80,
+          "quote": "土壤酸碱度、土壤有机质、有效磷、速效钾、耕层质地、土壤容重依据土壤样品检测的结果。",
+          "review_status": "approved_role_semantics",
+          "review_note": "v0.4第二阶段依据明确枚举或赋值方式原文细化关系语义。",
+          "evidence_id": "evidence:995fb37c3f25fa414b14af71",
+          "quote_sha256": "b7ea38dad1df271c3a013008c3aabbbc53d5a620ffd5dd36cd96be3bbd2270c3",
+          "document_key": "document:2730c13e478fd5527501a76f"
+        }
+      ],
+      "supporting_document_count": 1,
+      "confidence": 0.95,
+      "review": {
+        "verified_by": "Codex（材料级核验）",
+        "verified_at": "2026-10-18",
+        "basis": "explicit_source_enumeration"
+      }
+    }
+  ],
+  "review_audit": {
+    "verified_by": "Codex（材料级核验）",
+    "verified_at": "2026-10-09",
+    "source_review_data": "artifacts/minimal_kg/review_workbook_data.json",
+    "entity_samples": [
+      {
+        "sample_id": "KG-001",
+        "entity_id": "indicator:total_n",
+        "decision": "通过"
+      },
+      {
+        "sample_id": "KG-002",
+        "entity_id": "indicator:soil_ph",
+        "decision": "通过"
+      },
+      {
+        "sample_id": "KG-003",
+        "entity_id": "indicator:bulk_density",
+        "decision": "通过"
+      },
+      {
+        "sample_id": "KG-004",
+        "entity_id": "indicator:organic_matter",
+        "decision": "通过"
+      },
+      {
+        "sample_id": "KG-005",
+        "entity_id": "indicator:texture",
+        "decision": "修改后通过"
+      },
+      {
+        "sample_id": "KG-006",
+        "entity_id": "indicator:drainage",
+        "decision": "修改后通过"
+      },
+      {
+        "sample_id": "KG-007",
+        "entity_id": "indicator:effective_depth",
+        "decision": "通过"
+      },
+      {
+        "sample_id": "KG-008",
+        "entity_id": "indicator:available_p",
+        "decision": "通过"
+      },
+      {
+        "sample_id": "KG-009",
+        "entity_id": "indicator:irrigation",
+        "decision": "修改后通过"
+      },
+      {
+        "sample_id": "KG-010",
+        "entity_id": "indicator:plough_depth",
+        "decision": "修改后通过"
+      },
+      {
+        "sample_id": "KG-011",
+        "entity_id": "indicator:available_k",
+        "decision": "通过"
+      },
+      {
+        "sample_id": "KG-012",
+        "entity_id": "indicator:cec",
+        "decision": "通过"
+      },
+      {
+        "sample_id": "KG-013",
+        "entity_id": "measure:conservation_tillage",
+        "decision": "修改后通过"
+      },
+      {
+        "sample_id": "KG-014",
+        "entity_id": "measure:organic_fertilizer",
+        "decision": "通过"
+      },
+      {
+        "sample_id": "KG-015",
+        "entity_id": "measure:guest_soil",
+        "decision": "修改后通过"
+      },
+      {
+        "sample_id": "KG-016",
+        "entity_id": "measure:soil_conditioner",
+        "decision": "修改后通过"
+      },
+      {
+        "sample_id": "KG-017",
+        "entity_id": "measure:liming",
+        "decision": "通过"
+      },
+      {
+        "sample_id": "KG-018",
+        "entity_id": "measure:formula_fertilization",
+        "decision": "修改后通过"
+      },
+      {
+        "sample_id": "KG-019",
+        "entity_id": "measure:deep_tillage",
+        "decision": "修改后通过"
+      },
+      {
+        "sample_id": "KG-020",
+        "entity_id": "measure:straw_return",
+        "decision": "修改后通过"
+      },
+      {
+        "sample_id": "KG-021",
+        "entity_id": "measure:green_manure",
+        "decision": "修改后通过"
+      },
+      {
+        "sample_id": "KG-022",
+        "entity_id": "obstacle:nutrient_imbalance",
+        "decision": "通过"
+      },
+      {
+        "sample_id": "KG-023",
+        "entity_id": "obstacle:nutrient_deficiency",
+        "decision": "修改后通过"
+      },
+      {
+        "sample_id": "KG-024",
+        "entity_id": "obstacle:erosion",
+        "decision": "修改后通过"
+      },
+      {
+        "sample_id": "KG-025",
+        "entity_id": "obstacle:compaction",
+        "decision": "修改后通过"
+      },
+      {
+        "sample_id": "KG-026",
+        "entity_id": "obstacle:salinization",
+        "decision": "修改后通过"
+      },
+      {
+        "sample_id": "KG-027",
+        "entity_id": "obstacle:acidification",
+        "decision": "修改后通过"
+      },
+      {
+        "sample_id": "KG-028",
+        "entity_id": "obstacle:poor_drainage",
+        "decision": "修改后通过"
+      },
+      {
+        "sample_id": "KG-029",
+        "entity_id": "obstacle:low_organic_matter",
+        "decision": "通过"
+      },
+      {
+        "sample_id": "KG-030",
+        "entity_id": "obstacle:shallow_plough",
+        "decision": "修改后通过"
+      },
+      {
+        "sample_id": "KG-031",
+        "entity_id": "standard:doc-14",
+        "decision": "通过"
+      },
+      {
+        "sample_id": "KG-032",
+        "entity_id": "standard:doc-13",
+        "decision": "通过"
+      },
+      {
+        "sample_id": "KG-033",
+        "entity_id": "standard:doc-3",
+        "decision": "通过"
+      },
+      {
+        "sample_id": "KG-034",
+        "entity_id": "standard:doc-4",
+        "decision": "通过"
+      },
+      {
+        "sample_id": "KG-035",
+        "entity_id": "standard:doc-11",
+        "decision": "通过"
+      }
+    ],
+    "relation_samples": [
+      {
+        "sample_id": "KG-036",
+        "original_relation_id": "rel:8786675343c2c874",
+        "new_relation_id": "rel:a7fa385a7d0a486a",
+        "decision": "修改后通过"
+      },
+      {
+        "sample_id": "KG-037",
+        "original_relation_id": "rel:058b3641c36a3a8c",
+        "new_relation_id": "rel:058b3641c36a3a8c",
+        "decision": "通过"
+      },
+      {
+        "sample_id": "KG-038",
+        "original_relation_id": "rel:f9295d2f1396df8a",
+        "decision": "驳回",
+        "reason": "原文并列出现侵蚀、酸化和有机质下降，不能证明直接因果。",
+        "evidence": {
+          "document_id": 30,
+          "document_title": "酸性红壤地区耕地健康评价及定向培育研究",
+          "page": 74,
+          "chunk_index": 119,
+          "quote": "导致了土壤侵蚀、酸化、有机质含量下降、土壤"
+        }
+      },
+      {
+        "sample_id": "KG-039",
+        "original_relation_id": "rel:5250ad5d9a43ff44",
+        "decision": "驳回",
+        "reason": "原文仅并列养分缺乏、容重大和板结，不能证明影响关系。",
+        "evidence": {
+          "document_id": 15,
+          "document_title": "主要红壤区坡耕地土壤质量评价与障碍因子识别",
+          "page": 60,
+          "chunk_index": 112,
+          "quote": "(2)土壤养分缺乏、黏粒含量多、容重大、土壤板结是制约红壤坡耕地耕"
+        }
+      },
+      {
+        "sample_id": "KG-040",
+        "original_relation_id": "rel:8b89f83247934a3a",
+        "decision": "驳回",
+        "reason": "原文表达灌排改善可降低盐碱化，候选关系方向错误。",
+        "evidence": {
+          "document_id": 29,
+          "document_title": "耕地质量等级提升的土地整治项目设计关键技术研究",
+          "page": 56,
+          "chunk_index": 118,
+          "quote": "灌溉与排水使灌溉保证率及排水能力提高,盐碱化程度降低;"
+        }
+      },
+      {
+        "sample_id": "KG-041",
+        "original_relation_id": "rel:70d3cc3ddb5575fc",
+        "decision": "驳回",
+        "reason": "原文表达灌排改善可降低盐碱化，候选关系方向错误。",
+        "evidence": {
+          "document_id": 29,
+          "document_title": "耕地质量等级提升的土地整治项目设计关键技术研究",
+          "page": 56,
+          "chunk_index": 118,
+          "quote": "灌溉与排水使灌溉保证率及排水能力提高,盐碱化程度降低;"
+        }
+      },
+      {
+        "sample_id": "KG-042",
+        "original_relation_id": "rel:c5ee25b280af6af4",
+        "decision": "驳回",
+        "reason": "原文并列盐碱化治理与增加有机质，不能证明影响关系。",
+        "evidence": {
+          "document_id": 29,
+          "document_title": "耕地质量等级提升的土地整治项目设计关键技术研究",
+          "page": 29,
+          "chunk_index": 71,
+          "quote": "碍层和土体构型、治理土壤盐碱化和增加有机质的黑土保育等工程设计为核心的"
+        }
+      },
+      {
+        "sample_id": "KG-043",
+        "original_relation_id": "rel:f04c4c7ac3e72820",
+        "new_relation_id": "rel:b5915f818902e6ad",
+        "decision": "修改后通过"
+      },
+      {
+        "sample_id": "KG-044",
+        "original_relation_id": "rel:6174d01530578bf7",
+        "new_relation_id": "rel:bb6e93083cdb2f35",
+        "decision": "修改后通过"
+      },
+      {
+        "sample_id": "KG-045",
+        "original_relation_id": "rel:d78627640bae1e6a",
+        "new_relation_id": "rel:e72f5987e2b800d8",
+        "decision": "修改后通过"
+      },
+      {
+        "sample_id": "KG-046",
+        "original_relation_id": "rel:8ec4d17848a8fa35",
+        "new_relation_id": "rel:7b6bc685264abbf9",
+        "decision": "修改后通过"
+      },
+      {
+        "sample_id": "KG-047",
+        "original_relation_id": "rel:b062fb4d951fe4dd",
+        "new_relation_id": "rel:c5c26498c75036d1",
+        "decision": "修改后通过"
+      },
+      {
+        "sample_id": "KG-048",
+        "original_relation_id": "rel:474e24fadea5c8b1",
+        "new_relation_id": "rel:5217d36bdf5df01d",
+        "decision": "修改后通过"
+      },
+      {
+        "sample_id": "KG-049",
+        "original_relation_id": "rel:5347aaab87cdb662",
+        "new_relation_id": "rel:587379790746229b",
+        "decision": "修改后通过"
+      },
+      {
+        "sample_id": "KG-050",
+        "original_relation_id": "rel:b0872e969016e5ef",
+        "new_relation_id": "rel:99e721a06ccf4433",
+        "decision": "修改后通过"
+      },
+      {
+        "sample_id": "KG-051",
+        "original_relation_id": "rel:a121005654b4050e",
+        "new_relation_id": "rel:f9c88c11bd6694ff",
+        "decision": "修改后通过"
+      },
+      {
+        "sample_id": "KG-052",
+        "original_relation_id": "rel:ea0ab2c229da2eff",
+        "new_relation_id": "rel:73c70ebbe25aede1",
+        "decision": "修改后通过"
+      },
+      {
+        "sample_id": "KG-053",
+        "original_relation_id": "rel:eee29bc07decdaf5",
+        "new_relation_id": "rel:be8eb116608067be",
+        "decision": "修改后通过"
+      },
+      {
+        "sample_id": "KG-054",
+        "original_relation_id": "rel:04ef11ac0f219a73",
+        "new_relation_id": "rel:acce691bf45c2260",
+        "decision": "修改后通过"
+      },
+      {
+        "sample_id": "KG-055",
+        "original_relation_id": "rel:21bfa9b7f248a9c4",
+        "new_relation_id": "rel:41e5eb61530d038c",
+        "decision": "修改后通过"
+      },
+      {
+        "sample_id": "KG-056",
+        "original_relation_id": "rel:7dad769798964098",
+        "new_relation_id": "rel:86c8fa5cc3cd0353",
+        "decision": "修改后通过"
+      },
+      {
+        "sample_id": "KG-057",
+        "original_relation_id": "rel:037d5901d143c39e",
+        "new_relation_id": "rel:ec05041d6674a399",
+        "decision": "修改后通过"
+      },
+      {
+        "sample_id": "KG-058",
+        "original_relation_id": "rel:7b93c0e5a790b3f5",
+        "new_relation_id": "rel:6b90980691d544af",
+        "decision": "修改后通过"
+      },
+      {
+        "sample_id": "KG-059",
+        "original_relation_id": "rel:884a32a29fee521a",
+        "new_relation_id": "rel:e2f09f78b6eb7f41",
+        "decision": "修改后通过"
+      },
+      {
+        "sample_id": "KG-060",
+        "original_relation_id": "rel:2be962bc4d1e9c03",
+        "new_relation_id": "rel:17aeb04c960104ce",
+        "decision": "修改后通过"
+      },
+      {
+        "sample_id": "KG-061",
+        "original_relation_id": "rel:9e1e115703635636",
+        "new_relation_id": "rel:3629c3f41b3e6c24",
+        "decision": "修改后通过"
+      },
+      {
+        "sample_id": "KG-062",
+        "original_relation_id": "rel:65792b137ddb0597",
+        "new_relation_id": "rel:0566652cc439a1ef",
+        "decision": "修改后通过"
+      },
+      {
+        "sample_id": "KG-063",
+        "original_relation_id": "rel:1c4248aae168e965",
+        "new_relation_id": "rel:c6279029fb2e6162",
+        "decision": "修改后通过"
+      },
+      {
+        "sample_id": "KG-064",
+        "original_relation_id": "rel:5548644cf025fb96",
+        "new_relation_id": "rel:e2168ef49d3eccd5",
+        "decision": "修改后通过"
+      },
+      {
+        "sample_id": "KG-065",
+        "original_relation_id": "rel:8767c319bc88cea4",
+        "new_relation_id": "rel:044127b8e4d59456",
+        "decision": "修改后通过"
+      },
+      {
+        "sample_id": "KG-066",
+        "original_relation_id": "rel:cf94671ca3caf334",
+        "new_relation_id": "rel:81b176bb7989c3eb",
+        "decision": "修改后通过"
+      },
+      {
+        "sample_id": "KG-067",
+        "original_relation_id": "rel:0482447924573ad8",
+        "new_relation_id": "rel:f56d76f1847d0b72",
+        "decision": "修改后通过"
+      },
+      {
+        "sample_id": "KG-068",
+        "original_relation_id": "rel:3e81fc557de69b1f",
+        "new_relation_id": "rel:5e88a7f9ebc436e2",
+        "decision": "修改后通过"
+      },
+      {
+        "sample_id": "KG-069",
+        "original_relation_id": "rel:f7609861b04d4661",
+        "new_relation_id": "rel:fbaf3534dea7c6ca",
+        "decision": "修改后通过"
+      },
+      {
+        "sample_id": "KG-070",
+        "original_relation_id": "rel:82c239496229c414",
+        "new_relation_id": "rel:d557f9945967ab07",
+        "decision": "修改后通过"
+      },
+      {
+        "sample_id": "KG-071",
+        "original_relation_id": "rel:8786675343c2c874",
+        "new_relation_id": "rel:a7fa385a7d0a486a",
+        "decision": "修改后通过"
+      },
+      {
+        "sample_id": "KG-072",
+        "original_relation_id": "rel:8786675343c2c874",
+        "new_relation_id": "rel:a7fa385a7d0a486a",
+        "decision": "修改后通过"
+      },
+      {
+        "sample_id": "KG-073",
+        "original_relation_id": "rel:8786675343c2c874",
+        "decision": "驳回",
+        "reason": "原文说明容重过高影响养分分布，未证明本条候选方向。",
+        "evidence": {
+          "document_id": 16,
+          "document_title": "云贵高原耕地质量评估 障碍因子及产能提升潜力分析",
+          "page": 22,
+          "chunk_index": 48,
+          "quote": "容重也逐渐变小,容重过高会导致土壤养分分布不均匀,从而导致耕地质量空"
+        }
+      },
+      {
+        "sample_id": "KG-074",
+        "original_relation_id": "rel:6174d01530578bf7",
+        "new_relation_id": "rel:bb6e93083cdb2f35",
+        "decision": "修改后通过"
+      },
+      {
+        "sample_id": "KG-075",
+        "original_relation_id": "rel:b062fb4d951fe4dd",
+        "new_relation_id": "rel:c5c26498c75036d1",
+        "decision": "修改后通过"
+      },
+      {
+        "sample_id": "KG-076",
+        "original_relation_id": "rel:5347aaab87cdb662",
+        "new_relation_id": "rel:587379790746229b",
+        "decision": "修改后通过"
+      },
+      {
+        "sample_id": "KG-077",
+        "original_relation_id": "rel:ea0ab2c229da2eff",
+        "new_relation_id": "rel:73c70ebbe25aede1",
+        "decision": "修改后通过"
+      },
+      {
+        "sample_id": "KG-078",
+        "original_relation_id": "rel:eee29bc07decdaf5",
+        "new_relation_id": "rel:be8eb116608067be",
+        "decision": "修改后通过"
+      },
+      {
+        "sample_id": "KG-079",
+        "original_relation_id": "rel:04ef11ac0f219a73",
+        "new_relation_id": "rel:acce691bf45c2260",
+        "decision": "修改后通过"
+      },
+      {
+        "sample_id": "KG-080",
+        "original_relation_id": "rel:7dad769798964098",
+        "new_relation_id": "rel:86c8fa5cc3cd0353",
+        "decision": "修改后通过"
+      },
+      {
+        "sample_id": "KG-081",
+        "original_relation_id": "rel:037d5901d143c39e",
+        "new_relation_id": "rel:a25189da93c4f527",
+        "decision": "修改后通过"
+      },
+      {
+        "sample_id": "KG-082",
+        "original_relation_id": "rel:7b93c0e5a790b3f5",
+        "new_relation_id": "rel:f1d13520fe4de90e",
+        "decision": "修改后通过"
+      },
+      {
+        "sample_id": "KG-083",
+        "original_relation_id": "rel:884a32a29fee521a",
+        "new_relation_id": "rel:e2f09f78b6eb7f41",
+        "decision": "修改后通过"
+      },
+      {
+        "sample_id": "KG-084",
+        "original_relation_id": "rel:2be962bc4d1e9c03",
+        "new_relation_id": "rel:17aeb04c960104ce",
+        "decision": "修改后通过"
+      },
+      {
+        "sample_id": "KG-085",
+        "original_relation_id": "rel:9e1e115703635636",
+        "new_relation_id": "rel:3629c3f41b3e6c24",
+        "decision": "修改后通过"
+      },
+      {
+        "sample_id": "KG-086",
+        "original_relation_id": "rel:65792b137ddb0597",
+        "new_relation_id": "rel:0566652cc439a1ef",
+        "decision": "修改后通过"
+      },
+      {
+        "sample_id": "KG-087",
+        "original_relation_id": "rel:1c4248aae168e965",
+        "new_relation_id": "rel:c6279029fb2e6162",
+        "decision": "修改后通过"
+      },
+      {
+        "sample_id": "KG-088",
+        "original_relation_id": "rel:5548644cf025fb96",
+        "new_relation_id": "rel:e2168ef49d3eccd5",
+        "decision": "修改后通过"
+      },
+      {
+        "sample_id": "KG-089",
+        "original_relation_id": "rel:0482447924573ad8",
+        "new_relation_id": "rel:f56d76f1847d0b72",
+        "decision": "修改后通过"
+      },
+      {
+        "sample_id": "KG-090",
+        "original_relation_id": "rel:f7609861b04d4661",
+        "new_relation_id": "rel:fbaf3534dea7c6ca",
+        "decision": "修改后通过"
+      },
+      {
+        "sample_id": "KG-091",
+        "original_relation_id": "rel:ea0ab2c229da2eff",
+        "new_relation_id": "rel:73c70ebbe25aede1",
+        "decision": "修改后通过"
+      },
+      {
+        "sample_id": "KG-092",
+        "original_relation_id": "rel:eee29bc07decdaf5",
+        "new_relation_id": "rel:be8eb116608067be",
+        "decision": "修改后通过"
+      },
+      {
+        "sample_id": "KG-093",
+        "original_relation_id": "rel:04ef11ac0f219a73",
+        "new_relation_id": "rel:acce691bf45c2260",
+        "decision": "修改后通过"
+      },
+      {
+        "sample_id": "KG-094",
+        "original_relation_id": "rel:037d5901d143c39e",
+        "new_relation_id": "rel:a25189da93c4f527",
+        "decision": "修改后通过"
+      },
+      {
+        "sample_id": "KG-095",
+        "original_relation_id": "rel:7b93c0e5a790b3f5",
+        "new_relation_id": "rel:6b90980691d544af",
+        "decision": "修改后通过"
+      },
+      {
+        "sample_id": "KG-096",
+        "original_relation_id": "rel:884a32a29fee521a",
+        "new_relation_id": "rel:e2f09f78b6eb7f41",
+        "decision": "修改后通过"
+      },
+      {
+        "sample_id": "KG-097",
+        "original_relation_id": "rel:9e1e115703635636",
+        "new_relation_id": "rel:3629c3f41b3e6c24",
+        "decision": "修改后通过"
+      },
+      {
+        "sample_id": "KG-098",
+        "original_relation_id": "rel:5548644cf025fb96",
+        "new_relation_id": "rel:e2168ef49d3eccd5",
+        "decision": "修改后通过"
+      },
+      {
+        "sample_id": "KG-099",
+        "original_relation_id": "rel:0482447924573ad8",
+        "new_relation_id": "rel:f56d76f1847d0b72",
+        "decision": "修改后通过"
+      },
+      {
+        "sample_id": "KG-100",
+        "original_relation_id": "rel:f7609861b04d4661",
+        "new_relation_id": "rel:fbaf3534dea7c6ca",
+        "decision": "修改后通过"
+      }
+    ],
+    "obstacle_measure_evidence": [
+      {
+        "evidence_id": "OM-001",
+        "decision": "通过",
+        "obstacle": "土壤酸化",
+        "measure": "施用石灰",
+        "reason": "原文直接说明施用石灰是耕地酸化治理手段。",
+        "new_relation_id": "rel:058b3641c36a3a8c"
+      },
+      {
+        "evidence_id": "OM-002",
+        "decision": "修改后通过",
+        "obstacle": "土壤板结",
+        "measure": "深松深耕",
+        "reason": "收窄为土壤板结—深松。",
+        "new_relation_id": "rel:0fa82c25f87b948b"
+      },
+      {
+        "evidence_id": "OM-003",
+        "decision": "驳回",
+        "obstacle": "土壤侵蚀",
+        "measure": "秸秆还田",
+        "reason": "秸秆还田针对养分类障碍，不是土壤侵蚀。"
+      },
+      {
+        "evidence_id": "OM-004",
+        "decision": "通过",
+        "obstacle": "土壤侵蚀",
+        "measure": "深松深耕",
+        "reason": "原文明确深松深耕可减轻侵蚀退化。",
+        "new_relation_id": "rel:c00808f7cccaa063"
+      },
+      {
+        "evidence_id": "OM-005",
+        "decision": "驳回",
+        "obstacle": "土壤板结",
+        "measure": "绿肥种植",
+        "reason": "绿肥针对有机质偏低，板结对应免耕和深松。"
+      },
+      {
+        "evidence_id": "OM-006",
+        "decision": "驳回",
+        "obstacle": "土壤侵蚀",
+        "measure": "施用土壤调理剂",
+        "reason": "调理剂针对酸化，水土流失对应水利与防护林。"
+      },
+      {
+        "evidence_id": "OM-007",
+        "decision": "驳回",
+        "obstacle": "土壤板结",
+        "measure": "秸秆还田",
+        "reason": "秸秆还田用于提高有机质，不直接对应板结。"
+      },
+      {
+        "evidence_id": "OM-008",
+        "decision": "驳回",
+        "obstacle": "土壤盐渍化",
+        "measure": "保护性耕作",
+        "reason": "摘要未出现保护性耕作治理盐渍化证据。"
+      },
+      {
+        "evidence_id": "OM-009",
+        "decision": "驳回",
+        "obstacle": "土壤酸化",
+        "measure": "绿肥种植",
+        "reason": "绿肥用于提高保肥性能，未直接对应酸化治理。"
+      },
+      {
+        "evidence_id": "OM-010",
+        "decision": "驳回",
+        "obstacle": "土壤盐渍化",
+        "measure": "秸秆还田",
+        "reason": "秸秆还田对应贫瘠化，未明确对应盐渍化。"
+      },
+      {
+        "evidence_id": "OM-011",
+        "decision": "通过",
+        "obstacle": "土壤酸化",
+        "measure": "秸秆还田",
+        "reason": "酸化限制型措施段明确支持秸秆还田。",
+        "new_relation_id": "rel:369ee758119f6ca4"
+      },
+      {
+        "evidence_id": "OM-012",
+        "decision": "驳回",
+        "obstacle": "土壤侵蚀",
+        "measure": "增施有机肥",
+        "reason": "增施有机肥对应酸化治理，不是侵蚀治理。"
+      },
+      {
+        "evidence_id": "OM-013",
+        "decision": "驳回",
+        "obstacle": "土壤盐渍化",
+        "measure": "增施有机肥",
+        "reason": "增施有机肥对应贫瘠化，未明确对应盐渍化。"
+      },
+      {
+        "evidence_id": "OM-014",
+        "decision": "驳回",
+        "obstacle": "土壤酸化",
+        "measure": "增施有机肥",
+        "reason": "有机肥用于改善保水性能，未直接证明治理酸化。"
+      },
+      {
+        "evidence_id": "OM-015",
+        "decision": "通过",
+        "obstacle": "土壤酸化",
+        "measure": "测土配方施肥",
+        "reason": "酸化限制型措施段明确支持测土配方施肥。",
+        "new_relation_id": "rel:30f42f9a2778f4fb"
+      },
+      {
+        "evidence_id": "OM-016",
+        "decision": "驳回",
+        "obstacle": "土壤酸化",
+        "measure": "深松深耕",
+        "reason": "深松深耕属于前一段薄化/侵蚀措施。"
+      },
+      {
+        "evidence_id": "OM-017",
+        "decision": "驳回",
+        "obstacle": "土壤侵蚀",
+        "measure": "保护性耕作",
+        "reason": "未直接形成保护性耕作治理侵蚀结论。"
+      },
+      {
+        "evidence_id": "OM-018",
+        "decision": "通过",
+        "obstacle": "土壤酸化",
+        "measure": "施用土壤调理剂",
+        "reason": "原文直接表述土壤调理剂治理酸化。",
+        "new_relation_id": "rel:e97eb40d2da004f3"
+      },
+      {
+        "evidence_id": "OM-019",
+        "decision": "驳回",
+        "obstacle": "养分缺乏",
+        "measure": "秸秆还田",
+        "reason": "秸秆还田出现在土壤薄化措施段。"
+      },
+      {
+        "evidence_id": "OM-020",
+        "decision": "驳回",
+        "obstacle": "土壤侵蚀",
+        "measure": "测土配方施肥",
+        "reason": "测土配方施肥对应养分管理，不是侵蚀治理。"
+      },
+      {
+        "evidence_id": "OM-021",
+        "decision": "驳回",
+        "obstacle": "土壤板结",
+        "measure": "测土配方施肥",
+        "reason": "测土配方施肥属于养分限制措施。"
+      },
+      {
+        "evidence_id": "OM-022",
+        "decision": "驳回",
+        "obstacle": "土壤盐渍化",
+        "measure": "施用石灰",
+        "reason": "原文明确石灰用于酸性土壤，候选关系错误。"
+      },
+      {
+        "evidence_id": "OM-023",
+        "decision": "驳回",
+        "obstacle": "土壤侵蚀",
+        "measure": "施用石灰",
+        "reason": "石灰对应酸化治理，与侵蚀仅相邻。"
+      },
+      {
+        "evidence_id": "OM-024",
+        "decision": "修改后通过",
+        "obstacle": "土壤板结",
+        "measure": "保护性耕作",
+        "reason": "收窄为土壤板结—免耕。",
+        "new_relation_id": "rel:810e8d511a70cd3e"
+      },
+      {
+        "evidence_id": "OM-025",
+        "decision": "驳回",
+        "obstacle": "土壤酸化",
+        "measure": "保护性耕作",
+        "reason": "仅为参考文献条目。"
+      },
+      {
+        "evidence_id": "OM-026",
+        "decision": "驳回",
+        "obstacle": "土壤侵蚀",
+        "measure": "绿肥种植",
+        "reason": "绿肥位于酸化治理段，不能证明治理侵蚀。"
+      },
+      {
+        "evidence_id": "OM-027",
+        "decision": "修改后通过",
+        "obstacle": "有机质不足",
+        "measure": "保护性耕作",
+        "reason": "改为保护性耕作有助于缓解有机质不足。",
+        "new_relation_id": "rel:c091fea7959dbdf2"
+      },
+      {
+        "evidence_id": "OM-028",
+        "decision": "通过",
+        "obstacle": "养分缺乏",
+        "measure": "测土配方施肥",
+        "reason": "原文将肥力障碍与测土配方施肥直接对应。",
+        "new_relation_id": "rel:e2259384941ce3ea"
+      },
+      {
+        "evidence_id": "OM-029",
+        "decision": "通过",
+        "obstacle": "养分缺乏",
+        "measure": "增施有机肥",
+        "reason": "原文将肥力障碍与增施有机肥直接对应。",
+        "new_relation_id": "rel:33ff419a3c78e3ed"
+      },
+      {
+        "evidence_id": "OM-030",
+        "decision": "修改后通过",
+        "obstacle": "土壤板结",
+        "measure": "深松深耕",
+        "reason": "收窄为土壤板结—深松。",
+        "new_relation_id": "rel:0fa82c25f87b948b"
+      }
+    ],
+    "v03_evidence_additions": [
+      {
+        "sample_id": "V03-E001",
+        "relation_id": "rel:849ac8d18ab20557",
+        "decision": "通过",
+        "note": "全氮低于材料阈值可表征养分障碍。"
+      },
+      {
+        "sample_id": "V03-E002",
+        "relation_id": "rel:2f13738db223ce87",
+        "decision": "通过",
+        "note": "阳离子交换量低下被原文直接列为养分障碍限制因素。"
+      },
+      {
+        "sample_id": "V03-E003",
+        "relation_id": "rel:f3690c33ee8dc897",
+        "decision": "通过",
+        "note": "绿肥种植直接对应有机质含量较低问题。"
+      },
+      {
+        "sample_id": "V03-E004",
+        "relation_id": "rel:5607979760e1c0f4",
+        "decision": "通过",
+        "note": "使用措施—指标改善关系，避免把客土强行绑定到单一障碍。"
+      },
+      {
+        "sample_id": "V03-E005",
+        "relation_id": "rel:e29748d3e2d538e9",
+        "decision": "通过",
+        "note": "耕层浅薄以耕层厚度作为直接表征指标。"
+      },
+      {
+        "sample_id": "V03-E006",
+        "relation_id": "rel:fe3116ba788a3738",
+        "decision": "通过",
+        "note": "测土配方施肥通过避免养分过剩或匮乏来治理养分失衡。"
+      },
+      {
+        "sample_id": "V03-E007",
+        "relation_id": "rel:0f4be5e25d694ab8",
+        "decision": "通过",
+        "note": "排水工程的排涝、防渍功能直接对应排水不良。"
+      },
+      {
+        "sample_id": "V03-E008",
+        "relation_id": "rel:3d1f6d884a25aa5a",
+        "decision": "通过",
+        "note": "排水不畅和内涝用于识别排水不良障碍。"
+      }
+    ]
+  },
+  "validation": {
+    "entity_count": 38,
+    "entity_counts": {
+      "indicator": 12,
+      "measure": 12,
+      "obstacle": 9,
+      "standard": 5
+    },
+    "relation_count": 66,
+    "relation_counts": {
+      "addresses": 13,
+      "assessment_basis": 1,
+      "assigns_by_field_survey": 3,
+      "assigns_by_laboratory_test": 6,
+      "characterized_by": 5,
+      "classifies_basic_indicator": 6,
+      "classifies_regional_supplementary_indicator": 2,
+      "improves_indicator": 1,
+      "includes_indicator": 9,
+      "prescribes_measurement": 20
+    },
+    "evidence_count": 94,
+    "evidence_with_page_ratio": 1.0,
+    "relations_without_evidence": [],
+    "invalid_endpoint_relations": [],
+    "invalid_direction_relations": [],
+    "duplicate_relation_count": 0,
+    "duplicate_evidence_count": 0,
+    "orphan_entity_count": 0,
+    "orphan_entities": [],
+    "passed": true,
+    "standard_entity_count": 5,
+    "standard_alias_count": 23,
+    "v04_phase_1_passed": true,
+    "role_relation_count": 17,
+    "role_relation_counts": {
+      "assigns_by_field_survey": 3,
+      "assigns_by_laboratory_test": 6,
+      "classifies_basic_indicator": 6,
+      "classifies_regional_supplementary_indicator": 2
+    },
+    "v04_phase_2_passed": true
+  },
+  "candidate_entities": [],
+  "lineage": {
+    "base_schema_version": "minimal-cultivated-land-kg-v0.3",
+    "base_artifact": "cultivated_land_minimal_graph_v0.3.json",
+    "phase": "v0.4-phase-2-role-semantics"
+  },
+  "release_notes": [
+    "保留v0.3全部已核验实体、关系和证据。",
+    "为5个标准实体补充简称、编号和口语化检索别名。",
+    "正式RAG图谱匹配使用原始问句，避免同义词归一化抹平精确实体。",
+    "新增17条标准—指标细粒度关系，区分指标层级与取值方式。",
+    "指标层级包括基础性指标、区域补充性指标；取值方式包括现场踏勘、实验室检测。"
+  ],
+  "release": {
+    "release_id": "kg-v0.4-production-candidate-1",
+    "reviewed_by": "Codex material-level review",
+    "released_at": "2026-10-18T14:37:31.125609+00:00",
+    "rollback_schema_version": "minimal-cultivated-land-kg-v0.3"
+  }
+}

@@ -1,0 +1,16 @@
+{
+  "manifest_schema_version": "knowledge-graph-release-manifest-v1",
+  "release_id": "kg-v0.4-production-candidate-1",
+  "schema_version": "minimal-cultivated-land-kg-v0.4",
+  "sha256": "481ca6206a77c842b4287d7cec5b57f10837e3037c8a2a9ed7648713ea2a7899",
+  "artifact": "cultivated_land_minimal_graph_v0.4.json",
+  "entity_count": 38,
+  "relation_count": 66,
+  "evidence_count": 94,
+  "reviewed_by": "Codex material-level review",
+  "released_at": "2026-10-18T14:37:31.125609+00:00",
+  "rollback": {
+    "schema_version": "minimal-cultivated-land-kg-v0.3",
+    "procedure": "set KG_GRAPH_PATH/KG_MANIFEST_PATH to the previous release or set KG_ROLLOUT_MODE=off"
+  }
+}

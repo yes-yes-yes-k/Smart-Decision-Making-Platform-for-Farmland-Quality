@@ -19,6 +19,8 @@ def parse_document(file_path: str, file_type: str, page_aware: bool = False):
         return _parse_docx(file_path)
     elif file_type == 'xlsx':
         return _parse_excel(file_path)
+    elif file_type in {'csv', 'dat'}:
+        return _parse_delimited(file_path)
     else:
         return None
 
@@ -69,7 +71,7 @@ def _parse_pdf(file_path: str, page_aware: bool = False):
                         page_text = pytesseract.image_to_string(images[0], lang="chi_sim+eng")
                 except Exception as e:
                     print(f"[Parser] 第 {i} 页 OCR 兜底失败: {e}")
-            pages_text.append((i, page_text))
+            pages_text.append((i, clean_text(page_text)))
 
     if page_aware:
         return pages_text
@@ -144,7 +146,7 @@ def _parse_pdf_ocr(file_path: str, page_aware: bool = False):
         except Exception as e:
             print(f"[Parser] OCR 第 {i}/{total_pages} 页识别失败：{e}", flush=True)
             page_text = ""
-        pages_text.append((i, page_text))
+        pages_text.append((i, clean_text(page_text)))
 
     print(f"[Parser] OCR 识别完成，共 {total_pages} 页", flush=True)
     if page_aware:
@@ -158,17 +160,13 @@ def _parse_docx(file_path: str) -> str:
         raise ImportError(f"python-docx 未安装，无法解析 DOCX：{e}。请执行 pip install python-docx")
 
     doc = Document(file_path)
-    text = "\n".join([para.text for para in doc.paragraphs]).strip()
-    if not text:
-        # 尝试表格内容
-        table_text = []
-        for table in doc.tables:
-            for row in table.rows:
-                for cell in row.cells:
-                    if cell.text:
-                        table_text.append(cell.text)
-        text = "\n".join(table_text).strip()
-    return clean_text(text)
+    parts = [para.text for para in doc.paragraphs if para.text]
+    for table in doc.tables:
+        for row in table.rows:
+            values = [cell.text.strip() for cell in row.cells]
+            if any(values):
+                parts.append(" | ".join(values))
+    return clean_text("\n".join(parts))
 
 def _parse_excel(file_path: str) -> str:
     try:
@@ -176,5 +174,24 @@ def _parse_excel(file_path: str) -> str:
     except ImportError as e:
         raise ImportError(f"pandas 未安装，无法解析 Excel：{e}。请执行 pip install pandas openpyxl")
 
-    df = pd.read_excel(file_path)
-    return clean_text(df.to_string())
+    sheets = pd.read_excel(file_path, sheet_name=None)
+    parts = []
+    for sheet_name, df in sheets.items():
+        parts.append(f"工作表: {sheet_name}\n{df.to_string(index=False)}")
+    return clean_text("\n\n".join(parts))
+
+
+def _parse_delimited(file_path: str) -> str:
+    try:
+        import pandas as pd
+    except ImportError as e:
+        raise ImportError(f"pandas 未安装，无法解析 CSV/DAT：{e}。请执行 pip install pandas")
+
+    last_error = None
+    for encoding in ("utf-8-sig", "gb18030"):
+        try:
+            df = pd.read_csv(file_path, sep=None, engine="python", encoding=encoding)
+            return clean_text(df.to_string(index=False))
+        except Exception as exc:
+            last_error = exc
+    raise ValueError(f"无法解析分隔文本文件: {last_error}")

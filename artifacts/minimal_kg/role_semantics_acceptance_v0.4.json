@@ -1,0 +1,663 @@
+{
+  "schema_version": "kg-v0.4-role-semantics-acceptance-v0.1",
+  "generated_at": "2026-10-18T17:46:01.875356+08:00",
+  "source_graph": "cultivated_land_minimal_graph_v0.4.json",
+  "provenance_note": "问句为模拟真实用户表达，不冒充生产日志或真实用户历史记录。",
+  "summary": {
+    "question_count": 25,
+    "supported_count": 17,
+    "counterfactual_count": 8,
+    "category_counts": {
+      "区域补充性指标": 2,
+      "基础性指标": 6,
+      "实验室检测指标": 6,
+      "现场踏勘指标": 3,
+      "角色反事实": 8
+    }
+  },
+  "questions": [
+    {
+      "id": "角色-基础-01",
+      "category": "基础性指标",
+      "question": "按 GB/T 33469 做耕地质量评价时，有效土层厚度算全国都要看的基础指标吗？",
+      "question_style": "realistic_user_wording",
+      "provenance": "designed_not_user_log",
+      "expected_status": "supported",
+      "expected_answer": "算。GB/T 33469 将有效土层厚度列为基础性指标。",
+      "expected_relation_id": "rel:f47ccb8317bc60aa",
+      "expected_relation_type": "classifies_basic_indicator",
+      "expected_source_entity": {
+        "id": "standard:doc-4",
+        "name": "耕地质量等级 GB/T 33469-2016"
+      },
+      "expected_target_entity": {
+        "id": "indicator:effective_depth",
+        "name": "有效土层厚度"
+      },
+      "expected_semantics": {
+        "dimension": "indicator_classification",
+        "value": "basic"
+      },
+      "answer_keywords": [
+        "有效土层厚度",
+        "列为基础性指标"
+      ]
+    },
+    {
+      "id": "角色-基础-02",
+      "category": "基础性指标",
+      "question": "国标耕地质量等级里，有机质到底是基础项还是地方补充项？",
+      "question_style": "realistic_user_wording",
+      "provenance": "designed_not_user_log",
+      "expected_status": "supported",
+      "expected_answer": "土壤有机质属于基础性指标，不是区域补充性指标。",
+      "expected_relation_id": "rel:bbf22e7aa41f637e",
+      "expected_relation_type": "classifies_basic_indicator",
+      "expected_source_entity": {
+        "id": "standard:doc-4",
+        "name": "耕地质量等级 GB/T 33469-2016"
+      },
+      "expected_target_entity": {
+        "id": "indicator:organic_matter",
+        "name": "土壤有机质"
+      },
+      "expected_semantics": {
+        "dimension": "indicator_classification",
+        "value": "basic"
+      },
+      "answer_keywords": [
+        "土壤有机质",
+        "列为基础性指标"
+      ]
+    },
+    {
+      "id": "角色-基础-03",
+      "category": "基础性指标",
+      "question": "耕层质地在 GB/T 33469 中属于基础性指标吗？",
+      "question_style": "realistic_user_wording",
+      "provenance": "designed_not_user_log",
+      "expected_status": "supported",
+      "expected_answer": "属于。耕层质地被列入基础性指标。",
+      "expected_relation_id": "rel:b99e2af1d1492be1",
+      "expected_relation_type": "classifies_basic_indicator",
+      "expected_source_entity": {
+        "id": "standard:doc-4",
+        "name": "耕地质量等级 GB/T 33469-2016"
+      },
+      "expected_target_entity": {
+        "id": "indicator:texture",
+        "name": "土壤质地"
+      },
+      "expected_semantics": {
+        "dimension": "indicator_classification",
+        "value": "basic"
+      },
+      "answer_keywords": [
+        "土壤质地",
+        "列为基础性指标"
+      ]
+    },
+    {
+      "id": "角色-基础-04",
+      "category": "基础性指标",
+      "question": "土壤容重是不是 GB/T 33469 的基础指标，还是只有部分地区才用？",
+      "question_style": "realistic_user_wording",
+      "provenance": "designed_not_user_log",
+      "expected_status": "supported",
+      "expected_answer": "土壤容重是基础性指标。",
+      "expected_relation_id": "rel:5f1f1c0f7266072c",
+      "expected_relation_type": "classifies_basic_indicator",
+      "expected_source_entity": {
+        "id": "standard:doc-4",
+        "name": "耕地质量等级 GB/T 33469-2016"
+      },
+      "expected_target_entity": {
+        "id": "indicator:bulk_density",
+        "name": "土壤容重"
+      },
+      "expected_semantics": {
+        "dimension": "indicator_classification",
+        "value": "basic"
+      },
+      "answer_keywords": [
+        "土壤容重",
+        "列为基础性指标"
+      ]
+    },
+    {
+      "id": "角色-基础-05",
+      "category": "基础性指标",
+      "question": "按耕地质量等级国标，灌溉能力是基础性指标吗？",
+      "question_style": "realistic_user_wording",
+      "provenance": "designed_not_user_log",
+      "expected_status": "supported",
+      "expected_answer": "是。灌溉能力属于基础性指标。",
+      "expected_relation_id": "rel:e2d331a856247a27",
+      "expected_relation_type": "classifies_basic_indicator",
+      "expected_source_entity": {
+        "id": "standard:doc-4",
+        "name": "耕地质量等级 GB/T 33469-2016"
+      },
+      "expected_target_entity": {
+        "id": "indicator:irrigation",
+        "name": "灌溉能力"
+      },
+      "expected_semantics": {
+        "dimension": "indicator_classification",
+        "value": "basic"
+      },
+      "answer_keywords": [
+        "灌溉能力",
+        "列为基础性指标"
+      ]
+    },
+    {
+      "id": "角色-基础-06",
+      "category": "基础性指标",
+      "question": "排水能力在 GB/T 33469 里是基础指标还是区域补充指标？",
+      "question_style": "realistic_user_wording",
+      "provenance": "designed_not_user_log",
+      "expected_status": "supported",
+      "expected_answer": "排水能力属于基础性指标。",
+      "expected_relation_id": "rel:579712559e0bef90",
+      "expected_relation_type": "classifies_basic_indicator",
+      "expected_source_entity": {
+        "id": "standard:doc-4",
+        "name": "耕地质量等级 GB/T 33469-2016"
+      },
+      "expected_target_entity": {
+        "id": "indicator:drainage",
+        "name": "排水能力"
+      },
+      "expected_semantics": {
+        "dimension": "indicator_classification",
+        "value": "basic"
+      },
+      "answer_keywords": [
+        "排水能力",
+        "列为基础性指标"
+      ]
+    },
+    {
+      "id": "角色-区域-01",
+      "category": "区域补充性指标",
+      "question": "耕层厚度在 GB/T 33469 里属于区域补充性指标，对吗？",
+      "question_style": "realistic_user_wording",
+      "provenance": "designed_not_user_log",
+      "expected_status": "supported",
+      "expected_answer": "对。耕层厚度属于区域补充性指标。",
+      "expected_relation_id": "rel:4395d1910eae5380",
+      "expected_relation_type": "classifies_regional_supplementary_indicator",
+      "expected_source_entity": {
+        "id": "standard:doc-4",
+        "name": "耕地质量等级 GB/T 33469-2016"
+      },
+      "expected_target_entity": {
+        "id": "indicator:plough_depth",
+        "name": "耕层厚度"
+      },
+      "expected_semantics": {
+        "dimension": "indicator_classification",
+        "value": "regional_supplementary"
+      },
+      "answer_keywords": [
+        "耕层厚度",
+        "列为区域补充性指标"
+      ]
+    },
+    {
+      "id": "角色-区域-02",
+      "category": "区域补充性指标",
+      "question": "酸碱度在耕地质量等级国标里是不是按区域选用的补充指标？",
+      "question_style": "realistic_user_wording",
+      "provenance": "designed_not_user_log",
+      "expected_status": "supported",
+      "expected_answer": "是。酸碱度属于区域补充性指标。",
+      "expected_relation_id": "rel:46a71f8220e55c9c",
+      "expected_relation_type": "classifies_regional_supplementary_indicator",
+      "expected_source_entity": {
+        "id": "standard:doc-4",
+        "name": "耕地质量等级 GB/T 33469-2016"
+      },
+      "expected_target_entity": {
+        "id": "indicator:soil_ph",
+        "name": "土壤pH"
+      },
+      "expected_semantics": {
+        "dimension": "indicator_classification",
+        "value": "regional_supplementary"
+      },
+      "answer_keywords": [
+        "土壤pH",
+        "列为区域补充性指标"
+      ]
+    },
+    {
+      "id": "角色-踏勘-01",
+      "category": "现场踏勘指标",
+      "question": "广东补充耕地鉴定时，有效土层厚度要现场量还是送实验室？",
+      "question_style": "realistic_user_wording",
+      "provenance": "designed_not_user_log",
+      "expected_status": "supported",
+      "expected_answer": "有效土层厚度依据实地踏勘情况赋值。",
+      "expected_relation_id": "rel:97e99732d50439b8",
+      "expected_relation_type": "assigns_by_field_survey",
+      "expected_source_entity": {
+        "id": "standard:doc-14",
+        "name": "广东省补充耕地质量鉴定技术规范 试行"
+      },
+      "expected_target_entity": {
+        "id": "indicator:effective_depth",
+        "name": "有效土层厚度"
+      },
+      "expected_semantics": {
+        "dimension": "acquisition_mode",
+        "value": "field_survey"
+      },
+      "answer_keywords": [
+        "有效土层厚度",
+        "依据实地踏勘赋值"
+      ]
+    },
+    {
+      "id": "角色-踏勘-02",
+      "category": "现场踏勘指标",
+      "question": "按广东补充耕地鉴定规范，耕层厚度的数据是现场踏勘赋值的吗？",
+      "question_style": "realistic_user_wording",
+      "provenance": "designed_not_user_log",
+      "expected_status": "supported",
+      "expected_answer": "是。耕层厚度依据实地踏勘情况赋值。",
+      "expected_relation_id": "rel:8b5efa0ac27fa110",
+      "expected_relation_type": "assigns_by_field_survey",
+      "expected_source_entity": {
+        "id": "standard:doc-14",
+        "name": "广东省补充耕地质量鉴定技术规范 试行"
+      },
+      "expected_target_entity": {
+        "id": "indicator:plough_depth",
+        "name": "耕层厚度"
+      },
+      "expected_semantics": {
+        "dimension": "acquisition_mode",
+        "value": "field_survey"
+      },
+      "answer_keywords": [
+        "耕层厚度",
+        "依据实地踏勘赋值"
+      ]
+    },
+    {
+      "id": "角色-踏勘-03",
+      "category": "现场踏勘指标",
+      "question": "广东鉴定时排水能力怎么取值，是看现场排水情况还是化验土样？",
+      "question_style": "realistic_user_wording",
+      "provenance": "designed_not_user_log",
+      "expected_status": "supported",
+      "expected_answer": "排水能力依据实地踏勘情况赋值，不属于土样化验指标。",
+      "expected_relation_id": "rel:b072d69905679ee5",
+      "expected_relation_type": "assigns_by_field_survey",
+      "expected_source_entity": {
+        "id": "standard:doc-14",
+        "name": "广东省补充耕地质量鉴定技术规范 试行"
+      },
+      "expected_target_entity": {
+        "id": "indicator:drainage",
+        "name": "排水能力"
+      },
+      "expected_semantics": {
+        "dimension": "acquisition_mode",
+        "value": "field_survey"
+      },
+      "answer_keywords": [
+        "排水能力",
+        "依据实地踏勘赋值"
+      ]
+    },
+    {
+      "id": "角色-检测-01",
+      "category": "实验室检测指标",
+      "question": "广东鉴定规范里的土壤 pH，要靠实验室检测结果赋值吗？",
+      "question_style": "realistic_user_wording",
+      "provenance": "designed_not_user_log",
+      "expected_status": "supported",
+      "expected_answer": "需要。土壤酸碱度依据土壤样品检测结果赋值。",
+      "expected_relation_id": "rel:9484763a3a4a9ff6",
+      "expected_relation_type": "assigns_by_laboratory_test",
+      "expected_source_entity": {
+        "id": "standard:doc-14",
+        "name": "广东省补充耕地质量鉴定技术规范 试行"
+      },
+      "expected_target_entity": {
+        "id": "indicator:soil_ph",
+        "name": "土壤pH"
+      },
+      "expected_semantics": {
+        "dimension": "acquisition_mode",
+        "value": "laboratory_test"
+      },
+      "answer_keywords": [
+        "土壤pH",
+        "依据土壤样品检测结果赋值"
+      ]
+    },
+    {
+      "id": "角色-检测-02",
+      "category": "实验室检测指标",
+      "question": "广东补充耕地鉴定中，有机质是不是送样检测后再赋值？",
+      "question_style": "realistic_user_wording",
+      "provenance": "designed_not_user_log",
+      "expected_status": "supported",
+      "expected_answer": "是。土壤有机质依据土壤样品检测结果赋值。",
+      "expected_relation_id": "rel:eb4f1df4113fd847",
+      "expected_relation_type": "assigns_by_laboratory_test",
+      "expected_source_entity": {
+        "id": "standard:doc-14",
+        "name": "广东省补充耕地质量鉴定技术规范 试行"
+      },
+      "expected_target_entity": {
+        "id": "indicator:organic_matter",
+        "name": "土壤有机质"
+      },
+      "expected_semantics": {
+        "dimension": "acquisition_mode",
+        "value": "laboratory_test"
+      },
+      "answer_keywords": [
+        "土壤有机质",
+        "依据土壤样品检测结果赋值"
+      ]
+    },
+    {
+      "id": "角色-检测-03",
+      "category": "实验室检测指标",
+      "question": "广东补充耕地鉴定的有效磷能现场看出来吗，规范要求怎么取值？",
+      "question_style": "realistic_user_wording",
+      "provenance": "designed_not_user_log",
+      "expected_status": "supported",
+      "expected_answer": "有效磷依据土壤样品检测结果赋值。",
+      "expected_relation_id": "rel:6aeed0ffa9406931",
+      "expected_relation_type": "assigns_by_laboratory_test",
+      "expected_source_entity": {
+        "id": "standard:doc-14",
+        "name": "广东省补充耕地质量鉴定技术规范 试行"
+      },
+      "expected_target_entity": {
+        "id": "indicator:available_p",
+        "name": "有效磷"
+      },
+      "expected_semantics": {
+        "dimension": "acquisition_mode",
+        "value": "laboratory_test"
+      },
+      "answer_keywords": [
+        "有效磷",
+        "依据土壤样品检测结果赋值"
+      ]
+    },
+    {
+      "id": "角色-检测-04",
+      "category": "实验室检测指标",
+      "question": "广东鉴定规范对速效钾是现场估值，还是要求做土样检测？",
+      "question_style": "realistic_user_wording",
+      "provenance": "designed_not_user_log",
+      "expected_status": "supported",
+      "expected_answer": "速效钾依据土壤样品检测结果赋值。",
+      "expected_relation_id": "rel:60e835703238c883",
+      "expected_relation_type": "assigns_by_laboratory_test",
+      "expected_source_entity": {
+        "id": "standard:doc-14",
+        "name": "广东省补充耕地质量鉴定技术规范 试行"
+      },
+      "expected_target_entity": {
+        "id": "indicator:available_k",
+        "name": "速效钾"
+      },
+      "expected_semantics": {
+        "dimension": "acquisition_mode",
+        "value": "laboratory_test"
+      },
+      "answer_keywords": [
+        "速效钾",
+        "依据土壤样品检测结果赋值"
+      ]
+    },
+    {
+      "id": "角色-检测-05",
+      "category": "实验室检测指标",
+      "question": "广东补充耕地鉴定里的耕层质地，最终赋值看实验室结果吗？",
+      "question_style": "realistic_user_wording",
+      "provenance": "designed_not_user_log",
+      "expected_status": "supported",
+      "expected_answer": "耕层质地依据土壤样品检测结果赋值。",
+      "expected_relation_id": "rel:1c59eab5ffb7906f",
+      "expected_relation_type": "assigns_by_laboratory_test",
+      "expected_source_entity": {
+        "id": "standard:doc-14",
+        "name": "广东省补充耕地质量鉴定技术规范 试行"
+      },
+      "expected_target_entity": {
+        "id": "indicator:texture",
+        "name": "土壤质地"
+      },
+      "expected_semantics": {
+        "dimension": "acquisition_mode",
+        "value": "laboratory_test"
+      },
+      "answer_keywords": [
+        "土壤质地",
+        "依据土壤样品检测结果赋值"
+      ]
+    },
+    {
+      "id": "角色-检测-06",
+      "category": "实验室检测指标",
+      "question": "土壤容重在广东补充耕地鉴定中是不是实验室检测指标？",
+      "question_style": "realistic_user_wording",
+      "provenance": "designed_not_user_log",
+      "expected_status": "supported",
+      "expected_answer": "是。土壤容重依据土壤样品检测结果赋值。",
+      "expected_relation_id": "rel:05f8c54e1ba0638b",
+      "expected_relation_type": "assigns_by_laboratory_test",
+      "expected_source_entity": {
+        "id": "standard:doc-14",
+        "name": "广东省补充耕地质量鉴定技术规范 试行"
+      },
+      "expected_target_entity": {
+        "id": "indicator:bulk_density",
+        "name": "土壤容重"
+      },
+      "expected_semantics": {
+        "dimension": "acquisition_mode",
+        "value": "laboratory_test"
+      },
+      "answer_keywords": [
+        "土壤容重",
+        "依据土壤样品检测结果赋值"
+      ]
+    },
+    {
+      "id": "角色-反事实-01",
+      "category": "角色反事实",
+      "question": "GB/T 33469 把耕层厚度列为全国统一的基础性指标，对吗？",
+      "question_style": "realistic_user_wording",
+      "provenance": "designed_not_user_log",
+      "expected_status": "unsupported",
+      "expected_answer": "不对。现有证据将耕层厚度列为区域补充性指标。",
+      "expected_relation_id": null,
+      "expected_relation_type": "classifies_basic_indicator",
+      "expected_source_entity": {
+        "id": "standard:doc-4",
+        "name": "耕地质量等级 GB/T 33469-2016"
+      },
+      "expected_target_entity": {
+        "id": "indicator:plough_depth",
+        "name": "耕层厚度"
+      },
+      "answer_keywords": [
+        "不",
+        "耕层厚度"
+      ]
+    },
+    {
+      "id": "角色-反事实-02",
+      "category": "角色反事实",
+      "question": "耕地质量等级国标中，土壤酸碱度属于基础性指标吧？",
+      "question_style": "realistic_user_wording",
+      "provenance": "designed_not_user_log",
+      "expected_status": "unsupported",
+      "expected_answer": "不是。土壤酸碱度属于区域补充性指标。",
+      "expected_relation_id": null,
+      "expected_relation_type": "classifies_basic_indicator",
+      "expected_source_entity": {
+        "id": "standard:doc-4",
+        "name": "耕地质量等级 GB/T 33469-2016"
+      },
+      "expected_target_entity": {
+        "id": "indicator:soil_ph",
+        "name": "土壤pH"
+      },
+      "answer_keywords": [
+        "不",
+        "土壤pH"
+      ]
+    },
+    {
+      "id": "角色-反事实-03",
+      "category": "角色反事实",
+      "question": "GB/T 33469 里的排水能力是区域补充性指标吗？",
+      "question_style": "realistic_user_wording",
+      "provenance": "designed_not_user_log",
+      "expected_status": "unsupported",
+      "expected_answer": "不是。排水能力属于基础性指标。",
+      "expected_relation_id": null,
+      "expected_relation_type": "classifies_regional_supplementary_indicator",
+      "expected_source_entity": {
+        "id": "standard:doc-4",
+        "name": "耕地质量等级 GB/T 33469-2016"
+      },
+      "expected_target_entity": {
+        "id": "indicator:drainage",
+        "name": "排水能力"
+      },
+      "answer_keywords": [
+        "不",
+        "排水能力"
+      ]
+    },
+    {
+      "id": "角色-反事实-04",
+      "category": "角色反事实",
+      "question": "灌溉能力在耕地质量等级国标里只算区域补充项，对不对？",
+      "question_style": "realistic_user_wording",
+      "provenance": "designed_not_user_log",
+      "expected_status": "unsupported",
+      "expected_answer": "不对。灌溉能力属于基础性指标。",
+      "expected_relation_id": null,
+      "expected_relation_type": "classifies_regional_supplementary_indicator",
+      "expected_source_entity": {
+        "id": "standard:doc-4",
+        "name": "耕地质量等级 GB/T 33469-2016"
+      },
+      "expected_target_entity": {
+        "id": "indicator:irrigation",
+        "name": "灌溉能力"
+      },
+      "answer_keywords": [
+        "不",
+        "灌溉能力"
+      ]
+    },
+    {
+      "id": "角色-反事实-05",
+      "category": "角色反事实",
+      "question": "广东补充耕地鉴定的有效土层厚度要送实验室化验后赋值，对吗？",
+      "question_style": "realistic_user_wording",
+      "provenance": "designed_not_user_log",
+      "expected_status": "unsupported",
+      "expected_answer": "不对。有效土层厚度依据实地踏勘情况赋值。",
+      "expected_relation_id": null,
+      "expected_relation_type": "assigns_by_laboratory_test",
+      "expected_source_entity": {
+        "id": "standard:doc-14",
+        "name": "广东省补充耕地质量鉴定技术规范 试行"
+      },
+      "expected_target_entity": {
+        "id": "indicator:effective_depth",
+        "name": "有效土层厚度"
+      },
+      "answer_keywords": [
+        "不",
+        "有效土层厚度"
+      ]
+    },
+    {
+      "id": "角色-反事实-06",
+      "category": "角色反事实",
+      "question": "广东鉴定中的排水能力是实验室检测指标吗？",
+      "question_style": "realistic_user_wording",
+      "provenance": "designed_not_user_log",
+      "expected_status": "unsupported",
+      "expected_answer": "不是。排水能力依据实地踏勘情况赋值。",
+      "expected_relation_id": null,
+      "expected_relation_type": "assigns_by_laboratory_test",
+      "expected_source_entity": {
+        "id": "standard:doc-14",
+        "name": "广东省补充耕地质量鉴定技术规范 试行"
+      },
+      "expected_target_entity": {
+        "id": "indicator:drainage",
+        "name": "排水能力"
+      },
+      "answer_keywords": [
+        "不",
+        "排水能力"
+      ]
+    },
+    {
+      "id": "角色-反事实-07",
+      "category": "角色反事实",
+      "question": "广东补充耕地鉴定时，土壤 pH 主要靠现场目测赋值吗？",
+      "question_style": "realistic_user_wording",
+      "provenance": "designed_not_user_log",
+      "expected_status": "unsupported",
+      "expected_answer": "不是。土壤酸碱度依据土壤样品检测结果赋值。",
+      "expected_relation_id": null,
+      "expected_relation_type": "assigns_by_field_survey",
+      "expected_source_entity": {
+        "id": "standard:doc-14",
+        "name": "广东省补充耕地质量鉴定技术规范 试行"
+      },
+      "expected_target_entity": {
+        "id": "indicator:soil_ph",
+        "name": "土壤pH"
+      },
+      "answer_keywords": [
+        "不",
+        "土壤pH"
+      ]
+    },
+    {
+      "id": "角色-反事实-08",
+      "category": "角色反事实",
+      "question": "有效磷在广东补充耕地鉴定里可以靠现场踏勘直接赋值吗？",
+      "question_style": "realistic_user_wording",
+      "provenance": "designed_not_user_log",
+      "expected_status": "unsupported",
+      "expected_answer": "不可以。有效磷依据土壤样品检测结果赋值。",
+      "expected_relation_id": null,
+      "expected_relation_type": "assigns_by_field_survey",
+      "expected_source_entity": {
+        "id": "standard:doc-14",
+        "name": "广东省补充耕地质量鉴定技术规范 试行"
+      },
+      "expected_target_entity": {
+        "id": "indicator:available_p",
+        "name": "有效磷"
+      },
+      "answer_keywords": [
+        "不",
+        "有效磷"
+      ]
+    }
+  ]
+}

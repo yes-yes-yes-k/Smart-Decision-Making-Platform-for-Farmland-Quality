@@ -1,6 +1,7 @@
 """测试异步入库 worker 状态机（mock vector_store 与 parse_document）。"""
 import sys
 import os
+import types
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 import pytest
@@ -31,8 +32,15 @@ def _patch_app_context(monkeypatch):
         def app_context(self):
             return self._app.app_context()
 
-    # create_app 在 _ingest 内延迟导入，mock 源模块而非 ingestion_worker 命名空间
-    monkeypatch.setattr("framework.api.app.create_app", lambda: _StubApp())
+    # _ingest 只需要 create_app；注入轻量模块，避免单元测试加载完整 API 依赖。
+    app_module = types.ModuleType("framework.api.app")
+    app_module.create_app = lambda: _StubApp()
+    monkeypatch.setitem(sys.modules, "framework.api.app", app_module)
+    monkeypatch.setattr(
+        ingestion_worker,
+        "assign_labels_for_ingestion",
+        lambda *args, **kwargs: list(kwargs.get("explicit_labels") or []),
+    )
 
 
 def test_ingest_success_transitions_pending_to_completed(monkeypatch):
@@ -44,8 +52,15 @@ def test_ingest_success_transitions_pending_to_completed(monkeypatch):
     monkeypatch.setattr(ingestion_worker, "split_text", lambda text, size=None, overlap=None: ["c1", "c2"])
 
     class _FakeVS:
-        def add_documents(self, chunks, metadatas, category=None):
+        def add_documents(self, chunks, metadatas, ids=None, category=None):
+            assert ids == ["doc-1-chunk-0", "doc-1-chunk-1"]
+            assert all(m["owner_id"] == 7 for m in metadatas)
+            assert all(m["visibility_scope"] == "private" for m in metadatas)
+            assert all(m["domain_cultivated_land_quality"] is True for m in metadatas)
+            assert all("treatment_type" not in m for m in metadatas)
             return len(chunks)
+        def delete_by_document_id(self, document_id, owner_id=None):
+            return 0
     monkeypatch.setattr(ingestion_worker, "vector_store", _FakeVS())
 
     class _FakeQuery:
@@ -54,7 +69,10 @@ def test_ingest_success_transitions_pending_to_completed(monkeypatch):
     monkeypatch.setattr(ingestion_worker.db.session, "query", lambda *a: _FakeQuery())
     monkeypatch.setattr(ingestion_worker.db.session, "commit", lambda: setattr(fake, "_committed", True))
 
-    _ingest(1, "/tmp/x.pdf", "pdf", "x.pdf", "acidification", None)
+    _ingest(
+        1, "/tmp/x.pdf", "pdf", "x.pdf", "acidification", None, 7,
+        domain_labels=["cultivated_land_quality"],
+    )
 
     assert fake.status == Document.STATUS_COMPLETED
     assert fake.chunk_count == 2
@@ -79,7 +97,40 @@ def test_ingest_failure_promotes_to_failed(monkeypatch):
             return fake
     monkeypatch.setattr(ingestion_worker.db.session, "query", lambda *a: _FakeQuery())
     monkeypatch.setattr(ingestion_worker.db.session, "commit", lambda: None)
+    monkeypatch.setattr(
+        ingestion_worker.vector_store, "delete_by_document_id", lambda *a, **k: 0,
+    )
 
-    _ingest(2, "/tmp/bad.pdf", "pdf", "bad.pdf", "other", None)
+    _ingest(2, "/tmp/bad.pdf", "pdf", "bad.pdf", "other", None, 7)
 
     assert fake.status == Document.STATUS_FAILED
+
+
+def test_ingest_incomplete_vector_write_promotes_to_failed(monkeypatch):
+    _patch_app_context(monkeypatch)
+    fake = _FakeDoc(3)
+    monkeypatch.setattr(ingestion_worker, "_set_status", lambda did, s: setattr(fake, "status", s))
+    monkeypatch.setattr(ingestion_worker, "parse_document", lambda *a, **k: "正文")
+    monkeypatch.setattr(ingestion_worker, "split_text", lambda *a, **k: ["c1", "c2"])
+
+    class _FakeVS:
+        def __init__(self):
+            self.deleted = []
+        def add_documents(self, *args, **kwargs):
+            return 1
+        def delete_by_document_id(self, document_id, owner_id=None):
+            self.deleted.append((document_id, owner_id))
+            return 1
+    fake_vs = _FakeVS()
+    monkeypatch.setattr(ingestion_worker, "vector_store", fake_vs)
+
+    class _FakeQuery:
+        def get(self, did):
+            return fake
+    monkeypatch.setattr(ingestion_worker.db.session, "query", lambda *a: _FakeQuery())
+    monkeypatch.setattr(ingestion_worker.db.session, "commit", lambda: None)
+
+    _ingest(3, "/tmp/partial.pdf", "pdf", "partial.pdf", "other", None, 9)
+
+    assert fake.status == Document.STATUS_FAILED
+    assert fake_vs.deleted == [(3, 9)]

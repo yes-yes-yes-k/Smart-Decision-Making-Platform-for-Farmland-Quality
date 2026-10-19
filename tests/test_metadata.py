@@ -25,6 +25,9 @@ class CaptureVectorStore:
     def delete_by_source(self, source_doc_name):
         return 0
 
+    def delete_by_document_id(self, document_id, owner_id=None):
+        return 0
+
 
 @pytest.fixture
 def client(monkeypatch):
@@ -90,6 +93,7 @@ def test_upload_writes_chunk_metadata(client):
         data={
             "file": (io.BytesIO(content.encode("utf-8")), "meta.txt"),
             "category": "acidification",
+            "domain_labels": "cultivated_land_quality",
             "treatment_type": "regulation",
         },
         content_type="multipart/form-data",
@@ -106,6 +110,11 @@ def test_upload_writes_chunk_metadata(client):
         assert meta["category"] == "acidification"
         assert meta["treatment_type"] == "regulation"
         assert meta["chunk_index"] == i
+        assert meta["document_id"] == resp.get_json()["data"]["id"]
+        assert meta["owner_id"] == client._admin_id
+        assert meta["domain_cultivated_land_quality"] is True
+        assert meta["domain_food_security"] is False
+        assert meta["domain_heavy_metal"] is False
     # page 字段由 worker 写入（txt 无页码，值为 None）；section 不写入
     assert metadatas[0].get("page") is None
     assert "section" not in metadatas[0]
@@ -120,9 +129,44 @@ def test_upload_passes_category_to_vector_store(client):
         data={
             "file": (io.BytesIO(content.encode("utf-8")), "meta2.txt"),
             "category": "acidification",
+            "domain_labels": "cultivated_land_quality",
             "treatment_type": "regulation",
         },
         content_type="multipart/form-data",
     )
     assert resp.status_code == 202
     assert client._capture_vs.captured["category"] == "acidification"
+
+
+def test_upload_requires_explicit_domain_instead_of_inferring_category(client):
+    token = _login(client)
+    response = client.post(
+        "/api/v1/docs/upload",
+        headers={"Authorization": f"Bearer {token}"},
+        data={
+            "file": (io.BytesIO("耕地质量".encode("utf-8")), "unlabelled.txt"),
+            "category": "cultivated_land_quality",
+        },
+        content_type="multipart/form-data",
+    )
+
+    assert response.status_code == 400
+    assert "domain_labels" in response.get_json()["message"]
+    assert client._capture_vs.captured is None
+
+
+def test_upload_rejects_topic_code_as_domain_label(client):
+    token = _login(client)
+    response = client.post(
+        "/api/v1/docs/upload",
+        headers={"Authorization": f"Bearer {token}"},
+        data={
+            "file": (io.BytesIO("镉污染".encode("utf-8")), "topic-code.txt"),
+            "domain_labels": "heavy_metal.cadmium",
+        },
+        content_type="multipart/form-data",
+    )
+
+    assert response.status_code == 400
+    assert "仅支持一级领域" in response.get_json()["message"]
+    assert client._capture_vs.captured is None

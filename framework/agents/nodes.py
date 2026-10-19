@@ -229,7 +229,11 @@ def rag_chat_node(state: MultiAgentState) -> MultiAgentState:
         }
 
     try:
-        result = rag_chain.chat(question, conversation_history=conversation_history)
+        result = rag_chain.chat(
+            question,
+            conversation_history=conversation_history,
+            user_id=state.get("user_id"),
+        )
         return {
             **state,
             "rag_response": result,
@@ -405,6 +409,40 @@ def _build_verified_execution_context(state: MultiAgentState) -> dict:
     })
     return context
 
+
+def retrieve_professional_evidence(state: MultiAgentState) -> MultiAgentState:
+    """Use the same permission-safe evidence tool for every professional agent."""
+    try:
+        from framework.config import Config
+        if not Config.KG_PROFESSIONAL_EVIDENCE_ENABLED:
+            return state
+        from framework.rag.chain import rag_chain
+        question = state["request"].get("question", "")
+        if not question:
+            return state
+        bundle = rag_chain.retrieve_evidence_bundle(
+            question,
+            user_id=state.get("user_id"),
+            conversation_id=state.get("conversation_id"),
+            conversation_history=state.get("conversation_history", []),
+        )
+        return {
+            **state,
+            "rag_response": {"success": True, **bundle},
+            "error": None,
+        }
+    except Exception as exc:
+        # Professional calculations remain usable if evidence retrieval is down.
+        return {
+            **state,
+            "rag_response": {
+                "success": False, "context": "", "sources": [],
+                "degradation": "professional_evidence_unavailable",
+                "error": str(exc),
+            },
+            "error": None,
+        }
+
 def boundary_pending_node(state: MultiAgentState) -> MultiAgentState:
     """模型边界待确认：不调用任一易混淆专业 Agent，返回显式降级。"""
     return {
@@ -441,13 +479,17 @@ def llm_generate(state: MultiAgentState) -> MultiAgentState:
             agent_id: llm_context(model_result)
             for agent_id, model_result in model_results.get("models", {}).items()
         }
+        evidence_context = str(state.get("rag_response", {}).get("context") or "")
         prompt = (
             "你是耕地质量与土壤改良领域的助手。请基于专业智能体结果，"
             "整合成一份准确、简洁、可执行的中文答复。不要编造未提供的数据，"
             "保留明确的数值、单位和建议。回复中必须使用中文标准字段名称，"
             "不得向用户展示 GGNL、DXBW、SXJ 等模型内部字段缩写。\n"
+            "知识图谱证据只能解释专业模型结果，不得覆盖模型实际计算值；"
+            "若证据不足，应省略扩展解释。指标分类角色与指标获取方式是独立维度。\n"
             f"用户问题：{question}\n"
-            f"专业模型紧凑结果：{contexts}"
+            f"专业模型紧凑结果：{contexts}\n"
+            f"经权限过滤的知识图谱/知识库证据：{evidence_context or '无'}"
         )
         llm_result = llm_service.generate(prompt)
         return {**state, "llm_response": llm_result, "error": None}
@@ -473,6 +515,11 @@ def aggregate_results(state: MultiAgentState) -> MultiAgentState:
             "analysis_context": state.get("analysis_context"),
             "interaction_state": state.get("guard_decision", {}).get("interaction_state", "completed"),
             "routing": {"question_type": question_type, "status": routing_status},
+            "retrieval": (
+                rag_response.get("retrieval")
+                or rag_response.get("diagnostics")
+                or {}
+            ),
         }
 
         if routing_status == ROUTING_STATUS_BOUNDARY_PENDING:

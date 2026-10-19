@@ -36,6 +36,16 @@ def test_source_filter_includes_only_allowed():
     assert results[0]["metadata"]["source"] == "fertilizer.pdf"
 
 
+def test_owner_filter_prevents_cross_user_results():
+    store = BM25Store()
+    store.add_documents(
+        ["酸化治理资料", "酸化治理资料"],
+        [{"source": "a.pdf", "owner_id": 1}, {"source": "b.pdf", "owner_id": 2}],
+    )
+    results = store.search("酸化", filters={"owner_id": 1})
+    assert [item["metadata"]["source"] for item in results] == ["a.pdf"]
+
+
 def test_delete_by_source():
     store = _make_store()
     assert store.delete_by_source("soil.pdf") == 1

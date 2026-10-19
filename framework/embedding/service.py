@@ -14,6 +14,7 @@ class EmbeddingService:
         self._api_key = None
         self._api_base = None
         self._model = None
+        self._batch_size = 32
         self._initialized = False
         self._init_embeddings()
 
@@ -29,6 +30,9 @@ class EmbeddingService:
             or getattr(Config, "SILICONFLOW_BASE_URL", self.DEFAULT_API_BASE)
         )
         self._model = getattr(Config, "SILICONFLOW_EMBED_MODEL", "BAAI/bge-m3")
+        self._batch_size = max(
+            1, int(getattr(Config, "SILICONFLOW_EMBED_BATCH_SIZE", 32))
+        )
 
         if self._api_key:
             self._initialized = True
@@ -61,7 +65,17 @@ class EmbeddingService:
             return [[] for _ in range(total)]
         indices = [i for i, _ in valid]
         cleaned = [t for _, t in valid]
-        api_result = self._call_api(cleaned)
+        batch_size = max(1, int(getattr(self, "_batch_size", 32)))
+        api_result: List[List[float]] = []
+        for start in range(0, len(cleaned), batch_size):
+            batch = cleaned[start:start + batch_size]
+            batch_result = self._call_api(batch)
+            # A partial API response must fail the whole logical write. The
+            # vector store checks for empty vectors and will not persist a
+            # partially embedded document.
+            if len(batch_result) != len(batch):
+                return [[] for _ in range(total)]
+            api_result.extend(batch_result)
         result: List[List[float]] = [[] for _ in range(total)]
         for slot, vec in zip(indices, api_result):
             result[slot] = vec

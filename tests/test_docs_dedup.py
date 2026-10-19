@@ -28,6 +28,11 @@ class MockVectorStore:
             raise RuntimeError("mock vector store failure")
         return 0
 
+    def delete_by_document_id(self, document_id, owner_id=None):
+        if self._should_fail:
+            raise RuntimeError("mock vector store failure")
+        return 0
+
     def set_fail(self, should_fail):
         self._should_fail = should_fail
 
@@ -108,7 +113,10 @@ def _upload(client, token, filename, content):
     resp = client.post(
         '/api/v1/docs/upload',
         headers={'Authorization': f'Bearer {token}'},
-        data={'file': (io.BytesIO(content), filename)},
+        data={
+            'file': (io.BytesIO(content), filename),
+            'domain_labels': 'cultivated_land_quality',
+        },
         content_type='multipart/form-data'
     )
     return resp

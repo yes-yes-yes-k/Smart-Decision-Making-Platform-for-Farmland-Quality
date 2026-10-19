@@ -1,84 +1,161 @@
-"""重新索引 uploads/ 中的文档到向量存储"""
+"""Safely rebuild vector entries for documents registered in kb_document.
+
+Unlike the legacy script, this command never indexes orphan files and never clears the
+whole vector database. Each logical document is replaced by document_id + owner_id.
+"""
+from __future__ import annotations
+
 import os
+import sqlite3
 import sys
-import uuid
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from framework.config import Config
+from framework.upload.chunker import split_text, split_text_with_pages
 from framework.upload.document_parser import parse_document
-from framework.upload.file_upload import get_file_type
 from framework.vector_store.chroma_store import vector_store
+from framework.knowledge.service import vector_access_metadata
+
+STATUS_COMPLETED = 1
+STATUS_FAILED = 3
 
 
-def _build_filename_mapping():
-    """查询 kb_document 表，构建 file_path → doc_name 映射"""
-    mapping = {}
-    try:
-        import sqlite3
-        db_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'instance', 'development.db')
-        if not os.path.exists(db_path):
-            return mapping
-        conn = sqlite3.connect(db_path)
-        cursor = conn.cursor()
-        cursor.execute("SELECT file_path, doc_name FROM kb_document")
-        for row in cursor.fetchall():
-            mapping[row[0]] = row[1]
+def _database_path() -> str:
+    return os.path.join(
+        os.path.dirname(os.path.dirname(__file__)), "instance", "development.db",
+    )
+
+
+def _load_documents(conn: sqlite3.Connection) -> list[dict]:
+    conn.row_factory = sqlite3.Row
+    columns = {row[1] for row in conn.execute("PRAGMA table_info(kb_document)")}
+    visibility_expr = "visibility_scope" if "visibility_scope" in columns else "'private' AS visibility_scope"
+    rows = conn.execute(
+        f"""
+        SELECT id, doc_name, file_path, file_type, category, treatment_type, create_by,
+               {visibility_expr}
+        FROM kb_document
+        ORDER BY id
+        """
+    ).fetchall()
+    has_labels = conn.execute(
+        "SELECT 1 FROM sqlite_master WHERE type='table' AND name='kb_document_label'"
+    ).fetchone() is not None
+    documents = []
+    for row in rows:
+        record = dict(row)
+        record["approved_labels"] = []
+        if has_labels:
+            record["approved_labels"] = [
+                item[0] for item in conn.execute(
+                    "SELECT label_code FROM kb_document_label "
+                    "WHERE document_id=? AND review_status='approved'",
+                    (record["id"],),
+                ).fetchall()
+            ]
+        documents.append(record)
+    return documents
+
+
+def _chunks_for(path: str, file_type: str):
+    parsed = parse_document(path, file_type, page_aware=True)
+    if isinstance(parsed, list) and parsed and isinstance(parsed[0], tuple):
+        chunks_with_pages = split_text_with_pages(parsed)
+        return (
+            [item[0] for item in chunks_with_pages],
+            [item[1] for item in chunks_with_pages],
+        )
+    chunks = split_text(parsed or "")
+    return chunks, [None] * len(chunks)
+
+
+def reindex_documents() -> dict:
+    db_path = _database_path()
+    if not os.path.exists(db_path):
+        raise FileNotFoundError(f"数据库不存在: {db_path}")
+
+    conn = sqlite3.connect(db_path)
+    documents = _load_documents(conn)
+    if not documents:
+        print("kb_document 中没有可重建的文档；未修改向量库。")
         conn.close()
-        print(f"数据库中找到 {len(mapping)} 条文件名映射")
-    except Exception as e:
-        print(f"查询数据库文件名映射失败: {e}")
-    return mapping
+        return {"indexed": 0, "failed": 0, "missing": 0}
 
-
-def reindex_uploads():
-    upload_dir = Config.UPLOAD_FOLDER
-    if not os.path.exists(upload_dir):
-        print(f"uploads 目录不存在: {upload_dir}")
-        return
-
-    files = [f for f in os.listdir(upload_dir) if os.path.isfile(os.path.join(upload_dir, f))]
-    print(f"发现 {len(files)} 个文件")
-
-    name_mapping = _build_filename_mapping()
-
-    stats = vector_store.get_collection_stats()
-    print(f"索引前向量存储文档数: {stats['count']}")
-
-    # 清空向量存储，避免残留过时文档
-    cleared = vector_store.clear()
-    print(f"已清空向量存储中的 {cleared} 条旧文档")
-
-    indexed = 0
-    skipped = 0
-    for filename in files:
-        file_path = os.path.join(upload_dir, filename)
-        file_type = get_file_type(filename)
-        if file_type == 'other':
-            print(f"  跳过(不支持): {filename}")
-            skipped += 1
+    stats = {"indexed": 0, "failed": 0, "missing": 0}
+    for record in documents:
+        document_id = int(record["id"])
+        owner_id = int(record["create_by"])
+        stored_path = record["file_path"]
+        file_path = stored_path if os.path.isabs(stored_path) else os.path.join(
+            Config.UPLOAD_FOLDER, stored_path,
+        )
+        if not os.path.exists(file_path):
+            print(f"[missing] id={document_id} path={file_path}")
+            conn.execute(
+                "UPDATE kb_document SET status=?, chunk_count=0 WHERE id=?",
+                (STATUS_FAILED, document_id),
+            )
+            stats["missing"] += 1
             continue
 
-        content = parse_document(file_path, file_type)
-        if not content or not content.strip():
-            print(f"  跳过(无内容): {filename}")
-            skipped += 1
-            continue
+        try:
+            chunks, pages = _chunks_for(file_path, record["file_type"])
+            if not chunks:
+                raise ValueError("文档解析后没有可索引内容")
+            metadatas = []
+            access_metadata = vector_access_metadata(
+                record["visibility_scope"], record["approved_labels"],
+            )
+            from framework.rag.kg_runtime import stable_document_key
+            for index, page in enumerate(pages):
+                metadata = {
+                    "source": record["doc_name"],
+                    "doc_name": record["doc_name"],
+                    "document_id": document_id,
+                    "document_key": stable_document_key(record["doc_name"]),
+                    "owner_id": owner_id,
+                    "category": record["category"] or "other",
+                    "chunk_index": index,
+                    **access_metadata,
+                }
+                if record["treatment_type"]:
+                    metadata["treatment_type"] = record["treatment_type"]
+                if page is not None:
+                    metadata["page"] = int(page)
+                metadatas.append(metadata)
 
-        chunks = [content[i:i+800] for i in range(0, len(content), 800)]
-        # source 使用磁盘文件名（UUID），chain.py 查询 kb_document.file_path 获取中文 doc_name
-        metadatas = [{"source": filename} for _ in chunks]
-        ids = [f"{uuid.uuid4().hex}" for _ in chunks]
+            vector_store.delete_by_document_id(document_id, owner_id)
+            added = vector_store.add_documents(
+                chunks,
+                metadatas,
+                ids=[f"doc-{document_id}-chunk-{i}" for i in range(len(chunks))],
+                category=record["category"],
+            )
+            if added != len(chunks):
+                raise RuntimeError(
+                    f"知识库写入不完整: expected={len(chunks)}, actual={added}"
+                )
+            conn.execute(
+                "UPDATE kb_document SET status=?, chunk_count=? WHERE id=?",
+                (STATUS_COMPLETED, added, document_id),
+            )
+            stats["indexed"] += 1
+            print(f"[ok] id={document_id} {record['doc_name']} chunks={added}")
+        except Exception as exc:
+            vector_store.delete_by_document_id(document_id, owner_id)
+            conn.execute(
+                "UPDATE kb_document SET status=?, chunk_count=0 WHERE id=?",
+                (STATUS_FAILED, document_id),
+            )
+            stats["failed"] += 1
+            print(f"[failed] id={document_id} {record['doc_name']}: {exc}")
 
-        vector_store.add_documents(chunks, metadatas, ids)
-        doc_name = name_mapping.get(filename, filename)
-        print(f"  已索引: {filename} → {doc_name} ({len(chunks)} 片段)")
-        indexed += 1
-
-    stats = vector_store.get_collection_stats()
-    print(f"\n索引完成: {indexed} 个文档已索引, {skipped} 个跳过")
-    print(f"索引后向量存储文档数: {stats['count']}")
+    conn.commit()
+    conn.close()
+    print(f"重建完成: {stats}")
+    return stats
 
 
 if __name__ == "__main__":
-    reindex_uploads()
+    reindex_documents()

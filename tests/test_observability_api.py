@@ -147,3 +147,35 @@ class TestDashboardEndpoint:
         data = resp.get_json()["data"]
         assert data["log_metrics"] == {"total_calls": 0, "missed_call_rate": 0.0, "param_completeness_rate": 0.0}
         assert data["confusion_matrices"] == {}
+
+
+class TestKnowledgeGraphObservability:
+    def test_health_returns_release_and_rollout(self, client, monkeypatch):
+        from framework.rag.chain import rag_chain
+        monkeypatch.setattr(rag_chain, "health", lambda: {
+            "rollout_mode": "canary", "canary_percent": 10,
+            "professional_evidence_enabled": True,
+            "graph": {"ready": True, "schema_version": "minimal-cultivated-land-kg-v0.4"},
+        })
+        token = _login(client)
+        resp = client.get(
+            "/api/v1/observability/knowledge-graph/health",
+            headers={"Authorization": f"Bearer {token}"},
+        )
+        assert resp.status_code == 200
+        assert resp.get_json()["data"]["rollout_mode"] == "canary"
+
+    def test_enabled_invalid_release_fails_readiness(self, client, monkeypatch):
+        from framework.rag.chain import rag_chain
+        monkeypatch.setattr(rag_chain, "health", lambda: {
+            "rollout_mode": "enabled", "graph": {"ready": False, "errors": ["checksum"]},
+        })
+        token = _login(client)
+        resp = client.get(
+            "/api/v1/observability/knowledge-graph/health",
+            headers={"Authorization": f"Bearer {token}"},
+        )
+        assert resp.status_code == 503
+
+    def test_metrics_requires_jwt(self, client):
+        assert client.get("/api/v1/observability/knowledge-graph/metrics").status_code == 401
