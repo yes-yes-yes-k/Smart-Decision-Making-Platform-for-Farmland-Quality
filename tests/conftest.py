@@ -17,6 +17,10 @@ _SRC_DIR = os.path.join(_PROJECT_ROOT, "src")
 if _SRC_DIR not in sys.path:
     sys.path.insert(0, _SRC_DIR)
 
+from tests.pg_test_config import load_pg_test_environment
+
+load_pg_test_environment(os.path.join(_PROJECT_ROOT, ".env"))
+
 
 # geoalchemy2 DDL-safe 全局 stub：测试环境未安装 geoalchemy2 时，
 # 用 String 类型实例代替 Geometry，既满足 SQLAlchemy Column 初始化所需
