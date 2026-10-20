@@ -937,7 +937,7 @@ Model-4 无空间对象情景试算：
 
 | 字段 | 类型 | 必填 | 说明 |
 |------|------|------|------|
-| `file` | file | 是 | 文档文件（支持 .txt, .md, .pdf, .docx, .xlsx） |
+| `file` | file | 是 | 文档文件（支持 .txt, .md, .pdf, .caj, .docx, .xlsx, .xls, .csv, .dat） |
 
 成功响应（200）：
 ```json

@@ -112,6 +112,10 @@ class Config:
     CHUNK_SIZE = 800
     CHUNK_OVERLAP = 150
     PDF_OCR_THRESHOLD = 50  # 平均字符/页阈值，低于则触发 OCR 主路径
+    # CAJ 先由 caj2pdf 转换为临时 PDF，再复用 PDF/OCR 解析链路。
+    # 留空时从 PATH 查找 caj2pdf；也可配置为 caj2pdf 可执行文件或 caj2pdf.py 的绝对路径。
+    CAJ_CONVERTER_PATH = os.environ.get('CAJ_CONVERTER_PATH', '')
+    CAJ_CONVERTER_TIMEOUT = int(os.environ.get('CAJ_CONVERTER_TIMEOUT') or 300)
     RETRIEVAL_TOP_K = 5
     RECALL_TOP_K = int(os.environ.get("RECALL_TOP_K") or 20)      # 混合召回阶段候选数
     RRF_K = int(os.environ.get("RRF_K") or 60)                    # RRF 平滑常数

@@ -1,5 +1,10 @@
 from __future__ import annotations
 import os
+from pathlib import Path
+import shutil
+import subprocess
+import sys
+import tempfile
 from typing import Optional
 
 from framework.upload.text_cleaner import clean_text
@@ -15,6 +20,8 @@ def parse_document(file_path: str, file_type: str, page_aware: bool = False):
         return _parse_txt(file_path)
     elif file_type == 'pdf':
         return _parse_pdf(file_path, page_aware=page_aware)
+    elif file_type == 'caj':
+        return _parse_caj(file_path, page_aware=page_aware)
     elif file_type == 'docx':
         return _parse_docx(file_path)
     elif file_type == 'xlsx':
@@ -23,6 +30,79 @@ def parse_document(file_path: str, file_type: str, page_aware: bool = False):
         return _parse_delimited(file_path)
     else:
         return None
+
+
+def _parse_caj(file_path: str, page_aware: bool = False):
+    """将 CAJ 转换为临时 PDF，并复用已有的 PDF/OCR 解析链路。
+
+    CAJ 是专有容器，不能可靠地按纯文本直接读取。转换后的 PDF 只存在于临时
+    目录中，入库仍保存原始 CAJ 文件。部分扩展名为 .caj 的文件实际是 PDF，
+    此时根据文件头直接解析，避免不必要的外部进程调用。
+    """
+    source = Path(file_path)
+    try:
+        with source.open("rb") as stream:
+            if stream.read(5) == b"%PDF-":
+                return _parse_pdf(str(source), page_aware=page_aware)
+    except OSError as exc:
+        raise RuntimeError(f"无法读取 CAJ 文件: {exc}") from exc
+
+    from framework.config import Config
+
+    converter = _resolve_caj_converter(Config.CAJ_CONVERTER_PATH)
+    timeout = Config.CAJ_CONVERTER_TIMEOUT
+    with tempfile.TemporaryDirectory(prefix="caj_parse_") as temp_dir:
+        output_pdf = Path(temp_dir) / f"{source.stem}.pdf"
+        command = _caj_converter_command(converter, source, output_pdf)
+        try:
+            completed = subprocess.run(
+                command,
+                check=False,
+                capture_output=True,
+                text=True,
+                errors="replace",
+                timeout=timeout,
+            )
+        except subprocess.TimeoutExpired as exc:
+            raise RuntimeError(f"CAJ 转换超时（{timeout} 秒）") from exc
+        except OSError as exc:
+            raise RuntimeError(f"无法启动 CAJ 转换器 {converter}: {exc}") from exc
+
+        if completed.returncode != 0:
+            detail = (completed.stderr or completed.stdout or "未提供错误信息").strip()
+            raise RuntimeError(
+                f"CAJ 转换失败（退出码 {completed.returncode}）: {detail[:1000]}"
+            )
+        if not output_pdf.is_file() or output_pdf.stat().st_size == 0:
+            raise RuntimeError("CAJ 转换器未生成 PDF 文件")
+        with output_pdf.open("rb") as stream:
+            if stream.read(5) != b"%PDF-":
+                raise RuntimeError("CAJ 转换器输出的文件不是有效 PDF")
+
+        return _parse_pdf(str(output_pdf), page_aware=page_aware)
+
+
+def _resolve_caj_converter(configured_path: str = "") -> str:
+    """解析 caj2pdf 路径；配置优先，否则从 PATH 查找。"""
+    if configured_path:
+        configured = Path(configured_path).expanduser()
+        if not configured.is_file():
+            raise RuntimeError(f"CAJ_CONVERTER_PATH 指向的文件不存在: {configured}")
+        return str(configured)
+
+    discovered = shutil.which("caj2pdf") or shutil.which("caj2pdf.exe")
+    if discovered:
+        return discovered
+    raise RuntimeError(
+        "未找到 CAJ 转换器。请安装 caj2pdf 并加入 PATH，或设置 "
+        "CAJ_CONVERTER_PATH 指向 caj2pdf 可执行文件/caj2pdf.py"
+    )
+
+
+def _caj_converter_command(converter: str, source: Path, output_pdf: Path):
+    """构造 caj2pdf 的参数列表，不经过 shell，避免文件名命令注入。"""
+    prefix = [sys.executable, converter] if converter.lower().endswith(".py") else [converter]
+    return [*prefix, "convert", str(source), "-o", str(output_pdf)]
 
 def _parse_txt(file_path: str) -> str:
     with open(file_path, 'r', encoding='utf-8', errors='ignore') as f:

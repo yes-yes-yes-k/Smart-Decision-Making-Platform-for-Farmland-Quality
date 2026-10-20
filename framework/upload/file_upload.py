@@ -3,7 +3,7 @@ import uuid
 import hashlib
 from framework.config import Config
 
-ALLOWED_EXTENSIONS = {'txt', 'md', 'pdf', 'docx', 'xlsx', 'xls', 'csv', 'dat'}
+ALLOWED_EXTENSIONS = {'txt', 'md', 'pdf', 'caj', 'docx', 'xlsx', 'xls', 'csv', 'dat'}
 
 def allowed_file(filename: str) -> bool:
     return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
@@ -38,6 +38,7 @@ def get_file_type(filename: str) -> str:
         'txt': 'txt',
         'md': 'md',
         'pdf': 'pdf',
+        'caj': 'caj',
         'docx': 'docx',
         'xlsx': 'xlsx',
         'xls': 'xlsx',

@@ -11,6 +11,8 @@ def test_allowed_file():
     assert allowed_file("test.txt") is True
     assert allowed_file("test.md") is True
     assert allowed_file("test.pdf") is True
+    assert allowed_file("test.caj") is True
+    assert allowed_file("TEST.CAJ") is True
     assert allowed_file("test.docx") is True
     assert allowed_file("test.xlsx") is True
     assert allowed_file("test.zip") is False
@@ -23,6 +25,7 @@ def test_get_file_type():
     assert get_file_type("test.txt") == "txt"
     assert get_file_type("test.md") == "md"
     assert get_file_type("test.pdf") == "pdf"
+    assert get_file_type("test.caj") == "caj"
     assert get_file_type("test.docx") == "docx"
     assert get_file_type("test.xlsx") == "xlsx"
     assert get_file_type("test.xls") == "xlsx"
