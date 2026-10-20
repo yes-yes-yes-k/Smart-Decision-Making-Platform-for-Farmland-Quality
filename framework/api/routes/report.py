@@ -6,8 +6,8 @@ from flask_jwt_extended import jwt_required, get_jwt_identity
 from framework.core_engine import core_engine
 from framework.models.report import Report
 from framework.models.user import db
-from src.ai_culti_demo.report import generate_report, generate_pdf
-from src.ai_culti_demo.report_context import UNSUPPORTED_REPORT_TYPES, normalize_scope
+from ai_culti_demo.report import generate_report, generate_pdf
+from ai_culti_demo.report_context import UNSUPPORTED_REPORT_TYPES, normalize_scope
 
 report_bp = Blueprint('report', __name__)
 

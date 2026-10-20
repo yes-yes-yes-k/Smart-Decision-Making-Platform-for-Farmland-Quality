@@ -13,7 +13,7 @@ import sqlalchemy as sa
 from psycopg import sql
 from framework.config import Config
 from framework.agents.workflows.comprehensive.checkpointing import normalize_postgres_uri
-from scripts.migrate_analysis_context import (
+from framework.migrations.analysis_context import (
     ensure_execution_log_provenance, ensure_legacy_parcel_index,
     replace_unique_trace_constraint_with_index, _add_columns,
 )

@@ -154,7 +154,16 @@ class StabilityRiskAgent(BaseAgent):
                 quality_index = grade_result.get("composite_index")
                 quality_grade = grade_result.get("quality_grade")
                 if quality_index is None or quality_grade is None:
-                    raise RuntimeError("Model-2 版本化质量结果未就绪")
+                    # Model-1 depends on the Model-2 grade, but an otherwise
+                    # valid parcel must not fail merely because no publication
+                    # row has been materialised yet.  Calculate the dependency
+                    # from the same authoritative indicator snapshot.
+                    from framework.domain.calculations.grade_calculation import (
+                        evaluate_land_quality,
+                    )
+                    quality_index, quality_grade, _ = evaluate_land_quality(
+                        mapped, inputs.get("area_code", "440281")
+                    )
                 parcel_info = {
                     "indicators": mapped,
                     "quality_index": quality_index,

@@ -170,7 +170,7 @@ def _ensure_kb_taxonomy_schema(app: Flask):
 
 def _ensure_analysis_context_compatibility(app: Flask):
     """启动期只补可空列和新表；约束替换留给正式迁移脚本。"""
-    from scripts.migrate_analysis_context import (
+    from framework.migrations.analysis_context import (
         ensure_analysis_context_columns,
         ensure_execution_log_provenance,
         ensure_spatial_region_catalog,

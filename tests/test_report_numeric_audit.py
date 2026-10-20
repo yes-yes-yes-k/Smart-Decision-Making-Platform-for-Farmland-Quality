@@ -1,7 +1,7 @@
 """报告生成后数字审计（change: add-input-provenance-and-report-number-audit）行为测试。"""
 from __future__ import annotations
 
-from src.ai_culti_demo.report_audit import (
+from ai_culti_demo.report_audit import (
     FALLBACK_TEXT,
     UNGROUNDED_QUANTITATIVE_CLAIM,
     audit_report_sections,
@@ -122,7 +122,7 @@ def test_collect_imputed_inputs_ignores_measured_only():
 # ---------------------------------------------------------------- 报告集成
 
 def test_generate_report_degrades_and_replaces_ungrounded_numbers(monkeypatch):
-    import src.ai_culti_demo.report as report_module
+    import ai_culti_demo.report as report_module
 
     fake_ctx = {
         "soil_ph": 5.31,
@@ -161,7 +161,7 @@ def test_generate_report_degrades_and_replaces_ungrounded_numbers(monkeypatch):
 
 
 def test_generate_report_stays_ok_when_all_numbers_are_grounded(monkeypatch):
-    import src.ai_culti_demo.report as report_module
+    import ai_culti_demo.report as report_module
 
     fake_ctx = {"soil_ph": 5.31, "organic_matter": 29.24, "source_meta": {"total_parcels": 12}}
     monkeypatch.setattr(report_module, "build_report_context", lambda *a, **k: fake_ctx)

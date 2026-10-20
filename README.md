@@ -32,7 +32,7 @@
 | ------ | -------------------------------------------- |
 | Web 框架 | Flask 3.0 + Flask-CORS + Flask-JWT-Extended  |
 | ORM    | Flask-SQLAlchemy                             |
-| 数据库    | SQLite（开发与生产环境均使用）                           |
+| 数据库    | PostgreSQL / PostGIS（生产），SQLite（测试）              |
 | 向量库    | ChromaDB 0.5                                 |
 | LLM    | SiliconFlow（DeepSeek-V4-Flash / BAAI/bge-m3） |
 | 编排     | LangChain 0.2 + LangGraph 0.1                |
@@ -43,7 +43,7 @@
 
 ### 环境要求
 
-- Python ≥ 3.10
+- Python ≥ 3.11
 
 - Node.js（可选，用于 OpenSpec / Comet 工作流）
 
@@ -56,6 +56,9 @@ cd agent_culti_demo
 
 # 安装依赖
 pip install -e .
+
+# 开发/测试环境
+pip install -e ".[dev]"
 ```
 
 ### 配置
@@ -73,11 +76,8 @@ CHROMA_PERSIST_DIR=./chroma_db
 CHROMA_COLLECTION_NAME=enterprise_kb
 ```
 
-开发与生产环境均使用 SQLite，无需额外配置数据库服务。数据库文件：
-
-- 开发环境：`instance/development.db`
-
-- 生产环境：`instance/production.db`
+默认与生产配置使用 PostgreSQL/PostGIS，需设置 `DB_HOST`、`DB_PORT`、
+`DB_USER`、`DB_PASSWORD` 和 `DB_NAME`。`sqlite` 配置仅用于自动化测试和本地轻量验证。
 
 ### LangSmith 监控（可选）
 
@@ -260,11 +260,11 @@ agent_culti_demo/
 │   ├── deployment.md           #   部署指南
 │   ├── production.env.example  #   环境变量模板
 │   └── windows-service.ps1     #   Windows 服务管理脚本
-├── docs/                       # 文档
-│   ├── openapi.json            #   OpenAPI 3.0 规范
-│   └── superpowers/            #   设计文档与验证报告
-├── tests/                      # 测试套件（78 个测试）
-├── openspec/                   # OpenSpec 规范与变更归档
+├── docs/                       # 当前 API、数据、部署与运维文档
+│   ├── README.md               #   文档索引
+│   └── openapi.json            #   OpenAPI 3.0 规范
+├── tests/                      # 自动化测试套件（1200+ 用例）
+├── openspec/                   # 当前能力规范与进行中变更
 ├── init_db.py                  # 数据库初始化
 ├── start_http_server.py        # 开发环境启动入口
 ├── start_production_server.py  # 生产环境启动入口
@@ -321,9 +321,9 @@ route_models（路由分发）
 
 | 配置                | 数据库                                | 用途          |
 | ----------------- | ---------------------------------- | ----------- |
-| `development`（默认） | SQLite (`instance/development.db`) | 本地开发        |
-| `sqlite`          | SQLite (`instance/development.db`) | 显式指定 SQLite |
-| `production`      | SQLite (`instance/production.db`)  | 生产部署        |
+| `development`（默认） | PostgreSQL / PostGIS | 本地联调 |
+| `sqlite`          | SQLite (`instance/development.db`) | 自动化测试 |
+| `production`      | PostgreSQL / PostGIS | 生产部署 |
 
 切换配置：
 
@@ -362,7 +362,7 @@ python start_production_server.py
 
 - OpenSpec 规范目录：[openspec/specs/](openspec/specs/)（17 个 capability spec）
 
-- 变更归档：[openspec/changes/archive/](openspec/changes/archive/)
+- 进行中变更：[openspec/changes/](openspec/changes/)
 
 - 项目总纲：[openspec/project.md](openspec/project.md)
 
@@ -374,9 +374,7 @@ python start_production_server.py
 
 - 专题模型通过统一能力注册表对应 question\_types 1-6（1=稳定性、2=质量等级与提升潜力、3=障碍诊断、4=酸化、5=有机质培肥、6=model-6 占位），通过 QuestionTypeRouter 1:1 映射到单一专业智能体
 
-- 开发环境使用 SQLite（`instance/development.db`）
-
-- 生产环境使用 SQLite（`instance/production.db`）
+- 开发/生产使用 PostgreSQL/PostGIS；SQLite 只用于测试配置
 
 - API 认证头格式：`Authorization: Bearer <token>`
 

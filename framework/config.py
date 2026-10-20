@@ -99,10 +99,14 @@ class Config:
     SILICONFLOW_LLM_TIMEOUT = float(os.environ.get('SILICONFLOW_LLM_TIMEOUT') or 90)
     SILICONFLOW_LLM_MAX_RETRIES = int(os.environ.get('SILICONFLOW_LLM_MAX_RETRIES') or 1)
 
-    CHROMA_PERSIST_DIR = os.environ.get('CHROMA_PERSIST_DIR') or './chroma_db'
+    CHROMA_PERSIST_DIR = os.environ.get('CHROMA_PERSIST_DIR') or os.path.join(
+        PROJECT_ROOT, 'chroma_db'
+    )
     CHROMA_COLLECTION_NAME = os.environ.get('CHROMA_COLLECTION_NAME') or 'enterprise_kb'
 
-    UPLOAD_FOLDER = os.environ.get('UPLOAD_FOLDER') or './uploads'
+    UPLOAD_FOLDER = os.environ.get('UPLOAD_FOLDER') or os.path.join(
+        PROJECT_ROOT, 'uploads'
+    )
     MAX_CONTENT_LENGTH = 200 * 1024 * 1024  # 200MB，对齐 MAX_DATA_IMPORT_SIZE，允许数据导入大文件
 
     CHUNK_SIZE = 800

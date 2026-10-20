@@ -26,7 +26,7 @@ MODEL_CASES = {
     "model-4": (
         "acidification-remediation",
         {"acidification_level": "中度", "background_acid": 1.0, "acid_deposition_input": 2.0, "crop_acid_output": 3.0, "nitrogen_cycle_acid": 4.0, "agricultural_acid": 5.0, "soil_conditioner_dosage": 6.0, "woody_peat_dosage": 7.0, "sub_model": "upland"},
-        {"acidification_level", "background_acid", "acid_deposition_input", "crop_acid_output", "nitrogen_cycle_acid", "agricultural_acid", "soil_conditioner_dosage", "woody_peat_dosage", "sub_model"},
+        {"acidification_level", "background_acid", "acid_deposition_input", "crop_acid_output", "nitrogen_cycle_acid", "agricultural_acid", "soil_conditioner_dosage", "woody_peat_dosage", "sub_model", "imputed_inputs"},
     ),
     "model-5": (
         "organic-matter-improvement",

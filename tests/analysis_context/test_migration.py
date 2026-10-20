@@ -1,7 +1,11 @@
 import sqlalchemy as sa
 import pytest
 
-from scripts.migrate_analysis_context import _dialect_ddl_type, downgrade_schema, upgrade_schema
+from framework.migrations.analysis_context import (
+    _dialect_ddl_type,
+    downgrade_schema,
+    upgrade_schema,
+)
 
 
 def _create_legacy_schema(engine):

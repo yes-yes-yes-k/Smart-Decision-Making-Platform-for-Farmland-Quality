@@ -84,7 +84,7 @@ def test_model5_mapping_ignores_legacy_total_nitrogen():
 def test_report_labels_use_central_field_names():
     """报告指标表登记的字段名必须与统一映射一致（防漂移）。"""
     from framework.domain.provenance import MODEL5_FEATURE_SOURCES
-    from src.ai_culti_demo.report_templates import _INDICATOR_LABELS
+    from ai_culti_demo.report_templates import _INDICATOR_LABELS
 
     assert "total_n" in _INDICATOR_LABELS
     assert "total_nitrogen" not in _INDICATOR_LABELS

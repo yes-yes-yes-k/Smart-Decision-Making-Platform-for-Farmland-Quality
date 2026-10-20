@@ -131,6 +131,58 @@ def test_rag_chain_normalizes_query_before_recall(monkeypatch):
     assert seen["query"] == "有效钾含量"
 
 
+def test_rag_chain_preserves_original_query_for_graph_matching(monkeypatch):
+    from framework.rag.chain import rag_chain
+    from framework.rag import chain as chain_mod
+
+    monkeypatch.setattr(Config, "RERANK_ENABLED", False)
+    seen = {}
+    monkeypatch.setattr(
+        chain_mod, "normalize_query", lambda q: q.replace("耕层厚度", "土层厚度")
+    )
+
+    class FakeVS:
+        def hybrid_search(self, query, n_results=None, filters=None, category=None):
+            seen["vector_query"] = query
+            return {"results": [], "count": 0}
+
+    class FakeKG:
+        def retrieve(self, query, **kwargs):
+            seen["graph_query"] = query
+            return {"results": [], "claim_assessment": None, "matched": False}
+
+        @staticmethod
+        def merge(graph_results, vector_results, *, top_k):
+            return list(vector_results)[:top_k]
+
+    monkeypatch.setattr(rag_chain, "vector_store", FakeVS())
+    monkeypatch.setattr(rag_chain, "kg_retriever", FakeKG())
+
+    rag_chain._retrieve_documents("耕层厚度是否属于补充指标？", None)
+
+    assert seen["vector_query"] == "土层厚度是否属于补充指标？"
+    assert seen["graph_query"] == "耕层厚度是否属于补充指标？"
+
+
+def test_rag_context_uses_human_readable_role_label():
+    from framework.rag.chain import RAGChain
+
+    rag = RAGChain.__new__(RAGChain)
+    context = rag._build_context([{
+        "content": "规范原文证据。",
+        "metadata": {
+            "retrieval_source": "knowledge_graph_v0.4",
+            "source_entity": "广东省补充耕地质量鉴定技术规范 试行",
+            "target_entity": "土壤有机质",
+            "relation_type": "assigns_by_laboratory_test",
+            "relation_label": "依据土壤样品检测结果赋值",
+        },
+    }])
+
+    assert "依据土壤样品检测结果赋值" in context
+    assert "assigns_by_laboratory_test" not in context
+
+
 def test_rag_chain_routes_category_and_passes_to_search(monkeypatch):
     from framework.rag.chain import rag_chain
     from framework.rag import chain as chain_mod
