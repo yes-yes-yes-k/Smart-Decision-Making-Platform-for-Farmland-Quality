@@ -56,8 +56,8 @@ def execute_isolated(agent,base):
 def run_one(row):
     site=row["parcel_id"]; indicators=row["soil_indicators"]
     execution_context={"analysis_context":{"mode":"spatial","version":1,"object":{"type":"parcel","id":site,"display_name":site,"area_code":row["area_code"]}},"verified":True,"trace_id":f"postgres-{RUN_TOKEN}-{site}"}
-    fertilizer=row["fertilizer_type"] or indicators.get("fertilizer_type")
-    target_ph=row["target_ph"] if row["target_ph"] is not None else indicators.get("target_ph")
+    fertilizer=row["fertilizer_type"]
+    target_ph=row["target_ph"]
     base={"parcel_id":site,"area_code":row["area_code"],"land_type":row["land_type"],"fertilizer_type":fertilizer,"target_ph":target_ph,"guard_passed":True,"execution_channel":"chat","execution_context":execution_context}
     events=[{"node":"Coordinator","state":"comprehensive_analysis"},{"node":"TrafficGate","state":"comprehensive"},{"node":"InputResolver","state":"resolved","source":"postgresql.parcel_info","object_version":str(row["updated_at"])},{"node":"PlanValidator","state":"approved","wave_1":["model-2","model-3"]}]
     results={"model-2":execute_isolated(FarmlandGradeAgent(),base),"model-3":execute_isolated(ProblemIdentificationAgent(),base)}

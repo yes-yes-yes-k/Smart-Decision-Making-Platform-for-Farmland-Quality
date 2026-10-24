@@ -126,15 +126,19 @@ def test_model5_parcel_indicators_has_total_n(db_session):
     assert rate > 90, f"total_n 非空率仅 {rate:.1f}% ({count}/{total})"
 
 
-def test_model5_parcel_indicators_has_target_ph_and_fertilizer_type(db_session):
-    """parcel_info.soil_indicators 包含 target_ph 和 fertilizer_type 默认值。"""
+def test_model5_parcel_management_fields_are_canonical_columns(db_session):
+    """管理字段只存在于 parcel_info 顶层规范列，不在指标 JSON 中重复。"""
     for field in ("target_ph", "fertilizer_type"):
         count = _scalar(db_session,
             f"SELECT count(*) FROM parcel_info "
-            f"WHERE soil_indicators->>'{field}' IS NOT NULL")
+            f"WHERE {field} IS NOT NULL")
         total = _scalar(db_session, "SELECT count(*) FROM parcel_info")
         rate = count / total * 100 if total > 0 else 0
         assert rate > 90, f"{field} 非空率仅 {rate:.1f}% ({count}/{total})"
+        duplicate_count = _scalar(db_session,
+            f"SELECT count(*) FROM parcel_info "
+            f"WHERE soil_indicators->>'{field}' IS NOT NULL")
+        assert duplicate_count == 0, f"soil_indicators 中仍存在 {field} 重复字段"
 
 
 # ===== 7.2 get_region_mapping DB 集成测试 =====

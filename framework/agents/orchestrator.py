@@ -216,17 +216,27 @@ class MultiAgentOrchestrator:
                     # function calling 已生成答复时直接使用，避免重复调 LLM
                     fc_summary = agent_data.get("answer", "") if isinstance(agent_data, dict) else ""
                     routing_method = agent_data.get("routing_method", "") if isinstance(agent_data, dict) else ""
-                    if routing_method == "function_calling" and fc_summary:
+                    if (
+                        routing_method == "function_calling"
+                        and fc_summary
+                        and not agent_data.get("field_query")
+                    ):
                         full_answer = fc_summary
                         yield {"type": "token", "content": fc_summary}
                     else:
                         # 复刻 llm_generate 节点的 prompt 构造逻辑
                         # 提取关键模型结果摘要，便于排查
                         from .output_contract import llm_context
+                        from .parcel_field_query import prepend_field_answer
                         contexts = {
                             aid: llm_context(item)
                             for aid, item in agent_data.get("models", {}).items()
                         }
+                        field_query = agent_data.get("field_query")
+                        field_answer = str((field_query or {}).get("answer") or "").strip()
+                        if field_answer:
+                            full_answer = field_answer + "\n\n"
+                            yield {"type": "token", "content": full_answer}
                         evidence_context = str(
                             state.get("rag_response", {}).get("context") or ""
                         )
@@ -237,7 +247,10 @@ class MultiAgentOrchestrator:
                             "不得向用户展示 GGNL、DXBW、SXJ 等模型内部字段缩写。\n"
                             "知识图谱证据只能解释专业模型结果，不得覆盖模型实际计算值；"
                             "若证据不足，应省略扩展解释。指标分类角色与指标获取方式是独立维度。\n"
+                            "如有地块字段直查结果，该实际值已经由系统展示；不得否定或声称缺失，"
+                            "不要重复该句，只需继续回答诊断和治理建议。\n"
                             f"用户问题：{question}\n"
+                            f"地块字段直查结果：{field_query or '无'}\n"
                             f"专业模型紧凑结果：{contexts}\n"
                             f"经权限过滤的知识图谱/知识库证据：{evidence_context or '无'}"
                         )
@@ -250,10 +263,14 @@ class MultiAgentOrchestrator:
                             # LLM 失败时直接根据同一份规范模型结果生成答复，
                             # 不重新执行任何专业 Agent。
                             from .output_contract import deterministic_answer
-                            full_answer = "\n".join(
+                            fallback_answer = "\n".join(
                                 deterministic_answer(item) for item in agent_data.get("models", {}).values()
                             ) or "暂无可用结果"
-                            yield {"type": "token", "content": full_answer}
+                            previous = full_answer
+                            full_answer = prepend_field_answer(field_query, fallback_answer)
+                            remaining = full_answer[len(previous):] if full_answer.startswith(previous) else full_answer
+                            if remaining:
+                                yield {"type": "token", "content": remaining}
 
             # 最终结果
             done_models = {} if question_type == 0 else state.get("model_results", {}).get("models", {})
@@ -262,6 +279,7 @@ class MultiAgentOrchestrator:
                 full_answer = "\n".join(
                     deterministic_answer(item) for item in done_models.values()
                 ) or "暂无可用结果"
+            field_query = state.get("model_results", {}).get("field_query")
             yield {
                 "type": "done",
                 "data": {
@@ -274,6 +292,7 @@ class MultiAgentOrchestrator:
                     "interaction_state": state.get("guard_decision", {}).get("interaction_state", "completed"),
                     "required_object_types": state.get("guard_decision", {}).get("required_object_types", []),
                     "models": done_models,
+                    "field_query": field_query,
                     "routing": {
                         "question_type": question_type,
                         "status": state.get("routing_status", "normal"),

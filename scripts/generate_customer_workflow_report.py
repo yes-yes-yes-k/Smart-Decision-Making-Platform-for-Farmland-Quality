@@ -58,9 +58,9 @@ def database_coverage():
     with psycopg.connect(normalize_postgres_uri(Config.SQLALCHEMY_DATABASE_URI)) as conn, conn.cursor() as cur:
         cur.execute("select land_type,fertilizer_type,target_ph,soil_indicators from parcel_info")
         rows=cur.fetchall()
-    missing_land=sum(not (row[0] or (row[3] or {}).get("land_type")) for row in rows)
-    missing_fertilizer=sum(not (row[1] or (row[3] or {}).get("fertilizer_type")) for row in rows)
-    missing_target=sum(row[2] is None and (row[3] or {}).get("target_ph") is None for row in rows)
+    missing_land=sum(not row[0] for row in rows)
+    missing_fertilizer=sum(not row[1] for row in rows)
+    missing_target=sum(row[2] is None for row in rows)
     return {
         "total_parcels":len(rows),
         "missing_land_type":missing_land,
