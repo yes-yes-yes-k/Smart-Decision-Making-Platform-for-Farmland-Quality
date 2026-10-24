@@ -1,0 +1,44 @@
+{
+  "source_repo": "D:\\work\\AcidMap",
+  "source_commit": "5fbd780 2026-03-06 修改数据库，添加南雄数据",
+  "copied_at": "2026-10-24",
+  "model_type": "pytorch-mlp-constrained",
+  "runtime": "torch>=2.0 cpu",
+  "notes": "两个模型均为 PyTorch MLP + 线性嵌入 a*x+b，输出过 exp() 还原。类定义 constrained_nn6 / constrained_nn6C 必须随 .pth 一起加载（torch.load 反序列化需要）。特征顺序与 scaler 数组顺序一致，见各模型目录 feature 常量。",
+  "models": {
+    "crop_cd": {
+      "prediction": "作物 Cd 含量 (mg/kg)",
+      "features": 14,
+      "special_feature_index": 13,
+      "special_feature_name": "solution",
+      "files": {
+        "cropCdNN.pth": "3523AE3828835AC5E63D29D55F927625BB96CC7F9CC6142B0FCE1D1988FE071E",
+        "cropCd_mean.npy": "F74AD7DA9F825CE1B3C337F75EBAAB4F30FB0B15F1041A42AD0AE4C0F88E30B5",
+        "cropCd_scale.npy": "ABCA1A2824A7B53FD7E78185E90ACDEE70888B3F7FD56F61D7D5D2C726937D04",
+        "constrained_nn6.py": "4AB5E6ED0F363B53CFD51C9743751FF1C574BD26AC28F302EA08E0B48D4BA09D"
+      },
+      "baseline_prediction_means_input": 0.266523
+    },
+    "effective_cd": {
+      "prediction": "土壤有效态 Cd (mg/kg)",
+      "features": 21,
+      "special_feature_index": 20,
+      "special_feature_name": "Cdsolution",
+      "files": {
+        "EffCdNN6C.pth": "147539D3A47A1B6F3B17D3207D56DB9109835C865A3711F87E7AB3191EF59E5B",
+        "EffCd_mean.npy": "1F89249A1A43B906FA7D725E6517ACA5CC3A51755A237FE38357C1D5B8895D8C",
+        "EffCd_scale.npy": "12C32A9809874F265BA460654B05926D54949DC24162E79417E435FCC3DCA041",
+        "constrained_nn6C.py": "74C7306D3C615EEF647D504489101D61311DE057DB52E60327D25880F7BE0F8D"
+      },
+      "baseline_prediction_means_input": 0.423962
+    }
+  },
+  "reference_stats_for_degraded_inputs": {
+    "solution_median": -2.1266,
+    "solution_p25": -3.0787,
+    "solution_p75": -1.2319,
+    "source": "soilgd.CropCd_input_data / EffCd_input_data, n=40100 each, full non-null",
+    "unit_status": "unverified",
+    "note": "solution/Cdsolution 两模型共用同一列值；缺失时按用户拍板以训练集中位数作为显式 assumption 参考值并强制 degraded"
+  }
+}
