@@ -72,6 +72,16 @@ def _ingest(
             approved_labels = expand_with_parent_domains(explicit_labels)
             access_metadata = vector_access_metadata(visibility_scope, approved_labels)
 
+            doc = db.session.query(Document).get(document_id)
+            if not doc:
+                raise RuntimeError(f"文档记录不存在: document_id={document_id}")
+            bibliographic = getattr(doc, "bibliographic_metadata", None) or {}
+            authors = bibliographic.get("authors") or []
+            authors_metadata = (
+                authors if isinstance(authors, str)
+                else "; ".join(str(author) for author in authors if str(author).strip())
+            )
+
             metadatas = []
             for i in range(len(chunks)):
                 metadata = {
@@ -82,6 +92,17 @@ def _ingest(
                     "owner_id": int(owner_id),
                     "category": category or "other",
                     "chunk_index": i,
+                    "document_kind": getattr(doc, "document_kind", None) or "other",
+                    "title": getattr(doc, "title", None) or doc_name,
+                    "authors": authors_metadata,
+                    "journal": bibliographic.get("journal") or "",
+                    "publication_date": bibliographic.get("publication_date") or "",
+                    "volume": str(bibliographic.get("volume") or ""),
+                    "issue": str(bibliographic.get("issue") or ""),
+                    "pages": str(bibliographic.get("pages") or ""),
+                    "doi": getattr(doc, "doi_normalized", None) or "",
+                    "standard_number": getattr(doc, "standard_number_normalized", None) or "",
+                    "issuing_authority": getattr(doc, "issuing_authority", None) or "",
                     **access_metadata,
                 }
                 if treatment_type:
@@ -110,9 +131,6 @@ def _ingest(
                 )
 
             # 更新 chunk_count + 推进到 completed
-            doc = db.session.query(Document).get(document_id)
-            if not doc:
-                raise RuntimeError(f"文档记录不存在: document_id={document_id}")
             doc.chunk_count = len(chunks)
             doc.status = Document.STATUS_COMPLETED
             db.session.commit()

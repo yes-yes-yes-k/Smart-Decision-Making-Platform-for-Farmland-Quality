@@ -438,6 +438,8 @@
 | `models` | object | 仅当 `include_model_results=true` 且 `question_type≠0` 时返回，键为 agent_id（如 `"model-5"`） |
 | `trace_id` | string | 与顶层 trace_id 相同 |
 
+RAG 回答在正文中使用 `[1]`、`[2]` 顺序编码，并在末尾按 GB/T 7714 常用格式附加“参考文献”，不再展示“文档1”、“文档2”。`data.sources` 中的每个命中片段保留 `doc_name`、`chunk_index`、`page`；有书目元数据时还包含 `citation_number`、`citation`、`title`、`authors`、`journal`、`publication_year` 和 `doi`。同一篇文献的多个片段共用同一 `citation_number`；缺失字段不会由模型自行补写。
+
 > Schema 1.0 模式下，`models` 字段会被 `legacy_projection` 转换为 `model_results` 旧结构（含 `findings`/`evidence`/`reliability`/`fallback` 等），并在顶层附加 `deprecation` 字段。
 
 #### `interaction_state` 状态码
