@@ -164,9 +164,29 @@ def route_models(state: MultiAgentState) -> str:
     if routing_status == ROUTING_STATUS_BOUNDARY_PENDING:
         return "boundary_pending"
     question_type = state["question_type"]
+    if question_type == 0 and _has_scoped_parcel_field_query(state):
+        return "execute_models"
     if question_type == 0:
         return "rag_chat"
     return "execute_models"
+
+
+def _has_scoped_parcel_field_query(state: MultiAgentState) -> bool:
+    """Keep explicit selected-parcel lookups out of the generic RAG path."""
+    from .parcel_field_query import requested_metadata_fields, requested_parcel_fields
+
+    request = state.get("request", {})
+    question = str(request.get("question") or "")
+    context = state.get("analysis_context") or {}
+    analysis_object = context.get("object") or {}
+    has_parcel = bool(
+        request.get("parcel_id")
+        or request.get("parcel_code")
+        or (analysis_object.get("type") == "parcel" and analysis_object.get("id"))
+    )
+    return has_parcel and bool(
+        requested_parcel_fields(question) or requested_metadata_fields(question)
+    )
 
 
 def analysis_requirement_node(state: MultiAgentState) -> MultiAgentState:
@@ -188,6 +208,8 @@ def analysis_requirement_node(state: MultiAgentState) -> MultiAgentState:
 def route_after_requirement(state: MultiAgentState) -> str:
     if state.get("routing_status") == ROUTING_STATUS_BOUNDARY_PENDING:
         return "boundary_pending"
+    if state.get("question_type") == 0 and _has_scoped_parcel_field_query(state):
+        return "execute_models"
     if state.get("question_type") == 0:
         return "rag_chat"
     if not state.get("guard_decision", {}).get("allowed", False):
@@ -333,9 +355,16 @@ def execute_models(state: MultiAgentState) -> MultiAgentState:
     """调用已由问题类型确定的专业能力（优先 function calling，失败回退关键词路由）。"""
     try:
         from framework.agents.manager import agent_manager
+        from framework.agents.parcel_field_query import (
+            prepend_field_answer,
+            query_requested_parcel_fields,
+        )
 
         question = state["request"].get("question", "")
         context = _build_verified_execution_context(state)
+        field_query = query_requested_parcel_fields(
+            question, context.get("parcel_id"),
+        )
         print(f"[execute_models] context: parcel_id={context.get('parcel_id')}, "
               f"parcel_code={context.get('parcel_code')}, "
               f"question_type={context.get('question_type')}, "
@@ -348,6 +377,14 @@ def execute_models(state: MultiAgentState) -> MultiAgentState:
         trace_id = state.get("trace_id")
         fc_result = _execute_via_function_calling(question, context, trace_id)
         if fc_result is not None:
+            refreshed_field_query = query_requested_parcel_fields(
+                question, context.get("parcel_id"), professional_results=fc_result,
+            )
+            if refreshed_field_query is not None:
+                fc_result["field_query"] = refreshed_field_query
+                fc_result["answer"] = prepend_field_answer(
+                    refreshed_field_query, fc_result.get("answer"),
+                )
             return {
                 **state,
                 "model_results": fc_result,
@@ -357,6 +394,14 @@ def execute_models(state: MultiAgentState) -> MultiAgentState:
 
         # fallback: 原有关键词路由路径
         result = agent_manager.process(question, context)
+        refreshed_field_query = query_requested_parcel_fields(
+            question, context.get("parcel_id"), professional_results=result,
+        )
+        if refreshed_field_query is not None:
+            result["field_query"] = refreshed_field_query
+            result["answer"] = prepend_field_answer(
+                refreshed_field_query, result.get("answer"),
+            )
         return {
             **state,
             "model_results": result,
@@ -365,16 +410,24 @@ def execute_models(state: MultiAgentState) -> MultiAgentState:
         }
     except Exception as exc:
         question_type = state.get("question_type")
+        from framework.agents.parcel_field_query import prepend_field_answer
+        fallback_answer = "专业能力执行失败，未调用其他专业模型。"
+        fallback_answer = prepend_field_answer(
+            locals().get("field_query"), fallback_answer,
+        )
+        fallback_result = {
+            "status": "error",
+            "question_type": question_type,
+            "models": {},
+            "answer": fallback_answer,
+            "recommendations": [],
+            "routing_method": "keyword_fallback",
+        }
+        if locals().get("field_query") is not None:
+            fallback_result["field_query"] = field_query
         return {
             **state,
-            "model_results": {
-                "status": "error",
-                "question_type": question_type,
-                "models": {},
-                "answer": "专业能力执行失败，未调用其他专业模型。",
-                "recommendations": [],
-                "routing_method": "keyword_fallback",
-            },
+            "model_results": fallback_result,
             "status": "model_completed",
             "error": None,
         }
@@ -461,7 +514,11 @@ def boundary_pending_node(state: MultiAgentState) -> MultiAgentState:
 
 def llm_generate(state: MultiAgentState) -> MultiAgentState:
     model_results = state.get("model_results", {})
-    if model_results.get("routing_method") == "function_calling" and model_results.get("answer"):
+    if (
+        model_results.get("routing_method") == "function_calling"
+        and model_results.get("answer")
+        and not model_results.get("field_query")
+    ):
         return {**state, "llm_response": {"success": True, "content": model_results["answer"]}, "error": None}
     if not LLM_AVAILABLE or not llm_service.is_available():
         return {**state, "llm_response": {}, "error": None}
@@ -479,6 +536,7 @@ def llm_generate(state: MultiAgentState) -> MultiAgentState:
             agent_id: llm_context(model_result)
             for agent_id, model_result in model_results.get("models", {}).items()
         }
+        field_query = model_results.get("field_query")
         evidence_context = str(state.get("rag_response", {}).get("context") or "")
         prompt = (
             "你是耕地质量与土壤改良领域的助手。请基于专业智能体结果，"
@@ -487,7 +545,10 @@ def llm_generate(state: MultiAgentState) -> MultiAgentState:
             "不得向用户展示 GGNL、DXBW、SXJ 等模型内部字段缩写。\n"
             "知识图谱证据只能解释专业模型结果，不得覆盖模型实际计算值；"
             "若证据不足，应省略扩展解释。指标分类角色与指标获取方式是独立维度。\n"
+            "如有地块字段直查结果，该实际值会由系统作为首句展示；不得否定或声称缺失，"
+            "不要重复该句，只需继续回答诊断和治理建议。\n"
             f"用户问题：{question}\n"
+            f"地块字段直查结果：{field_query or '无'}\n"
             f"专业模型紧凑结果：{contexts}\n"
             f"经权限过滤的知识图谱/知识库证据：{evidence_context or '无'}"
         )
@@ -536,13 +597,17 @@ def aggregate_results(state: MultiAgentState) -> MultiAgentState:
             final_result["llm_response"] = ""
             final_result["required_object_types"] = decision["required_object_types"]
             final_result["missing_inputs"] = decision["missing_inputs"]
-        elif question_type == 0:
+        elif question_type == 0 and not (
+            isinstance(model_results, dict) and model_results.get("field_query")
+        ):
             final_result["answer"] = rag_response.get("answer", "")
             final_result["sources"] = rag_response.get("sources", [])
             final_result["models"] = {}
             final_result["llm_response"] = ""
         else:
             final_result["models"] = model_results.get("models", {}) if isinstance(model_results, dict) else {}
+            if isinstance(model_results, dict) and model_results.get("field_query"):
+                final_result["field_query"] = model_results["field_query"]
             final_result["llm_response"] = llm_response.get("content", "")
 
             agent_summary = model_results.get("answer", "") if isinstance(model_results, dict) else ""
@@ -558,6 +623,12 @@ def aggregate_results(state: MultiAgentState) -> MultiAgentState:
                 answer_body = agent_summary
             else:
                 answer_body = llm_response.get("content", "")
+
+            if isinstance(model_results, dict):
+                from .parcel_field_query import prepend_field_answer
+                answer_body = prepend_field_answer(
+                    model_results.get("field_query"), answer_body,
+                )
 
             capability = get_capability_by_question_type(question_type)
             context_data = state.get("analysis_context")

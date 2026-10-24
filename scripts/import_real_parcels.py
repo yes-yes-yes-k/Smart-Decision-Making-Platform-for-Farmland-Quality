@@ -82,9 +82,8 @@ def to_float(val):
 def build_soil_indicators(row):
     """从 shp 行构建 V3.0 soil_indicators dict。
 
-    包含 12 个标准指标 + Model-4/5 默认值：
-    - target_ph: 6.5（广东省耕地一般目标值，后续 Model-4 可调整）
-    - fertilizer_type: "compound"（通用复合肥，后续 Model-4 可调整）
+    只包含土壤指标。管理字段 target_ph、fertilizer_type、land_type
+    必须写入 parcel_info 顶层规范列，禁止在 JSON 中重复保存。
     - exchangeable_hydrogen / exchangeable_aluminum / total_n: 由关联脚本
       link_soil_indicators.py 从 third_survey_profiles/topsoils 表按行政区域补充
     """
@@ -100,9 +99,6 @@ def build_soil_indicators(row):
             fval = to_float(val)
             if fval is not None:
                 indicators[v3_field] = fval
-    # Model-4/5 默认值（源数据不含 target_ph/fertilizer_type，由 Model-4 交互层调整）
-    indicators.setdefault("target_ph", 6.5)
-    indicators.setdefault("fertilizer_type", "compound")
     return indicators
 
 
@@ -174,8 +170,8 @@ def import_parcels_2024(conn):
             centroid_lon,
             centroid_lat,
             land_type,
-            None,  # fertilizer_type (shp 无此字段)
-            None,  # target_ph (shp 无此字段)
+            "compound",  # fertilizer_type（源数据无此字段，采用系统默认值）
+            6.5,  # target_ph（广东省耕地一般目标值）
             json.dumps(indicators, ensure_ascii=False),
         ))
 
@@ -190,6 +186,8 @@ def import_parcels_2024(conn):
             centroid_lon = EXCLUDED.centroid_lon,
             centroid_lat = EXCLUDED.centroid_lat,
             land_type = EXCLUDED.land_type,
+            fertilizer_type = COALESCE(parcel_info.fertilizer_type, EXCLUDED.fertilizer_type),
+            target_ph = COALESCE(parcel_info.target_ph, EXCLUDED.target_ph),
             soil_indicators = EXCLUDED.soil_indicators,
             updated_at = CURRENT_TIMESTAMP
     """
@@ -225,6 +223,8 @@ def import_parcels_2024(conn):
                         centroid_lon = EXCLUDED.centroid_lon,
                         centroid_lat = EXCLUDED.centroid_lat,
                         land_type = EXCLUDED.land_type,
+                        fertilizer_type = COALESCE(parcel_info.fertilizer_type, EXCLUDED.fertilizer_type),
+                        target_ph = COALESCE(parcel_info.target_ph, EXCLUDED.target_ph),
                         soil_indicators = EXCLUDED.soil_indicators,
                         updated_at = CURRENT_TIMESTAMP
                 """, (parcel_id, geom_wkt, area_code, lon, lat, lt, ft, tp, si))
@@ -238,6 +238,8 @@ def import_parcels_2024(conn):
                         centroid_lon = EXCLUDED.centroid_lon,
                         centroid_lat = EXCLUDED.centroid_lat,
                         land_type = EXCLUDED.land_type,
+                        fertilizer_type = COALESCE(parcel_info.fertilizer_type, EXCLUDED.fertilizer_type),
+                        target_ph = COALESCE(parcel_info.target_ph, EXCLUDED.target_ph),
                         soil_indicators = EXCLUDED.soil_indicators,
                         updated_at = CURRENT_TIMESTAMP
                 """, (parcel_id, area_code, lon, lat, lt, ft, tp, si))

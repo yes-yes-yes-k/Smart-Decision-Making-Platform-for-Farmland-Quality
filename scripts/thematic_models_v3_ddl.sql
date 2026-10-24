@@ -731,7 +731,12 @@ CREATE TABLE parcel_info (
   soil_indicators JSONB,
   created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP,
   updated_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP,
-  PRIMARY KEY (id)
+  PRIMARY KEY (id),
+  CONSTRAINT ck_parcel_info_no_management_json_fields CHECK (
+    soil_indicators IS NULL OR NOT (
+      soil_indicators ?| ARRAY['land_type','fertilizer_type','target_ph']
+    )
+  )
 );
 COMMENT ON TABLE parcel_info IS '地块信息表';
 COMMENT ON COLUMN parcel_info.id IS '主键';
@@ -743,7 +748,7 @@ COMMENT ON COLUMN parcel_info.centroid_lat IS '质心纬度';
 COMMENT ON COLUMN parcel_info.land_type IS '土地利用类型（upland/paddy）';
 COMMENT ON COLUMN parcel_info.fertilizer_type IS '肥料类型';
 COMMENT ON COLUMN parcel_info.target_ph IS '目标pH值';
-COMMENT ON COLUMN parcel_info.soil_indicators IS '结构化土壤指标快照（terrain_position/topsoil_thickness/soil_ph 等）';
+COMMENT ON COLUMN parcel_info.soil_indicators IS '结构化土壤指标快照；禁止保存 land_type/fertilizer_type/target_ph 管理字段';
 COMMENT ON COLUMN parcel_info.created_at IS '创建时间';
 COMMENT ON COLUMN parcel_info.updated_at IS '更新时间';
 

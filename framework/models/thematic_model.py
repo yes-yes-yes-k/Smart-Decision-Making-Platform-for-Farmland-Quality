@@ -17,6 +17,11 @@
 """
 from .user import db
 from geoalchemy2 import Geometry
+from sqlalchemy import event
+
+from framework.domain.data.parcel_management_fields import (
+    canonicalize_parcel_management_fields,
+)
 
 
 class ThematicModelRegistry(db.Model):
@@ -479,6 +484,13 @@ class ParcelInfo(db.Model):
         db.Index("idx_parcel_info_area_code", "area_code"),
         db.Index("idx_parcel_info_geom", "geom", postgresql_using="gist"),
     )
+
+
+@event.listens_for(ParcelInfo, "before_insert")
+@event.listens_for(ParcelInfo, "before_update")
+def _canonicalize_parcel_info_management_fields(mapper, connection, target) -> None:
+    """Enforce canonical management fields for every ORM write."""
+    canonicalize_parcel_management_fields(target)
 
 
 class ParcelHistorySnapshot(db.Model):
