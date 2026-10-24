@@ -23,6 +23,11 @@ def _identify(question):
     return identify_question_type(question)
 
 
+def test_lowercase_ph_field_question_routes_to_acidification_model():
+    question_type, _ = _identify("这块地的ph值是多少，怎么治理")
+    assert question_type == 4
+
+
 MODEL_TO_QTYPE = {
     "model-1": 1, "model-2": 2, "model-3": 3,
     "model-4": 4, "model-5": 5, "model-6": 6,

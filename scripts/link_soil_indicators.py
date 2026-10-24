@@ -148,17 +148,21 @@ def link_indicators_to_parcels(
             if value is not None and field not in indicators:
                 indicators[field] = round(value, 4)
                 changed = True
-        # Model-4/5 默认值
-        if "target_ph" not in indicators:
-            indicators["target_ph"] = 6.5
+        # 管理字段只允许保存在 parcel_info 顶层规范列。
+        if parcel.target_ph is None:
+            parcel.target_ph = 6.5
             changed = True
-        if "fertilizer_type" not in indicators:
-            indicators["fertilizer_type"] = "compound"
+        if not parcel.fertilizer_type:
+            parcel.fertilizer_type = "compound"
             changed = True
         # Keep the legacy alias for existing model integrations.
         if "total_nitrogen" in indicators and "total_n" not in indicators:
             indicators["total_n"] = indicators["total_nitrogen"]
             changed = True
+        for duplicate in ("land_type", "fertilizer_type", "target_ph"):
+            if duplicate in indicators:
+                indicators.pop(duplicate)
+                changed = True
         if changed:
             parcel.soil_indicators = indicators
             flag_modified(parcel, "soil_indicators")
@@ -177,7 +181,7 @@ def link_indicators_to_parcels(
 def verify_link_result() -> Dict[str, float]:
     """验证关联后 soil_indicators 中关键字段的非空率。"""
     fields = ["total_nitrogen", "total_n", "exchangeable_hydrogen", "exchangeable_aluminum",
-              "organic_matter", "soil_ph", "target_ph", "fertilizer_type"]
+              "organic_matter", "soil_ph"]
     total = db.session.query(ParcelInfo).count()
     rates: Dict[str, float] = {}
     for field in fields:
@@ -187,6 +191,14 @@ def verify_link_result() -> Dict[str, float]:
         rates[field] = rate
         status = "PASS" if rate > 90 else "INFO"
         logger.info("[%s] soil_indicators.%s 非空率: %.1f%% (%d/%d)",
+                    status, field, rate, count, total)
+    for field in ("land_type", "fertilizer_type", "target_ph"):
+        sql = text(f"SELECT count(*) FROM parcel_info WHERE {field} IS NOT NULL")
+        count = db.session.execute(sql).scalar()
+        rate = count / total * 100 if total > 0 else 0.0
+        rates[field] = rate
+        status = "PASS" if rate > 90 else "INFO"
+        logger.info("[%s] parcel_info.%s 非空率: %.1f%% (%d/%d)",
                     status, field, rate, count, total)
     return rates
 
