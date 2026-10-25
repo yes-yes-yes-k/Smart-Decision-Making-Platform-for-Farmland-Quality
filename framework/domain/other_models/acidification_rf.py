@@ -284,11 +284,13 @@ def prefill_from_parcel(
         if record is None:
             raise AcidificationRFError("model_unavailable")
     else:
-        record = next((m for m in models if m["model_id"] == int(model_id)), None)
-        if record is None:
-            raise AcidificationRFError("model_unavailable")
-        if record["land_type"] != rf_land:
-            raise AcidificationRFError("land_type_mismatch")
+            record = next((m for m in models if m["model_id"] == int(model_id)), None)
+            if record is None:
+                raise AcidificationRFError("model_unavailable")
+            # 旧系统语义：reduce（降酸）不区分土地类型，水田降酸沿用旱地 reduce 模型；
+            # 仅 reflux 按土地类型严格匹配（35 旱地 / 38 水田特征契约不同，错配会静默喂错列）。
+            if record["data_type"] == "reflux" and record["land_type"] != rf_land:
+                raise AcidificationRFError("land_type_mismatch")
 
     stored = dict(indicators.get("provenance") or {})
     data: dict[str, Any] = {}

@@ -104,13 +104,23 @@ def test_prefill_paddy_uses_paddy_model_and_needs_feo():
     assert result["provenance"]["OM"] == "unknown"
 
 
-def test_prefill_rejects_land_type_mismatch():
+def test_prefill_rejects_reflux_land_type_mismatch():
     from framework.domain.other_models.acidification_rf import (
         AcidificationRFError, prefill_from_parcel,
     )
 
+    # reflux 必须与地块土地类型匹配：水田地块不能用旱地 reflux 模型 35
     with pytest.raises(AcidificationRFError):
-        prefill_from_parcel({"soil_ph": 5.4}, "paddy", model_id=33)
+        prefill_from_parcel({"soil_ph": 5.4}, "paddy", model_id=35)
+
+
+def test_prefill_allows_reduce_for_paddy():
+    """旧系统语义：reduce 不区分土地类型，水田降酸沿用旱地 reduce 模型 33。"""
+    from framework.domain.other_models.acidification_rf import prefill_from_parcel
+
+    result = prefill_from_parcel({"soil_ph": 5.4}, "paddy", model_id=33)
+    assert result["model_id"] == 33
+    assert result["data_type"] == "reduce"
 
 
 def test_prefill_never_invents_missing_fields():

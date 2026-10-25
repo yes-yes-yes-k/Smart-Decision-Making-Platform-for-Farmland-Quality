@@ -127,7 +127,7 @@ def test_parcel_prefill_404_when_missing(monkeypatch):
     assert response.get_json()["reason"] == "parcel_not_found"
 
 
-def test_parcel_prefill_land_type_mismatch_is_400(monkeypatch):
+def test_parcel_prefill_rejects_reflux_land_type_mismatch(monkeypatch):
     from framework.domain.data import parcel_data_accessor as pda
 
     snapshot = pda.ParcelDataSnapshot("1", None, None, "paddy", None, None,
@@ -135,9 +135,26 @@ def test_parcel_prefill_land_type_mismatch_is_400(monkeypatch):
     monkeypatch.setattr(pda.ParcelDataAccessor, "get_parcel_snapshot", lambda self, pid: snapshot)
 
     client, headers = _client()
-    response = client.get("/rf/parcels/1/prefill?model_id=33", headers=headers)
+    # 水田地块 + 旱地 reflux 模型 35 → land_type_mismatch
+    response = client.get("/rf/parcels/1/prefill?model_id=35", headers=headers)
     assert response.status_code == 400
     assert response.get_json()["reason"] == "land_type_mismatch"
+
+
+def test_parcel_prefill_allows_reduce_for_paddy(monkeypatch):
+    from framework.domain.data import parcel_data_accessor as pda
+
+    snapshot = pda.ParcelDataSnapshot("1", None, None, "paddy", None, None,
+                                      {"soil_ph": 5.4, "provenance": {}}, "parcel:x")
+    monkeypatch.setattr(pda.ParcelDataAccessor, "get_parcel_snapshot", lambda self, pid: snapshot)
+
+    client, headers = _client()
+    # 旧系统语义：水田降酸使用旱地 reduce 模型 33，prefill 应放行
+    response = client.get("/rf/parcels/1/prefill?model_id=33", headers=headers)
+    assert response.status_code == 200
+    body = response.get_json()
+    assert body["model_id"] == 33
+    assert body["data_type"] == "reduce"
 
 
 def test_predict_with_assumptions_is_degraded():
