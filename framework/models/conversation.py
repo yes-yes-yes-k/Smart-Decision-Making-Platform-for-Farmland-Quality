@@ -20,6 +20,13 @@ class Conversation(db.Model):
         cascade='all, delete-orphan',
         order_by='Message.create_time'
     )
+    acidification_measurements = db.relationship(
+        "AcidificationMeasurement",
+        backref="conversation",
+        lazy=True,
+        cascade="all, delete-orphan",
+        order_by="(AcidificationMeasurement.created_at, AcidificationMeasurement.id)",
+    )
 
     def to_dict(self):
         return {

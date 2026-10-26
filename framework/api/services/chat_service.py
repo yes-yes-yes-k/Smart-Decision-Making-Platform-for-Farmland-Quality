@@ -1,6 +1,7 @@
 """Transaction and serialization boundary shared by HTTP and SSE chat APIs."""
 from __future__ import annotations
 
+import json
 from copy import deepcopy
 from dataclasses import dataclass
 from datetime import datetime, timezone
@@ -16,7 +17,7 @@ from framework.analysis_context.errors import AnalysisObjectInvalid
 from framework.analysis_context.provenance import ResultProvenanceBuilder
 from framework.analysis_context.service import AnalysisContextService
 from framework.domain.public_field_labels import translate_public_text
-from framework.models import Conversation, Message, ParcelInfo, db
+from framework.models import AcidificationMeasurement, Conversation, Message, ParcelInfo, db
 from framework.observability.analysis_context_metrics import (
     EVENT_LEGACY_FIELD_USED,
     EVENT_NEEDS_ANALYSIS_OBJECT,
@@ -77,9 +78,45 @@ class ChatRequestService:
             resolved = self._context_service.resolve(
                 conversation, user_id=user_id, body=body,
             )
+            acidification_history = []
+            measurement_id = body.get("acidification_measurement_id")
+            if measurement_id is not None:
+                try:
+                    measurement_id = int(measurement_id)
+                except (TypeError, ValueError) as exc:
+                    raise AnalysisObjectInvalid("酸化测算记录标识无效") from exc
+                current_measurement = AcidificationMeasurement.query.filter_by(
+                    id=measurement_id,
+                    user_id=user_id,
+                    conversation_id=conversation.id,
+                ).first()
+                if current_measurement is None:
+                    raise AnalysisObjectInvalid("酸化测算记录不存在或无权访问")
+                acidification_history = [
+                    {
+                        "measurement_id": item.id,
+                        "parcel_id": item.parcel_id,
+                        "mode": item.mode,
+                        "land_type": item.land_type,
+                        "input_data": item.input_data or {},
+                        "result_data": item.result_data,
+                        "source_info": item.source_info or {},
+                        "status": item.status,
+                        "created_at": item.created_at.isoformat() if item.created_at else None,
+                    }
+                    for item in AcidificationMeasurement.query.filter_by(
+                        user_id=user_id,
+                        conversation_id=conversation.id,
+                    ).order_by(
+                        AcidificationMeasurement.created_at,
+                        AcidificationMeasurement.id,
+                    ).all()
+                ]
             for field in resolved.deprecations:
                 record_analysis_context_event(EVENT_LEGACY_FIELD_USED, field=field)
             snapshot = deepcopy(resolved.snapshot())
+            if measurement_id is not None:
+                snapshot["acidification_measurement_id"] = measurement_id
             execution_identifiers = self._execution_identifiers(
                 snapshot, resolved.validated_identifiers,
             )
@@ -102,7 +139,13 @@ class ChatRequestService:
             })
             request_data.update(execution_identifiers)
             request_data.update({
-                "question": question,
+                "question": (
+                    question
+                    + "\n\n【当前会话全部酸化测算记录】\n"
+                    + json.dumps(acidification_history, ensure_ascii=False, separators=(",", ":"))
+                    + "\n请将以上记录作为本轮分析上下文，区分每条记录的地块、模式和结果来源。"
+                    if measurement_id is not None else question
+                ),
                 "analysis_context": deepcopy(snapshot),
                 "calculation_mode": snapshot["mode"],
                 "validated_identifiers": execution_identifiers,
@@ -111,6 +154,9 @@ class ChatRequestService:
                 "user_id": user_id,
                 "conversation_id": conversation.id,
             })
+            if measurement_id is not None:
+                request_data["acidification_measurement_id"] = measurement_id
+                request_data["acidification_measurement_history"] = acidification_history
             return PreparedChat(
                 conversation=conversation,
                 user_message=user_message,

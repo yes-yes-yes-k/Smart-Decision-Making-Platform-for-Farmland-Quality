@@ -15,6 +15,7 @@ from framework.api.routes.data_import import data_import_bp
 from framework.api.routes.observability import observability_bp
 from framework.api.routes.farmland_statistics import farmland_statistics_bp
 from framework.api.routes.acidification_rf import acidification_rf_bp
+from framework.api.routes.acidification_measurements import acidification_measurements_bp
 # from framework.api.routes.tiles import tiles_bp
 # from framework.api.routes.gd_tiles import gd_tiles_bp
 from framework.agents.workflows.comprehensive.checkpointing import (
@@ -148,6 +149,16 @@ def _ensure_kb_report_columns(app: Flask):
             conn.execute(sa_text(ddl))
 
 
+def _ensure_acidification_measurement_table(app: Flask):
+    from framework.migrations.acidification_measurement import (
+        ensure_acidification_measurement_table,
+    )
+
+    with app.app_context():
+        with db.engine.begin() as connection:
+            ensure_acidification_measurement_table(connection)
+
+
 def _ensure_kb_taxonomy_schema(app: Flask):
     """Add the non-destructive KB ACL column and label table when upgrading."""
     from sqlalchemy import inspect as sa_inspect
@@ -226,6 +237,7 @@ def create_app(config_name: str = 'default') -> Flask:
     _ensure_kb_report_columns(app)
     _ensure_analysis_context_compatibility(app)
     _ensure_versioned_model_results(app)
+    _ensure_acidification_measurement_table(app)
 
     app.register_blueprint(auth_bp, url_prefix='/api/v1/auth')
     app.register_blueprint(chat_bp, url_prefix='/api/v1/chat')
@@ -242,6 +254,10 @@ def create_app(config_name: str = 'default') -> Flask:
     app.register_blueprint(
         acidification_rf_bp,
         url_prefix='/api/v1/acidification-rf',
+    )
+    app.register_blueprint(
+        acidification_measurements_bp,
+        url_prefix='/api/v1/acidification-measurements',
     )
     # 本地瓦片端点（无 url_prefix，路由已含 /tiles/；生产由 Nginx 直接托管）
     # app.register_blueprint(tiles_bp)
