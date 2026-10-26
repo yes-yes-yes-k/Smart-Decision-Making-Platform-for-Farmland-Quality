@@ -14,6 +14,7 @@ from pathlib import Path
 from typing import Any, Mapping, Sequence
 
 import numpy as np
+import sklearn
 from sklearn.impute import SimpleImputer
 
 from ..provenance import IMPUTED_SOURCES, SOURCE_REGION_MEAN_BACKFILL
@@ -88,6 +89,9 @@ def _reference() -> dict[str, Any]:
 
 def load_model(model_id: int):
     record = _record(model_id)
+    numpy_major = int(np.__version__.split(".", 1)[0])
+    if numpy_major != 2 or sklearn.__version__ != record.serialized_with_scikit_learn:
+        raise AcidificationRFError("model_unavailable")
     path = (ARTIFACT_ROOT / record.artifact_path).resolve()
     if ARTIFACT_ROOT not in path.parents or path.suffix.lower() != ".pkl" or not path.is_file():
         raise AcidificationRFError("model_unavailable")
@@ -96,8 +100,15 @@ def load_model(model_id: int):
     digest = hashlib.sha256(path.read_bytes()).hexdigest().upper()
     if digest != record.sha256.upper():
         raise AcidificationRFError("model_integrity_mismatch")
-    with path.open("rb") as handle:
-        model = pickle.load(handle)
+    try:
+        with path.open("rb") as handle:
+            model = pickle.load(handle)
+    except (ImportError, AttributeError, EOFError, pickle.UnpicklingError, ValueError) as exc:
+        # These assets were serialized with the versions recorded in the project
+        # dependencies. A stale runtime (for example NumPy 1.x loading a NumPy
+        # 2.x pickle) cannot safely execute them; report the model as unavailable
+        # instead of leaking a 500 traceback from the API.
+        raise AcidificationRFError("model_unavailable") from exc
     if not callable(getattr(model, "predict", None)):
         raise AcidificationRFError("model_metadata_invalid")
     return record, model

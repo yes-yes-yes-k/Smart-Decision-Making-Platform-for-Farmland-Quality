@@ -1296,6 +1296,10 @@ GET /api/v1/farmland-statistics/boundaries?region_type=township&parent_type=coun
 
 **POST** `/api/v1/farmland-statistics/parcels/pick`
 
+点选规则：重叠时取面积最小地块，未命中返回 404；精确覆盖优先，否则在容差内返回最近地块。
+
+请求体（JSON）：
+
 ```json
 {
   "longitude": 113.35,
@@ -1306,7 +1310,81 @@ GET /api/v1/farmland-statistics/boundaries?region_type=township&parent_type=coun
 }
 ```
 
-传 `metric` 时只返回当前指标的值、等级、颜色及来源信息；省略时返回完整指标响应。`toleranceMeters` 默认为 0、最大 50 米，精确覆盖优先，否则返回容差内最近地块。每项指标均返回 `dataSource`、`measurementYear`、`isImputed`、`imputationMethod` 和 `qualityFlag`。接口有 5 秒短时缓存及每用户 120 次/分钟保护。
+| 字段 | 类型 | 必填 | 说明 |
+|------|------|------|------|
+| `longitude` | number | 是 | 经度，范围 -180 ~ 180 |
+| `latitude` | number | 是 | 纬度，范围 -90 ~ 90 |
+| `metric` / `metric_key` | string | 否 | 指定主指标（如 `soil_ph`）；省略时返回完整指标响应 |
+| `toleranceMeters` / `tolerance_meters` | number | 否 | 容差（米），默认 0、最大 50 |
+| `year` | number | 否 | 数据年份，缺省用默认年份 |
+
+成功响应（200）：
+
+```json
+{
+  "status": "ok",
+  "data": {
+    "classificationVersion": "2026-09-21.1",
+    "parcelId": "3060",
+    "areaCode": "440224",
+    "areaMu": 2168.29,
+    "dataYear": 2024,
+    "metrics": {
+      "soil_ph": {
+        "metricKey": "soil_ph",
+        "label": "土壤 pH",
+        "value": 5.51,
+        "unit": "pH",
+        "bucketKey": "acid",
+        "bucketLabel": "酸性",
+        "color": "#FDDBC7",
+        "rangeLabel": "[5.5,6.5)"
+      }
+    },
+    "soilPh": 5.51,
+    "organicMatter": 37.17,
+    "qualityGrade": 7.0,
+    "hit": {
+      "mode": "exact",
+      "distanceMeters": 0.0,
+      "toleranceMeters": 0.0
+    }
+  }
+}
+```
+
+`data` 字段说明：
+
+| 字段 | 类型 | 说明 |
+|------|------|------|
+| `parcelId` | string | 地块编号（位于 `data` 顶层，不在 `metrics` 内） |
+| `areaCode` | string/null | 行政区划代码 |
+| `areaMu` | number/null | 完整地块面积（亩），几何缺失为 null |
+| `dataYear` | int/null | 数据年份 |
+| `metrics` | object | 全量指标 `key → {metricKey,label,value,unit,dataSource,measurementYear,isImputed,imputationMethod,qualityFlag,...}` |
+| `soilPh` / `organicMatter` / `qualityGrade` / `availablePhosphorus` 等 | any | 常用指标的兼容快捷字段 |
+| `hit` | object | 命中方式：`mode=exact`（点在面内）或 `nearest`（容差最近），含距离与容差 |
+
+传 `metric` 时只返回当前指标的值、等级、颜色及来源信息；省略时返回完整指标响应。每项指标均返回 `dataSource`、`measurementYear`、`isImputed`、`imputationMethod` 和 `qualityFlag`。接口有 5 秒短时缓存及每用户 120 次/分钟保护。
+
+失败响应：
+
+```json
+{
+  "status": "error",
+  "code": "parcel_not_found",
+  "message": "该位置未命中地块"
+}
+```
+
+| HTTP 状态码 | code | 场景 |
+|------------|------|------|
+| 400 | `invalid_coordinate` | 经纬度非数字或越界 |
+| 400 | `invalid_tolerance` | tolerance 非数字或超过上限 |
+| 404 | `parcel_not_found` | 位置未命中地块 |
+| 404 | `parcel_year_not_found` | 指定年份下该地块无数据 |
+| 429 | `rate_limited` | 超出限流（响应头带 `Retry-After: 1`） |
+| 503 | `statistics_unavailable` | 点选服务不可用（数据库异常） |
 
 ### 获取视口轻量地块要素
 

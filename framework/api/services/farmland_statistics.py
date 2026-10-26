@@ -971,6 +971,46 @@ def list_regions(
     } for row in rows]
 
 
+_REGION_ORDER = ("province", "city", "county", "township", "village")
+_REGION_DEPTH = {name: seq for seq, name in enumerate(_REGION_ORDER)}
+
+
+def _parcel_region(parcel_id: str) -> dict[str, Any] | None:
+    """通过地块几何中心，解析其行政区划层级路径（省/市/县/乡镇/村）。
+
+    优先用点包含关系取最深层级（村），从而自然涵盖其上级；若点落在边界缝隙，
+    则退化为面积码匹配到的县区及上级。返回形如
+    {"path": ["广东省","韶关市",...], "village": "...", ...}，缺失层级不出现。
+    """
+    try:
+        rows = db.session.execute(sa.text(f"""
+            WITH pt AS MATERIALIZED (
+                SELECT ST_PointOnSurface(geom) AS g
+                FROM parcel_info
+                WHERE parcel_id = :pid
+                LIMIT 1
+            )
+            SELECT r.object_type, r.display_name
+            FROM spatial_region_catalog AS r, pt
+            WHERE r.enabled AND r.geom IS NOT NULL AND ST_Contains(r.geom, pt.g)
+            ORDER BY CASE {" ".join(
+                f"WHEN r.object_type = '{t}' THEN {d}" for t, d in _REGION_DEPTH.items()
+            )} END DESC
+        """), {"pid": parcel_id}).fetchall()
+    except sa.exc.SQLAlchemyError as exc:
+        raise StatisticsError("statistics_unavailable", "地块区域信息暂时不可用", 503) from exc
+
+    region: dict[str, str] = {}
+    for object_type, display_name in rows:
+        region[object_type] = str(display_name)
+    if not region:
+        return None
+    return {
+        "path": [region[t] for t in _REGION_ORDER if region.get(t)],
+        **{t: region[t] for t in _REGION_ORDER if region.get(t)},
+    }
+
+
 def _parcel_area_mu(parcel_id: str) -> float | None:
     try:
         area_mu = db.session.execute(sa.text("""
@@ -1233,11 +1273,20 @@ def pick_parcel(
     if selected is None:
         raise StatisticsError("parcel_not_found", "该位置未命中地块", 404)
     result = get_parcel_summary(selected["parcel_id"], data_year, metric_key)
+    land_type_row = db.session.execute(
+        sa.text("SELECT land_type FROM parcel_info WHERE parcel_id = :pid LIMIT 1"),
+        {"pid": selected["parcel_id"]},
+    ).first()
+    if land_type_row and land_type_row[0]:
+        result["landType"] = str(land_type_row[0])
     result["hit"] = {
         "mode": "exact" if selected["exact_hit"] else "nearest",
         "distanceMeters": _round(float(selected["distance_meters"] or 0), 3),
         "toleranceMeters": tolerance,
     }
+    region = _parcel_region(selected["parcel_id"])
+    if region:
+        result["region"] = region
     _PICK_CACHE.set(cache_key, result, PICK_CACHE_TTL_SECONDS)
     return result
 
