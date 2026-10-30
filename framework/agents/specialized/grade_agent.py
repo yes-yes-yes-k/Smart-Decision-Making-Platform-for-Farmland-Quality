@@ -30,20 +30,15 @@ class FarmlandGradeAgent(BaseAgent):
     def _collect_inputs(self, context: dict) -> dict:
         """DB 优先获取地块指标，未命中时降级到 CSV run_grade_evaluation。"""
         parcel_id = context.get("parcel_id") or context.get("parcel_code")
-        print(f"[GradeAgent] _collect_inputs: parcel_id={parcel_id}, "
-              f"keys_in_context={[k for k in context.keys() if not k.startswith('_')]}")
-
         if parcel_id:
             accessor = ParcelDataAccessor()
             indicators = accessor.get_parcel_indicators(str(parcel_id))
-            print(f"[GradeAgent] DB查询 parcel={parcel_id}: indicators_found={indicators is not None}")
             if indicators is not None:
                 inputs = dict(indicators)
                 inputs["parcel_id"] = str(parcel_id)
                 inputs["data_source"] = "db"
                 return inputs
 
-        print(f"[GradeAgent] parcel={parcel_id} 未在DB命中，降级到CSV路径")
         logger.warning("Parcel %s not in DB, falling back to CSV source", parcel_id)
         inputs = self._collect_inputs_from_legacy(context)
         inputs["data_source"] = "fallback"
@@ -79,22 +74,23 @@ class FarmlandGradeAgent(BaseAgent):
 
         inputs = self._collect_inputs(data)
         data_source = inputs.pop("data_source", "unknown")
-        print(f"[GradeAgent] execute: data_source={data_source}, GRADE_EVAL_AVAILABLE={GRADE_EVAL_AVAILABLE}")
-
         try:
             if data_source == "db":
                 # DB 路径：调用 evaluate_land_quality 计算质量等级
-                from framework.domain.calculations.grade_calculation import evaluate_land_quality
-                accessor = ParcelDataAccessor()
-                mapped = accessor._map_indicators_to_inputs(inputs, "model-2")
+                from framework.domain.calculations.grade_calculation import evaluate_soil_indicators
                 area_code = data.get("area_code", "440281")
-                quality_index, grade, memberships = evaluate_land_quality(mapped, area_code)
-                print(f"[GradeAgent] DB路径计算成功: parcel_id={inputs.get('parcel_id')}, "
-                      f"grade={grade}, quality_index={quality_index:.3f}")
+                calculated_index, calculated_grade, memberships = evaluate_soil_indicators(inputs, area_code)
+                mapped = ParcelDataAccessor()._map_indicators_to_inputs(inputs, "model-2")
+                # 地图、对话和报告统一读取版本化计算结果。旧快照仅作为输入
+                # 审计数据保留，不再参与对外展示值选择。
+                grade = calculated_grade
+                quality_index = calculated_index
+                grade_source = "versioned_model_2_calculation"
                 outputs = {
                     "parcel_id": inputs.get("parcel_id"),
                     "quality_grade": grade,
                     "composite_index": quality_index,
+                    "quality_grade_source": grade_source,
                     "memberships": memberships,
                     "indicators": mapped,
                 }

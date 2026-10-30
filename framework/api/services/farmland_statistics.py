@@ -11,6 +11,7 @@ from typing import Any
 import sqlalchemy as sa
 
 from framework.domain.statistics import INDICATOR_DEFINITIONS, get_indicator_definition
+from framework.domain.assessment.versioned_results import business_result
 from framework.models import ParcelInfo, SpatialRegionCatalog, db
 
 
@@ -81,6 +82,11 @@ def summarize_rows(
 
         for row in materialized:
             indicators = _json_object(row.get("soil_indicators"))
+            assessment = business_result(_json_object(row.get("assessment_result")))
+            # Computed fields have one publication source.  Missing assessment
+            # stays unclassified; never silently fall back to imported grades.
+            if definition.source_field in {"quality_grade", "composite_index"}:
+                indicators[definition.source_field] = assessment.get(definition.source_field)
             parsed = definition.parse(indicators.get(definition.source_field))
             area_mu = max(float(row.get("area_mu") or 0), 0)
             bucket = definition.classify(parsed)
@@ -216,23 +222,32 @@ def _live_statistics_sql(scope_query: str) -> sa.TextClause:
         WITH scope AS MATERIALIZED ({scope_query}),
         clipped AS MATERIALIZED (
             SELECT p.parcel_id, p.area_code, p.soil_indicators, p.updated_at,
+                   assessment.result_payload AS assessment_result,
+                   assessment.calculated_at AS assessment_calculated_at,
                    CASE
                      WHEN ST_CoveredBy(p.geom, scope.geom) THEN p.geom
                      ELSE ST_Intersection(p.geom, scope.geom)
                    END AS clipped_geom
             FROM parcel_info AS p
             CROSS JOIN scope
+            LEFT JOIN versioned_model_result AS assessment
+              ON assessment.agent_id = 'model-2'
+             AND assessment.subject_type = 'parcel'
+             AND assessment.subject_id = p.parcel_id
+             AND assessment.is_current = TRUE
             WHERE p.geom IS NOT NULL
               AND p.geom && scope.geom
               AND ST_Intersects(p.geom, scope.geom)
         ),
         measured AS MATERIALIZED (
             SELECT parcel_id, area_code, soil_indicators, updated_at,
+                   assessment_result, assessment_calculated_at,
                    ST_Area(clipped_geom::geography) * :mu_per_sqm AS area_mu
             FROM clipped
             WHERE NOT ST_IsEmpty(clipped_geom)
         )
-        SELECT parcel_id, area_code, soil_indicators, updated_at, area_mu
+        SELECT parcel_id, area_code, soil_indicators, updated_at,
+               assessment_result, assessment_calculated_at, area_mu
         FROM measured
         WHERE area_mu > 0
         ORDER BY parcel_id
@@ -284,9 +299,16 @@ def _precomputed_statistics_rows(
 
     rows = db.session.execute(sa.text("""
         SELECT parcel.parcel_id, parcel.area_code, parcel.soil_indicators,
-               parcel.updated_at, cached.area_mu
+               parcel.updated_at, cached.area_mu,
+               assessment.result_payload AS assessment_result,
+               assessment.calculated_at AS assessment_calculated_at
         FROM farmland_region_parcel_area AS cached
         JOIN parcel_info AS parcel ON parcel.parcel_id = cached.parcel_id
+        LEFT JOIN versioned_model_result AS assessment
+          ON assessment.agent_id = 'model-2'
+         AND assessment.subject_type = 'parcel'
+         AND assessment.subject_id = parcel.parcel_id
+         AND assessment.is_current = TRUE
         WHERE cached.region_type = :region_type
           AND cached.region_id = :region_id
           AND cached.area_mu > 0
@@ -377,13 +399,32 @@ def _parcel_area_mu(parcel_id: str) -> float | None:
     return None if area_mu is None else float(area_mu)
 
 
-def _parcel_response(parcel: ParcelInfo, area_mu: float | None) -> dict[str, Any]:
+def _calculated_grade(parcel: ParcelInfo) -> tuple[dict[str, Any], dict[str, Any]]:
+    """Ensure and return the one Model-2 row shared with the agent."""
+    from framework.agents.specialized.grade_agent import FarmlandGradeAgent
+
+    execution = FarmlandGradeAgent().execute({
+        "parcel_id": parcel.parcel_id,
+        "area_code": parcel.area_code,
+    })
+    return business_result(execution), dict(execution.get("versioned_result") or {})
+
+
+def _parcel_response(
+    parcel: ParcelInfo,
+    area_mu: float | None,
+    assessment: Mapping[str, Any] | None = None,
+    version: Mapping[str, Any] | None = None,
+) -> dict[str, Any]:
     indicators = parcel.soil_indicators or {}
+    calculated = dict(assessment or {})
     return {
         "parcelId": parcel.parcel_id,
         "areaCode": parcel.area_code,
         "areaMu": _round(area_mu),
-        "qualityGrade": indicators.get("quality_grade"),
+        "qualityGrade": calculated.get("quality_grade"),
+        "compositeIndex": _round(calculated.get("composite_index")),
+        "qualityAssessment": dict(version or {}),
         "organicMatter": indicators.get("organic_matter"),
         "soilPh": indicators.get("soil_ph"),
         "availablePhosphorus": indicators.get("available_phosphorus"),
@@ -394,7 +435,8 @@ def get_parcel_summary(parcel_id: str) -> dict[str, Any]:
     parcel = ParcelInfo.query.filter_by(parcel_id=parcel_id).first()
     if parcel is None:
         raise StatisticsError("parcel_not_found", "地块不存在", 404)
-    return _parcel_response(parcel, _parcel_area_mu(parcel.parcel_id))
+    assessment, version = _calculated_grade(parcel)
+    return _parcel_response(parcel, _parcel_area_mu(parcel.parcel_id), assessment, version)
 
 
 def pick_parcel(longitude: Any, latitude: Any) -> dict[str, Any]:
@@ -423,4 +465,5 @@ def pick_parcel(longitude: Any, latitude: Any) -> dict[str, Any]:
     parcel = ParcelInfo.query.filter_by(parcel_id=selected["parcel_id"]).first() if selected else None
     if parcel is None:
         raise StatisticsError("parcel_not_found", "该位置未命中地块", 404)
-    return _parcel_response(parcel, float(selected["area_mu"]))
+    assessment, version = _calculated_grade(parcel)
+    return _parcel_response(parcel, float(selected["area_mu"]), assessment, version)

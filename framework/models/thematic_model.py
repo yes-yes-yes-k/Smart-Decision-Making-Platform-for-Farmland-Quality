@@ -69,7 +69,7 @@ class ModelExecutionLog(db.Model):
     area_code = db.Column(db.String(32), comment="对象所属区域编码")
     context_version = db.Column(db.Integer, comment="分析上下文版本")
     analysis_context_snapshot = db.Column(db.JSON, comment="分析上下文快照")
-    model_version = db.Column(db.String(32), comment="实际模型版本")
+    model_version = db.Column(db.String(128), comment="实际模型版本（可含制品哈希）")
     data_as_of = db.Column(db.String(32), comment="输入数据时点（调查年份或 ISO 日期）")
     data_version = db.Column(db.String(32), comment="输入数据版本")
     layer_id = db.Column(db.BigInteger, db.ForeignKey("spatial_data_layer.id", name="fk_model_execution_log_layer_id"), comment="关联 spatial_data_layer.id")
@@ -527,6 +527,58 @@ class ModelVersionHistory(db.Model):
     __table_args__ = (
         db.Index("idx_model_version_history_agent_id", "agent_id"),
         db.Index("idx_model_version_history_version", "version"),
+    )
+
+
+class VersionedModelResult(db.Model):
+    """All model consumers read the same immutable, versioned calculation row.
+
+    The model-specific result tables remain execution/audit records.  This table
+    is the publication layer used by maps, agents and reports.  Recalculation
+    creates a new row and atomically moves ``is_current`` to that row; published
+    rows are never updated in place.
+    """
+
+    __tablename__ = "versioned_model_result"
+
+    id = db.Column(
+        db.BigInteger().with_variant(db.Integer, "sqlite"),
+        primary_key=True,
+        autoincrement=True,
+    )
+    agent_id = db.Column(db.String(32), nullable=False, comment="model-1 ~ model-6")
+    model_id = db.Column(db.String(64), nullable=False, comment="规范模型标识")
+    subject_type = db.Column(db.String(16), nullable=False, comment="parcel/scenario/region")
+    subject_id = db.Column(db.String(64), nullable=False, comment="计算对象唯一标识")
+    area_code = db.Column(db.String(32), comment="对象所属区域编码")
+    model_version = db.Column(db.String(32), nullable=False, comment="计算实现版本")
+    coefficient_version = db.Column(db.String(32), comment="参数或系数版本")
+    input_hash = db.Column(db.String(64), nullable=False, comment="规范输入 SHA-256")
+    input_snapshot = db.Column(db.JSON, nullable=False, comment="参与指纹计算的输入快照")
+    result_payload = db.Column(db.JSON, nullable=False, comment="规范模型执行结果")
+    status = db.Column(db.String(16), nullable=False, comment="ok/success/degraded/error")
+    is_current = db.Column(
+        db.Boolean, nullable=False, server_default="true", comment="当前发布结果"
+    )
+    calculated_at = db.Column(
+        db.DateTime(timezone=True), nullable=False, comment="实际完成计算时间"
+    )
+    created_at = db.Column(
+        db.DateTime(timezone=True),
+        nullable=False,
+        server_default=db.func.current_timestamp(),
+    )
+
+    __table_args__ = (
+        db.UniqueConstraint(
+            "agent_id", "subject_type", "subject_id", "model_version", "input_hash",
+            name="uk_versioned_model_result_identity",
+        ),
+        db.Index(
+            "idx_versioned_model_result_current",
+            "agent_id", "subject_type", "subject_id", "is_current",
+        ),
+        db.Index("idx_versioned_model_result_input_hash", "input_hash"),
     )
 
 

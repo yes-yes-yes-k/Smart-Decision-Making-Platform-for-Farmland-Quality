@@ -5,26 +5,18 @@ from typing import Any
 from .contracts import EvidenceBundle, ReportPayload, ReportSection, TaskResult
 from .prompt_catalog import REPORTER_PROMPT
 from .structured_roles import StructuredRoleError
+from framework.domain.public_field_labels import (
+    PUBLIC_FIELD_LABELS,
+    public_field_label,
+    translate_public_text,
+)
 
 FACT_TOKEN=re.compile(r"\[\[fact:([a-z0-9_.-]+)\]\]")
 RAW_NUMBER=re.compile(r"(?<![a-zA-Z\[])\d+(?:\.\d+)?")
 REQUIRED_SECTION_IDS=("object-summary","execution-summary","quality","obstacles","conditional-specialty-results","priority-remediation","limitations","provenance")
 
 PUBLIC_TERM_LABELS={
-    "YTK":"土壤调理剂（亿土康）",
-    "MBNT":"木本泥炭",
-    "YXL":"有效磷",
-    "DXBW":"地形部位",
-    "SXJ":"速效钾",
-    "GGNL":"灌溉能力",
-    "SJD":"土壤酸碱度",
-    "PSNL":"排水能力",
-    "ZDGX":"质地构型",
-    "YJZ":"有机质",
-    "TRRZ":"土壤容重",
-    "YXTCHD":"有效土层厚度",
-    "GCHD":"耕层厚度",
-    "GCZD":"耕层质地",
+    **PUBLIC_FIELD_LABELS,
     "model-2":"耕地质量评价",
     "model-3":"障碍因素诊断",
     "model-4":"酸化改良测算",
@@ -53,6 +45,7 @@ def user_facing_text(text:str,*,fallback:str="相关分析已完成，以下结�
         if PRIVATE_WORKFLOW_LINE.search(line):
             continue
         line=STATUS_MARKER.sub("",line)
+        line=translate_public_text(line)
         for technical,label in PUBLIC_TERM_LABELS.items():
             line=re.sub(rf"(?<![A-Za-z0-9_-]){re.escape(technical)}(?![A-Za-z0-9_-])",label,line,flags=re.IGNORECASE)
         visible.append(line.rstrip())
@@ -140,7 +133,7 @@ class Reporter:
         def translated_factors(values: Any) -> str:
             if not isinstance(values, (list, tuple)):
                 return ""
-            labels = [PUBLIC_TERM_LABELS.get(str(value), str(value)) for value in values]
+            labels = [public_field_label(value) for value in values]
             return "、".join(labels)
 
         quality = by_agent.get("model-2")
