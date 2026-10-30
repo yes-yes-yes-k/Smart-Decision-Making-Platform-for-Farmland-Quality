@@ -22,6 +22,7 @@ R1 = ROOT / "artifacts/knowledge_platform/retrieval-quality-r1"
 CASES = R1 / "r0-20261030/query-cases.json"
 INPUTS = R1 / "r0-20261030/query-inputs.json"
 SOURCE_RUN = R1 / "r1-r2-20261030-v1"
+TRANSFER = R1 / "span-transfer-20261031-v1/span-transfer.json"
 
 
 def sha256(path: Path) -> str:
@@ -38,6 +39,13 @@ def load_vectors():
             raise ValueError("query_vector_version_mismatch")
         cache[item["payload"]["input"][0]] = saved["embedding"]
     return manifest, cache
+
+
+def load_transfer() -> dict:
+    if not TRANSFER.exists():
+        return {}
+    data = json.loads(TRANSFER.read_text(encoding="utf-8"))
+    return {(row["document_id"], row["old_chunk_index"]): row for row in data.get("rows", [])}
 
 
 def load_parse_index() -> dict:
@@ -85,7 +93,7 @@ def locate(text: str, quote: str):
             "normalized": True}
 
 
-def evaluate_case(case, response, limit, parse_index=None):
+def evaluate_case(case, response, limit, parse_index=None, transfer=None):
     """Locate each reference quote in the returned window.
 
     R2.1 re-parsed part of the corpus, so the frozen M1 chunk indexes no longer
@@ -108,15 +116,20 @@ def evaluate_case(case, response, limit, parse_index=None):
             document_id = reference["document_id"]
             mapped_document = document_id in (parse_index or {})
             current, current_match = None, None
-            for chunk_index, content in (parse_index or {}).get(document_id, []):
-                match = locate(content, quote)
-                if match:
-                    current, current_match = chunk_index, match
-                    break
-            if not mapped_document:
+            transfer_row = (transfer or {}).get((document_id, reference["chunk_index"]))
+            if transfer_row and transfer_row.get("chunk_index") is not None:
+                current = transfer_row["chunk_index"]
+                current_match = {"start": transfer_row.get("start", 0), "normalized": False}
+            elif not mapped_document:
                 # No re-parse for this document: the frozen chunk index still applies.
                 current = reference["chunk_index"]
                 current_match = {"start": reference.get("start", 0), "normalized": False}
+            else:
+                for chunk_index, content in (parse_index or {}).get(document_id, []):
+                    match = locate(content, quote)
+                    if match:
+                        current, current_match = chunk_index, match
+                        break
             hits = []
             for rank, source in enumerate(sources, start=1):
                 if source.get("document_id") != document_id:
@@ -150,6 +163,9 @@ def evaluate_case(case, response, limit, parse_index=None):
                          "current_start": positions[0],
                          "position_unchanged": unchanged,
                          "whitespace_normalized_match": normalized,
+                         "transfer_method": (transfer_row or {}).get("method"),
+                         "transfer_coverage": (transfer_row or {}).get("coverage"),
+                         "transfer_mapped": (transfer_row or {}).get("mapped"),
                          "chunk_sha_changed": (source.get("publication") or {}).get("content_sha256") != reference.get("content_sha256"),
                          "role": reference.get("role")})
         passed = any(row["status"].startswith("in_top5") for row in rows)
@@ -189,6 +205,7 @@ def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--run-id", default="r14-20261031-v1")
     parser.add_argument("--limit", type=int, default=20)
+    parser.add_argument("--rerank", choices=("none", "answerability"), default="none")
     args = parser.parse_args()
 
     out = R1 / args.run_id
@@ -247,7 +264,8 @@ def main() -> int:
     with source.engine.connect() as connection:
         actor_id = connection.execute(sa.text("SELECT id FROM sys_user WHERE status=1 ORDER BY id LIMIT 1")).scalar_one()
     service = ResearchService(ResearchStore(engine), source,
-                              corpus_search=PublishedCorpusSearch(vector_store, source))
+                              corpus_search=PublishedCorpusSearch(vector_store, source,
+                                                             rerank=None if args.rerank == "none" else args.rerank))
     app = create_evidence_app(service, source.actor, jwt_secret=os.urandom(48).hex())
     with app.app_context():
         token = create_access_token(identity=str(actor_id))
@@ -271,7 +289,8 @@ def main() -> int:
 
         by_id = {c["id"]: c for c in cases["cases"]}
         parse_index = load_parse_index()
-        evaluated = [evaluate_case(by_id[case["id"]], payload, args.limit, parse_index)
+        transfer = load_transfer()
+        evaluated = [evaluate_case(by_id[case["id"]], payload, args.limit, parse_index, transfer)
                      for case, payload in zip(inputs["cases"], results)]
     finally:
         source.close()
@@ -285,9 +304,10 @@ def main() -> int:
                 for case in evaluated}
     report = {"captured_at_utc": datetime.now(timezone.utc).isoformat(),
               "state": "completed_real_interface_baseline",
-              "run_id": args.run_id, "limit": args.limit,
+              "run_id": args.run_id, "limit": args.limit, "rerank": args.rerank,
               "inputs": {"query_cases_sha256": sha256(CASES), "query_inputs_sha256": sha256(INPUTS),
                          "embedding_manifest_sha256": sha256(SOURCE_RUN / "embedding-request-manifest-v2.json"),
+                         "span_transfer_sha256": sha256(TRANSFER) if TRANSFER.exists() else None,
                          "isolated_clone": clone.relative_to(ROOT).as_posix()},
               "index_load_seconds": round(index_seconds, 3),
               "query_vectors_used": len(set(used)), "additional_model_calls": 0,

@@ -76,9 +76,12 @@ def _support(conditions):
 
 
 class PublishedCorpusSearch:
-    def __init__(self, vector_store, current_sources, *, enhance_recall=True):
+    def __init__(self, vector_store, current_sources, *, enhance_recall=True, rerank=None):
         self.vector_store, self.current_sources = vector_store, current_sources
         self.enhance_recall = enhance_recall
+        if rerank not in (None, "answerability"):
+            raise ValueError("unknown_rerank_strategy")
+        self.rerank = rerank
 
     def search(self, owner_id, request):
         if not isinstance(request, dict):
@@ -160,6 +163,10 @@ class PublishedCorpusSearch:
                 "publication": _publication(meta["document_id"], live, scope), "support": _support(conditions),
                 "conditions": conditions})
         rejected = len(candidates)-survived
+        rerank_trace = None
+        if self.rerank == "answerability":
+            from framework.knowledge_graph.answerability_rerank import rerank_values
+            values, rerank_trace = rerank_values(query, values)
         documents = rank_documents(values)
         return {"state": "completed" if not rejected and trace.get("mode") == "hybrid" else "partial", "sources": values[:limit],
             "documents": documents[:limit], "document_ranking": "document_rrf_over_current_verified_candidates",
@@ -178,7 +185,8 @@ class PublishedCorpusSearch:
                 "excluded_unknown": excluded_unknown,
                 "mismatch_detection": "not_derivable_from_single_chunk_text",
                 "unknown_not_treated_as_match": True},
-            "comparison_scope_is_separate": True}
+            "comparison_scope_is_separate": True,
+            **({"rerank": rerank_trace} if rerank_trace is not None else {})}
 
     def read_chunk(self, owner_id, document_id, index, expected_sha):
         live = self.current_sources.lookup_many([document_id], owner_id, require_academic=False).get(document_id)

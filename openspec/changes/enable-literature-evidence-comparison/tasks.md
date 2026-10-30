@@ -142,3 +142,11 @@ R1.2仍未勾选：本次没有调整检索、排序或去重。后续先分别�
 同时修复环境缺陷：沙箱`%TEMP%`不可写导致Chroma向量路静默降级为纯词法（`retrieval.mode=degraded`），脚本现显式钉住临时目录；该降级只能在`mode`字段发现，建议纳入告警。
 
 勾选表示基线已执行并逐项报告，**不表示质量门槛通过**；R4.3的验收仍未完成。完整结果见[基线报告](../../../docs/knowledge-engineering-r14-baseline-results-v1.md)。
+
+## R2.1跨度转移补齐与块级重排（2026-10-31）
+
+**跨度转移**：新增`framework/knowledge_graph/span_transfer.py`，按"页锚点→精确→空白/标点归一→字符对齐→分段回退"把冻结引用映射到重解析后的块。21条重解析文档的参考证据中，完整映射14条（exact 5、normalized 9）、部分定位5条（覆盖率0.34—0.72）、不可映射2条。不可映射与部分定位反映重解析文本的实质差异，保留不猜。产物`span-transfer-20261031-v1`，零模型调用。接入后R1.4的"无法定位"由7条降到1条，但"未进前20窗口"由17条升到23条——**转移解决定位，不解决排序**。
+
+**块级可答性重排**：新增`framework/knowledge_graph/answerability_rerank.py`，以问题概念覆盖、结果数值、效应方向、条件线索与噪声惩罚打分，稳定排序、不改召回集合、不使用评测答案，仅作为`PublishedCorpusSearch(rerank="answerability")`的可选策略，生产默认关闭。同一冻结用例对照：支持前5由0/12升到1/12（U1.SOC第2名），U1.time第7名；其余10个子问题证据不在候选池，重排无效。文档级门槛仍9/9，单例17—31秒，无新增模型调用。
+
+结论：瓶颈已从排序转到**块级召回**（21条证据不在60候选内）。重排是否上线留待R4.1作为独立变量评估；R4.3验收仍未完成。结果见[跨度转移](knowledge-engineering-r21-span-transfer-results-v1.md)与[重排对照](knowledge-engineering-r14-answerability-rerank-results-v1.md)。
