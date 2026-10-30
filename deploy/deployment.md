@@ -2,6 +2,9 @@
 
 耕地土壤酸化治理智能问答系统的生产环境部署文档。
 
+增量知识图谱的架构、审核、容量、指标和事故回滚流程见
+[`docs/knowledge-platform-operations.md`](../docs/knowledge-platform-operations.md)。
+
 ## 架构概览
 
 ```
@@ -55,6 +58,45 @@ JWT_SECRET_KEY=替换为另一个随机生成的密钥
 # SiliconFlow LLM
 SILICONFLOW_API_KEY=sk-替换为实际API密钥
 ```
+
+#### 2.1 启用 CAJ 论文解析
+
+CAJ 文件会先通过 `caj2pdf` 转换成临时 PDF，再进入现有的文本、表格和 OCR
+解析链路。安装兼容 `caj2pdf convert input.caj -o output.pdf` 命令行接口的
+转换器，并将其加入服务账户的 `PATH`；也可以在 `.env` 中配置绝对路径：
+
+```ini
+CAJ_CONVERTER_PATH=C:\tools\caj2pdf\caj2pdf.exe
+CAJ_CONVERTER_TIMEOUT=300
+LITERATURE_RETAIN_DERIVED_PDF=false
+INGESTION_WORKERS=2
+INGESTION_MAX_QUEUED=100
+```
+
+若使用 Python 脚本，可将 `CAJ_CONVERTER_PATH` 指向 `caj2pdf.py`，系统会用
+当前 Python 解释器启动。部署后请使用一份真实 CAJ 样本做上传验收；转换器
+缺失、超时或未生成有效 PDF 时，文档状态会进入“处理失败”，不会写入空索引。
+默认仅保留原始 CAJ、派生文件哈希和转换溯源；如确需长期保留受管派生 PDF，
+将 `LITERATURE_RETAIN_DERIVED_PDF` 设置为 `true`。
+
+管理员批次 API 只接受预注册 staging token。使用 JSON 对象配置 token 与绝对目录：
+
+```ini
+LITERATURE_STAGING_ROOTS_JSON={"initial":"D:\\staging\\papers"}
+```
+
+部署后先执行只读预检：
+
+```bash
+python scripts/generate_literature_manifest.py --source-root D:\staging\papers --domain-map D:\staging\domain-map.json --output D:\staging\papers\manifest.jsonl
+python scripts/import_literature_batch.py --source-root D:\staging\papers --manifest manifest.jsonl --dry-run
+```
+
+manifest 使用 JSONL，每项包含 `schema_version: "1.0"`、相对 `path`、稳定
+`item_key`、`document_kind` 和至少一个显式 `domain_labels`。生成器只创建候选清单，
+不会写数据库或向量库；应先人工检查缺失映射和候选元数据，再执行 dry-run。
+正式执行使用 `--execute --batch-key <key> --actor-id <admin-id>`；服务重启后可使用
+`python scripts/import_literature_batch.py --resume --batch-key <key>` 恢复未完成项目。
 
 ### 3. 初始化应用数据库表
 

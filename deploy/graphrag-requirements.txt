@@ -1,0 +1,2 @@
+# Install into an isolated venv, not the API environment.
+graphrag==3.3.0
