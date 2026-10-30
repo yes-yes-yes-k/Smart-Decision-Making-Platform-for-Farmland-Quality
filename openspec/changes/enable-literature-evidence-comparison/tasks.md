@@ -150,3 +150,11 @@ R1.2仍未勾选：本次没有调整检索、排序或去重。后续先分别�
 **块级可答性重排**：新增`framework/knowledge_graph/answerability_rerank.py`，以问题概念覆盖、结果数值、效应方向、条件线索与噪声惩罚打分，稳定排序、不改召回集合、不使用评测答案，仅作为`PublishedCorpusSearch(rerank="answerability")`的可选策略，生产默认关闭。同一冻结用例对照：支持前5由0/12升到1/12（U1.SOC第2名），U1.time第7名；其余10个子问题证据不在候选池，重排无效。文档级门槛仍9/9，单例17—31秒，无新增模型调用。
 
 结论：瓶颈已从排序转到**块级召回**（21条证据不在60候选内）。重排是否上线留待R4.1作为独立变量评估；R4.3验收仍未完成。结果见[跨度转移](knowledge-engineering-r21-span-transfer-results-v1.md)与[重排对照](knowledge-engineering-r14-answerability-rerank-results-v1.md)。
+
+## R1.4意图拆解离线探针（2026-10-31）
+
+在词法链路上做零成本探针（`scripts/probe_intent_decomposition_offline.py`，12,727份文件？否——仅enterprise_kb词法索引，模型调用0）：基线原问题词法前60仅命中24条参考证据中的2条；概念AND/措施+指标/关键词OR四类变体合并后，前60命中升到7条（+250%），变体预算放到200只多1条；16条证据在任何变体任何深度都不出现。
+
+结论：拆解有效但词法侧已到顶，剩下2/3证据不可由此路召回；是否上调候选预算取决于向量侧可达性，而现在无法判断。上调预算暂不执行。
+
+待授权：12条子问题各一次嵌入（合计153字，约100token），用于测"子问题级向量召回+词法并集"的60候选覆盖率。报告见[意图拆解探针](knowledge-engineering-r14-intent-decomposition-probe-v1.md)。
