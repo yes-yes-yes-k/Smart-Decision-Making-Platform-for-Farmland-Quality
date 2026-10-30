@@ -117,7 +117,7 @@ CREATE TABLE model_execution_log (
   area_code VARCHAR(32),
   context_version INTEGER,
   analysis_context_snapshot JSONB,
-  model_version VARCHAR(32),
+  model_version VARCHAR(128),
   data_as_of VARCHAR(32),
   data_version VARCHAR(32),
   layer_id BIGINT,
@@ -324,6 +324,34 @@ CREATE UNIQUE INDEX uk_quality_grade_result_execution_id ON quality_grade_result
 CREATE INDEX idx_quality_grade_result_parcel_id ON quality_grade_result (parcel_id);
 CREATE INDEX idx_quality_grade_result_quality_grade ON quality_grade_result (quality_grade);
 CREATE INDEX idx_quality_grade_result_geom ON quality_grade_result USING GIST (geom);
+
+-- Unified immutable publication layer for Model-1 .. Model-6.  Model-specific
+-- result tables above remain execution audit details; every product surface
+-- reads this table by (agent_id, subject_type, subject_id, is_current).
+CREATE TABLE IF NOT EXISTS versioned_model_result (
+  id BIGSERIAL PRIMARY KEY,
+  agent_id VARCHAR(32) NOT NULL,
+  model_id VARCHAR(64) NOT NULL,
+  subject_type VARCHAR(16) NOT NULL,
+  subject_id VARCHAR(64) NOT NULL,
+  area_code VARCHAR(32),
+  model_version VARCHAR(32) NOT NULL,
+  coefficient_version VARCHAR(32),
+  input_hash VARCHAR(64) NOT NULL,
+  input_snapshot JSONB NOT NULL,
+  result_payload JSONB NOT NULL,
+  status VARCHAR(16) NOT NULL,
+  is_current BOOLEAN NOT NULL DEFAULT TRUE,
+  calculated_at TIMESTAMPTZ NOT NULL,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  CONSTRAINT uk_versioned_model_result_identity UNIQUE
+    (agent_id, subject_type, subject_id, model_version, input_hash)
+);
+CREATE INDEX idx_versioned_model_result_current ON versioned_model_result
+  (agent_id, subject_type, subject_id, is_current);
+CREATE UNIQUE INDEX uk_versioned_model_result_one_current ON versioned_model_result
+  (agent_id, subject_type, subject_id) WHERE is_current = TRUE;
+CREATE INDEX idx_versioned_model_result_input_hash ON versioned_model_result (input_hash);
 
 -- =============================================================================
 -- §8.7  obstacle_diagnosis_result (Model-3, FK → model_execution_log)
@@ -757,6 +785,8 @@ CREATE UNIQUE INDEX uk_parcel_info_legacy_parcel_code ON parcel_info (legacy_par
 CREATE INDEX idx_parcel_info_legacy_parcel_code ON parcel_info (legacy_parcel_code);
 CREATE INDEX idx_parcel_info_area_code ON parcel_info (area_code);
 CREATE INDEX idx_parcel_info_geom ON parcel_info USING GIST (geom);
+CREATE INDEX idx_parcel_info_geom_geography ON parcel_info
+  USING GIST ((geom::geography)) WHERE geom IS NOT NULL;
 
 -- =============================================================================
 -- §8.15  model_version_history（FK → thematic_model_registry）

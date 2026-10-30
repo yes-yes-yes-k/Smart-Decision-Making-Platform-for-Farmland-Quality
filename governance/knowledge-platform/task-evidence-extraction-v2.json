@@ -1,0 +1,599 @@
+{
+  "schema_version": "task-evidence-extraction-v2",
+  "offsets": "zero_based_unicode_codepoints_end_exclusive",
+  "enumeration": {
+    "type": "object",
+    "properties": {
+      "studies": {
+        "type": "array",
+        "maxItems": 40,
+        "items": {
+          "type": "object",
+          "properties": {
+            "id": {
+              "type": "string",
+              "pattern": "^[A-Za-z][A-Za-z0-9_-]{0,63}$"
+            },
+            "kind": {
+              "enum": [
+                "primary_experiment",
+                "review_cited_study",
+                "observational",
+                "modeling",
+                "unknown"
+              ]
+            },
+            "context": {
+              "type": "array",
+              "minItems": 1,
+              "maxItems": 12,
+              "items": {
+                "type": "object",
+                "properties": {
+                  "chunk_index": {
+                    "type": "integer",
+                    "minimum": 0
+                  },
+                  "start": {
+                    "type": "integer",
+                    "minimum": 0
+                  },
+                  "end": {
+                    "type": "integer",
+                    "minimum": 1
+                  },
+                  "quote": {
+                    "type": "string",
+                    "minLength": 1
+                  }
+                },
+                "required": [
+                  "chunk_index",
+                  "start",
+                  "end",
+                  "quote"
+                ],
+                "additionalProperties": false
+              }
+            },
+            "attribution": {
+              "anyOf": [
+                {
+                  "type": "object",
+                  "properties": {
+                    "chunk_index": {
+                      "type": "integer",
+                      "minimum": 0
+                    },
+                    "start": {
+                      "type": "integer",
+                      "minimum": 0
+                    },
+                    "end": {
+                      "type": "integer",
+                      "minimum": 1
+                    },
+                    "quote": {
+                      "type": "string",
+                      "minLength": 1
+                    }
+                  },
+                  "required": [
+                    "chunk_index",
+                    "start",
+                    "end",
+                    "quote"
+                  ],
+                  "additionalProperties": false
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            }
+          },
+          "required": [
+            "id",
+            "kind",
+            "context",
+            "attribution"
+          ],
+          "additionalProperties": false
+        }
+      },
+      "entities": {
+        "type": "array",
+        "maxItems": 200,
+        "items": {
+          "type": "object",
+          "properties": {
+            "id": {
+              "type": "string",
+              "pattern": "^[A-Za-z][A-Za-z0-9_-]{0,63}$"
+            },
+            "study_id": {
+              "type": "string",
+              "pattern": "^[A-Za-z][A-Za-z0-9_-]{0,63}$"
+            },
+            "entity_type": {
+              "enum": [
+                "measure",
+                "indicator",
+                "soil",
+                "crop",
+                "condition",
+                "location"
+              ]
+            },
+            "mention": {
+              "type": "object",
+              "properties": {
+                "chunk_index": {
+                  "type": "integer",
+                  "minimum": 0
+                },
+                "start": {
+                  "type": "integer",
+                  "minimum": 0
+                },
+                "end": {
+                  "type": "integer",
+                  "minimum": 1
+                },
+                "quote": {
+                  "type": "string",
+                  "minLength": 1
+                }
+              },
+              "required": [
+                "chunk_index",
+                "start",
+                "end",
+                "quote"
+              ],
+              "additionalProperties": false
+            }
+          },
+          "required": [
+            "id",
+            "study_id",
+            "entity_type",
+            "mention"
+          ],
+          "additionalProperties": false
+        }
+      }
+    },
+    "required": [
+      "studies",
+      "entities"
+    ],
+    "additionalProperties": false
+  },
+  "decision": {
+    "type": "object",
+    "properties": {
+      "relations": {
+        "type": "array",
+        "maxItems": 200,
+        "items": {
+          "type": "object",
+          "properties": {
+            "id": {
+              "type": "string",
+              "pattern": "^[A-Za-z][A-Za-z0-9_-]{0,63}$"
+            },
+            "study_id": {
+              "type": "string",
+              "pattern": "^[A-Za-z][A-Za-z0-9_-]{0,63}$"
+            },
+            "relation_type": {
+              "const": "reports_effect"
+            },
+            "source_id": {
+              "type": "string",
+              "pattern": "^[A-Za-z][A-Za-z0-9_-]{0,63}$"
+            },
+            "target_id": {
+              "type": "string",
+              "pattern": "^[A-Za-z][A-Za-z0-9_-]{0,63}$"
+            },
+            "result": {
+              "type": "object",
+              "properties": {
+                "chunk_index": {
+                  "type": "integer",
+                  "minimum": 0
+                },
+                "start": {
+                  "type": "integer",
+                  "minimum": 0
+                },
+                "end": {
+                  "type": "integer",
+                  "minimum": 1
+                },
+                "quote": {
+                  "type": "string",
+                  "minLength": 1
+                }
+              },
+              "required": [
+                "chunk_index",
+                "start",
+                "end",
+                "quote"
+              ],
+              "additionalProperties": false
+            },
+            "direction": {
+              "enum": [
+                "increase",
+                "decrease",
+                "no_significant_change",
+                "mixed",
+                "uncertain",
+                "not_reported"
+              ]
+            },
+            "qualifiers": {
+              "type": "object",
+              "properties": {
+                "soil_type": {
+                  "anyOf": [
+                    {
+                      "type": "object",
+                      "properties": {
+                        "chunk_index": {
+                          "type": "integer",
+                          "minimum": 0
+                        },
+                        "start": {
+                          "type": "integer",
+                          "minimum": 0
+                        },
+                        "end": {
+                          "type": "integer",
+                          "minimum": 1
+                        },
+                        "quote": {
+                          "type": "string",
+                          "minLength": 1
+                        }
+                      },
+                      "required": [
+                        "chunk_index",
+                        "start",
+                        "end",
+                        "quote"
+                      ],
+                      "additionalProperties": false
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "conditions": {
+                  "anyOf": [
+                    {
+                      "type": "object",
+                      "properties": {
+                        "chunk_index": {
+                          "type": "integer",
+                          "minimum": 0
+                        },
+                        "start": {
+                          "type": "integer",
+                          "minimum": 0
+                        },
+                        "end": {
+                          "type": "integer",
+                          "minimum": 1
+                        },
+                        "quote": {
+                          "type": "string",
+                          "minLength": 1
+                        }
+                      },
+                      "required": [
+                        "chunk_index",
+                        "start",
+                        "end",
+                        "quote"
+                      ],
+                      "additionalProperties": false
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "dose": {
+                  "anyOf": [
+                    {
+                      "type": "object",
+                      "properties": {
+                        "chunk_index": {
+                          "type": "integer",
+                          "minimum": 0
+                        },
+                        "start": {
+                          "type": "integer",
+                          "minimum": 0
+                        },
+                        "end": {
+                          "type": "integer",
+                          "minimum": 1
+                        },
+                        "quote": {
+                          "type": "string",
+                          "minLength": 1
+                        }
+                      },
+                      "required": [
+                        "chunk_index",
+                        "start",
+                        "end",
+                        "quote"
+                      ],
+                      "additionalProperties": false
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "duration": {
+                  "anyOf": [
+                    {
+                      "type": "object",
+                      "properties": {
+                        "chunk_index": {
+                          "type": "integer",
+                          "minimum": 0
+                        },
+                        "start": {
+                          "type": "integer",
+                          "minimum": 0
+                        },
+                        "end": {
+                          "type": "integer",
+                          "minimum": 1
+                        },
+                        "quote": {
+                          "type": "string",
+                          "minLength": 1
+                        }
+                      },
+                      "required": [
+                        "chunk_index",
+                        "start",
+                        "end",
+                        "quote"
+                      ],
+                      "additionalProperties": false
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "effect_size": {
+                  "anyOf": [
+                    {
+                      "type": "object",
+                      "properties": {
+                        "chunk_index": {
+                          "type": "integer",
+                          "minimum": 0
+                        },
+                        "start": {
+                          "type": "integer",
+                          "minimum": 0
+                        },
+                        "end": {
+                          "type": "integer",
+                          "minimum": 1
+                        },
+                        "quote": {
+                          "type": "string",
+                          "minLength": 1
+                        }
+                      },
+                      "required": [
+                        "chunk_index",
+                        "start",
+                        "end",
+                        "quote"
+                      ],
+                      "additionalProperties": false
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "unit": {
+                  "anyOf": [
+                    {
+                      "type": "object",
+                      "properties": {
+                        "chunk_index": {
+                          "type": "integer",
+                          "minimum": 0
+                        },
+                        "start": {
+                          "type": "integer",
+                          "minimum": 0
+                        },
+                        "end": {
+                          "type": "integer",
+                          "minimum": 1
+                        },
+                        "quote": {
+                          "type": "string",
+                          "minLength": 1
+                        }
+                      },
+                      "required": [
+                        "chunk_index",
+                        "start",
+                        "end",
+                        "quote"
+                      ],
+                      "additionalProperties": false
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "negation": {
+                  "anyOf": [
+                    {
+                      "type": "object",
+                      "properties": {
+                        "chunk_index": {
+                          "type": "integer",
+                          "minimum": 0
+                        },
+                        "start": {
+                          "type": "integer",
+                          "minimum": 0
+                        },
+                        "end": {
+                          "type": "integer",
+                          "minimum": 1
+                        },
+                        "quote": {
+                          "type": "string",
+                          "minLength": 1
+                        }
+                      },
+                      "required": [
+                        "chunk_index",
+                        "start",
+                        "end",
+                        "quote"
+                      ],
+                      "additionalProperties": false
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "uncertainty": {
+                  "anyOf": [
+                    {
+                      "type": "object",
+                      "properties": {
+                        "chunk_index": {
+                          "type": "integer",
+                          "minimum": 0
+                        },
+                        "start": {
+                          "type": "integer",
+                          "minimum": 0
+                        },
+                        "end": {
+                          "type": "integer",
+                          "minimum": 1
+                        },
+                        "quote": {
+                          "type": "string",
+                          "minLength": 1
+                        }
+                      },
+                      "required": [
+                        "chunk_index",
+                        "start",
+                        "end",
+                        "quote"
+                      ],
+                      "additionalProperties": false
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "comparator": {
+                  "anyOf": [
+                    {
+                      "type": "object",
+                      "properties": {
+                        "chunk_index": {
+                          "type": "integer",
+                          "minimum": 0
+                        },
+                        "start": {
+                          "type": "integer",
+                          "minimum": 0
+                        },
+                        "end": {
+                          "type": "integer",
+                          "minimum": 1
+                        },
+                        "quote": {
+                          "type": "string",
+                          "minLength": 1
+                        }
+                      },
+                      "required": [
+                        "chunk_index",
+                        "start",
+                        "end",
+                        "quote"
+                      ],
+                      "additionalProperties": false
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                }
+              },
+              "required": [
+                "soil_type",
+                "conditions",
+                "dose",
+                "duration",
+                "effect_size",
+                "unit",
+                "negation",
+                "uncertainty",
+                "comparator"
+              ],
+              "additionalProperties": false
+            }
+          },
+          "required": [
+            "id",
+            "study_id",
+            "relation_type",
+            "source_id",
+            "target_id",
+            "result",
+            "direction",
+            "qualifiers"
+          ],
+          "additionalProperties": false
+        }
+      }
+    },
+    "required": [
+      "relations"
+    ],
+    "additionalProperties": false
+  },
+  "identity_binding": [
+    "document_id",
+    "document_sha256",
+    "parse_version",
+    "chunk_set_version"
+  ],
+  "semantic_review_required": true,
+  "automatic_publication_allowed": false
+}

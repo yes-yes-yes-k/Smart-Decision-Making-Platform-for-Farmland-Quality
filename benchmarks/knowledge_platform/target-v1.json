@@ -1,0 +1,40 @@
+{
+  "benchmark_version": "knowledge-platform-target-v1",
+  "synthetic_only": true,
+  "capacity": {
+    "source_documents": 100000,
+    "canonical_entities": 100000,
+    "relation_evidence": 1000000,
+    "queued_jobs": 100000,
+    "increment_documents_max": 10000
+  },
+  "query_profile": {
+    "max_hops": 2,
+    "top_k": 100,
+    "p95_ms_max": 1000,
+    "excludes": ["llm_generation", "vector_chunk_body_fetch"]
+  },
+  "release_profile": {
+    "activate_seconds_max": 60,
+    "rollback_seconds_max": 60,
+    "vector_retrieval_must_remain_available": true
+  },
+  "correctness": {
+    "single_document_full_graph_scan_allowed": false,
+    "duplicate_business_effects_allowed": false,
+    "task_count_conservation_required": true,
+    "backup_restore_verification_required": true
+  },
+  "run_metadata_required": [
+    "hardware",
+    "operating_system",
+    "postgresql_version",
+    "apache_age_version",
+    "schema_version",
+    "indexes",
+    "worker_concurrency",
+    "data_distribution",
+    "started_at",
+    "finished_at"
+  ]
+}

@@ -1,0 +1,12 @@
+{
+  "hardware": null,
+  "operating_system": null,
+  "postgresql_version": null,
+  "apache_age_version": null,
+  "schema_version": "minimal-cultivated-land-kg-schema-v1",
+  "indexes": null,
+  "worker_concurrency": null,
+  "data_distribution": null,
+  "started_at": null,
+  "finished_at": null
+}
