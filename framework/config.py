@@ -54,9 +54,11 @@ class Config:
     JWT_ACCESS_TOKEN_EXPIRES = 24 * 60 * 60
 
     SILICONFLOW_API_KEY = os.environ.get('SILICONFLOW_API_KEY', '')
-    SILICONFLOW_CHAT_MODEL = os.environ.get('SILICONFLOW_CHAT_MODEL') or 'deepseek-ai/DeepSeek-V3'
+    SILICONFLOW_CHAT_MODEL = os.environ.get('SILICONFLOW_CHAT_MODEL') or 'deepseek-ai/DeepSeek-V4.1-Flash'
     SILICONFLOW_EMBED_MODEL = os.environ.get('SILICONFLOW_EMBED_MODEL') or 'BAAI/bge-m3'
     SILICONFLOW_EMBED_BATCH_SIZE = int(os.environ.get('SILICONFLOW_EMBED_BATCH_SIZE') or 32)
+    SILICONFLOW_EMBED_MAX_RETRIES = int(os.environ.get('SILICONFLOW_EMBED_MAX_RETRIES') or 3)
+    SILICONFLOW_EMBED_RETRY_BACKOFF = float(os.environ.get('SILICONFLOW_EMBED_RETRY_BACKOFF') or 1)
     SILICONFLOW_BASE_URL = os.environ.get('SILICONFLOW_BASE_URL') or 'https://api.siliconflow.cn/v1'
     # 聊天接口的整体时延由单次最终总结调用控制。DeepSeek-V4-Flash 公测期响应较慢，
     # 20s 会频繁触发超时降级导致"对话无法使用"；放宽到 90s 并允许 1 次重试。
@@ -65,6 +67,8 @@ class Config:
 
     CHROMA_PERSIST_DIR = os.environ.get('CHROMA_PERSIST_DIR') or './chroma_db'
     CHROMA_COLLECTION_NAME = os.environ.get('CHROMA_COLLECTION_NAME') or 'enterprise_kb'
+    # Explicit opt-in: this store is migrated separately, never at app startup.
+    LITERATURE_EVIDENCE_DATABASE_URI = os.environ.get("LITERATURE_EVIDENCE_DATABASE_URI") or None
 
     UPLOAD_FOLDER = os.environ.get('UPLOAD_FOLDER') or './uploads'
     MAX_CONTENT_LENGTH = 200 * 1024 * 1024  # 200MB，对齐 MAX_DATA_IMPORT_SIZE，允许数据导入大文件
@@ -72,6 +76,18 @@ class Config:
     CHUNK_SIZE = 800
     CHUNK_OVERLAP = 150
     PDF_OCR_THRESHOLD = 50  # 平均字符/页阈值，低于则触发 OCR 主路径
+    # CAJ 先由 caj2pdf 转换为临时 PDF，再复用 PDF/OCR 解析链路。
+    # 留空时从 PATH 查找 caj2pdf；也可配置为 caj2pdf 可执行文件或 caj2pdf.py 的绝对路径。
+    CAJ_CONVERTER_PATH = os.environ.get('CAJ_CONVERTER_PATH', '')
+    CAJ_CONVERTER_TIMEOUT = int(os.environ.get('CAJ_CONVERTER_TIMEOUT') or 300)
+    LITERATURE_RETAIN_DERIVED_PDF = (
+        os.environ.get('LITERATURE_RETAIN_DERIVED_PDF', 'false').lower() == 'true'
+    )
+    LITERATURE_STAGING_ROOTS_JSON = os.environ.get(
+        'LITERATURE_STAGING_ROOTS_JSON', '{}'
+    )
+    INGESTION_WORKERS = int(os.environ.get('INGESTION_WORKERS') or 2)
+    INGESTION_MAX_QUEUED = int(os.environ.get('INGESTION_MAX_QUEUED') or 100)
     RETRIEVAL_TOP_K = 5
     RECALL_TOP_K = int(os.environ.get("RECALL_TOP_K") or 20)      # 混合召回阶段候选数
     RRF_K = int(os.environ.get("RRF_K") or 60)                    # RRF 平滑常数
@@ -114,6 +130,14 @@ class Config:
     KG_FAIL_CLOSED_AUTHORITATIVE = os.environ.get(
         "KG_FAIL_CLOSED_AUTHORITATIVE", "true"
     ).lower() == "true"
+    # AGE stays opt-in until dual-read verification explicitly promotes it.
+    KG_GRAPH_STORE = os.environ.get("KG_GRAPH_STORE", "json").lower()
+    if KG_GRAPH_STORE not in {"json", "age"}:
+        raise ValueError("KG_GRAPH_STORE must be json or age")
+    KG_AGE_GRAPH_NAME = os.environ.get("KG_AGE_GRAPH_NAME", "cultivated_land_kg")
+    KG_AUDIT_EXPORT_DIR = os.environ.get("KG_AUDIT_EXPORT_DIR") or os.path.join(
+        PROJECT_ROOT, "artifacts", "knowledge_platform", "release_audits",
+    )
 
     MAX_CONCURRENT_MODELS = int(os.environ.get('MAX_CONCURRENT_MODELS') or '0')
 
