@@ -1,0 +1,799 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="文献智能入库、RAG 规范引用与增量知识图谱改造汇报：核心工作、真实语料验收、自动更新图谱及容量流水线。">
+  <title>文献智能入库与知识图谱流程改造汇报</title>
+  <style>
+    :root {
+      --ink: #162521;
+      --muted: #61716b;
+      --paper: #f6f4ed;
+      --surface: #fffefa;
+      --green: #176b55;
+      --green-deep: #0d4739;
+      --lime: #cbe471;
+      --sand: #eadfca;
+      --line: rgba(22, 37, 33, 0.12);
+      --shadow: 0 18px 50px rgba(19, 52, 43, 0.10);
+      --radius: 22px;
+      --max: 1180px;
+    }
+
+    * { box-sizing: border-box; }
+    html { scroll-behavior: smooth; }
+    body {
+      margin: 0;
+      color: var(--ink);
+      background:
+        radial-gradient(circle at 8% 4%, rgba(203, 228, 113, 0.22), transparent 25rem),
+        var(--paper);
+      font-family: "Microsoft YaHei", "PingFang SC", "Noto Sans CJK SC", system-ui, sans-serif;
+      line-height: 1.65;
+    }
+
+    a { color: inherit; }
+    button { font: inherit; }
+    .wrap { width: min(calc(100% - 40px), var(--max)); margin-inline: auto; }
+
+    .topbar {
+      position: sticky;
+      top: 0;
+      z-index: 10;
+      border-bottom: 1px solid rgba(255,255,255,.12);
+      background: rgba(13, 71, 57, .94);
+      backdrop-filter: blur(14px);
+      color: #fff;
+    }
+    .topbar-inner {
+      min-height: 62px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 24px;
+    }
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 11px;
+      font-weight: 800;
+      letter-spacing: .04em;
+      white-space: nowrap;
+    }
+    .brand-mark {
+      width: 28px;
+      height: 28px;
+      display: grid;
+      place-items: center;
+      border: 1px solid rgba(255,255,255,.4);
+      border-radius: 9px;
+      color: var(--lime);
+      font-size: 14px;
+    }
+    nav { display: flex; gap: 22px; font-size: 14px; color: rgba(255,255,255,.82); }
+    nav a { text-decoration: none; }
+    nav a:hover, nav a:focus-visible { color: var(--lime); }
+    .print-btn {
+      border: 1px solid rgba(255,255,255,.28);
+      border-radius: 999px;
+      padding: 7px 13px;
+      color: #fff;
+      background: transparent;
+      cursor: pointer;
+    }
+    .print-btn:hover { border-color: var(--lime); color: var(--lime); }
+
+    .hero {
+      position: relative;
+      overflow: hidden;
+      color: #fff;
+      background: var(--green-deep);
+      padding: 86px 0 78px;
+    }
+    .hero::before,
+    .hero::after {
+      content: "";
+      position: absolute;
+      border-radius: 999px;
+      pointer-events: none;
+    }
+    .hero::before {
+      width: 520px;
+      height: 520px;
+      right: -180px;
+      top: -250px;
+      border: 1px solid rgba(203,228,113,.25);
+      box-shadow: 0 0 0 74px rgba(203,228,113,.04), 0 0 0 148px rgba(203,228,113,.025);
+    }
+    .hero::after {
+      width: 230px;
+      height: 230px;
+      left: -110px;
+      bottom: -150px;
+      background: rgba(203,228,113,.08);
+    }
+    .eyebrow {
+      display: inline-flex;
+      align-items: center;
+      gap: 9px;
+      margin-bottom: 20px;
+      color: var(--lime);
+      font-size: 13px;
+      font-weight: 800;
+      letter-spacing: .16em;
+      text-transform: uppercase;
+    }
+    .eyebrow::before { content: ""; width: 28px; height: 2px; background: currentColor; }
+    h1 {
+      max-width: 900px;
+      margin: 0;
+      font-size: clamp(38px, 6vw, 74px);
+      line-height: 1.07;
+      letter-spacing: -.04em;
+    }
+    .hero-lead {
+      max-width: 780px;
+      margin: 25px 0 0;
+      color: rgba(255,255,255,.78);
+      font-size: clamp(17px, 2vw, 21px);
+    }
+    .hero-meta {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 12px 28px;
+      margin-top: 36px;
+      color: rgba(255,255,255,.62);
+      font-size: 13px;
+    }
+    .hero-meta strong { color: #fff; }
+
+    main { padding: 76px 0 92px; }
+    section { scroll-margin-top: 86px; }
+    section + section { margin-top: 96px; }
+    .section-head {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) minmax(260px, 430px);
+      align-items: end;
+      gap: 34px;
+      margin-bottom: 34px;
+    }
+    .kicker { color: var(--green); font-size: 13px; font-weight: 800; letter-spacing: .14em; }
+    h2 { margin: 7px 0 0; font-size: clamp(30px, 4vw, 48px); line-height: 1.16; letter-spacing: -.035em; }
+    .section-intro { margin: 0; color: var(--muted); }
+
+    .summary-band {
+      display: grid;
+      grid-template-columns: 1.05fr 1.95fr;
+      gap: 0;
+      overflow: hidden;
+      border-radius: var(--radius);
+      background: var(--surface);
+      box-shadow: var(--shadow);
+    }
+    .summary-title {
+      padding: 38px;
+      color: #fff;
+      background: var(--green);
+    }
+    .summary-title span { color: var(--lime); font-size: 13px; font-weight: 800; letter-spacing: .14em; }
+    .summary-title h3 { margin: 12px 0 0; font-size: 29px; line-height: 1.25; }
+    .summary-points {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 0;
+      margin: 0;
+      padding: 0;
+      list-style: none;
+    }
+    .summary-points li { padding: 34px 28px; border-left: 1px solid var(--line); }
+    .summary-points b { display: block; margin-bottom: 8px; color: var(--green-deep); font-size: 17px; }
+    .summary-points p { margin: 0; color: var(--muted); font-size: 14px; }
+
+    .work-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 18px;
+    }
+    .work-card {
+      display: grid;
+      grid-template-columns: 50px minmax(0, 1fr);
+      gap: 18px;
+      padding: 28px;
+      border: 1px solid var(--line);
+      border-radius: 18px;
+      background: rgba(255,254,250,.75);
+    }
+    .work-no {
+      width: 50px;
+      height: 50px;
+      display: grid;
+      place-items: center;
+      border-radius: 15px;
+      color: var(--green-deep);
+      background: rgba(203,228,113,.45);
+      font-weight: 900;
+    }
+    .work-card h3 { margin: 0 0 7px; font-size: 20px; }
+    .work-card p { margin: 0; color: var(--muted); font-size: 14px; }
+    .tag-row { display: flex; flex-wrap: wrap; gap: 7px; margin-top: 15px; }
+    .tag { padding: 4px 9px; border-radius: 999px; background: #eaf0e8; color: #476058; font-size: 12px; }
+
+    .flow-shell {
+      padding: 38px;
+      border-radius: var(--radius);
+      color: #fff;
+      background: #142f29;
+      box-shadow: var(--shadow);
+    }
+    .flow-shell h3 { margin: 0 0 7px; font-size: 26px; }
+    .flow-shell > p { margin: 0; color: rgba(255,255,255,.65); }
+    .flow {
+      display: grid;
+      grid-template-columns: repeat(7, 1fr);
+      gap: 10px;
+      margin-top: 34px;
+    }
+    .flow-step { position: relative; min-height: 130px; padding: 20px 14px; border: 1px solid rgba(255,255,255,.14); border-radius: 15px; background: rgba(255,255,255,.045); }
+    .flow-step:not(:last-child)::after {
+      content: "→";
+      position: absolute;
+      right: -12px;
+      top: 48px;
+      z-index: 2;
+      color: var(--lime);
+      font-weight: 900;
+    }
+    .flow-step small { display: block; margin-bottom: 12px; color: var(--lime); font-weight: 800; }
+    .flow-step b { display: block; line-height: 1.3; }
+    .flow-step span { display: block; margin-top: 7px; color: rgba(255,255,255,.58); font-size: 12px; }
+
+    .rule-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px; margin-top: 18px; }
+    .rule { padding: 22px; border-radius: 16px; background: #fff; border: 1px solid var(--line); }
+    .rule b { display: block; color: var(--green); margin-bottom: 5px; }
+    .rule span { color: var(--muted); font-size: 13px; }
+
+    .metrics {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 14px;
+    }
+    .metric {
+      min-height: 166px;
+      padding: 25px;
+      border-radius: 18px;
+      background: var(--surface);
+      border: 1px solid var(--line);
+    }
+    .metric.featured { color: #fff; background: var(--green); border-color: transparent; }
+    .metric .value { display: block; margin-bottom: 10px; font-size: clamp(32px, 4vw, 48px); font-weight: 900; line-height: 1; letter-spacing: -.04em; }
+    .metric .label { display: block; font-weight: 800; }
+    .metric .note { display: block; margin-top: 7px; color: var(--muted); font-size: 12px; }
+    .metric.featured .note { color: rgba(255,255,255,.68); }
+
+    .evidence {
+      display: grid;
+      grid-template-columns: 1.25fr .75fr;
+      gap: 18px;
+      margin-top: 18px;
+    }
+    .evidence-panel { padding: 30px; border-radius: 18px; background: #fff; border: 1px solid var(--line); }
+    .evidence-panel h3 { margin: 0 0 20px; font-size: 20px; }
+    .check-list { display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px 24px; margin: 0; padding: 0; list-style: none; }
+    .check-list li { position: relative; padding-left: 27px; color: var(--muted); font-size: 14px; }
+    .check-list li::before {
+      content: "✓";
+      position: absolute;
+      left: 0;
+      top: 0;
+      width: 19px;
+      height: 19px;
+      display: grid;
+      place-items: center;
+      border-radius: 50%;
+      color: #fff;
+      background: var(--green);
+      font-size: 11px;
+      font-weight: 900;
+    }
+    .status-box { display: flex; flex-direction: column; justify-content: space-between; color: #fff; background: #263d37; }
+    .status-box .status { color: var(--lime); font-size: 13px; font-weight: 800; letter-spacing: .14em; }
+    .status-box strong { display: block; margin-top: 9px; font-size: 27px; line-height: 1.25; }
+    .status-box p { margin: 24px 0 0; color: rgba(255,255,255,.65); font-size: 13px; }
+
+    .citation-summary {
+      display: grid;
+      grid-template-columns: .9fr 1.1fr;
+      overflow: hidden;
+      border-radius: var(--radius);
+      background: var(--surface);
+      border: 1px solid var(--line);
+      box-shadow: var(--shadow);
+    }
+    .citation-before, .citation-after { padding: 34px; }
+    .citation-before { background: #eeeae0; }
+    .citation-after { color: #fff; background: var(--green); }
+    .citation-summary small { display: block; margin-bottom: 10px; font-weight: 800; letter-spacing: .12em; }
+    .citation-before small { color: #8b5a4f; }
+    .citation-after small { color: var(--lime); }
+    .citation-summary h3 { margin: 0 0 10px; font-size: 24px; }
+    .citation-summary p { margin: 0; font-size: 14px; }
+    .citation-before p { color: var(--muted); }
+    .citation-after p { color: rgba(255,255,255,.78); }
+
+    .answer-card {
+      margin-top: 18px;
+      padding: 34px;
+      border-radius: var(--radius);
+      color: #eaf3ef;
+      background: #142f29;
+      box-shadow: var(--shadow);
+    }
+    .answer-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 24px; margin-bottom: 24px; }
+    .answer-head small { color: var(--lime); font-weight: 800; letter-spacing: .12em; }
+    .answer-head h3 { margin: 7px 0 0; color: #fff; font-size: 24px; }
+    .answer-model { padding: 7px 12px; border: 1px solid rgba(255,255,255,.16); border-radius: 999px; color: rgba(255,255,255,.68); font-size: 12px; white-space: nowrap; }
+    .answer-body { color: rgba(255,255,255,.78); font-size: 14px; }
+    .answer-body p { margin: 0 0 12px; }
+    .answer-body ol { margin: 0 0 16px; padding-left: 22px; }
+    .answer-body li + li { margin-top: 8px; }
+    .cite { color: var(--lime); font-weight: 800; }
+    .reference-list {
+      margin: 22px 0 0;
+      padding: 20px 22px;
+      border: 1px solid rgba(255,255,255,.12);
+      border-radius: 15px;
+      background: rgba(255,255,255,.045);
+      list-style-position: inside;
+    }
+    .reference-list li { padding-left: 4px; color: rgba(255,255,255,.72); overflow-wrap: anywhere; }
+    .reference-list li + li { margin-top: 8px; }
+
+    .run-metrics { display: grid; grid-template-columns: repeat(5, 1fr); gap: 12px; margin-top: 18px; }
+    .run-metric { padding: 19px; border-radius: 15px; background: #fff; border: 1px solid var(--line); }
+    .run-metric b { display: block; color: var(--green-deep); font-size: 22px; line-height: 1.2; }
+    .run-metric span { display: block; margin-top: 5px; color: var(--muted); font-size: 12px; }
+
+    .followup-grid { display: grid; grid-template-columns: 1.15fr .85fr; gap: 18px; margin-top: 18px; }
+    .followup-panel { padding: 28px; border-radius: 18px; background: #fff; border: 1px solid var(--line); }
+    .followup-panel h3 { margin: 0 0 15px; font-size: 20px; }
+    .followup-panel ul { margin: 0; padding-left: 20px; color: var(--muted); font-size: 14px; }
+    .followup-panel li + li { margin-top: 8px; }
+    .followup-panel.warning { background: #fff9e8; border-color: rgba(177,132,33,.22); }
+    .followup-panel.warning h3 { color: #7d5a17; }
+
+    .outcome {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      overflow: hidden;
+      border-radius: var(--radius);
+      border: 1px solid var(--line);
+      background: var(--surface);
+    }
+    .outcome > div { padding: 32px; }
+    .outcome > div + div { border-left: 1px solid var(--line); }
+    .outcome small { color: var(--green); font-weight: 800; letter-spacing: .12em; }
+    .outcome h3 { margin: 10px 0 8px; font-size: 21px; }
+    .outcome p { margin: 0; color: var(--muted); font-size: 14px; }
+
+    footer { padding: 34px 0 45px; border-top: 1px solid var(--line); color: var(--muted); font-size: 12px; }
+    .footer-inner { display: flex; justify-content: space-between; gap: 20px; }
+
+    @media (max-width: 900px) {
+      nav { display: none; }
+      .section-head, .summary-band, .evidence, .citation-summary, .followup-grid { grid-template-columns: 1fr; }
+      .summary-points { grid-template-columns: 1fr; }
+      .summary-points li { border-left: 0; border-top: 1px solid var(--line); }
+      .flow { grid-template-columns: repeat(2, 1fr); }
+      .flow-step:not(:last-child)::after { display: none; }
+      .metrics, .rule-grid, .run-metrics { grid-template-columns: repeat(2, 1fr); }
+      .outcome { grid-template-columns: 1fr; }
+      .outcome > div + div { border-left: 0; border-top: 1px solid var(--line); }
+    }
+    @media (max-width: 620px) {
+      .wrap { width: min(calc(100% - 24px), var(--max)); }
+      .hero { padding: 64px 0 58px; }
+      .hero-lead { max-width: 100%; }
+      .hero-meta { display: grid; grid-template-columns: minmax(0, 1fr); gap: 8px; }
+      .hero-meta span { min-width: 0; overflow-wrap: anywhere; }
+      main { padding-top: 54px; }
+      section + section { margin-top: 68px; }
+      .print-btn { display: none; }
+      .work-grid, .metrics, .rule-grid, .flow, .check-list, .run-metrics { grid-template-columns: 1fr; }
+      .work-card { grid-template-columns: 42px minmax(0, 1fr); padding: 22px; }
+      .work-no { width: 42px; height: 42px; }
+      .flow-shell { padding: 26px 20px; }
+      .answer-card { padding: 25px 20px; }
+      .answer-head { flex-direction: column; gap: 12px; }
+      .answer-model { white-space: normal; }
+      .footer-inner { flex-direction: column; }
+    }
+    @media print {
+      :root { --paper: #fff; }
+      .topbar { display: none; }
+      .hero { padding: 48px 0; print-color-adjust: exact; -webkit-print-color-adjust: exact; }
+      main { padding: 42px 0; }
+      section + section { margin-top: 48px; }
+      .work-card, .metric, .evidence-panel, .outcome, .flow-shell, .citation-summary, .answer-card, .followup-panel { break-inside: avoid; }
+      .flow-shell, .featured, .status-box, .summary-title { print-color-adjust: exact; -webkit-print-color-adjust: exact; }
+    }
+  </style>
+</head>
+<body>
+  <header class="topbar">
+    <div class="wrap topbar-inner">
+      <div class="brand"><span class="brand-mark">KG</span><span>文献与图谱改造汇报</span></div>
+      <nav aria-label="页面导航">
+        <a href="#overview">改造概览</a>
+        <a href="#work">核心工作</a>
+        <a href="#flow">新流程</a>
+        <a href="#results">验收结果</a>
+        <a href="#rag-citations">RAG 引用</a>
+        <a href="#knowledge-graph">知识图谱</a>
+      </nav>
+      <button class="print-btn" type="button" onclick="window.print()">打印 / 导出 PDF</button>
+    </div>
+  </header>
+
+  <section class="hero">
+    <div class="wrap">
+      <div class="eyebrow">OpenSpec · Change Report</div>
+      <h1>文献智能入库与<br>知识图谱流程改造汇报</h1>
+      <p class="hero-lead">把零散的单文件上传升级为可审核、可追踪、可恢复的统一文献入库能力；让 RAG 回答使用可核验的论文引用，并在论文发布后自动产生知识图谱候选、审核版本和可回滚发布。</p>
+      <div class="hero-meta">
+        <span>变更：<strong>add-literature-ingestion-workflow</strong></span>
+        <span>扩展：<strong>incremental-literature-knowledge-graph</strong></span>
+        <span>状态：<strong>入库已归档 · 图谱工程实现中</strong></span>
+        <span>最近验证：<strong>2026-10-24</strong></span>
+      </div>
+    </div>
+  </section>
+
+  <main class="wrap">
+    <section id="overview">
+      <div class="section-head">
+        <div><div class="kicker">01 · 改造概览</div><h2>解决了什么问题</h2></div>
+        <p class="section-intro">原有链路适合零散 PDF，面对 PDF、扫描件、CAJ、压缩包和结构化清单混合的千份级资料时，缺少批次治理、审核、恢复与质量追踪能力。</p>
+      </div>
+      <div class="summary-band">
+        <div class="summary-title">
+          <span>一句话总结</span>
+          <h3>建立“接收—审核—处理—发布”的统一文献流水线</h3>
+        </div>
+        <ul class="summary-points">
+          <li><b>入口统一</b><p>管理员批量导入与用户单篇上传，共用同一处理核心。</p></li>
+          <li><b>过程透明</b><p>阶段、进度、错误、重试和审核记录均可查询、可审计。</p></li>
+          <li><b>发布可控</b><p>管理员确认标签并审核后，文献才进入公共知识库。</p></li>
+        </ul>
+      </div>
+    </section>
+
+    <section id="work">
+      <div class="section-head">
+        <div><div class="kicker">02 · 核心工作</div><h2>本次具体做了哪些工作</h2></div>
+        <p class="section-intro">文献入库 OpenSpec 的 10 组实施任务已全部完成；当前在此基础上继续建设增量知识图谱。以下先按业务价值归并入库阶段的 8 个工作方向。</p>
+      </div>
+      <div class="work-grid">
+        <article class="work-card">
+          <div class="work-no">01</div>
+          <div><h3>统一入库处理核心</h3><p>将校验、转换、解析、OCR、分块、向量化和发布整合为统一服务，单篇与批次入口不再各自维护规则。</p><div class="tag-row"><span class="tag">统一服务</span><span class="tag">阶段追踪</span><span class="tag">幂等重试</span></div></div>
+        </article>
+        <article class="work-card">
+          <div class="work-no">02</div>
+          <div><h3>调整用户上传与审核</h3><p>上传时必须选择领域标签，取消自动分类；管理员可确认或修正标签，批准后才处理并公开，驳回内容不会进入检索。</p><div class="tag-row"><span class="tag">人工选标签</span><span class="tag">管理员审核</span><span class="tag">公共知识库</span></div></div>
+        </article>
+        <article class="work-card">
+          <div class="work-no">03</div>
+          <div><h3>建设批量导入能力</h3><p>支持清单驱动、只读预检、正式执行、断点续跑、失败重试、取消和批次报告，单项异常不再阻断整批。</p><div class="tag-row"><span class="tag">Manifest</span><span class="tag">Dry-run</span><span class="tag">断点续跑</span></div></div>
+        </article>
+        <article class="work-card">
+          <div class="work-no">04</div>
+          <div><h3>支持 PDF、扫描件与 CAJ</h3><p>增加 CAJ 转 PDF、逐页文本密度判断和分页 OCR；记录转换器、页数、OCR 页、错误页及文件哈希。</p><div class="tag-row"><span class="tag">CAJ 转换</span><span class="tag">分页 OCR</span><span class="tag">质量指标</span></div></div>
+        </article>
+        <article class="work-card">
+          <div class="work-no">05</div>
+          <div><h3>完善数据模型与元数据</h3><p>新增批次和任务记录，补充 DOI、标准号、作者、来源、权威状态、解析质量和审核审计等信息。</p><div class="tag-row"><span class="tag">书目元数据</span><span class="tag">来源溯源</span><span class="tag">审核审计</span></div></div>
+        </article>
+        <article class="work-card">
+          <div class="work-no">06</div>
+          <div><h3>建立多层去重机制</h3><p>依次使用文件哈希、DOI、标准号和规范化标题识别重复；明确重复可复用，近似重复进入人工审核。</p><div class="tag-row"><span class="tag">SHA-256</span><span class="tag">DOI</span><span class="tag">标准号</span></div></div>
+        </article>
+        <article class="work-card">
+          <div class="work-no">07</div>
+          <div><h3>强化安全与发布一致性</h3><p>限制文件类型、大小、加密文档和 ZIP 路径；所有分块完成后统一发布，失败时清理不完整向量。</p><div class="tag-row"><span class="tag">安全解压</span><span class="tag">原子发布</span><span class="tag">隐私隔离</span></div></div>
+        </article>
+        <article class="work-card">
+          <div class="work-no">08</div>
+          <div><h3>补齐接口与运维能力</h3><p>新增状态查询、失败重试、审核队列、批次管理和稳定错误码，并补充完整 API 示例与健康检查。</p><div class="tag-row"><span class="tag">状态接口</span><span class="tag">错误码</span><span class="tag">运维检查</span></div></div>
+        </article>
+      </div>
+    </section>
+
+    <section id="flow">
+      <div class="section-head">
+        <div><div class="kicker">03 · 新流程</div><h2>文献如何进入知识库</h2></div>
+        <p class="section-intro">接收文件不等于已经入库。系统会先完成校验与管理员审核，再进入转换、解析和索引，最后统一发布。</p>
+      </div>
+      <div class="flow-shell">
+        <h3>统一入库流水线</h3>
+        <p>用户上传和管理员批次导入从同一条质量管线进入系统。</p>
+        <div class="flow" aria-label="统一文献入库流程">
+          <div class="flow-step"><small>STEP 01</small><b>接收资料</b><span>单篇上传 / 批次清单</span></div>
+          <div class="flow-step"><small>STEP 02</small><b>文件校验</b><span>类型、大小、安全、重复</span></div>
+          <div class="flow-step"><small>STEP 03</small><b>管理员审核</b><span>确认标签与发布资格</span></div>
+          <div class="flow-step"><small>STEP 04</small><b>转换解析</b><span>CAJ、PDF、分页 OCR</span></div>
+          <div class="flow-step"><small>STEP 05</small><b>清洗分块</b><span>补齐元数据与页码</span></div>
+          <div class="flow-step"><small>STEP 06</small><b>向量索引</b><span>完整写入、一致性检查</span></div>
+          <div class="flow-step"><small>STEP 07</small><b>公共发布</b><span>完成后统一可检索</span></div>
+        </div>
+      </div>
+      <div class="rule-grid">
+        <div class="rule"><b>不自动分类</b><span>用户上传时主动选择领域标签。</span></div>
+        <div class="rule"><b>先审核后处理</b><span>管理员批准前不解析、不索引。</span></div>
+        <div class="rule"><b>获批后公开</b><span>所有获批文献进入公共知识库。</span></div>
+        <div class="rule"><b>派生 PDF 可配置</b><span>默认不保留，但转换记录始终可追溯。</span></div>
+      </div>
+    </section>
+
+    <section id="results">
+      <div class="section-head">
+        <div><div class="kicker">04 · 真实语料验收</div><h2>改造结果已用实际论文验证</h2></div>
+        <p class="section-intro">使用“知识库文献”目录完成正式批次验证，覆盖英文论文、中文标准、扫描件、混合 PDF 与 CAJ 文件。</p>
+      </div>
+      <div class="metrics">
+        <div class="metric featured"><span class="value">1,161</span><span class="label">批次总项目</span><span class="note">正式批次已完成</span></div>
+        <div class="metric"><span class="value">1,144</span><span class="label">成功入库文献</span><span class="note">全部为公共知识</span></div>
+        <div class="metric"><span class="value">107,505</span><span class="label">新增向量分块</span><span class="note">预期与实际完全一致</span></div>
+        <div class="metric"><span class="value">0</span><span class="label">处理失败</span><span class="note">16 项重复跳过，1 项待审核</span></div>
+        <div class="metric"><span class="value">421</span><span class="label">OCR 文档</span><span class="note">共处理 2,676 页</span></div>
+        <div class="metric"><span class="value">86</span><span class="label">CAJ 家族文件</span><span class="note">85 个转换，1 个 PDF 载荷</span></div>
+        <div class="metric"><span class="value">475</span><span class="label">标准资料入库</span><span class="note">标准号与来源元数据已回填</span></div>
+        <div class="metric"><span class="value">79</span><span class="label">相关回归测试通过</span><span class="note">覆盖上传、权限、解析与检索</span></div>
+      </div>
+
+      <div class="evidence">
+        <div class="evidence-panel">
+          <h3>验收检查结果</h3>
+          <ul class="check-list">
+            <li>数据库文档数与向量库逐文档一致</li>
+            <li>107,505 个分块全部为公共权限</li>
+            <li>OCR 错误页为 0</li>
+            <li>CAJ 临时转换目录残留为 0</li>
+            <li>英文论文、中文标准、粮食安全检索通过</li>
+            <li>真实故障和进程重启后可幂等恢复</li>
+            <li>OpenSpec 严格校验通过</li>
+            <li>编译与代码差异检查通过</li>
+          </ul>
+        </div>
+        <div class="evidence-panel status-box">
+          <div><span class="status">FINAL STATUS</span><strong>已实现、已验证、已归档</strong></div>
+          <p>归档规格已合并到主规格目录，可作为后续用户上传流程和批次入库能力的长期基线。</p>
+        </div>
+      </div>
+    </section>
+
+    <section id="rag-citations">
+      <div class="section-head">
+        <div><div class="kicker">05 · RAG 规范引用</div><h2>从“文档1”升级为可核验论文引用</h2></div>
+        <p class="section-intro">本次对话继续完善了检索增强生成的回答格式：正文按首次出现顺序标注 <strong>[1]、[2]</strong>，末尾输出接近 GB/T 7714 的参考文献，并用真实知识库查询完成端到端验证。</p>
+      </div>
+
+      <div class="citation-summary">
+        <div class="citation-before">
+          <small>BEFORE · 原有表现</small>
+          <h3>“根据文档1、文档2……”</h3>
+          <p>引用仅对应检索结果序号，读者无法直接判断论文题名、作者、来源、年份或 DOI，回答的学术可读性和可追溯性不足。</p>
+        </div>
+        <div class="citation-after">
+          <small>AFTER · 当前表现</small>
+          <h3>正文编号 + 规范参考文献</h3>
+          <p>回答正文使用连续编号；同一论文的多个分块共用一个编号；末尾按实际元数据生成题名、作者、期刊、年份、卷期页码和 DOI，不臆造缺失字段。</p>
+        </div>
+      </div>
+
+      <div class="work-grid" style="margin-top:18px">
+        <article class="work-card">
+          <div class="work-no">01</div>
+          <div><h3>补齐检索结果书目信息</h3><p>对旧向量分块回查数据库元数据，并在新入库向量中保存作者、期刊、卷、期和页码等可用字段。</p><div class="tag-row"><span class="tag">兼容旧数据</span><span class="tag">元数据增强</span></div></div>
+        </article>
+        <article class="work-card">
+          <div class="work-no">02</div>
+          <div><h3>统一引用生成规则</h3><p>流式与非流式回答使用相同规则，禁止“文档1/2”占位称呼；多分块命中同一论文时自动去重并保持编号稳定。</p><div class="tag-row"><span class="tag">流式一致</span><span class="tag">稳定编号</span></div></div>
+        </article>
+        <article class="work-card">
+          <div class="work-no">03</div>
+          <div><h3>输出学术参考文献</h3><p>根据文献类型生成接近 GB/T 7714 的条目；标准使用 [S]、期刊论文使用 [J]，信息不完整时保留真实题名或文件名，不猜测作者与刊物。</p><div class="tag-row"><span class="tag">GB/T 7714 风格</span><span class="tag">禁止臆造</span></div></div>
+        </article>
+        <article class="work-card">
+          <div class="work-no">04</div>
+          <div><h3>补充测试与接口说明</h3><p>新增引用格式、多分块同号等测试，并在 API 文档中说明正文编号、参考文献和 sources 返回字段。</p><div class="tag-row"><span class="tag">9 项聚焦测试</span><span class="tag">API 文档</span></div></div>
+        </article>
+      </div>
+
+      <div class="run-metrics" aria-label="真实 RAG 运行指标">
+        <div class="run-metric"><b>5</b><span>最终引用来源</span></div>
+        <div class="run-metric"><b>3</b><span>图谱检索结果</span></div>
+        <div class="run-metric"><b>5</b><span>向量检索结果</span></div>
+        <div class="run-metric"><b>1</b><span>两路结果重合</span></div>
+        <div class="run-metric"><b>17.12s</b><span>模型回答生成耗时</span></div>
+      </div>
+
+      <article class="answer-card">
+        <div class="answer-head">
+          <div><small>LIVE RAG ANSWER · 真实运行节选</small><h3>问题：土壤酸化有哪些治理措施？</h3></div>
+          <span class="answer-model">deepseek-ai/DeepSeek-V4-Flash</span>
+        </div>
+        <div class="answer-body">
+          <p>土壤酸化的治理措施主要分为“酸化阻控”与“酸化治理”两类，需结合施用土壤调理剂、合理施肥和农艺措施综合实施。</p>
+          <ol>
+            <li><strong>分类防治：</strong>酸化阻控包括配方肥、缓控释肥、稳定性肥料、化学碱性肥料，以及有机肥、绿肥压青和秸秆促腐；酸化治理则通过调理剂改善土壤酸度、提高 pH。<span class="cite">[1]</span></li>
+            <li><strong>按酸度选材：</strong>强酸性土壤可使用石灰石粉配合有机肥；中酸性土壤可使用石灰石粉或 CaO 型调理剂；弱酸性土壤可施用硅钙钾镁肥与有机肥。<span class="cite">[2]</span></li>
+            <li><strong>综合模式：</strong>可组合石灰降酸、钙镁磷肥、有机肥阻酸、秸秆还田、减氮控酸和冬种绿肥。<span class="cite">[3]</span> 轮作休耕等农艺措施也可纳入治理。<span class="cite">[4]</span> 坡耕地还可采用石灰、有机肥和测土配方施肥协同改良。<span class="cite">[5]</span></li>
+          </ol>
+          <strong>参考文献</strong>
+          <ol class="reference-list">
+            <li>DB33/T 1433—2025 酸化耕地土壤综合防治技术规程[S]. 浙江省, 2025.</li>
+            <li>DB32/T 5296—2025 农田土壤酸化治理技术规范[S]. 江苏省, 2026.</li>
+            <li>7.中国酸化耕地治理现状与提质增效战略_徐明岗[J].</li>
+            <li>6.中国耕地土壤酸化现状、研究进展与重点方向_滕应[J].</li>
+            <li>主要红壤区坡耕地土壤质量评价与障碍因子识别_陈南南[Z].</li>
+          </ol>
+        </div>
+      </article>
+
+      <div class="followup-grid">
+        <div class="followup-panel">
+          <h3>验证结论</h3>
+          <ul>
+            <li>真实回答已不再出现“文档1、文档2”，正文引用与末尾参考文献编号一一对应。</li>
+            <li>代码编译检查通过；9 项引用相关测试函数全部通过。</li>
+            <li>sources 同步返回引用编号、格式化条目及可用书目字段，便于前端展示和来源核验。</li>
+            <li>完整 pytest 收集受 Windows 父目录权限错误（WinError 5）阻断；该问题不属于引用逻辑失败。</li>
+          </ul>
+        </div>
+        <div class="followup-panel warning">
+          <h3>仍需继续治理</h3>
+          <ul>
+            <li>第 3—5 条来源缺少完整作者、期刊、年份等元数据，因此当前按真实文件名降级展示。</li>
+            <li>系统已遵循“不臆造元数据”原则；下一步应回填历史论文书目信息，使所有条目达到完整论文引用格式。</li>
+            <li>本次检索链路耗时约 108.1 秒，需继续排查冷启动、索引加载与混合检索性能。</li>
+          </ul>
+        </div>
+      </div>
+    </section>
+
+    <section id="knowledge-graph">
+      <div class="section-head">
+        <div><div class="kicker">06 · 增量知识图谱</div><h2>论文上传后，图谱可以自动增量更新</h2></div>
+        <p class="section-intro">当前方案不要求从零开发完整图数据库产品。系统以统一领域契约隔离底层实现，复用 Apache AGE 作为生产图存储，并保留 JsonGraphStore 回退；GraphRAG、OpenSPG 作为候选抽取 adapter，必须通过同一套一致性和金标评测后才能进入生产。</p>
+      </div>
+
+      <div class="citation-summary">
+        <div class="citation-before">
+          <small>设计边界 · 不做什么</small>
+          <h3>不把开源产品直接当成业务真相</h3>
+          <p>开源组件负责图存储、图查询或候选抽取，但实体类型、关系方向、证据定位、审核规则、版本发布和权限仍由本系统统一定义，避免被单一厂商格式锁定。</p>
+        </div>
+        <div class="citation-after">
+          <small>当前方案 · 如何复用</small>
+          <h3>领域契约 + 可替换 adapter</h3>
+          <p>统一 Entity、Relation、Evidence、Release 与 GraphQuery 契约；底层 adapter 可替换，所有候选先进入审核区，只有证据完整、方向有效且通过发布门禁的数据才能进入活动图谱。</p>
+        </div>
+      </div>
+
+      <div class="work-grid" style="margin-top:18px">
+        <article class="work-card">
+          <div class="work-no">01</div>
+          <div><h3>完成领域模型与关系约束</h3><p>固化实体、关系、证据、候选和 release 契约，校验关系端点类型、方向、证据原文、页码、分块与内容哈希，禁止仅凭共现生成生产关系。</p><div class="tag-row"><span class="tag">方向约束</span><span class="tag">证据定位</span><span class="tag">不可变审计</span></div></div>
+        </article>
+        <article class="work-card">
+          <div class="work-no">02</div>
+          <div><h3>接通上传后的异步任务</h3><p>文献完成发布后通过事务 outbox 创建幂等抽取任务；支持租约、重试、死信、worker 崩溃回收和重复投递复用，不回滚已经成功的文献与向量索引。</p><div class="tag-row"><span class="tag">Outbox</span><span class="tag">幂等任务</span><span class="tag">崩溃恢复</span></div></div>
+        </article>
+        <article class="work-card">
+          <div class="work-no">03</div>
+          <div><h3>建立候选审核流水线</h3><p>仅从已发布、带页码的当前分块抽取候选；完成实体消歧、关系合并、跨文献证据聚合、风险筛选和人工批准/拒绝，禁止直接写生产边。</p><div class="tag-row"><span class="tag">候选区</span><span class="tag">人工审核</span><span class="tag">跨文献聚合</span></div></div>
+        </article>
+        <article class="work-card">
+          <div class="work-no">04</div>
+          <div><h3>完成版本化发布与回滚</h3><p>实现 release 差异预览、校验和、发布门禁、原子 active_release 切换和已验证版本回滚；历史关系使用有效期保留，审计导出可复现。</p><div class="tag-row"><span class="tag">Release</span><span class="tag">原子切换</span><span class="tag">一键回滚</span></div></div>
+        </article>
+        <article class="work-card">
+          <div class="work-no">05</div>
+          <div><h3>接入图谱 + 向量混合检索</h3><p>图查询限制在一至两跳和 top-k 范围，图证据最终仍回到权限过滤后的文献分块；图谱、adapter 或发布异常时，向量检索继续可用。</p><div class="tag-row"><span class="tag">混合检索</span><span class="tag">ACL 回查</span><span class="tag">安全降级</span></div></div>
+        </article>
+        <article class="work-card">
+          <div class="work-no">06</div>
+          <div><h3>完成第五组容量流水线</h3><p>新增合成数据、AGE 流式加载、索引与查询计划检查、查询/切换基准、100k 任务守恒、向量存活探针、备份恢复及最终报告汇总。</p><div class="tag-row"><span class="tag">Synthetic</span><span class="tag">AGE Benchmark</span><span class="tag">Evidence Gate</span></div></div>
+        </article>
+      </div>
+
+      <div class="flow-shell" style="margin-top:18px">
+        <h3>文献发布后的自动更新链路</h3>
+        <p>自动化止于候选生成；生产图谱仍经过人工审核和版本化发布，确保关系可解释、可追溯、可撤回。</p>
+        <div class="flow" aria-label="知识图谱自动增量更新流程">
+          <div class="flow-step"><small>STEP 01</small><b>文献发布完成</b><span>保留向量检索结果</span></div>
+          <div class="flow-step"><small>STEP 02</small><b>Outbox 派发</b><span>创建幂等抽取任务</span></div>
+          <div class="flow-step"><small>STEP 03</small><b>抽取候选</b><span>实体、关系、原文证据</span></div>
+          <div class="flow-step"><small>STEP 04</small><b>消歧与审核</b><span>方向、风险、证据定位</span></div>
+          <div class="flow-step"><small>STEP 05</small><b>Release 发布</b><span>校验后原子激活</span></div>
+          <div class="flow-step"><small>STEP 06</small><b>混合检索</b><span>图谱 + 向量 + 权限</span></div>
+          <div class="flow-step"><small>STEP 07</small><b>失效与回滚</b><span>撤回、重解析、版本切换</span></div>
+        </div>
+      </div>
+
+      <div class="metrics" style="margin-top:18px">
+        <div class="metric featured"><span class="value">37</span><span class="label">知识图谱定向测试通过</span><span class="note">覆盖 11 个核心测试文件</span></div>
+        <div class="metric"><span class="value">5</span><span class="label">容量证据报告统一汇总</span><span class="note">加载、运行时、任务、降级、恢复</span></div>
+        <div class="metric"><span class="value">1–2</span><span class="label">图查询最大跳数</span><span class="note">top-100 与索引计划门禁</span></div>
+        <div class="metric"><span class="value">PASS</span><span class="label">OpenSpec 严格校验</span><span class="note">当前 change 结构与规范有效</span></div>
+        <div class="metric"><span class="value">100k</span><span class="label">文档 / 实体容量目标</span><span class="note">工具已完成，待真实环境实测</span></div>
+        <div class="metric"><span class="value">1m</span><span class="label">证据容量目标</span><span class="note">带完整 locator 与哈希</span></div>
+        <div class="metric"><span class="value">100k</span><span class="label">任务守恒目标</span><span class="note">重复投递与 worker 重启</span></div>
+        <div class="metric"><span class="value">≤1s</span><span class="label">查询 P95 验收目标</span><span class="note">须在 PG16 + AGE 中实测</span></div>
+      </div>
+
+      <div class="evidence">
+        <div class="evidence-panel">
+          <h3>本轮已经完成</h3>
+          <ul class="check-list">
+            <li>合成 documents、entities、relations、evidence 与 jobs 数据集</li>
+            <li>AGE 流式加载、服务端计数、GIN 索引和 EXPLAIN 门禁</li>
+            <li>一至两跳查询、激活与回滚计时脚本</li>
+            <li>100k 任务计数守恒、重复投递和 worker 重启基准</li>
+            <li>注入图故障后的真实向量检索存活探针</li>
+            <li>备份恢复验证及五类证据报告汇总门禁</li>
+            <li>容量命令行帮助零模型初始化、零重依赖副作用</li>
+            <li>操作手册、运行元数据模板和事故回滚步骤</li>
+          </ul>
+        </div>
+        <div class="evidence-panel status-box">
+          <div><span class="status">KNOWLEDGE GRAPH STATUS</span><strong>工程实现完成<br>生产容量实测待执行</strong></div>
+          <p>未用 SQLite、小规模 smoke test 或缺失元数据的报告冒充生产通过。AGE 只有在全部容量证据真实完成后，才允许切为主读。</p>
+        </div>
+      </div>
+
+      <div class="followup-grid">
+        <div class="followup-panel">
+          <h3>当前验证结论</h3>
+          <ul>
+            <li>OpenSpec 严格校验通过；代码差异检查通过。</li>
+            <li>37 项知识图谱测试、18 项关键组合测试及最终 6 项容量报告/门禁测试通过。</li>
+            <li>容量相关 CLI 的帮助模式已验证，不再导入 Chroma、模型或生产 ORM。</li>
+            <li>历史完整基线为 1,259 项通过、22 项跳过；本轮全量复跑到 78% 时出现 4 个顺序相关失败并进入长时间慢测，知识图谱定向测试未复现失败。</li>
+          </ul>
+        </div>
+        <div class="followup-panel warning">
+          <h3>尚未标记完成的生产验收</h3>
+          <ul>
+            <li>在真实 PostgreSQL 16 + Apache AGE 环境执行 100k 文档/实体、1m 证据和 100k 任务完整基准。</li>
+            <li>实测图查询 P95 ≤ 1 秒、激活/回滚 ≤ 60 秒且单文档更新不扫描全图。</li>
+            <li>使用 94 条金标和 10 篇审核论文完成 GraphRAG/OpenSPG 对比、发布与回滚试点。</li>
+            <li>完成 adapter 首选/回退决策、历史文献分批回填和计数守恒报告后，再将 AGE 切为主读。</li>
+          </ul>
+          <p style="margin:16px 0 0;font-size:13px"><a href="../knowledge-platform-operations.md">查看容量流水线操作手册</a> · <a href="../../benchmarks/knowledge_platform/run-metadata-template-v1.json">查看运行元数据模板</a></p>
+        </div>
+      </div>
+    </section>
+
+    <section id="value">
+      <div class="section-head">
+        <div><div class="kicker">07 · 业务价值</div><h2>最终带来的变化</h2></div>
+        <p class="section-intro">这次改造不只是增加一种文件格式，而是补齐文献从提交、审核、检索到知识图谱增量发布之间的治理链路。</p>
+      </div>
+      <div class="outcome">
+        <div><small>效率</small><h3>大批量资料可自动处理</h3><p>从人工逐篇上传，升级为可预检、可恢复的批次任务。</p></div>
+        <div><small>质量</small><h3>文献、向量与图谱均可核验</h3><p>每条知识关系都能回到经过权限过滤的论文分块、页码和原文证据。</p></div>
+        <div><small>治理</small><h3>发布规则清晰且可回滚</h3><p>文献先审核，图谱候选再审核；生产 release 可预览、可审计、可快速回退。</p></div>
+      </div>
+    </section>
+  </main>
+
+  <footer>
+    <div class="wrap footer-inner">
+      <span>数据来源：OpenSpec 归档、语料验收、RAG 真实问答及增量知识图谱容量流水线验证</span>
+      <span>批次：literature-knowledge-base-20261022-v1 · 更新：2026-10-24</span>
+    </div>
+  </footer>
+</body>
+</html>
