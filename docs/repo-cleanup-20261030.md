@@ -57,22 +57,22 @@
 
 结论：证据留在开发机，文档（`docs/knowledge-platform-operations.md` 等）记录结论与产物路径；如需长期留存，应走对象存储或制品库，不再进 Git。
 
-## 四、未删除、待确认的候选
+## 四、第二批删除（用户确认后执行）
 
-以下脚本在 `docs/ openspec/ tests/ framework/ scripts/` 内无任何引用，但可能用于复现已冻结产物，故保留待确认：
+以下脚本在 `docs/ openspec/ tests/ framework/ scripts/ tools/` 内零引用（仅本记录自身提及），经确认后移入回收目录并从版本库删除：
 
-| 脚本 | 用途推断 | 风险 |
+| 脚本 | 用途推断 | 删除依据 |
 | --- | --- | --- |
-| `scripts/build_minimal_knowledge_graph.py` | 早期 v0.1/v0.2 图谱构建，已被 `build_minimal_kg_v03/v04.py` 取代 | 删除后无法复现 v0.2 图谱 |
-| `scripts/apply_minimal_kg_review.py` | 一次性把人工复核结果写回图谱 | 复核流程已由 review 平台承接 |
-| `scripts/evaluate_graph_vs_vector.py` | 早期图/向量对比实验 | 已被 R1.2 对照取代 |
-| `scripts/debug_llm_routing.py` | 路由调试脚本 | 已有路由测试套件 |
-| `scripts/clean_discrete_values.py` | 一次性离散值清洗 | 已执行完毕 |
-| `scripts/correct_parcel_area_codes.py` | 一次性地块面积编码修正 | 已执行完毕 |
-| `scripts/fix_postgres_workflow_data.py` | 一次性 PG 工作流数据修复 | 已由迁移脚本承接 |
+| `scripts/build_minimal_knowledge_graph.py` | 早期 v0.1/v0.2 图谱构建 | 已被 `build_minimal_kg_v03/v04.py` 取代，v0.2 产物已冻结入库 |
+| `scripts/apply_minimal_kg_review.py` | 一次性把人工复核结果写回图谱 | 复核流程已由 `framework/knowledge_graph/review.py` 平台承接 |
+| `scripts/evaluate_graph_vs_vector.py` | 早期图/向量对比实验 | 已被 R1.2 的 18 组 HTTP 对照取代 |
+| `scripts/debug_llm_routing.py` | 路由调试脚本 | 已有路由测试套件与观测日志 |
+| `scripts/clean_discrete_values.py` | 一次性离散值清洗 | 数据修复已执行完毕 |
+| `scripts/correct_parcel_area_codes.py` | 一次性地块面积编码修正 | 已执行完毕，`7ec1d28` 已固化字段口径 |
+| `scripts/fix_postgres_workflow_data.py` | 一次性 PG 工作流数据修复 | 已由 `migrate_knowledge_graph_platform.py` 等迁移脚本承接 |
 | `scripts/check_age_graph.py` | AGE 连通性探针 | 已被 `verify_graph_store_dual_read.py` 与健康接口承接 |
 
-如需进一步精简，确认后可按上表批量移入回收目录。
+备份位置：`D:/17417/Documents/_repo_trash_20261030/scripts/`（8 个文件）。这 8 个文件在 `63e0dda` 中已入库，需要恢复时执行 `git checkout 63e0dda -- scripts/<name>.py` 即可，回收目录仅为双保险。
 
 ## 五、验证
 
