@@ -1,6 +1,6 @@
 # scripts/ 分类清理清单（2026-10-31）
 
-**状态：仅盘点，未移动、未删除任何文件。** 本清单用于确认范围后再执行 `git mv`。
+**状态：盘点完成，已按 B → C → A 顺序执行归档（2026-10-31）。** 执行记录见文末第十节。
 
 `scripts/` 当前 **273 个脚本、32,335 行**。按“同族旧版本 / 一次性修复迁移 / 纯审计报告”三类筛出 **55 个可归档或移出（54 归档 + 1 移出）**，其余 **218 个**建议保留原地；归档合计 5,194 行。
 
@@ -189,3 +189,25 @@
 ## 九、附件
 
 - `docs/scripts-classification-20261031.csv`：273 行全量分类（行数、最后修改、引用次数、分类、建议、同族基准），可直接驱动批量 `git mv`。
+
+
+## 十、执行记录（2026-10-31）
+
+按 B → C → A 顺序执行，每批单独提交：
+
+| 批次 | 提交 | 归档 | 移出仓库 | 说明 |
+| --- | --- | ---: | ---: | --- |
+| B 一次性修复/迁移 | `c7b3a28` | 5 | 0 | `backfill_*`、`migrate_chroma`、`migrate_add_*`；同步 `docs/api.md` 路径 |
+| C 纯审计/报告 | `48a7915` | 39 | 0 | 零引用只读脚本；44 个归档文件编译通过 |
+| A 同族旧版本 | `1041cb3` | 10 | 1 | 每族保留引用最多的入口；`run_kg_benchmark_pilot_r2` 直接删除 |
+
+最终状态：
+
+- `scripts/` 218 个脚本，`scripts/archive/` 54 个脚本 + `README.md`；
+- 273 = 218 + 54 + 1，无遗漏；
+- 路径修正：54 个归档文件全部把 `parents[1]` 改为 `parents[2]`（含 `parent.parent`、`dirname` 两种等价写法）；
+- 导入修正：10 个保留脚本改为 `scripts.archive.*`，4 个归档脚本之间的互相导入同步改写；
+- 校验：`compileall scripts` 通过、`importlib.util.find_spec('scripts.archive.*')` 全部可解析、`pytest tests/test_retrieval_quality_r13.py tests/test_retrieval_quality_policy.py` 20 项通过；
+- 保留 `run_kg_benchmark_pilot_r5`（同族最新一轮实验），待确认后再处理。
+
+恢复方式：`git mv scripts/archive/<name>.py scripts/<name>.py` 并把 `parents[2]` 改回 `parents[1]`；已删除的 `run_kg_benchmark_pilot_r2.py` 用 `git checkout c7b3a28 -- scripts/run_kg_benchmark_pilot_r2.py` 取回。
