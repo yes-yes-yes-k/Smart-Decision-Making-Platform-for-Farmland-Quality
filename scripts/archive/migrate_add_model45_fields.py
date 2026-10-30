@@ -16,7 +16,7 @@ from pathlib import Path
 
 from sqlalchemy import text
 
-PROJECT_ROOT = Path(__file__).resolve().parent.parent
+PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent
 SRC_DIR = PROJECT_ROOT / "src"
 for _p in (str(PROJECT_ROOT), str(SRC_DIR)):
     if _p not in sys.path:

@@ -11,7 +11,7 @@
 import sys
 import os
 import shutil
-sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
 
 from framework.config import Config
 from framework.vector_store.chroma_store import vector_store

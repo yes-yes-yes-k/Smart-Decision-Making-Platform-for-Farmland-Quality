@@ -1072,7 +1072,7 @@ JSONL manifest 的每一项必须声明 `"schema_version":"1.0"`。
 
 发布门禁覆盖 schema 兼容、端点、方向、有效证据、重复、孤点、审核覆盖、代表性查询和变更校验和。发布成功后仅排队 JSON/Parquet 审计导出，不阻塞活动版本切换；运维 worker 使用 `python scripts/export_knowledge_graph_releases.py --limit 10` 处理待导出记录。图查询超时或图存储异常时返回脱敏的 `degraded` 状态，调用方应继续使用向量检索结果。
 
-已进入图谱证据链的文献删除会转为可审计撤回：对应文档哈希的关系/claim 证据失效，关系支持文档数重算；仍有其他支持文献时保留关系，最后一条证据失效时只创建待审核移除候选，不直接改变活动 release。重新解析会自动失效同一文档的旧内容哈希证据。历史文献回填可先执行 `python scripts/backfill_knowledge_graph.py --dry-run --batch-size 100`，正式运行使用固定 `--run-key`；命令按文档 ID 保存 checkpoint，可重复调用续跑且复用已有幂等 outbox。
+已进入图谱证据链的文献删除会转为可审计撤回：对应文档哈希的关系/claim 证据失效，关系支持文档数重算；仍有其他支持文献时保留关系，最后一条证据失效时只创建待审核移除候选，不直接改变活动 release。重新解析会自动失效同一文档的旧内容哈希证据。历史文献回填可先执行 `python scripts/archive/backfill_knowledge_graph.py --dry-run --batch-size 100`，正式运行使用固定 `--run-key`；命令按文档 ID 保存 checkpoint，可重复调用续跑且复用已有幂等 outbox。
 
 实体消歧请求示例：
 
