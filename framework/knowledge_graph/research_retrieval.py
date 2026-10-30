@@ -76,12 +76,80 @@ def _support(conditions):
 
 
 class PublishedCorpusSearch:
-    def __init__(self, vector_store, current_sources, *, enhance_recall=True, rerank=None):
+    def __init__(self, vector_store, current_sources, *, enhance_recall=True, rerank=None, window=0,
+                 window_anchors=0):
         self.vector_store, self.current_sources = vector_store, current_sources
         self.enhance_recall = enhance_recall
         if rerank not in (None, "answerability"):
             raise ValueError("unknown_rerank_strategy")
+        if type(window) is not int or not 0 <= window <= 2:
+            raise ValueError("unsupported_neighbour_window")
+        if type(window_anchors) is not int or window_anchors < 0:
+            raise ValueError("invalid_window_anchor_budget")
         self.rerank = rerank
+        self.window = window
+        self.window_anchors = window_anchors
+
+    def _expand_window(self, values, live_by_document, scope, request):
+        """Append the ±window neighbours of each verified chunk.
+
+        Neighbours are fetched under the same document, the same verified
+        content hash and the same public scope, so expansion cannot pull in a
+        stale or private version. They follow their anchor to stay adjacent in
+        rank and carry their offset for audit.
+        """
+        if not self.window:
+            return values, None
+        seen = {(value["document_id"], value["chunk_index"]) for value in values}
+        expanded, fetched = [], 0
+        for position, value in enumerate(values):
+            expanded.append(value)
+            if self.window_anchors and position >= self.window_anchors:
+                continue
+            live = live_by_document.get(value["document_id"])
+            digest = (live or {}).get("content_sha256")
+            if not digest:
+                continue
+            offsets = [delta for distance in range(1, self.window + 1)
+                       for delta in (distance, -distance)]
+            references = [{"document_id": value["document_id"], "chunk_index": value["chunk_index"] + delta}
+                          for delta in offsets
+                          if value["chunk_index"] + delta >= 0
+                          and (value["document_id"], value["chunk_index"] + delta) not in seen]
+            if not references:
+                continue
+            found = self.vector_store.get_by_references(
+                references,
+                filters={"$and": [{"visibility_scope": "public"}, {"content_sha256": digest}]},
+                n_results=len(references))
+            by_key = {}
+            for item in found:
+                meta = item.get("metadata") or {}
+                by_key[(meta.get("document_id"), meta.get("chunk_index"))] = item
+            for reference in references:
+                item = by_key.get((reference["document_id"], reference["chunk_index"]))
+                if item is None:
+                    continue
+                meta = item.get("metadata") or {}
+                key = (meta.get("document_id"), meta.get("chunk_index"))
+                if key in seen or key[0] != value["document_id"] or meta.get("content_sha256") != digest:
+                    continue
+                seen.add(key)
+                text = item.get("content") or ""
+                conditions = evaluate_conditions(request, text)
+                expanded.append({"document_id": key[0], "title": live.get("title"),
+                                 "content_sha256": digest, "chunk_index": key[1],
+                                 "page": meta.get("page"), "text": text,
+                                 "retrieval": {"neighbour_of": value["chunk_index"],
+                                               "window_delta": key[1] - value["chunk_index"],
+                                               "rrf_score": 0.0, "retrieval_ranks": {}},
+                                 "publication": _publication(key[0], live, scope),
+                                 "support": _support(conditions), "conditions": conditions})
+                fetched += 1
+        expanded_budget = self.window_anchors or len(values)
+        return expanded, {"version": "neighbour-window-v1", "window": self.window,
+                          "anchors": len(values), "anchors_expanded": min(expanded_budget, len(values)),
+                          "neighbours": fetched}
 
     def search(self, owner_id, request):
         if not isinstance(request, dict):
@@ -163,6 +231,8 @@ class PublishedCorpusSearch:
                 "publication": _publication(meta["document_id"], live, scope), "support": _support(conditions),
                 "conditions": conditions})
         rejected = len(candidates)-survived
+        window_trace = None
+        values, window_trace = self._expand_window(values, final, scope, request)
         rerank_trace = None
         if self.rerank == "answerability":
             from framework.knowledge_graph.answerability_rerank import rerank_values
@@ -186,7 +256,8 @@ class PublishedCorpusSearch:
                 "mismatch_detection": "not_derivable_from_single_chunk_text",
                 "unknown_not_treated_as_match": True},
             "comparison_scope_is_separate": True,
-            **({"rerank": rerank_trace} if rerank_trace is not None else {})}
+            **({"rerank": rerank_trace} if rerank_trace is not None else {}),
+            **({"window": window_trace} if window_trace is not None else {})}
 
     def read_chunk(self, owner_id, document_id, index, expected_sha):
         live = self.current_sources.lookup_many([document_id], owner_id, require_academic=False).get(document_id)

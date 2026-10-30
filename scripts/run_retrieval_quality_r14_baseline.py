@@ -206,6 +206,8 @@ def main() -> int:
     parser.add_argument("--run-id", default="r14-20261031-v1")
     parser.add_argument("--limit", type=int, default=20)
     parser.add_argument("--rerank", choices=("none", "answerability"), default="none")
+    parser.add_argument("--window", type=int, choices=(0, 1, 2), default=0)
+    parser.add_argument("--window-anchors", type=int, default=0)
     args = parser.parse_args()
 
     out = R1 / args.run_id
@@ -265,7 +267,8 @@ def main() -> int:
         actor_id = connection.execute(sa.text("SELECT id FROM sys_user WHERE status=1 ORDER BY id LIMIT 1")).scalar_one()
     service = ResearchService(ResearchStore(engine), source,
                               corpus_search=PublishedCorpusSearch(vector_store, source,
-                                                             rerank=None if args.rerank == "none" else args.rerank))
+                                                             rerank=None if args.rerank == "none" else args.rerank,
+                                                             window=args.window, window_anchors=args.window_anchors))
     app = create_evidence_app(service, source.actor, jwt_secret=os.urandom(48).hex())
     with app.app_context():
         token = create_access_token(identity=str(actor_id))
@@ -305,6 +308,7 @@ def main() -> int:
     report = {"captured_at_utc": datetime.now(timezone.utc).isoformat(),
               "state": "completed_real_interface_baseline",
               "run_id": args.run_id, "limit": args.limit, "rerank": args.rerank,
+              "window": args.window, "window_anchors": args.window_anchors,
               "inputs": {"query_cases_sha256": sha256(CASES), "query_inputs_sha256": sha256(INPUTS),
                          "embedding_manifest_sha256": sha256(SOURCE_RUN / "embedding-request-manifest-v2.json"),
                          "span_transfer_sha256": sha256(TRANSFER) if TRANSFER.exists() else None,
