@@ -19,7 +19,11 @@ if _SRC_DIR not in sys.path:
 
 from tests.pg_test_config import load_pg_test_environment
 
-load_pg_test_environment(os.path.join(_PROJECT_ROOT, ".env"))
+# 缺少本地 .env（如全新克隆或 worktree）时跳过 PG 注入：
+# 纯单元测试应可收集运行，需要数据库的用例由 PG_AVAILABLE 探测跳过。
+_ENV_FILE = os.path.join(_PROJECT_ROOT, ".env")
+if os.path.exists(_ENV_FILE):
+    load_pg_test_environment(_ENV_FILE)
 
 
 # geoalchemy2 DDL-safe 全局 stub：测试环境未安装 geoalchemy2 时，
