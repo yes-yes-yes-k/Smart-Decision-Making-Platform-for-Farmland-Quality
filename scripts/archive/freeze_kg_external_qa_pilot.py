@@ -3,8 +3,8 @@ from pathlib import Path
 from datetime import datetime,timezone
 import hashlib,json,sys
 
-REPO=Path(__file__).resolve().parents[1];sys.path.insert(0,str(REPO))
-from scripts.prepare_kg_external_qa_pilot import RUN,OUT
+REPO=Path(__file__).resolve().parents[2];sys.path.insert(0,str(REPO))
+from scripts.archive.prepare_kg_external_qa_pilot import RUN,OUT
 from scripts.prepare_kg_external_benchmarks import write_json
 from framework.knowledge_graph.external_benchmark_budget import open_external_budget
 

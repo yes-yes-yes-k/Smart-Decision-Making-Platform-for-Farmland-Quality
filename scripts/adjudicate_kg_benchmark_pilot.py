@@ -6,7 +6,7 @@ from pathlib import Path
 import sys
 ROOT=Path(__file__).resolve().parents[1];sys.path.insert(0,str(ROOT))
 import scripts.run_kg_benchmark_pilot as engine
-import scripts.run_kg_benchmark_pilot_r3 as pilot
+import scripts.archive.run_kg_benchmark_pilot_r3 as pilot
 from scripts.rebuild_kg_extraction_benchmark import OUT,dump,readlines
 from framework.knowledge_graph.benchmark_protocol_r2 import locate
 from framework.knowledge_graph.benchmark_rebuild import sha256_file

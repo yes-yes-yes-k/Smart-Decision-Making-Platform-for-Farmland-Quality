@@ -8,7 +8,7 @@ import json
 import os
 from pathlib import Path
 import sys
-ROOT=Path(__file__).resolve().parents[1]
+ROOT=Path(__file__).resolve().parents[2]
 sys.path.insert(0,str(ROOT))
 from scripts.experiment_kg_recall import read,write,jsonl,sha
 from scripts.annotate_kg_v4_calibration import contract

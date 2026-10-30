@@ -10,12 +10,12 @@ from pathlib import Path
 import sys
 from types import SimpleNamespace
 
-REPO = Path(__file__).resolve().parents[1]
+REPO = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(REPO))
 from framework.knowledge_graph.external_benchmark_budget import open_external_budget
 from framework.knowledge_graph.external_qa_retrieval import build_graph, graph_payload, rank, sha
 from scripts.prepare_kg_external_benchmarks import write_json
-from scripts.prepare_kg_external_qa_pilot import OUT, RUN, prepare, read
+from scripts.archive.prepare_kg_external_qa_pilot import OUT, RUN, prepare, read
 
 MODEL, EMBED = "deepseek-ai/DeepSeek-V4.1-Flash", "BAAI/bge-m3"
 TYPES = ["PERSON", "ORGANIZATION", "GEO", "EVENT", "CONCEPT", "METHOD", "DATASET", "PRODUCT"]

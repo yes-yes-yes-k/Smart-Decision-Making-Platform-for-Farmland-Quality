@@ -10,7 +10,7 @@ from pathlib import Path
 import sys
 ROOT=Path(__file__).resolve().parents[1];sys.path.insert(0,str(ROOT))
 import scripts.run_kg_benchmark_pilot as engine
-import scripts.run_kg_benchmark_pilot_r4 as pilot
+import scripts.archive.run_kg_benchmark_pilot_r4 as pilot
 from scripts.rebuild_kg_extraction_benchmark import OUT,dump,readlines
 from framework.knowledge_graph.benchmark_cells import indexed_block,materialize
 from framework.knowledge_graph.benchmark_protocol import load_schema,validate_proposal

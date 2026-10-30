@@ -6,9 +6,9 @@ import sys
 ROOT=Path(__file__).resolve().parents[1];sys.path.insert(0,str(ROOT))
 import scripts.run_kg_benchmark_pilot as engine
 import scripts.review_kg_benchmark_metadata as first
-import scripts.review_kg_benchmark_metadata_v2 as second
+import scripts.archive.review_kg_benchmark_metadata_v2 as second
 import scripts.review_kg_benchmark_metadata_remaining as third
-from scripts.review_kg_benchmark_metadata_v4 import check
+from scripts.archive.review_kg_benchmark_metadata_v4 import check
 from scripts.validate_kg_metadata_contract import CONTRACT
 from scripts.validate_kg_metadata_identity_scope import CLARIFICATION
 from scripts.rebuild_kg_extraction_benchmark import OUT,OLD,dump,readlines

@@ -9,7 +9,7 @@ sys.path.insert(0,str(ROOT))
 from scripts.experiment_kg_recall import read,write,jsonl
 from framework.knowledge_graph.evaluation_v4 import fact_keys
 from framework.knowledge_graph.evaluation_v4_scoring import metric
-from scripts.calibrate_kg_v4_r3 import BASE,R3
+from scripts.archive.calibrate_kg_v4_r3 import BASE,R3
 
 def main():
     inputs=read(BASE/'calibration/inputs.jsonl')[:10];ids={r['sample_id'] for r in inputs}

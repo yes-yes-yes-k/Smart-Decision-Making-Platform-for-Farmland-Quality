@@ -6,7 +6,7 @@ from pathlib import Path
 import sys
 ROOT=Path(__file__).resolve().parents[1];sys.path.insert(0,str(ROOT))
 import scripts.run_kg_benchmark_pilot as engine
-from scripts.run_kg_benchmark_pilot_r3 import check as literal_check
+from scripts.archive.run_kg_benchmark_pilot_r3 import check as literal_check
 from scripts.build_kg_benchmark_references import initial_job,freeze_config
 from scripts.rebuild_kg_extraction_benchmark import OUT,OLD,readlines,lines,dump
 from framework.knowledge_graph.benchmark_dual_selector import materialize_dual

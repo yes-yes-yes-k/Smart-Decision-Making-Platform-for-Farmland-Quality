@@ -5,9 +5,9 @@ import json
 from pathlib import Path
 import sys
 
-REPO=Path(__file__).resolve().parents[1]
+REPO=Path(__file__).resolve().parents[2]
 sys.path.insert(0,str(REPO))
-from scripts.prepare_kg_external_qa_pilot import RUN,OUT,read
+from scripts.archive.prepare_kg_external_qa_pilot import RUN,OUT,read
 from scripts.prepare_kg_external_benchmarks import write_json
 from framework.knowledge_graph.external_qa_evaluation import first_predictions,publisher_multi,refusal
 from framework.knowledge_graph.external_qasper_scoring import load_official

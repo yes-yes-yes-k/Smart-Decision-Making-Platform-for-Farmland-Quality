@@ -4,7 +4,7 @@ import asyncio
 import json
 from pathlib import Path
 import sys
-ROOT=Path(__file__).resolve().parents[1];sys.path.insert(0,str(ROOT))
+ROOT=Path(__file__).resolve().parents[2];sys.path.insert(0,str(ROOT))
 import scripts.run_kg_benchmark_pilot as engine
 import scripts.run_kg_benchmark_pilot_r3 as r3
 import scripts.adjudicate_kg_benchmark_pilot as arbitration

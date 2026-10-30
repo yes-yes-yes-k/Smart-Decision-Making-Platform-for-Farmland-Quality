@@ -6,7 +6,7 @@ import sys
 ROOT=Path(__file__).resolve().parents[1];sys.path.insert(0,str(ROOT))
 import scripts.run_kg_benchmark_pilot as engine
 from scripts.build_kg_benchmark_references import initial_job,review_job,response,compile_progress,configuration,freeze_config
-from scripts.run_kg_benchmark_pilot_r4 import check as initial_check
+from scripts.archive.run_kg_benchmark_pilot_r4 import check as initial_check
 from scripts.replay_kg_benchmark_reference_review import validate as review_check
 from scripts.rebuild_kg_extraction_benchmark import OUT,dump,readlines,budget_snapshot
 from scripts.prepare_kg_benchmark_metadata import current_qualification

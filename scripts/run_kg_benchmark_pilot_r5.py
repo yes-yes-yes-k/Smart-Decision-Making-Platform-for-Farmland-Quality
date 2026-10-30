@@ -10,7 +10,7 @@ from pathlib import Path
 import sys
 ROOT=Path(__file__).resolve().parents[1];sys.path.insert(0,str(ROOT))
 import scripts.run_kg_benchmark_pilot as engine
-import scripts.run_kg_benchmark_pilot_r4 as previous
+import scripts.archive.run_kg_benchmark_pilot_r4 as previous
 from scripts.rebuild_kg_extraction_benchmark import OUT,dump,lines,readlines,verify_history
 from scripts.review_kg_benchmark_reference import RULES
 from scripts.replay_kg_benchmark_reference_review import validate as reference_validate

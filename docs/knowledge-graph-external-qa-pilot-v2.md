@@ -46,7 +46,7 @@ QASPER 配对 Answer F1 差值为 +0.0066，文档组 bootstrap 95% 区间 [-0.0
 
 ```powershell
 .tools/graphrag-runtime/Scripts/python.exe -m unittest tests.test_external_qa_metadata tests.test_external_qa_retrieval tests.test_external_qa_scoring tests.test_external_budget_scope
-python scripts/freeze_kg_external_qa_pilot.py
+python scripts/archive/freeze_kg_external_qa_pilot.py
 python scripts/freeze_kg_external_qa_pilot_v2.py
 ```
 

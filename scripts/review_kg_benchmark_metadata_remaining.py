@@ -6,7 +6,7 @@ import sys
 ROOT=Path(__file__).resolve().parents[1];sys.path.insert(0,str(ROOT))
 import scripts.run_kg_benchmark_pilot as engine
 import scripts.review_kg_benchmark_metadata as first
-import scripts.review_kg_benchmark_metadata_v2 as second
+import scripts.archive.review_kg_benchmark_metadata_v2 as second
 from scripts.rebuild_kg_extraction_benchmark import OUT,dump,readlines
 from scripts.prepare_kg_benchmark_metadata import current_qualification
 from framework.knowledge_graph.benchmark_budget_policy import AuthorizedBudget
