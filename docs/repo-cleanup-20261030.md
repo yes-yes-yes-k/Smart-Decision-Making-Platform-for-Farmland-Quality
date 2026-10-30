@@ -1,7 +1,7 @@
 # 工作区整理与分功能提交记录（2026-10-30）
 
 范围：`D:/17417/Documents/agent_culti_demo`，基线 `7ec1d28`。
-结果：**12 个提交、634 个文件、+62,250 / −556 行；`git status` 已清空。**
+结果：**15 个提交、636 个文件、+62,394 / −556 行；`git status` 已清空。**
 
 ## 一、提交清单（按依赖顺序）
 
@@ -20,8 +20,10 @@
 | 11 | `d343866` | chore(openspec) | 61 | +4,037 / −24 | 归档 3 个已完成变更；新增 enable-literature-evidence-comparison、incremental KG、benchmark 重建；同步 4 份能力规格 |
 | 12 | `63e0dda` | chore(scripts) | 235 | +24,196 / −17 | 入库、迁移、回填、基准、金标、外部 QA、验收、检索质量探针脚本；benchmark 目标与治理证据 |
 | 13 | `c307546` | chore(kg) | 4 | +2,895 | 冻结抽取金标 v1/v2 及清单 |
+| 14 | `ca8ea5a` | docs | 1 | +96 | 本整理记录 |
+| 15 | `2a35605` | docs(research) | 2 | +48 / −1 | R1.3 结果文档与任务勾选（进度 12/27 → 13/27） |
 
-> 第 1 条之前的基线为 `7ec1d28`；13 条提交合计 634 文件。
+> 第 1 条之前的基线为 `7ec1d28`；15 条提交合计 636 文件。
 
 ## 二、已删除（移入回收目录，可恢复）
 
@@ -79,7 +81,7 @@
 | 工作区状态 | `git status --porcelain` | 0 条 |
 | 检索质量 R1.3 | `pytest tests/test_retrieval_quality_r13.py tests/test_retrieval_quality_policy.py` | 20 通过 |
 | 证据闭环 + 图谱任务 + 版本化结果 | `pytest tests/test_research_evidence.py tests/test_knowledge_graph_jobs.py tests/test_versioned_model_results.py` | 61 通过（含前两项） |
-| 基线对照 | `git diff 7ec1d28 --stat` | 634 files, +62,250 / −556 |
+| 基线对照 | `git diff 7ec1d28 --stat` | 636 files, +62,394 / −556 |
 
 未执行：全量 1,147 项回归（需数据库与外部服务），以及 R1.4 真实接口基线。
 
