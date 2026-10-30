@@ -1,16 +1,21 @@
 """测试文档上传和管理功能"""
 import sys
 import os
+import types
+import pytest
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from framework.upload.file_upload import allowed_file, get_file_type
 from framework.upload.document_parser import parse_document
+from framework.upload.file_upload import UploadValidationError, validate_file_content
 
 def test_allowed_file():
     """测试文件类型验证"""
     assert allowed_file("test.txt") is True
     assert allowed_file("test.md") is True
     assert allowed_file("test.pdf") is True
+    assert allowed_file("test.caj") is True
+    assert allowed_file("TEST.CAJ") is True
     assert allowed_file("test.docx") is True
     assert allowed_file("test.xlsx") is True
     assert allowed_file("test.zip") is False
@@ -23,11 +28,40 @@ def test_get_file_type():
     assert get_file_type("test.txt") == "txt"
     assert get_file_type("test.md") == "md"
     assert get_file_type("test.pdf") == "pdf"
+    assert get_file_type("test.caj") == "caj"
     assert get_file_type("test.docx") == "docx"
     assert get_file_type("test.xlsx") == "xlsx"
     assert get_file_type("test.xls") == "xlsx"
     assert get_file_type("test.unknown") == "other"
     print("✓ 文件类型获取正确")
+
+
+def test_validate_pdf_signature_mismatch(tmp_path):
+    path = tmp_path / "fake.pdf"
+    path.write_bytes(b"not a pdf")
+    with pytest.raises(UploadValidationError) as exc_info:
+        validate_file_content(str(path), "pdf")
+    assert exc_info.value.error_code == "content_type_mismatch"
+
+
+@pytest.mark.parametrize("signature", [b"CAJ\x00", b"HN\x00", b"KDH 2.00", b"C8"])
+def test_validate_supported_caj_family_signatures(tmp_path, signature):
+    path = tmp_path / "paper.caj"
+    path.write_bytes(signature + b" fixture")
+    validate_file_content(str(path), "caj")
+
+
+def test_validate_encrypted_pdf_reports_stable_error(monkeypatch, tmp_path):
+    path = tmp_path / "encrypted.pdf"
+    path.write_bytes(b"%PDF-1.7 encrypted fixture")
+    fake_pdfplumber = types.ModuleType("pdfplumber")
+    fake_pdfplumber.open = lambda *args, **kwargs: (_ for _ in ()).throw(
+        RuntimeError("password required")
+    )
+    monkeypatch.setitem(sys.modules, "pdfplumber", fake_pdfplumber)
+    with pytest.raises(UploadValidationError) as exc_info:
+        validate_file_content(str(path), "pdf")
+    assert exc_info.value.error_code == "encrypted_document"
 
 def test_parse_txt():
     """测试文本文件解析"""

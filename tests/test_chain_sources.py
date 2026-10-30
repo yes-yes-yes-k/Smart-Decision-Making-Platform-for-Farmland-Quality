@@ -151,3 +151,54 @@ def test_metadata_none_entirely(monkeypatch):
     result = rag.chat("问题")
     assert result["sources"] == [{"doc_name": "unknown", "chunk_index": None, "page": None}]
     # 不抛异常、不丢弃 source
+
+
+def test_academic_context_and_answer_use_numbered_citations():
+    rag = RAGChain.__new__(RAGChain)
+    results = [{
+        "content": "长期施用有机肥有助于缓解土壤酸化。",
+        "metadata": {
+            "source": "paper.pdf",
+            "document_kind": "academic_paper",
+            "title": "有机肥与土壤酸化",
+            "authors": ["张三", "李四"],
+            "journal": "土壤学报",
+            "publication_date": "2024-06-01",
+            "doi": "10.1000/example",
+            "page": 8,
+        },
+    }]
+
+    context = rag._build_context(results)
+    assert "文档1" not in context
+    assert "[1] 参考文献：张三, 李四. 有机肥与土壤酸化[J]. 土壤学报, 2024." in context
+    assert "证据位置：第 8 页" in context
+
+    answer = rag._finalize_answer("根据文档1，该措施有效。", results)
+    assert "文档1" not in answer
+    assert "根据参考文献[1]" in answer
+    assert "\n\n参考文献\n[1] 张三, 李四. 有机肥与土壤酸化[J]." in answer
+    assert "DOI: 10.1000/example." in answer
+
+
+def test_multiple_chunks_share_one_bibliography_number():
+    rag = RAGChain.__new__(RAGChain)
+    metadata = {
+        "source": "paper.pdf",
+        "document_kind": "academic_paper",
+        "title": "耕地质量研究",
+        "authors": "Wang Wu; Zhao Liu",
+        "journal": "Journal of Soil Science",
+        "publication_date": "2023",
+    }
+    results = [
+        {"content": "A", "metadata": {**metadata, "chunk_index": 0, "page": 1}},
+        {"content": "B", "metadata": {**metadata, "chunk_index": 1, "page": 2}},
+    ]
+
+    sources = rag._build_sources(results, {})
+    assert [source["citation_number"] for source in sources] == [1, 1]
+    assert sources[0]["citation"] == (
+        "Wang Wu, Zhao Liu. 耕地质量研究[J]. Journal of Soil Science, 2023."
+    )
+    assert rag._reference_suffix(results).count("[1] ") == 1

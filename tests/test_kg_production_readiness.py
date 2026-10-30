@@ -124,6 +124,37 @@ def test_shadow_compares_graph_without_changing_vector_answer(monkeypatch):
     assert result["diagnostics"]["graph_result_count"] == 1
 
 
+def test_graph_exception_keeps_vector_retrieval_available(monkeypatch):
+    from framework.config import Config
+    from framework.rag.chain import RAGChain
+    from framework.rag import chain as chain_module
+    monkeypatch.setattr(Config, "KG_ROLLOUT_MODE", "enabled")
+    monkeypatch.setattr(Config, "RERANK_ENABLED", False)
+    monkeypatch.setattr(chain_module, "route_category", lambda _: None)
+
+    class Store:
+        def hybrid_search(self, **kwargs):
+            return {"results": [{"content": "vector survives", "metadata": {}}], "count": 1}
+
+    class BrokenGraph:
+        def retrieve(self, *args, **kwargs):
+            raise RuntimeError("AGE internal path and provider secret")
+
+        def health(self):
+            return {"ready": False}
+
+        @staticmethod
+        def merge(graph, vector, *, top_k):
+            return [*graph, *vector][:top_k]
+
+    rag = RAGChain.__new__(RAGChain)
+    rag.vector_store, rag.kg_retriever = Store(), BrokenGraph()
+    result = rag._retrieve_documents("问题", None, user_id=7)
+    assert result["results"][0]["content"] == "vector survives"
+    assert result["diagnostics"]["graph_error"] == "graph_retrieval_unavailable"
+    assert "secret" not in str(result["diagnostics"])
+
+
 def test_allowlisted_canary_changes_only_eligible_user(monkeypatch):
     from framework.config import Config
     from framework.rag.chain import RAGChain

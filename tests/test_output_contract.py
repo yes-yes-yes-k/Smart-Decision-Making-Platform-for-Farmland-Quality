@@ -40,6 +40,28 @@ def test_normalize_execution_has_stable_envelope():
     assert validate_result(result)[0]
 
 
+def test_normalize_execution_exposes_shared_calculation_identity():
+    result = normalize_execution(
+        _Agent(),
+        {"parcel_id": "P-1"},
+        {
+            "status": "ok",
+            "result": {"quality_grade": "8", "composite_index": 0.7531},
+            "versioned_result": {
+                "resultId": 42,
+                "modelVersion": "quality-grade-2.1.0",
+                "coefficientVersion": "shaoguan-model2-2026.10.13",
+                "inputHash": "abc123",
+                "calculatedAt": "2026-10-13T01:02:03+00:00",
+            },
+        },
+    )
+
+    assert result["meta"]["calculation_result_id"] == 42
+    assert result["meta"]["model_version"] == "quality-grade-2.1.0"
+    assert result["meta"]["input_hash"] == "abc123"
+
+
 def test_model6_is_unavailable():
     agent = type("Agent", (), {
         "model_id": "model-6",

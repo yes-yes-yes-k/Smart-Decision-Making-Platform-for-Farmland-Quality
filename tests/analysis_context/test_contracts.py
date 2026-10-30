@@ -37,7 +37,7 @@ def test_analysis_object_serializes_only_canonical_fields():
 
 def test_unknown_object_type_is_rejected():
     with pytest.raises(ValueError):
-        ObjectType("village")
+        ObjectType("unsupported-object")
 
 
 def test_scenario_snapshot_never_exposes_conversation_object():

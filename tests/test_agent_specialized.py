@@ -3,6 +3,7 @@ import sys
 import os
 import types
 from unittest.mock import MagicMock
+import pytest
 from sqlalchemy import String
 
 _PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -371,6 +372,33 @@ def test_grade_agent_db_path(monkeypatch):
     agent = FarmlandGradeAgent()
     result = agent.execute({"parcel_id": "P001"})
     assert result["data_source"] == "db"
+
+
+def test_grade_agent_uses_calculation_instead_of_imported_snapshot(monkeypatch):
+    """地图与对话都以 Model-2 计算值作为发布结果。"""
+    from framework.agents.specialized.grade_agent import FarmlandGradeAgent
+    from framework.domain.data.parcel_data_accessor import ParcelDataAccessor
+
+    indicators = {
+        "quality_grade": "9", "composite_index": 0.707,
+        "soil_ph": 5.504503, "organic_matter": 31.80049,
+        "available_phosphorus": 50.578899, "available_potassium": 51.145582,
+        "bulk_density": 1.16, "topsoil_thickness": 100.0,
+        "plow_layer_thickness": 20.0, "soil_texture": "壤土",
+        "irrigation_condition": "不满足", "drainage_capacity": "满足",
+        "terrain_position": "山地坡中", "soil_structure": "上松下紧型",
+    }
+    monkeypatch.setattr(
+        ParcelDataAccessor, "get_parcel_indicators", lambda self, pid: indicators
+    )
+    agent = FarmlandGradeAgent()
+    monkeypatch.setattr(agent, "_persist_result", lambda *a, **kw: False)
+
+    result = agent.execute({"parcel_id": "2038", "area_code": "440205"})["result"]
+
+    assert result["quality_grade"] == "8"
+    assert result["composite_index"] == pytest.approx(0.7531518984529598)
+    assert result["quality_grade_source"] == "versioned_model_2_calculation"
 
 
 def test_grade_agent_fallback_path(monkeypatch):

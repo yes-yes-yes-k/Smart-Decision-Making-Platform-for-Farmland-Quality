@@ -103,3 +103,5 @@ def test_empty_page_ocr_fallback(monkeypatch):
 
     result = _parse_pdf("/tmp/empty_page.pdf", page_aware=True)
     assert result[0][1] == "OCR兜底文本"
+    assert result.parse_metadata["ocr_pages"] == 1
+    assert result.parse_metadata["empty_pages"] == 0

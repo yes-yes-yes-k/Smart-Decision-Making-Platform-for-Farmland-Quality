@@ -125,3 +125,41 @@ def test_completed_http_and_stream_share_response_and_trace_contract(
             item.analysis_context_snapshot for item in Message.query.filter_by(role="assistant")
         ]
         assert {snapshot["trace_id"] for snapshot in assistant_snapshots} == {"trace-parity"}
+
+
+def test_stream_translates_split_internal_field_codes_and_persists_chinese(
+    chat_app, auth_header, parcel_context, monkeypatch,
+):
+    monkeypatch.setattr(
+        chat_routes.chat_request_service, "_context_service", _ContextService(parcel_context),
+    )
+    raw_answer = "重度障碍：GGNL、DXBW；中度障碍：SXJ。"
+
+    def fake_stream(request, conversation_history=None):
+        for content in ("重度障碍：G", "GNL、DX", "BW；中度障碍：S", "XJ。"):
+            yield {"type": "token", "content": content}
+        yield {"type": "done", "data": {
+            "answer": raw_answer,
+            "question_type": 3,
+            "interaction_state": "completed",
+            "trace_id": "trace-field-labels",
+            "sources": [],
+            "model_results": {"status": "ok", "data": {
+                "agents_invoked": ["model-3"], "recommendations": [], "details": {},
+            }},
+        }}
+
+    monkeypatch.setattr(chat_routes.multi_agent_orchestrator, "run_stream", fake_stream)
+    response = chat_app.test_client().post(
+        "/api/v1/chat/stream", json={"message": "主要障碍是什么"}, headers=auth_header,
+    )
+    events = _events(response)
+    streamed_text = "".join(
+        event["content"] for event in events if event["event"] == "token"
+    )
+    assert streamed_text == "重度障碍：灌溉能力、地形部位；中度障碍：速效钾。"
+    assert events[-1]["data"]["answer"].endswith(streamed_text)
+    with chat_app.app_context():
+        assistant = Message.query.filter_by(role="assistant").one()
+        assert assistant.content.endswith(streamed_text)
+        assert all(code not in assistant.content for code in ("GGNL", "DXBW", "SXJ"))
