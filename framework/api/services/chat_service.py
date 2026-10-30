@@ -143,7 +143,7 @@ class ChatRequestService:
                     question
                     + "\n\n【当前会话全部酸化测算记录】\n"
                     + json.dumps(acidification_history, ensure_ascii=False, separators=(",", ":"))
-                    + "\n请将以上记录作为本轮分析上下文，区分每条记录的地块、模式和结果来源。"
+                    + "\n请将以上记录作为本轮分析上下文，区分每条记录的地块、模式和结果类别。"
                     if measurement_id is not None else question
                 ),
                 "analysis_context": deepcopy(snapshot),
