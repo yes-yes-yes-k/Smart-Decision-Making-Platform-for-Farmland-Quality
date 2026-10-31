@@ -101,6 +101,15 @@ _ALIASES: dict[str, str] = {
     "tp_idw": "total_phosphorus",
 }
 
+#: 输出单位与依据：原系统模型类文档与建表迁移的列注释（design 决策 6）。
+#: ``unit_status`` 保持 ``unverified``：exp(LnEffCd) 实测量级待核。
+_UNIT = "mg/kg"
+_UNIT_BASIS = (
+    "AcidMap app/models/EffCd_output.py: EffCd = exp(LnEffCd) [单位：mg/kg]; "
+    "app/models/CropCd_output.py: 实际籽粒镉浓度 = exp(LnCropCd) [单位：mg/kg]; "
+    "migrations/versions/95832ecc0bdc 列注释 [ln(mg/kg)]"
+)
+
 #: 训练集参考值（soilgd 输入表，两模型共用同值；用户拍板的降级建议值）。
 _REFERENCE_STATS: dict[str, Any] = {
     "value": -2.1266,
@@ -290,7 +299,9 @@ def predict(
             "status": "degraded" if assumed else "success",
             "model_id": model_id,
             "prediction": prediction,
-            "unit": "mg/kg",
+            "log_prediction": log_pred,
+            "unit": _UNIT,
+            "unit_basis": _UNIT_BASIS,
             "unit_status": "unverified",
             "special_feature": {
                 "name": special,
@@ -321,6 +332,8 @@ def available_models() -> list[dict[str, Any]]:
             "special_feature_index": record.special_feature_index,
             "special_feature_name": record.special_feature_name,
             "input_fields": list(_API_FIELDS[record.model_id]),
+            "unit": _UNIT,
+            "unit_basis": _UNIT_BASIS,
             "unit_status": "unverified",
             "note": "参数级预测，不等同于地块级评估",
         }

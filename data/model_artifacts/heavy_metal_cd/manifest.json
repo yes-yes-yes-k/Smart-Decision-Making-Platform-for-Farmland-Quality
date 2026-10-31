@@ -5,6 +5,10 @@
   "model_type": "pytorch-mlp-constrained",
   "runtime": "torch>=2.0 cpu",
   "notes": "两个模型均为 PyTorch MLP + 线性嵌入 a*x+b，输出过 exp() 还原。类定义 constrained_nn6 / constrained_nn6C 必须随 .pth 一起加载（torch.load 反序列化需要）。特征顺序与 scaler 数组顺序一致，见各模型目录 feature 常量。",
+  "unit": "mg/kg",
+  "unit_basis": "AcidMap app/models/EffCd_output.py 与 CropCd_output.py: exp(Ln*)[单位：mg/kg]；建表迁移 95832ecc0bdc 列注释 [ln(mg/kg)]",
+  "unit_status": "unverified",
+  "unit_status_note": "exp(LnEffCd) 在土壤样品上实测落在 1.004–2.295 mg/kg，高于土壤有效态 Cd 常规量级，单位或标度待核（openspec add-heavy-metal-cd-database-backend design 决策 6）",
   "models": {
     "crop_cd": {
       "prediction": "作物 Cd 含量 (mg/kg)",
