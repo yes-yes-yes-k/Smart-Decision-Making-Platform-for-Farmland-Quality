@@ -25,7 +25,7 @@
 - [x] 4.2 `tests/test_heavy_metal_cd_spatial.py` 17 passed：唯一归属（面积大者胜出）、跨乡镇计数、区域统计口径、排序与 min_count、有效态无分箱、点位结构与 bbox/limit/omitted、错误码、HTTP 401/200/400/404
 - [x] 4.3 真实库探针：5488 地块全部有归属；跨乡镇 530（与基线一致）；插入 3 条探针行后分属 3 个乡镇且三档正确（0.11 安全 / 0.26 预警 / 0.34 超标）；单区域梅坑镇 77 地块 1 样本；点位 limit=2 → count=2 omitted=1 且坐标与质心逐位一致；探针已清理
 - [x] 4.4 `openspec validate add-heavy-metal-cd-spatial-analysis` = valid；`git diff --check` 通过
-- [ ] 4.5 归档时回填 `docs/cd-migration-roadmap.md` 中阶段 3 的状态与归档日期
+- [x] 4.5 归档时回填 `docs/cd-migration-roadmap.md` 中阶段 3 的状态与归档日期（已完成：2026-10-31 归档）
 
 ## 未完成（需人工确认后执行）
 

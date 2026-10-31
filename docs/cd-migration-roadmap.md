@@ -23,11 +23,12 @@
 - 备注：结果表当前 0 行，真实数值待输入到位；归档时 20/21 tasks（仅剩归档回填本身）
 - 归档目录：`openspec/changes/archive/2026-10-31-add-heavy-metal-cd-statistics-api/`
 
-**阶段 3｜add-heavy-metal-cd-spatial-analysis｜提案已出，待拍板（0/17 tasks）**
-- 交付：乡镇级 Cd 统计（复用阶段 2 口径）、单区域统计、点位 GeoJSON（地块质心）、边界复用 `farmland-statistics/boundaries`
+**阶段 3｜add-heavy-metal-cd-spatial-analysis｜已归档（2026-10-31）**
+- 交付：乡镇级 Cd 统计（最大面积归属）、单区域统计、点位 GeoJSON（地块质心）、边界复用 `farmland-statistics/boundaries`
 - 前置：阶段 2（已归档）
-- 关键事实：本项目已有 103 个乡镇边界 + 30751 条地块-区域面积归属；530 个地块跨乡镇（9.6%），归属规则需唯一化
-- 提案：`openspec/changes/add-heavy-metal-cd-spatial-analysis/`；4 个待拍板口径见其 design 的 Open Questions
+- 口径：最大面积归属 / `min_count` 1 / 样本数降序 / 点位 bbox + limit 5000
+- 实测：5488 地块全部有 township 归属；跨乡镇 530（9.6%）；探针 3 行分属 3 乡镇且三档正确；点位坐标与质心逐位一致
+- 归档目录：`openspec/changes/archive/2026-10-31-add-heavy-metal-cd-spatial-analysis/`
 
 **阶段 4｜add-heavy-metal-cd-visualization｜规划中**
 - 交付：Cd 分布图、直方图、行政区描边、空间插值、栅格输出、图片与数据文件导出
