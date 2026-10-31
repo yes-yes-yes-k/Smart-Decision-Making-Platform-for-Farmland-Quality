@@ -1,0 +1,148 @@
+{
+  "schema_version": "r4-2-comparison-results-v1",
+  "generated_at": "2026-10-31T20:40:00+08:00",
+  "model_api_calls": 0,
+  "vector_store_status": "chroma.sqlite3 969MB, load timed out in script context; C1 baseline taken from R1.4 frozen results",
+  "baseline_source": "docs/knowledge-engineering-r14-baseline-results-v1.md",
+  "results": [
+    {
+      "case_id": "U1",
+      "query": "长期施用生物炭对土壤有机碳有什么影响，效果能持续多久？",
+      "reference_document_ids": [449],
+      "persisted_candidates": null,
+      "configurations": {
+        "C1_lexical_vector_hybrid": {
+          "document_rank": 6,
+          "reference_doc_in_results": true,
+          "evidence_level_hit": false,
+          "note": "R1.4基线：文档级第6，证据级未返回（引文块50/51/54不在前20）"
+        },
+        "C2_same_domain_filter": {
+          "document_rank": null,
+          "reference_doc_in_results": "not_run",
+          "note": "向量库未加载，C2无法运行；预期换入标准/指南/政策类文档"
+        },
+        "C3_graph_associated": {
+          "document_rank": 6,
+          "reference_doc_in_results": true,
+          "graph": {"state": "not_used", "contributing_hits": 0, "reason": "doc 449 为发散篇，无持久化候选，图扩展无 surface 可匹配"}
+        }
+      },
+      "swap_analysis": {
+        "C1_vs_C3_graph_added": [],
+        "conclusion": "图扩展无产出：449无候选"
+      }
+    },
+    {
+      "case_id": "U2",
+      "query": "酸性镉污染稻田施石灰后，稻米镉和水稻产量分别如何变化？",
+      "reference_document_ids": [1149],
+      "persisted_candidates": null,
+      "configurations": {
+        "C1_lexical_vector_hybrid": {
+          "document_rank": 10,
+          "reference_doc_in_results": true,
+          "evidence_level_hit": false,
+          "note": "R1.4基线：文档级第10，证据级未返回（引文块35/62不在前20）"
+        },
+        "C3_graph_associated": {
+          "document_rank": 10,
+          "reference_doc_in_results": true,
+          "graph": {"state": "not_used", "contributing_hits": 0, "reason": "doc 1149 为发散篇，无持久化候选"}
+        }
+      },
+      "swap_analysis": {"C1_vs_C3_graph_added": [], "conclusion": "图扩展无产出：1149无候选"}
+    },
+    {
+      "case_id": "U3",
+      "query": "长期施用粪肥对土壤物理性质的影响，是否取决于土壤和作物类型？",
+      "reference_document_ids": [104],
+      "persisted_candidates": null,
+      "configurations": {
+        "C1_lexical_vector_hybrid": {
+          "document_rank": 2,
+          "reference_doc_in_results": true,
+          "evidence_level_hit": false,
+          "note": "R1.4基线：文档级第2，证据级未返回（引文块104-106不在前20）"
+        },
+        "C3_graph_associated": {
+          "document_rank": 2,
+          "reference_doc_in_results": true,
+          "graph": {"state": "not_used", "contributing_hits": 0, "reason": "doc 104 为发散篇，无持久化候选"}
+        }
+      },
+      "swap_analysis": {"C1_vs_C3_graph_added": [], "conclusion": "图扩展无产出：104无候选"}
+    },
+    {
+      "case_id": "U4",
+      "query": "紫云英、稻草和石灰联合使用，对土壤有效镉和稻米镉有哪些影响？",
+      "reference_document_ids": [1141],
+      "persisted_candidates": {"studies": 1, "entities": 3, "relations": 1},
+      "configurations": {
+        "C1_lexical_vector_hybrid": {
+          "document_rank": 9,
+          "reference_doc_in_results": true,
+          "evidence_level_hit": false,
+          "note": "R1.4基线：文档级第9，证据级未返回（引文块55/59/9/10不在前20）"
+        },
+        "C3_graph_associated": {
+          "document_rank": 9,
+          "reference_doc_in_results": true,
+          "graph": {
+            "state": "not_used",
+            "contributing_hits": 0,
+            "matched_surfaces": 1,
+            "reason": "doc 1141 有候选（1 relation），但其他4篇有候选文档(1015/1032/306/1021)的 measure/indicator surface 不匹配"
+          }
+        }
+      },
+      "swap_analysis": {
+        "C1_vs_C3_graph_added": [],
+        "conclusion": "图扩展找到1对 surface 但无跨文档匹配（实体未消解）"
+      }
+    },
+    {
+      "case_id": "U5",
+      "query": "珠江三角洲土壤镉的空间分布与分区管控，有哪些文献和原文依据？",
+      "reference_document_ids": [1032],
+      "persisted_candidates": {"studies": 6, "entities": 8, "relations": 2},
+      "configurations": {
+        "C1_lexical_vector_hybrid": {
+          "document_rank": 1,
+          "reference_doc_in_results": true,
+          "evidence_level_hit": false,
+          "note": "R1.4基线：文档级第1（返回17个该文档块），但引文块59/98/100均不在前20"
+        },
+        "C3_graph_associated": {
+          "document_rank": 1,
+          "reference_doc_in_results": true,
+          "graph": {
+            "state": "not_used",
+            "contributing_hits": 0,
+            "matched_surfaces": 2,
+            "reason": "doc 1032 有候选（2 relations），但其他4篇有候选文档的 surface 不匹配"
+          }
+        }
+      },
+      "swap_analysis": {
+        "C1_vs_C3_graph_added": [],
+        "conclusion": "图扩展找到2对 surface 但无跨文档匹配（实体未消解）"
+      }
+    }
+  ],
+  "aggregate_summary": {
+    "document_level_hit": "5/5（所有参考文档都在基线返回中）",
+    "evidence_level_hit": "0/5（引文所在块均未进入前20）",
+    "graph_contributing_hits_total": 0,
+    "graph_matched_surfaces_total": 3,
+    "C1_vs_C3_swap": "零换入零换出——图扩展在当前实体未消解状态下无产出",
+    "C1_vs_C2": "未运行（向量库超时），需在服务环境执行"
+  },
+  "key_findings": [
+    "文档级检索已可用：5/5 参考文档全部在基线返回中，排名1-10",
+    "证据级检索是瓶颈：0/5 引文块进入前20，与R1.4基线结论一致",
+    "图关联模式(C3)在当前候选集下无额外贡献：5篇中3篇无候选、2篇有候选但 surface 跨文档不匹配",
+    "图扩展的 matched_surfaces=3 说明候选中有 measure→indicator 对，但都在篇内，未跨文档",
+    "C2(同领域过滤)未运行：向量库969MB在脚本环境加载超时，需在服务环境执行"
+  ]
+}
