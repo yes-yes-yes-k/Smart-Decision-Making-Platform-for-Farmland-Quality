@@ -33,6 +33,7 @@ REASON_CODES = {
     "duplicate_relation_fact": "the same relation fact is asserted twice",
     "unsupported_relation_pending": "relation has no verifiable support in the selected span",
     "invalid_selection_shape": "selection must be a quote string or an object with a quote",
+    "cited_study_attribution_missing": "a review-cited study needs an attribution span",
 }
 
 
@@ -331,6 +332,11 @@ def compile_partial_quote_only(packet: dict, enumeration: dict, decision: dict, 
                 attribution = resolve_unique_quote(packet, study["attribution"])
             except SelectionError as error:
                 note("study_attribution", study.get("id"), error)
+        if study.get("kind") == "review_cited_study" and attribution is None:
+            rejected.append({"kind": "study", "id": study.get("id"), "status": "rejected",
+                             "code": "cited_study_attribution_missing"})
+            reasons["cited_study_attribution_missing"] = reasons.get("cited_study_attribution_missing", 0) + 1
+            continue
         studies.append(dict(study, context=context, attribution=attribution))
         kept_studies.add(study.get("id"))
 
