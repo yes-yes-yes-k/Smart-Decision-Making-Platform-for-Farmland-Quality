@@ -152,8 +152,8 @@ def region_catalog_entry(region_type: str, region_id: str) -> dict[str, Any] | N
     }
 
 
-def _parcel_values(model_id: str) -> list[tuple[str, float]]:
-    """取 (parcel_id, 还原后的值) 列表。"""
+def _parcel_values(model_id: str, source: str = "all") -> list[tuple[str, float]]:
+    """取 (parcel_id, 还原后的值) 列表，可按数据来源过滤。"""
     _require_app_context()
     from sqlalchemy import select
 
@@ -161,7 +161,9 @@ def _parcel_values(model_id: str) -> list[tuple[str, float]]:
 
     table = _result_table(model_id)
     column = getattr(table, statistics._COLUMNS[model_id])  # noqa: SLF001 - 同模块口径
-    rows = db.session.execute(select(table.parcel_id, column)).all()
+    query = select(table.parcel_id, column)
+    query = statistics.source_filter(query, table, source)
+    rows = db.session.execute(query).all()
     payload: list[tuple[str, float]] = []
     for parcel_id, log_value in rows:
         if log_value is None:
@@ -193,8 +195,79 @@ def _region_stats_payload(model_id: str, values: Sequence[float]) -> dict[str, A
 # ----------------------------- 乡镇/区域统计 -----------------------------
 
 
-def region_statistics(model_id: str, region_type: str, region_id: str) -> dict[str, Any]:
-    """单个区域的 Cd 统计（归属走面积表，不用点面判断）。"""
+def ported_region_map() -> dict[str, str]:
+    """移植地块 → 乡镇（来自 ``cd_ported_parcel_township``，点面判断结果）。"""
+    _require_app_context()
+    from sqlalchemy import select
+
+    from framework.models import CdPortedParcelTownship
+    from framework.models.user import db
+
+    rows = db.session.execute(
+        select(CdPortedParcelTownship.parcel_id, CdPortedParcelTownship.township_id)
+    ).all()
+    return {str(parcel_id): str(township_id) for parcel_id, township_id in rows}
+
+
+def ported_fallback_count() -> int:
+    """归属时走"最近乡镇回退"的移植地块数（distance_m > 0）。"""
+    _require_app_context()
+    from sqlalchemy import func, select
+
+    from framework.models import CdPortedParcelTownship
+    from framework.models.user import db
+
+    total = db.session.execute(
+        select(func.count()).select_from(CdPortedParcelTownship).where(
+            CdPortedParcelTownship.distance_m > 0
+        )
+    ).scalar()
+    return int(total or 0)
+
+
+def _mapping_for(region_type: str, source: str) -> tuple[dict[str, str], dict[str, Any]]:
+    """按来源取归属映射；source=all 时合并两套（key 空间天然不重叠）。
+
+    ``assignment_rule`` 反映**实际用到**的归属依据：只有一套有数据时直接报那套规则，
+    两套都有数据才报 ``per_source``。
+    """
+    source = statistics.normalize_source(source)
+    mapping: dict[str, str] = {}
+    native_map: dict[str, str] = {}
+    ported_map: dict[str, str] = {}
+    meta: dict[str, Any] = {
+        "source": source,
+        "assignment_sources": {},
+        "ported_unavailable_for_region_type": False,
+    }
+    if source in ("native", "all"):
+        native_map = parcel_region_map(region_type)
+        mapping.update(native_map)
+        if native_map:
+            meta["assignment_sources"]["native"] = "farmland_region_parcel_area"
+    if source in ("ported", "all"):
+        if region_type == "township":
+            ported_map = ported_region_map()
+            mapping.update(ported_map)
+            if ported_map:
+                meta["assignment_sources"]["ported"] = "cd_ported_parcel_township"
+            meta["ported_fallback_count"] = ported_fallback_count()
+        else:
+            meta["ported_unavailable_for_region_type"] = True
+
+    used: list[str] = []
+    if native_map:
+        used.append("max_area")
+    if ported_map:
+        used.append("point_in_polygon")
+    meta["assignment_rule"] = "per_source" if len(used) > 1 else (used[0] if used else "max_area")
+    return mapping, meta
+
+
+def region_statistics(
+    model_id: str, region_type: str, region_id: str, source: str = "all"
+) -> dict[str, Any]:
+    """单个区域的 Cd 统计（按来源取对应归属依据）。"""
     if model_id not in statistics.MODEL_IDS:
         raise CdSpatialError("unknown_model")
     region_type = _check_region_type(region_type)
@@ -202,17 +275,17 @@ def region_statistics(model_id: str, region_type: str, region_id: str) -> dict[s
     if entry is None:
         raise CdSpatialError("region_not_found")
 
-    mapping = parcel_region_map(region_type)
+    mapping, meta = _mapping_for(region_type, source)
     target = str(region_id)
-    parcel_ids = [parcel_id for parcel_id, rid in mapping.items() if rid == target]
-    wanted = set(parcel_ids)
-    values = [value for parcel_id, value in _parcel_values(model_id) if parcel_id in wanted]
+    wanted = {parcel_id for parcel_id, rid in mapping.items() if rid == target}
+    values = [value for parcel_id, value in _parcel_values(model_id, meta["source"]) if parcel_id in wanted]
 
     payload = {
         "model_id": model_id,
         **entry,
-        "assignment_rule": "max_area",
-        "parcel_count": len(parcel_ids),
+        "assignment_rule": meta["assignment_rule"],
+        **meta,
+        "parcel_count": len(wanted),
         "queried_at": _now_iso(),
         "queried_at_is": "query_time",
         **_region_stats_payload(model_id, values),
@@ -227,22 +300,25 @@ def township_statistics(
     parent_type: str | None = None,
     parent_id: str | None = None,
     min_count: int = 1,
+    source: str = "all",
 ) -> dict[str, Any]:
     """按区域（默认 township）聚合的 Cd 统计列表。
 
+    归属按来源取：自有 → 面积表；移植 → 点面判断表；all → 合并。
     排序：样本数降序、区域标识升序，保证结果稳定。``min_count`` 过滤小样本。
     """
     if model_id not in statistics.MODEL_IDS:
         raise CdSpatialError("unknown_model")
     region_type = _check_region_type(region_type)
+    source = statistics.normalize_source(source)
     if bool(parent_type) != bool(parent_id):
         raise CdSpatialError("invalid_parent")
     if not isinstance(min_count, int) or min_count < 0:
         raise CdSpatialError("invalid_min_count")
 
-    mapping = parcel_region_map(region_type)
+    mapping, meta = _mapping_for(region_type, source)
     buckets: dict[str, list[float]] = {}
-    for parcel_id, value in _parcel_values(model_id):
+    for parcel_id, value in _parcel_values(model_id, source):
         region_id = mapping.get(parcel_id)
         if region_id is None:
             continue
@@ -271,9 +347,10 @@ def township_statistics(
     return {
         "model_id": model_id,
         "region_type": region_type,
-        "assignment_rule": "max_area",
+        **meta,
         "min_count": min_count,
         "borderline_parcel_count": borderline_parcel_count(region_type),
+        "source_breakdown": statistics.source_breakdown(model_id) if region_type else None,
         "has_data": bool(items),
         "count": len(items),
         "unit": statistics.UNIT,
@@ -327,10 +404,12 @@ def points_geojson(
     *,
     bbox: Sequence[float] | None = None,
     limit: int = DEFAULT_POINT_LIMIT,
+    source: str = "all",
 ) -> dict[str, Any]:
     """点位 FeatureCollection，坐标取地块质心（结果表没有坐标）。"""
     if model_id not in statistics.MODEL_IDS:
         raise CdSpatialError("unknown_model")
+    source = statistics.normalize_source(source)
     if not isinstance(limit, int) or limit < 1 or limit > MAX_POINT_LIMIT:
         raise CdSpatialError("invalid_limit")
     if bbox is not None:
@@ -352,6 +431,7 @@ def points_geojson(
         table.parcel_id, table.sample_id, column,
         ParcelInfo.centroid_lon, ParcelInfo.centroid_lat,
     ).join(ParcelInfo, ParcelInfo.parcel_id == table.parcel_id)
+    base = statistics.source_filter(base, table, source)
 
     if bbox is not None:
         min_lon, min_lat, max_lon, max_lat = (float(v) for v in bbox)
@@ -388,6 +468,7 @@ def points_geojson(
     return {
         "type": "FeatureCollection",
         "model_id": model_id,
+        "source": source,
         "coordinate_source": "parcel_centroid",
         "boundary_endpoint": "/api/v1/farmland-statistics/boundaries",
         "bbox": list(bbox) if bbox is not None else None,

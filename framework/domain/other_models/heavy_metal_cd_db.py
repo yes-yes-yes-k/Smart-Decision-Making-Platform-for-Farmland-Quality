@@ -268,11 +268,13 @@ def run(
 def read_results(
     model_id: str,
     parcel_ids: Iterable[str] | None = None,
+    source: str | None = None,
 ) -> list[dict[str, Any]]:
     """读取结果并把自然对数值还原为 mg/kg。
 
     单位标注为 ``mg/kg``；``unit_status`` 保持 ``unverified``
     （``exp(LnEffCd)`` 实测量级待核，见 design 决策 6）。
+    ``source`` 为 ``native`` / ``ported`` / ``all``（默认不过滤，向后兼容）。
     """
     if model_id not in _API_FIELDS:
         raise CdDatabaseError("unknown_model")
@@ -284,6 +286,14 @@ def read_results(
     query = db.session.query(table)
     if parcel_ids is not None:
         query = query.filter(table.parcel_id.in_([str(p) for p in parcel_ids]))
+    if source is not None:
+        normalized = str(source).strip().lower()
+        if normalized == "ported":
+            query = query.filter(table.parcel_id.like("SGD!_%", escape="!"))
+        elif normalized == "native":
+            query = query.filter(~table.parcel_id.like("SGD!_%", escape="!"))
+        elif normalized != "all":
+            raise CdDatabaseError("invalid_source")
     rows = query.order_by(table.parcel_id, table.sample_id).all()
     payload = []
     for row in rows:

@@ -85,6 +85,26 @@ effective:  available_potassium ← AvaK_IDW ；available_phosphorus ← AvaP_ID
 
 不达标则不提交导入结果（脚本以非零退出并打印差异分布）。
 
+### 6. 移植数据写入 `parcel_info` 时 `geom` 与 `area_code` 留空，既有地块统计不受污染
+
+移植点只有经纬度、没有地块多边形，因此写入 `parcel_info` 时：
+
+- `centroid_lon/lat` 填原系统 `lon/lan`
+- `geom` **留空**
+- `area_code` **留空**
+- `legacy_parcel_code` 填 `soilgd:<Farmland_ID>`（唯一约束满足）
+
+实测依据：`framework/api/services/farmland_statistics.py` 的统计 SQL 全部带 `data.geom IS NOT NULL`（`_live_statistics_sql` 第 800 行附近），所以 `geom` 为空的行不会进入既有的地块面积/质量统计。`area_code` 为空则阶段 2 的 `area_code` 过滤、阶段 3 的区县粒度统计都会自然排除移植数据——这正是期望行为（移植数据没有合法行政区属性）。
+
+实现后必须实测：对同一行政区调用 `farmland_statistics.aggregate_statistics()`，导入前后返回的数值必须一致。
+
+### 7. 乡镇归属按来源切换，两套依据并存
+
+- 自有地块：`farmland_region_parcel_area`（面积最大归属，已归档的阶段 3 语义，**不改**）
+- 移植地块：`cd_ported_parcel_township`（点面判断 + 最近回退）
+
+`source=all` 时两套并存，响应给出 `source_breakdown` 与两类归属的样本数；`source=native|ported` 时只用对应依据。这样既不改阶段 3 已归档的归属语义，也让移植数据能做乡镇统计。
+
 ## Risks / Trade-offs
 
 - **`parcel_info` 被灌入 40100 行**：会让"地块总数"从 5488 跳到 45588，任何不区分来源的 UI/统计都会失真。缓解：接口默认返回 `source_breakdown`；文档显著标注。

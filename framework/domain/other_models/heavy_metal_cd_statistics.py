@@ -20,6 +20,11 @@ from typing import Any, Iterable, Mapping, Sequence
 
 MODEL_IDS: tuple[str, ...] = ("crop_cd", "effective_cd")
 
+#: 数据来源维度（阶段 D1 引入）：自有地块 / 移植数据集 / 全部。
+SOURCES: tuple[str, ...] = ("native", "ported", "all")
+PORTED_LIKE = "SGD!_%"
+PORTED_ESCAPE = "!"
+
 UNIT = "mg/kg"
 UNIT_STATUS = "unverified"
 UNIT_NOTE = "单位标注依据原系统模型注释；exp(LnEffCd) 实测量级待核，unit_status 保持 unverified"
@@ -169,14 +174,53 @@ def _area_filtered_query(query, model_id: str, area_code: str | None):
     )
 
 
-def collect_values(model_id: str, area_code: str | None = None) -> list[float]:
-    """取指定模型（可选区域）的全部预测值，``exp(ln)`` 还原为 mg/kg。"""
+def normalize_source(value: Any) -> str:
+    """校验并归一化数据来源参数。"""
+    source = str(value or "all").strip().lower()
+    if source not in SOURCES:
+        raise CdStatisticsError("invalid_source")
+    return source
+
+
+def source_filter(query, table, source: str = "all"):
+    """按数据来源过滤：移植数据用 ``SGD_`` 前缀识别（design 决策 1/3）。"""
+    source = normalize_source(source)
+    if source == "ported":
+        return query.filter(table.parcel_id.like(PORTED_LIKE, escape=PORTED_ESCAPE))
+    if source == "native":
+        return query.filter(~table.parcel_id.like(PORTED_LIKE, escape=PORTED_ESCAPE))
+    return query
+
+
+def source_breakdown(model_id: str, area_code: str | None = None) -> dict[str, int]:
+    """返回该范围内自有 / 移植各自的样本数。"""
+    if model_id not in _COLUMNS:
+        raise CdStatisticsError("unknown_model")
+    _require_app_context()
+    from sqlalchemy import func
+
+    from framework.models.user import db  # noqa: WPS433
+
+    table = _result_table(model_id)
+
+    def _count(source: str) -> int:
+        query = _area_filtered_query(db.session.query(func.count(table.id)), model_id, area_code)
+        return int(source_filter(query, table, source).scalar() or 0)
+
+    return {"native": _count("native"), "ported": _count("ported")}
+
+
+def collect_values(
+    model_id: str, area_code: str | None = None, source: str = "all"
+) -> list[float]:
+    """取指定模型（可选区域与来源）的全部预测值，``exp(ln)`` 还原为 mg/kg。"""
     _require_app_context()
     from framework.models.user import db  # noqa: WPS433
 
     table = _result_table(model_id)
     column = getattr(table, _COLUMNS[model_id])
     query = _area_filtered_query(db.session.query(column), model_id, area_code)
+    query = source_filter(query, table, source)
     values: list[float] = []
     for (log_value,) in query.all():
         if log_value is None:
@@ -190,15 +234,18 @@ def collect_values(model_id: str, area_code: str | None = None) -> list[float]:
     return values
 
 
-def crop_cd_statistics(area_code: str | None = None) -> dict[str, Any]:
+def crop_cd_statistics(area_code: str | None = None, source: str = "all") -> dict[str, Any]:
     """作物 Cd 统计：8 项基础统计 + 三档分布。"""
-    values = collect_values("crop_cd", area_code)
+    source = normalize_source(source)
+    values = collect_values("crop_cd", area_code, source)
     return {
         "模型类型": "作物Cd预测模型",
         "数据单位": UNIT,
         "unit_status": UNIT_STATUS,
         "unit_note": UNIT_NOTE,
         "has_data": bool(values),
+        "source": source,
+        "source_breakdown": source_breakdown("crop_cd", area_code),
         "statistics_scope": "crop_cd_distribution",
         "queried_at": _now_iso(),
         "queried_at_is": "query_time",
@@ -209,15 +256,18 @@ def crop_cd_statistics(area_code: str | None = None) -> dict[str, Any]:
     }
 
 
-def effective_cd_statistics(area_code: str | None = None) -> dict[str, Any]:
+def effective_cd_statistics(area_code: str | None = None, source: str = "all") -> dict[str, Any]:
     """有效态 Cd 统计：只有 8 项基础统计，**不含任何分箱**。"""
-    values = collect_values("effective_cd", area_code)
+    source = normalize_source(source)
+    values = collect_values("effective_cd", area_code, source)
     return {
         "模型类型": "有效态Cd预测模型",
         "数据单位": UNIT,
         "unit_status": UNIT_STATUS,
         "unit_note": UNIT_NOTE,
         "has_data": bool(values),
+        "source": source,
+        "source_breakdown": source_breakdown("effective_cd", area_code),
         "statistics_scope": "effective_cd_basic",
         "queried_at": _now_iso(),
         "queried_at_is": "query_time",
@@ -227,14 +277,16 @@ def effective_cd_statistics(area_code: str | None = None) -> dict[str, Any]:
     }
 
 
-def combined_statistics(area_code: str | None = None) -> dict[str, Any]:
+def combined_statistics(area_code: str | None = None, source: str = "all") -> dict[str, Any]:
     """双模型综合统计：两侧各自统计 + 完整性标记 + 对比项。"""
-    crop = crop_cd_statistics(area_code)
-    effective = effective_cd_statistics(area_code)
+    source = normalize_source(source)
+    crop = crop_cd_statistics(area_code, source)
+    effective = effective_cd_statistics(area_code, source)
     payload: dict[str, Any] = {
         "生成时间": _now_iso(),
         "queried_at_is": "query_time",
         "area_code": area_code,
+        "source": source,
         "has_data": crop["has_data"] or effective["has_data"],
         "数据完整性": {
             "有作物Cd数据": crop["has_data"],
@@ -266,10 +318,12 @@ def list_results(
     area_code: str | None = None,
     limit: int = 100,
     offset: int = 0,
+    source: str = "all",
 ) -> dict[str, Any]:
     """分页明细：按地块与样点排序，返回 ln 值与还原值。"""
     if model_id not in _COLUMNS:
         raise CdStatisticsError("unknown_model")
+    source = normalize_source(source)
     if not isinstance(limit, int) or limit < 1 or limit > 1000:
         raise CdStatisticsError("invalid_limit")
     if not isinstance(offset, int) or offset < 0:
@@ -280,6 +334,7 @@ def list_results(
     table = _result_table(model_id)
     column = getattr(table, _COLUMNS[model_id])
     base = db.session.query(table.parcel_id, table.sample_id, column)
+    base = source_filter(base, table, source)
     query = _area_filtered_query(base, model_id, area_code).order_by(
         table.parcel_id, table.sample_id
     )
@@ -298,6 +353,7 @@ def list_results(
     return {
         "model_id": model_id,
         "area_code": area_code,
+        "source": source,
         "limit": limit,
         "offset": offset,
         "count": len(items),
@@ -309,10 +365,12 @@ def export_csv(
     model_id: str,
     area_code: str | None = None,
     max_rows: int = DEFAULT_CSV_MAX_ROWS,
+    source: str = "all",
 ) -> tuple[bytes, int]:
     """导出 CSV（UTF-8 BOM）。超过 ``max_rows`` 抛 ``export_exceeds_limit``。"""
     if model_id not in _COLUMNS:
         raise CdStatisticsError("unknown_model")
+    source = normalize_source(source)
     _require_app_context()
     from framework.models.user import db  # noqa: WPS433
     from sqlalchemy import func
@@ -323,11 +381,13 @@ def export_csv(
     count_query = _area_filtered_query(
         db.session.query(func.count(table.id)), model_id, area_code
     )
+    count_query = source_filter(count_query, table, source)
     total = int(count_query.scalar() or 0)
     if total > max_rows:
         raise CdStatisticsError(f"export_exceeds_limit:{total}>{max_rows}")
 
     base = db.session.query(table.parcel_id, table.sample_id, column)
+    base = source_filter(base, table, source)
     rows = _area_filtered_query(base, model_id, area_code).order_by(
         table.parcel_id, table.sample_id
     ).all()

@@ -30,7 +30,12 @@ _BAD_REQUEST_CODES = {
     "invalid_parent",
     "invalid_min_count",
     "invalid_bbox",
+    "invalid_source",
 }
+
+
+def _source() -> str:
+    return (request.args.get("source") or "all").strip().lower()
 
 
 def _area_code() -> str | None:
@@ -63,7 +68,7 @@ def _error_response(exc: statistics.CdStatisticsError):
 def crop_cd_statistics():
     """作物 Cd 统计：8 项基础统计 + 三档分布（带非安全判定声明）。"""
     try:
-        data = statistics.crop_cd_statistics(_area_code())
+        data = statistics.crop_cd_statistics(_area_code(), _source())
     except statistics.CdStatisticsError as exc:
         return _error_response(exc)
     return jsonify({"status": "ok", "message": "获取作物Cd预测统计信息成功", "data": data})
@@ -74,7 +79,7 @@ def crop_cd_statistics():
 def effective_cd_statistics():
     """有效态 Cd 统计：只有 8 项基础统计，不提供分箱。"""
     try:
-        data = statistics.effective_cd_statistics(_area_code())
+        data = statistics.effective_cd_statistics(_area_code(), _source())
     except statistics.CdStatisticsError as exc:
         return _error_response(exc)
     return jsonify({"status": "ok", "message": "获取有效态Cd预测统计信息成功", "data": data})
@@ -85,7 +90,7 @@ def effective_cd_statistics():
 def combined_statistics():
     """双模型综合统计与完整性标记。"""
     try:
-        data = statistics.combined_statistics(_area_code())
+        data = statistics.combined_statistics(_area_code(), _source())
     except statistics.CdStatisticsError as exc:
         return _error_response(exc)
     return jsonify({"status": "ok", "message": "获取综合统计信息成功", "data": data})
@@ -104,7 +109,9 @@ def list_results():
     except (TypeError, ValueError):
         return jsonify({"status": "error", "reason": "invalid_limit"}), 400
     try:
-        data = statistics.list_results(model_id, _area_code(), limit=limit, offset=offset)
+        data = statistics.list_results(
+            model_id, _area_code(), limit=limit, offset=offset, source=_source()
+        )
     except statistics.CdStatisticsError as exc:
         return _error_response(exc)
     return jsonify({"status": "ok", "data": data})
@@ -118,7 +125,7 @@ def export_results_csv():
     if model_id not in statistics.MODEL_IDS:
         return jsonify({"status": "error", "reason": "unknown_model"}), 400
     try:
-        payload, total = statistics.export_csv(model_id, _area_code())
+        payload, total = statistics.export_csv(model_id, _area_code(), source=_source())
     except statistics.CdStatisticsError as exc:
         return _error_response(exc)
     response = Response(payload, mimetype="text/csv")
@@ -183,6 +190,7 @@ def spatial_townships():
             parent_type=request.args.get("parent_type"),
             parent_id=request.args.get("parent_id"),
             min_count=min_count,
+            source=_source(),
         )
     except spatial.CdSpatialError as exc:
         return _spatial_error(exc)
@@ -199,7 +207,7 @@ def spatial_region_statistics(object_type: str, object_id: str):
     if model_id not in statistics.MODEL_IDS:
         return jsonify({"status": "error", "reason": "unknown_model"}), 400
     try:
-        data = spatial.region_statistics(model_id, object_type, object_id)
+        data = spatial.region_statistics(model_id, object_type, object_id, _source())
     except spatial.CdSpatialError as exc:
         return _spatial_error(exc)
     return jsonify({"status": "ok", "data": data})
@@ -218,7 +226,7 @@ def spatial_points():
     except (TypeError, ValueError):
         return jsonify({"status": "error", "reason": "invalid_limit"}), 400
     try:
-        payload = spatial.points_geojson(model_id, bbox=bbox, limit=limit)
+        payload = spatial.points_geojson(model_id, bbox=bbox, limit=limit, source=_source())
     except spatial.CdSpatialError as exc:
         return _spatial_error(exc)
     return jsonify(payload)

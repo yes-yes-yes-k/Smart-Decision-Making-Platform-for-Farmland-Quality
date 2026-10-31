@@ -14,6 +14,12 @@
 
 数据来源是既有的 `farmland_region_parcel_area`（预计算「区域 × 地块 × 面积亩」），不是点面包含判断。
 
+**阶段 D1 起按来源切换依据**（`source` 参数）：
+
+- 自有地块 → `farmland_region_parcel_area`（面积最大归属，即本节规则）
+- 移植地块（`SGD_` 前缀）→ `cd_ported_parcel_township`（点面判断 + 最近回退，详见 `docs/cd-ported-dataset.md`）
+- 响应里 `assignment_rule` 反映实际用到的依据：单套为 `max_area` / `point_in_polygon`，两套都有数据为 `per_source`
+
 ```sql
 -- 每个地块只取面积最大的区域（窗口函数实现，PG/SQLite 通用）
 ROW_NUMBER() OVER (PARTITION BY parcel_id ORDER BY area_mu DESC, region_id)

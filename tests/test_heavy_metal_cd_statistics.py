@@ -281,7 +281,7 @@ def test_http_crop_cd_statistics_ok(monkeypatch):
     client, headers = _http_client(monkeypatch)
     monkeypatch.setattr(
         "framework.api.routes.heavy_metal_cd.statistics.crop_cd_statistics",
-        lambda area_code=None: {"has_data": True, "area_code": area_code, "基础统计": {"数据点总数": 3}},
+        lambda area_code=None, source="all": {"has_data": True, "area_code": area_code, "基础统计": {"数据点总数": 3}},
     )
     response = client.get("/hmcd/statistics/crop-cd?area_code=440282", headers=headers)
     assert response.status_code == 200
@@ -316,7 +316,7 @@ def test_http_csv_success_sets_headers(monkeypatch):
     client, headers = _http_client(monkeypatch)
     monkeypatch.setattr(
         "framework.api.routes.heavy_metal_cd.statistics.export_csv",
-        lambda model_id, area_code=None: (b"\xef\xbb\xbfa,b\n1,2\n", 1),
+        lambda model_id, area_code=None, source="all": (b"\xef\xbb\xbfa,b\n1,2\n", 1),
     )
     response = client.get("/hmcd/results.csv?model=crop_cd", headers=headers)
     assert response.status_code == 200

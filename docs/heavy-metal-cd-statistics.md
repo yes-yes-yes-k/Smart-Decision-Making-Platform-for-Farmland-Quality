@@ -36,6 +36,7 @@
 
 ## 三、几个已定的行为
 
+- **数据来源维度（阶段 D1 起）**：所有统计/明细/CSV 接口支持 `source=native|ported|all`（默认 `all`），响应带 `source` 与 `source_breakdown`（自有/移植各自样本数）。移植数据用 `SGD_` 前缀识别，详见 `docs/cd-ported-dataset.md`
 - **空数据**：HTTP 200 + `has_data=false` + 统计字段 `null`（不沿用原系统 404），便于前端区分"还没跑预测"与"接口出错"
 - **区域过滤**：按 `parcel_info.area_code` JOIN 结果表真正过滤（原系统 `get_crop_cd_statistics(area)` 的 `area` 参数未参与查询，是失效的）
 - **不返回"数据更新时间"**：结果表没有生成时间（阶段 1 决策 3），只返回 `queried_at` 且标注 `queried_at_is: "query_time"`

@@ -42,3 +42,26 @@ class CdEffectivePredictionResult(db.Model):
         db.UniqueConstraint("parcel_id", "sample_id", name="uk_cd_effective_prediction_parcel_sample"),
         db.Index("idx_cd_effective_prediction_parcel_id", "parcel_id"),
     )
+
+
+class CdPortedParcelTownship(db.Model):
+    """移植数据集的乡镇归属（点面判断，独立于按面积计算的归属表）。
+
+    移植点只有经纬度、没有地块多边形，因此不能写入 ``farmland_region_parcel_area``
+    （那张表的语义是"区域 × 地块 × 面积亩"）。归属规则见 openspec change
+    ``import-cd-ported-dataset`` 的 design 决策 2/7。
+    """
+
+    __tablename__ = "cd_ported_parcel_township"
+
+    parcel_id = db.Column(db.String(64), primary_key=True, comment="移植地块编号（SGD_ 前缀）")
+    township_id = db.Column(db.String(64), nullable=False, comment="乡镇标识（spatial_region_catalog.object_id）")
+    township_name = db.Column(db.String(128), comment="乡镇名称")
+    distance_m = db.Column(db.Float, nullable=False, server_default="0", comment="点到乡镇边界的距离（米），0 表示点在内部")
+    assigned_at = db.Column(
+        db.DateTime(timezone=True), nullable=False, server_default=db.func.current_timestamp(), comment="归属计算时间"
+    )
+
+    __table_args__ = (
+        db.Index("idx_cd_ported_township_township", "township_id"),
+    )

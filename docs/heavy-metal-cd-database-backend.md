@@ -29,6 +29,8 @@
 
 **有意不加**的列（design 决策 3）：`execution_id`、`model_version`、`computed_at`、批次号。用户口径是与原系统一致、不追踪"哪个模型算的"。
 
+**数据来源区分（阶段 D1 起）**：结果表可能同时存自有地块与移植数据。移植数据的地块编号统一带 `SGD_` 前缀；查询时用 `source=native|ported|all` 区分，详见 `docs/cd-ported-dataset.md`。
+
 ## 三、覆盖语义
 
 - **地块级覆盖**：写入前 `DELETE FROM <表> WHERE parcel_id IN (本次涉及的地块)`，再 `bulk_insert_mappings`（5000 条/批）。

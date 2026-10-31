@@ -35,6 +35,7 @@ def spatial_app():
     from framework.models.cd_prediction import (
         CdCropPredictionResult,
         CdEffectivePredictionResult,
+        CdPortedParcelTownship,
     )
     from framework.models.user import db
 
@@ -57,6 +58,7 @@ def spatial_app():
         tables = (
             CdCropPredictionResult.__table__,
             CdEffectivePredictionResult.__table__,
+            CdPortedParcelTownship.__table__,
             FarmlandRegionParcelArea.__table__,
             SpatialRegionCatalog.__table__,
             ParcelInfo.__table__,
@@ -66,11 +68,11 @@ def spatial_app():
                 table.create(bind=db.engine, checkfirst=True)
         except Exception as exc:  # noqa: BLE001 - PostGIS 列在 SQLite 上无法渲染
             pytest.skip(f"SQLite 无法建出空间相关表：{exc}")
-        for model in (CdCropPredictionResult, CdEffectivePredictionResult, FarmlandRegionParcelArea, SpatialRegionCatalog, ParcelInfo):
+        for model in (CdCropPredictionResult, CdEffectivePredictionResult, CdPortedParcelTownship, FarmlandRegionParcelArea, SpatialRegionCatalog, ParcelInfo):
             db.session.query(model).delete()
         db.session.commit()
         yield db
-        for model in (CdCropPredictionResult, CdEffectivePredictionResult, FarmlandRegionParcelArea, SpatialRegionCatalog, ParcelInfo):
+        for model in (CdCropPredictionResult, CdEffectivePredictionResult, CdPortedParcelTownship, FarmlandRegionParcelArea, SpatialRegionCatalog, ParcelInfo):
             db.session.query(model).delete()
         db.session.commit()
 
