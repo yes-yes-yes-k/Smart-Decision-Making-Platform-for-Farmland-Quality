@@ -22,6 +22,7 @@ from framework.knowledge_graph.research_extraction import select_chunks
 from framework.knowledge_graph.research_contract_v2 import ENTITY_TYPES, DIRECTIONS, QUALIFIERS, STUDY_KINDS
 from framework.knowledge_graph.selection_protocol_v2 import (
     SelectionError, compile_partial_quote_only)
+from framework.knowledge_graph.streaming_extraction_call import stream_completion
 
 DEFAULT_RUN = "r2-20261031-v3-quoteonly"
 CORPUS = REPO / "artifacts/knowledge_platform/evidence-m1-v1/corpus"
@@ -81,6 +82,14 @@ def run() -> int:
     parser.add_argument("--thinking-budget", type=int, default=0, help="0 means provider default")
     parser.add_argument("--max-tokens", type=int, default=1536)
     parser.add_argument("--chunks", type=int, default=8)
+    parser.add_argument("--ttft-limit", type=float, default=300.0,
+                        help="seconds allowed before the first delta arrives")
+    parser.add_argument("--gap-limit", type=float, default=180.0,
+                        help="seconds allowed between two deltas")
+    parser.add_argument("--total-limit", type=float, default=900.0,
+                        help="wall clock ceiling for one streamed response")
+    parser.add_argument("--reasoning-cap", type=int, default=0,
+                        help="abort once the live reasoning estimate passes this; 0 disables")
     args = parser.parse_args()
     global OUT
     OUT = REPO / "artifacts/knowledge_platform/research-extraction-v2" / args.run_id
@@ -96,9 +105,13 @@ def run() -> int:
                      "source": "user approved R2.4 plan"}
     save(OUT / "budget-authorization.json", authorization)
     budget = Budget(OUT / "execution/budget.sqlite3", total=args.total_tokens, requests=args.attempts)
+    # Streaming turns the transport timeout into a "no delta arrived" bound
+    # instead of a whole-response bound, so the loop owns the total ceiling.
+    transport_timeout = httpx.Timeout(connect=15.0, read=max(args.ttft_limit, args.gap_limit),
+                                      write=60.0, pool=15.0)
     client = OpenAI(api_key=os.environ.get("KG_EXTRACTION_API_KEY") or os.environ["SILICONFLOW_API_KEY"],
                     base_url=os.environ.get("SILICONFLOW_BASE_URL", "https://api.siliconflow.cn/v1"),
-                    max_retries=0, timeout=600,
+                    max_retries=0, timeout=transport_timeout,
                     http_client=httpx.Client(trust_env=False, follow_redirects=False))
 
     documents = [json.loads(path.read_text(encoding="utf-8")) for path in sorted(CORPUS.glob("*.json"))]
@@ -107,7 +120,9 @@ def run() -> int:
         documents = [document for document in documents if document["document_id"] in wanted]
     summary = {"started_at_utc": datetime.now(timezone.utc).isoformat(), "state": "running",
                "documents": len(documents), "attempts": 0, "tokens": 0,
-               "accepted": 0, "rejected": 0, "failed": 0, "reasons": {}}
+               "accepted": 0, "rejected": 0, "failed": 0, "reasons": {}, "aborts": {},
+               "stream_budgets": {"ttft": args.ttft_limit, "gap": args.gap_limit,
+                                  "total": args.total_limit, "reasoning_cap": args.reasoning_cap}}
     try:
         for document in documents:
             if document.get("verification", {}).get("state") != "verified":
@@ -149,15 +164,33 @@ def run() -> int:
                 try:
                     payload_request = dict(request)
                     payload_request["extra_body"] = payload_request.pop("extra_body")
-                    response = client.chat.completions.create(**payload_request)
-                    budget.finish(attempt, response.usage)
-                    row["usage"] = response.usage.model_dump() if response.usage else None
+                    streamed = stream_completion(
+                        client, payload_request,
+                        ttft_limit=args.ttft_limit, gap_limit=args.gap_limit,
+                        total_limit=args.total_limit, reasoning_token_cap=args.reasoning_cap)
+                    metrics = {key: streamed[key] for key in
+                               ("ttft_seconds", "seconds", "chunks", "finish_reason",
+                                "reasoning_characters", "reasoning_tokens_estimated", "aborted")}
+                    if streamed["aborted"]:
+                        budget.finish(attempt, streamed["usage"], error=streamed["aborted"])
+                        row["error"] = streamed["aborted"]
+                        row["attempts"].append({"at_utc": datetime.now(timezone.utc).isoformat(),
+                                                "status": "aborted", **metrics})
+                        if streamed["content"]:
+                            row["content_partial"] = streamed["content"][:4000]
+                        summary["aborts"][streamed["aborted"]] = (
+                            summary["aborts"].get(streamed["aborted"], 0) + 1)
+                        # A runaway chain of thought repeats itself; a stall may not.
+                        if streamed["aborted"] != "reasoning_cap_exceeded" and retry == 0:
+                            continue
+                        break
+                    budget.finish(attempt, streamed["usage"])
+                    row["usage"] = streamed["usage"].model_dump() if streamed["usage"] else None
                     summary["tokens"] += int((row["usage"] or {}).get("total_tokens") or 0)
-                    content = response.choices[0].message.content or ""
+                    content = streamed["content"]
                     row["content_raw"] = content[:4000]
                     row["attempts"].append({"at_utc": datetime.now(timezone.utc).isoformat(),
-                                            "seconds": round(time.perf_counter() - started, 2),
-                                            "status": "returned", "finish_reason": response.choices[0].finish_reason})
+                                            "status": "returned", **metrics})
                     payload = json.loads(content)
                     result = compile_partial_quote_only(value, payload.get("enumeration", {}),
                                                         payload.get("decision", {}),

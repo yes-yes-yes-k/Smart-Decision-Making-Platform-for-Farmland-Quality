@@ -241,3 +241,11 @@ D：提示词改为只给`{chunk_index,quote}`，坐标由服务端定位（块�
 消耗：A阶段批准22万，强度实验约8.3万+默认批次11.4万，合计约19.7万，剩余约2.3万，不足一篇最坏情况。单篇成功耗时202—250秒，超时一次按预留计11.9k—23.2k且无产出，重试策略不可持续。
 
 建议：B追加约10万、超时1500s+每篇1次重试补齐；或D冻结3/10并把缺口写入R2.5/R4限制。状态见[批次状态](../../../docs/knowledge-engineering-r25-batch-status-20261031.md)。
+
+## R2.5流式改造与超时归因（2026-10-31）
+
+新增`framework/knowledge_graph/streaming_extraction_call.py`：把非流式的单一总时限拆为`ttft_limit`（首字）、`gap_limit`（块间间隔）、`total_limit`（墙钟）、`reasoning_cap`（实时推理估算）四道闸门；传输层`read`超时改为"多久没收到增量"；中断保留`content_partial`并带稳定原因码；`reasoning_cap_exceeded`不重试。10项测试通过，系数按实测校准为4.0字符/token。
+
+验证（1149，`thinking_budget=1024`，4,134token/28.4s）：**TTFT 4.48s、2,163个增量块、76 tok/s** → 推理确实以增量下发，**"服务端排队"猜测被推翻**；超时请求当时也在正常生成，600秒约对应4.5万completion token，是典型值的2.4倍。
+
+未完成：默认强度+`reasoning_cap≈20000`的对照（约2.2万token，待授权）才能证明104/1032同样属思维链跑飞；三次已超时请求为非流式，无法回溯归因。台账按run独立建库，本次4,134不计入A阶段额度，跨run总额度无单一约束。记录见[流式改造](../../../docs/knowledge-engineering-r25-streaming-timeout-fix-v1.md)。
