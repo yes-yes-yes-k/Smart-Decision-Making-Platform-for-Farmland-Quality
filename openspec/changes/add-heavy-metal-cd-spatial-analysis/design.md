@@ -94,7 +94,7 @@ Feature properties 固定：`parcel_id, sample_id, value, ln_value, unit, unit_s
 
 - 最大面积归属会让"贴边地块"归到一个乡镇，邻镇统计里看不到它；已用 `borderline_parcel_count` 披露。
 - 质心偏移：狭长地块的质心可能落在别的乡镇内；因归属走面积表（不用质心），统计不受影响，只有点位展示有小偏差。
-- 乡镇列表在 103 个乡镇 × 结果行数下的聚合成本：先在 SQL 侧做 group 与 count，只为有数据的乡镇取明细值，避免全量进 Python。
+- 乡镇列表的聚合成本：**实测改为 Python 侧聚合**（一次取 `(parcel_id, value)` + 归属映射后分组）。当前规模是 5488 个地块、结果行同数量级，Python 聚合耗时在百毫秒内且实现更清晰；当结果行数进入 10 万级时再改写为 SQL `GROUP BY`，届时需要重新验证口径一致性。
 
 ## Migration and Rollback
 

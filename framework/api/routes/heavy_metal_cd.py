@@ -9,18 +9,28 @@
 from __future__ import annotations
 
 import logging
+from typing import Any
 
 from flask import Blueprint, Response, jsonify, request
 from flask_jwt_extended import jwt_required
 
 from framework.domain.other_models import heavy_metal_cd
 from framework.domain.other_models import heavy_metal_cd_statistics as statistics
+from framework.domain.other_models import heavy_metal_cd_spatial as spatial
 
 LOG = logging.getLogger(__name__)
 
 heavy_metal_cd_bp = Blueprint("heavy_metal_cd", __name__)
 
-_BAD_REQUEST_CODES = {"unknown_model", "invalid_limit", "invalid_offset"}
+_BAD_REQUEST_CODES = {
+    "unknown_model",
+    "invalid_limit",
+    "invalid_offset",
+    "invalid_region_type",
+    "invalid_parent",
+    "invalid_min_count",
+    "invalid_bbox",
+}
 
 
 def _area_code() -> str | None:
@@ -128,3 +138,87 @@ def list_models():
     except heavy_metal_cd.HeavyMetalCdError:
         return jsonify({"status": "error", "reason": "model_unavailable"}), 503
     return jsonify({"status": "ok", "models": models})
+
+
+# ----------------------------- 空间分析（阶段 3） -----------------------------
+
+
+def _spatial_error(exc) -> tuple[Any, int]:
+    code = str(getattr(exc, "code", "spatial_failed"))
+    if code == "region_not_found":
+        return jsonify({"status": "error", "reason": code}), 404
+    if code in _BAD_REQUEST_CODES:
+        return jsonify({"status": "error", "reason": code}), 400
+    LOG.exception("Cd 空间接口失败: %s", code)
+    return jsonify({"status": "error", "reason": "spatial_failed"}), 500
+
+
+def _parse_bbox(raw: str | None) -> list[float] | None:
+    if raw is None or not str(raw).strip():
+        return None
+    parts = [p.strip() for p in str(raw).split(",")]
+    if len(parts) != 4:
+        raise spatial.CdSpatialError("invalid_bbox")
+    try:
+        return [float(p) for p in parts]
+    except (TypeError, ValueError) as exc:
+        raise spatial.CdSpatialError("invalid_bbox") from exc
+
+
+@heavy_metal_cd_bp.route("/spatial/townships", methods=["GET"])
+@jwt_required()
+def spatial_townships():
+    """按区域（默认 township）聚合的 Cd 统计列表。"""
+    model_id = (request.args.get("model") or "crop_cd").strip()
+    if model_id not in statistics.MODEL_IDS:
+        return jsonify({"status": "error", "reason": "unknown_model"}), 400
+    try:
+        min_count = int(request.args.get("min_count", 1))
+    except (TypeError, ValueError):
+        return jsonify({"status": "error", "reason": "invalid_min_count"}), 400
+    try:
+        data = spatial.township_statistics(
+            model_id,
+            region_type=request.args.get("region_type") or "township",
+            parent_type=request.args.get("parent_type"),
+            parent_id=request.args.get("parent_id"),
+            min_count=min_count,
+        )
+    except spatial.CdSpatialError as exc:
+        return _spatial_error(exc)
+    return jsonify({"status": "ok", "data": data})
+
+
+@heavy_metal_cd_bp.route(
+    "/spatial/regions/<object_type>/<object_id>/statistics", methods=["GET"]
+)
+@jwt_required()
+def spatial_region_statistics(object_type: str, object_id: str):
+    """单个区域的 Cd 统计（归属走面积表，不用点面判断）。"""
+    model_id = (request.args.get("model") or "crop_cd").strip()
+    if model_id not in statistics.MODEL_IDS:
+        return jsonify({"status": "error", "reason": "unknown_model"}), 400
+    try:
+        data = spatial.region_statistics(model_id, object_type, object_id)
+    except spatial.CdSpatialError as exc:
+        return _spatial_error(exc)
+    return jsonify({"status": "ok", "data": data})
+
+
+@heavy_metal_cd_bp.route("/spatial/points", methods=["GET"])
+@jwt_required()
+def spatial_points():
+    """点位 GeoJSON（坐标取地块质心）。"""
+    model_id = (request.args.get("model") or "crop_cd").strip()
+    if model_id not in statistics.MODEL_IDS:
+        return jsonify({"status": "error", "reason": "unknown_model"}), 400
+    try:
+        bbox = _parse_bbox(request.args.get("bbox"))
+        limit = int(request.args.get("limit", spatial.DEFAULT_POINT_LIMIT))
+    except (TypeError, ValueError):
+        return jsonify({"status": "error", "reason": "invalid_limit"}), 400
+    try:
+        payload = spatial.points_geojson(model_id, bbox=bbox, limit=limit)
+    except spatial.CdSpatialError as exc:
+        return _spatial_error(exc)
+    return jsonify(payload)
