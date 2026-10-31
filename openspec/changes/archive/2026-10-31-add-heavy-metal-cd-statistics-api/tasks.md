@@ -29,7 +29,7 @@
 - [x] 4.3 HTTP 测试：认证 401、统计 200、参数非法 400、CSV 超限 413、CSV 响应头、模型契约字段
 - [x] 4.4 真实库探针（真实 PG + Flask test_client + JWT）：空表 `has_data=false`；插入 3 行后均值 0.233333、总体标准差 0.10274、三档各 1；有效态无分箱；综合统计标出缺失侧；明细分页；CSV BOM + 4 行（1 表头 + 3 数据）；models 单位正确；非法 limit 400；未认证 401；探针行已清理（表回 0 行）
 - [x] 4.5 `openspec validate add-heavy-metal-cd-statistics-api` = valid；`git diff --check` 通过
-- [ ] 4.6 归档时回填 `docs/cd-migration-roadmap.md` 中阶段 2 的状态与归档日期
+- [x] 4.6 归档时回填 `docs/cd-migration-roadmap.md` 中阶段 2 的状态与归档日期（已完成：2026-10-31 归档）
 
 ## 未完成（需人工确认后执行）
 

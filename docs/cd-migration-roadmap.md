@@ -16,11 +16,12 @@
 - 备注：输入覆盖率实测为 0（`docs/cd-input-coverage-report.md`），本阶段改为"完整特征行外部供给"；归档时 25/27 tasks，剩 2.4（待数据字典，未完成）
 - 归档目录：`openspec/changes/archive/2026-10-31-add-heavy-metal-cd-database-backend/`
 
-**阶段 2｜add-heavy-metal-cd-statistics-api｜提案已出，待拍板（0/20 tasks）**
-- 交付：作物/有效态基础统计、作物 Cd 三档分布、双模型综合统计、明细查询、CSV 导出、模型契约查询、HTTP 端点（JWT）
+**阶段 2｜add-heavy-metal-cd-statistics-api｜已归档（2026-10-31）**
+- 交付：8 项基础统计（总体标准差、下标分位数）、作物 Cd 三档分布、双模型综合统计、分页明细、CSV 导出、模型契约、6 个 HTTP 端点（JWT）
 - 前置：阶段 1（已归档）
-- 提案：`openspec/changes/add-heavy-metal-cd-statistics-api/`；4 个待拍板口径见其 design 的 Open Questions
-- 注意：作物 Cd 的 `0.2/0.3 mg/kg` 分箱只能标为"作物 Cd 分布统计"；有效态 Cd 不做分箱
+- 口径：1A 照抄下标分位数 / 2A 空数据 200 + has_data=false / 3A 区域过滤仅 area_code / CSV 上限 10 万行
+- 备注：结果表当前 0 行，真实数值待输入到位；归档时 20/21 tasks（仅剩归档回填本身）
+- 归档目录：`openspec/changes/archive/2026-10-31-add-heavy-metal-cd-statistics-api/`
 
 **阶段 3｜add-heavy-metal-cd-spatial-analysis｜规划中**
 - 交付：采样点与预测值查询、区域边界查询、乡镇级空间统计、GeoJSON/点数据结构化输出
