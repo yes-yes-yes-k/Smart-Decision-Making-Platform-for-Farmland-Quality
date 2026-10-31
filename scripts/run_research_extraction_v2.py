@@ -77,6 +77,9 @@ def run() -> int:
     parser.add_argument("--total-tokens", type=int, default=TOTAL_TOKENS)
     parser.add_argument("--attempts", type=int, default=MAX_ATTEMPTS)
     parser.add_argument("--run-id", default=DEFAULT_RUN)
+    parser.add_argument("--enable-thinking", choices=("true", "false"), default="true")
+    parser.add_argument("--thinking-budget", type=int, default=0, help="0 means provider default")
+    parser.add_argument("--max-tokens", type=int, default=1536)
     args = parser.parse_args()
     global OUT
     OUT = REPO / "artifacts/knowledge_platform/research-extraction-v2" / args.run_id
@@ -121,7 +124,11 @@ def run() -> int:
                     continue
             value = packet(document)
             prompt = prompt_for(value, document.get("title", ""))
-            request = {"model": MODEL, "temperature": 0, "max_tokens": 1536,
+            thinking = {"enable_thinking": args.enable_thinking == "true"}
+            if args.thinking_budget:
+                thinking["thinking_budget"] = args.thinking_budget
+            request = {"model": MODEL, "temperature": 0, "max_tokens": args.max_tokens,
+                       "extra_body": thinking,
                        "messages": [{"role": "user", "content": prompt}],
                        "response_format": {"type": "json_object"}}
             request_sha = sha256_text(json.dumps(request, ensure_ascii=False, sort_keys=True))
@@ -139,7 +146,9 @@ def run() -> int:
                 summary["attempts"] += 1
                 started = time.perf_counter()
                 try:
-                    response = client.chat.completions.create(**request)
+                    payload_request = dict(request)
+                    payload_request["extra_body"] = payload_request.pop("extra_body")
+                    response = client.chat.completions.create(**payload_request)
                     budget.finish(attempt, response.usage)
                     row["usage"] = response.usage.model_dump() if response.usage else None
                     summary["tokens"] += int((row["usage"] or {}).get("total_tokens") or 0)
