@@ -15,6 +15,7 @@ from framework.api.routes.data_import import data_import_bp
 from framework.api.routes.observability import observability_bp
 from framework.api.routes.farmland_statistics import farmland_statistics_bp
 from framework.api.routes.acidification_rf import acidification_rf_bp
+from framework.api.routes.heavy_metal_cd import heavy_metal_cd_bp
 # from framework.api.routes.tiles import tiles_bp
 # from framework.api.routes.gd_tiles import gd_tiles_bp
 from framework.agents.workflows.comprehensive.checkpointing import (
@@ -242,6 +243,10 @@ def create_app(config_name: str = 'default') -> Flask:
     app.register_blueprint(
         acidification_rf_bp,
         url_prefix='/api/v1/acidification-rf',
+    )
+    app.register_blueprint(
+        heavy_metal_cd_bp,
+        url_prefix='/api/v1/heavy-metal-cd',
     )
     # 本地瓦片端点（无 url_prefix，路由已含 /tiles/；生产由 Nginx 直接托管）
     # app.register_blueprint(tiles_bp)
