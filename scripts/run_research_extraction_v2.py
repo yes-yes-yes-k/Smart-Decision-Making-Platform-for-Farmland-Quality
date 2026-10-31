@@ -54,8 +54,8 @@ def save(path: Path, value) -> None:
     temporary.replace(path)
 
 
-def packet(document: dict) -> dict:
-    chunks = select_chunks(document, 8)
+def packet(document: dict, limit: int = 8) -> dict:
+    chunks = select_chunks(document, limit)
     digest = sha256_text(json.dumps([[c["chunk_index"], c["content"]] for c in chunks], ensure_ascii=False))
     return {"document_id": document["document_id"],
             "document_sha256": document["content_sha256"],
@@ -80,6 +80,7 @@ def run() -> int:
     parser.add_argument("--enable-thinking", choices=("true", "false"), default="true")
     parser.add_argument("--thinking-budget", type=int, default=0, help="0 means provider default")
     parser.add_argument("--max-tokens", type=int, default=1536)
+    parser.add_argument("--chunks", type=int, default=8)
     args = parser.parse_args()
     global OUT
     OUT = REPO / "artifacts/knowledge_platform/research-extraction-v2" / args.run_id
@@ -97,7 +98,7 @@ def run() -> int:
     budget = Budget(OUT / "execution/budget.sqlite3", total=args.total_tokens, requests=args.attempts)
     client = OpenAI(api_key=os.environ.get("KG_EXTRACTION_API_KEY") or os.environ["SILICONFLOW_API_KEY"],
                     base_url=os.environ.get("SILICONFLOW_BASE_URL", "https://api.siliconflow.cn/v1"),
-                    max_retries=0, timeout=300,
+                    max_retries=0, timeout=600,
                     http_client=httpx.Client(trust_env=False, follow_redirects=False))
 
     documents = [json.loads(path.read_text(encoding="utf-8")) for path in sorted(CORPUS.glob("*.json"))]
@@ -122,7 +123,7 @@ def run() -> int:
                 if saved.get("state") == "accepted":
                     summary["accepted"] += 1
                     continue
-            value = packet(document)
+            value = packet(document, args.chunks)
             prompt = prompt_for(value, document.get("title", ""))
             thinking = {"enable_thinking": args.enable_thinking == "true"}
             if args.thinking_budget:
