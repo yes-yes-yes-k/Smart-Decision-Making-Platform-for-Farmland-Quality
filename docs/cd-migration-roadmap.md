@@ -30,12 +30,13 @@
 - 实测：5488 地块全部有 township 归属；跨乡镇 530（9.6%）；探针 3 行分属 3 乡镇且三档正确；点位坐标与质心逐位一致
 - 归档目录：`openspec/changes/archive/2026-10-31-add-heavy-metal-cd-spatial-analysis/`
 
-**阶段 D1｜import-cd-ported-dataset｜进行中（实现完成，待归档）**
-- 交付：原系统 Cd 数据集移植（`SGD_` 命名空间）、移植乡镇归属表、`source` 来源维度（统计/明细/CSV/乡镇/点位）
+**阶段 D1｜import-cd-ported-dataset｜已归档（2026-10-31）**
+- 交付：原系统 Cd 数据集移植（`SGD_` 命名空间）、移植乡镇归属表 `cd_ported_parcel_township`、`source` 来源维度（统计/明细/CSV/乡镇/区域/点位）
 - 前置：阶段 1–3（已归档）
 - 目的：自有地块缺模型输入（覆盖率 0），先用移植数据把业务链路跑通；业务方数据到位后切 `source=native`
+- 实测：两模型各 40100 行导入；归属点面 39831 + 回退 74（0.18%）；回归最大差 2.79e-06 / 1.03e-06；作物 Cd 均值 0.1125、中位 0.0986、max 0.4380；`geom IS NOT NULL` 仍 5488（既有统计未受污染）
 - 文档：`docs/cd-ported-dataset.md`、`docs/cd-data-requirements.md`（给业务方的需求清单）
-- 提案：`openspec/changes/import-cd-ported-dataset/`
+- 归档目录：`openspec/changes/archive/2026-10-31-import-cd-ported-dataset/`
 
 **阶段 4｜add-heavy-metal-cd-visualization｜规划中**
 - 交付：Cd 分布图、直方图、行政区描边、空间插值、栅格输出、图片与数据文件导出
