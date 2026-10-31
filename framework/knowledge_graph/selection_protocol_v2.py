@@ -32,6 +32,7 @@ REASON_CODES = {
     "duplicate_entity_mention": "the same entity mention span is selected twice",
     "duplicate_relation_fact": "the same relation fact is asserted twice",
     "unsupported_relation_pending": "relation has no verifiable support in the selected span",
+    "invalid_selection_shape": "selection must be a quote string or an object with a quote",
 }
 
 
@@ -198,6 +199,195 @@ def adjudicate_resolution(packet: dict, enumeration: dict, decision: dict) -> di
     return {"status": "accepted" if not rejected else "partially_rejected",
             "accepted": [r for r in accepted if r not in pending], "pending": pending,
             "rejected": rejected, "ledger": ledger}
+
+
+def _collapse(text: str):
+    """Drop whitespace and keep an index back to the original text."""
+    kept, index = [], []
+    for position, character in enumerate(text):
+        if not character.isspace():
+            kept.append(character)
+            index.append(position)
+    return "".join(kept), index
+
+
+def _occurrences(text: str, quote: str) -> list[tuple[int, int]]:
+    """Exact first; whitespace-insensitive only as a transcription tolerance.
+
+    The returned offsets always address the ORIGINAL text, so the record stores
+    the real source substring, never the model's spacing.
+    """
+    exact = occurrences(text, quote)
+    if exact:
+        return exact
+    collapsed_text, index = _collapse(text)
+    collapsed_quote, _ = _collapse(quote)
+    if not collapsed_quote:
+        return []
+    found, start = [], 0
+    while True:
+        hit = collapsed_text.find(collapsed_quote, start)
+        if hit < 0:
+            return found
+        found.append((index[hit], index[hit + len(collapsed_quote) - 1] + 1))
+        start = hit + 1
+
+
+def _quote_of(selection) -> str:
+    if isinstance(selection, str):
+        return selection
+    if isinstance(selection, dict):
+        value = selection.get("quote")
+        return value if isinstance(value, str) else ""
+    raise SelectionError("invalid_selection_shape")
+
+
+def resolve_unique_quote(packet: dict, selection) -> dict:
+    """Resolve a quote-only selection; duplicates are rejected, never guessed.
+
+    A bare string, or an object without ``chunk_index``, is resolved across the
+    supplied chunks — accepted only when the quote occurs exactly once in the
+    whole packet, so the location stays unambiguous.
+    """
+    quote = _quote_of(selection)
+    if not quote.strip():
+        raise SelectionError("quote_not_found")
+    chunk_index = selection.get("chunk_index") if isinstance(selection, dict) else None
+    if chunk_index is not None:
+        candidates = [(chunk_index, _chunk_text(packet, chunk_index))]
+    else:
+        candidates = [(chunk["chunk_index"], chunk["content"]) for chunk in packet.get("chunks", [])]
+    hits = []
+    for index, text in candidates:
+        for start, end in _occurrences(text, quote):
+            hits.append((index, start, end, text[start:end]))
+    if not hits:
+        raise SelectionError("quote_not_found")
+    if len(hits) > 1:
+        raise SelectionError("ambiguous_quote_requires_position")
+    index, start, end, exact_text = hits[0]
+    return {"chunk_index": index, "start": start, "end": end, "quote": exact_text}
+
+
+def resolve_bundle_quote_only(packet: dict, enumeration: dict, decision: dict) -> dict:
+    """Stage-1/2 payloads that carry quotes without offsets (model quotes only)."""
+    studies, entities, ledger = [], [], {}
+    for study in enumeration.get("studies", []):
+        context = [resolve_unique_quote(packet, item) for item in study.get("context", [])]
+        attribution = study.get("attribution")
+        studies.append(dict(study, context=context,
+                            attribution=None if attribution is None else
+                            resolve_unique_quote(packet, attribution)))
+    for entity in enumeration.get("entities", []):
+        mention = resolve_unique_quote(packet, entity.get("mention", {}))
+        entities.append(dict(entity, mention=mention))
+        ledger[entity.get("id")] = {"study_id": entity.get("study_id"),
+                                    "entity_type": entity.get("entity_type"), "span": mention}
+    relations = resolve_decision(packet, {"relations": [
+        dict(relation, result=resolve_unique_quote(packet, relation.get("result", {})),
+             qualifiers={name: (None if value is None else resolve_unique_quote(packet, value))
+                         for name, value in (relation.get("qualifiers") or {}).items()})
+        for relation in decision.get("relations", [])]}, ledger)
+    return {"enumeration": {"studies": studies, "entities": entities},
+            "decision": {"relations": relations}, "ledger": ledger}
+
+
+def compile_selection_quote_only(packet: dict, enumeration: dict, decision: dict, *, provenance: dict) -> dict:
+    """Quote-only variant of :func:`compile_selection`; offsets are derived server-side."""
+    resolved = resolve_bundle_quote_only(packet, enumeration, decision)
+    return contract.compile_bundle(packet, resolved["enumeration"], resolved["decision"],
+                                   provenance=provenance)
+
+
+def compile_partial_quote_only(packet: dict, enumeration: dict, decision: dict, *, provenance: dict) -> dict:
+    """Compile what is verifiable; reject individual items with reason codes.
+
+    A single unlocatable quote must not discard a whole paper: each selection is
+    resolved on its own, failures are reported per item, and only the surviving
+    subset reaches the frozen contract.
+    """
+    rejected, reasons = [], {}
+
+    def note(kind, identifier, error):
+        rejected.append({"kind": kind, "id": identifier} | error.as_dict())
+        reasons[error.code] = reasons.get(error.code, 0) + 1
+
+    studies, kept_studies = [], set()
+    for study in enumeration.get("studies", []):
+        context = []
+        for item in study.get("context", []):
+            try:
+                context.append(resolve_unique_quote(packet, item))
+            except SelectionError as error:
+                note("study_context", study.get("id"), error)
+        if not context:
+            reasons["study_context_unresolved"] = reasons.get("study_context_unresolved", 0) + 1
+            rejected.append({"kind": "study", "id": study.get("id"), "status": "rejected",
+                             "code": "study_context_unresolved"})
+            continue
+        attribution = None
+        if study.get("attribution") is not None:
+            try:
+                attribution = resolve_unique_quote(packet, study["attribution"])
+            except SelectionError as error:
+                note("study_attribution", study.get("id"), error)
+        studies.append(dict(study, context=context, attribution=attribution))
+        kept_studies.add(study.get("id"))
+
+    entities, kept_entities = [], {}
+    for entity in enumeration.get("entities", []):
+        if entity.get("study_id") not in kept_studies:
+            rejected.append({"kind": "entity", "id": entity.get("id"), "status": "rejected",
+                             "code": "study_not_retained"})
+            reasons["study_not_retained"] = reasons.get("study_not_retained", 0) + 1
+            continue
+        try:
+            mention = resolve_unique_quote(packet, entity.get("mention", {}))
+        except SelectionError as error:
+            note("entity_mention", entity.get("id"), error)
+            continue
+        entities.append(dict(entity, mention=mention))
+        kept_entities[entity.get("id")] = {"study_id": entity.get("study_id"),
+                                           "entity_type": entity.get("entity_type"), "span": mention}
+
+    relations = []
+    seen_identities = set()
+    for relation in decision.get("relations", []):
+        source, target = kept_entities.get(relation.get("source_id")), kept_entities.get(relation.get("target_id"))
+        if not source or not target:
+            rejected.append({"kind": "relation", "id": relation.get("id"), "status": "rejected",
+                             "code": "unknown_relation_endpoint"})
+            reasons["unknown_relation_endpoint"] = reasons.get("unknown_relation_endpoint", 0) + 1
+            continue
+        if source["study_id"] != relation.get("study_id") or target["study_id"] != relation.get("study_id"):
+            rejected.append({"kind": "relation", "id": relation.get("id"), "status": "rejected",
+                             "code": "cross_study_relation_forbidden"})
+            reasons["cross_study_relation_forbidden"] = reasons.get("cross_study_relation_forbidden", 0) + 1
+            continue
+        try:
+            result = resolve_unique_quote(packet, relation.get("result", {}))
+            qualifiers = {}
+            for name, value in (relation.get("qualifiers") or {}).items():
+                qualifiers[name] = None if value is None else resolve_unique_quote(packet, value)
+        except SelectionError as error:
+            note("relation_evidence", relation.get("id"), error)
+            continue
+        candidate = dict(relation, result=result, qualifiers=qualifiers)
+        identity = (candidate.get("source_id"), candidate.get("target_id"), result["chunk_index"],
+                    result["start"], candidate.get("direction"))
+        if identity in seen_identities:
+            rejected.append({"kind": "relation", "id": relation.get("id"), "status": "rejected",
+                             "code": "duplicate_relation_fact"})
+            reasons["duplicate_relation_fact"] = reasons.get("duplicate_relation_fact", 0) + 1
+            continue
+        seen_identities.add(identity)
+        relations.append(candidate)
+
+    bundle = contract.compile_bundle(packet, {"studies": studies, "entities": entities},
+                                     {"relations": relations}, provenance=provenance)
+    return {"candidates": bundle, "rejected": rejected, "reason_counts": reasons,
+            "accepted_counts": {"studies": len(studies), "entities": len(entities),
+                                "relations": len(relations)}}
 
 
 def compile_selection(packet: dict, enumeration: dict, decision: dict, *, provenance: dict) -> dict:

@@ -182,3 +182,82 @@ class ContractIntegrationTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class QuoteOnlyTests(unittest.TestCase):
+    def payloads(self):
+        enumeration_payload = {"studies": [study(context=[{"chunk_index": 3, "quote": "施石灰"}])],
+                               "entities": [
+                                   {"id": "e_measure", "study_id": "s1", "entity_type": "measure",
+                                    "mention": {"chunk_index": 3, "quote": "施石灰"}},
+                                   {"id": "e_indicator", "study_id": "s1", "entity_type": "indicator",
+                                    "mention": {"chunk_index": 3, "quote": "稻米镉"}}]}
+        relation_payload = relation(result={"chunk_index": 3, "quote": "施石灰降低稻米镉"})
+        return enumeration_payload, {"relations": [relation_payload]}
+
+    def provenance(self):
+        return {"origin": "unit-test", "configuration_sha256": SHA}
+
+    def test_unique_quotes_are_resolved_without_offsets(self):
+        from framework.knowledge_graph.selection_protocol_v2 import compile_selection_quote_only
+        enumeration_payload, decision_payload = self.payloads()
+        result = compile_selection_quote_only(packet(), enumeration_payload, decision_payload,
+                                              provenance=self.provenance())
+        self.assertEqual(result["rule_validation"], "passed")
+        self.assertEqual(result["relations"][0]["result"]["start"], 11)
+        self.assertEqual(result["entities"][1]["mention"]["start"], 16)
+
+    def test_duplicate_quote_is_rejected(self):
+        from framework.knowledge_graph.selection_protocol_v2 import compile_selection_quote_only
+        enumeration_payload, decision_payload = self.payloads()
+        enumeration_payload["entities"][1]["mention"]["quote"] = "生物炭提高土壤有机碳"
+        with self.assertRaises(SelectionError) as caught:
+            compile_selection_quote_only(packet(), enumeration_payload, decision_payload,
+                                         provenance=self.provenance())
+        self.assertEqual(caught.exception.code, "ambiguous_quote_requires_position")
+
+    def test_missing_quote_is_rejected(self):
+        from framework.knowledge_graph.selection_protocol_v2 import compile_selection_quote_only
+        enumeration_payload, decision_payload = self.payloads()
+        enumeration_payload["entities"][0]["mention"]["quote"] = "不存在的短语"
+        with self.assertRaises(SelectionError) as caught:
+            compile_selection_quote_only(packet(), enumeration_payload, decision_payload,
+                                         provenance=self.provenance())
+        self.assertEqual(caught.exception.code, "quote_not_found")
+
+
+class PartialCompileTests(unittest.TestCase):
+    def payloads(self):
+        enumeration_payload = {"studies": [study(context=[{"chunk_index": 3, "quote": "施石灰"}])],
+                               "entities": [
+                                   {"id": "e_ok", "study_id": "s1", "entity_type": "measure",
+                                    "mention": {"chunk_index": 3, "quote": "施石灰"}},
+                                   {"id": "e_bad", "study_id": "s1", "entity_type": "indicator",
+                                    "mention": {"chunk_index": 3, "quote": "不存在的短语"}},
+                                   {"id": "e_target", "study_id": "s1", "entity_type": "indicator",
+                                    "mention": {"chunk_index": 3, "quote": "稻米镉"}}]}
+        relations = [relation("r_ok", source="e_ok", target="e_target",
+                              result={"chunk_index": 3, "quote": "施石灰降低稻米镉"}),
+                     relation("r_bad", source="e_bad", target="e_target",
+                              result={"chunk_index": 3, "quote": "施石灰降低稻米镉"})]
+        return enumeration_payload, {"relations": relations}
+
+    def test_unverifiable_items_are_rejected_individually(self):
+        from framework.knowledge_graph.selection_protocol_v2 import compile_partial_quote_only
+        enumeration_payload, decision_payload = self.payloads()
+        result = compile_partial_quote_only(packet(), enumeration_payload, decision_payload,
+                                            provenance={"origin": "unit-test", "configuration_sha256": SHA})
+        self.assertEqual(result["accepted_counts"], {"studies": 1, "entities": 2, "relations": 1})
+        self.assertEqual(result["reason_counts"]["quote_not_found"], 1)
+        self.assertEqual(result["reason_counts"]["unknown_relation_endpoint"], 1)
+        self.assertEqual(result["candidates"]["relations"][0]["local_id"], "r_ok")
+
+    def test_unresolvable_study_context_drops_the_study(self):
+        from framework.knowledge_graph.selection_protocol_v2 import compile_partial_quote_only
+        enumeration_payload, decision_payload = self.payloads()
+        enumeration_payload["studies"][0]["context"] = [{"chunk_index": 3, "quote": "不存在的短语"}]
+        result = compile_partial_quote_only(packet(), enumeration_payload, decision_payload,
+                                            provenance={"origin": "unit-test", "configuration_sha256": SHA})
+        self.assertEqual(result["accepted_counts"]["studies"], 0)
+        self.assertIn("study_context_unresolved", result["reason_counts"])
+        self.assertEqual(result["accepted_counts"]["relations"], 0)
