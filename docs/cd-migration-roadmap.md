@@ -10,10 +10,11 @@
 - 交付：本地 torch 双模型参数级推理（`framework/domain/other_models/heavy_metal_cd.py`）、模型资产 + manifest SHA-256、15 个测试
 - 前置：无
 
-**阶段 1｜add-heavy-metal-cd-database-backend｜实现完成，待归档（25/27 tasks）**
+**阶段 1｜add-heavy-metal-cd-database-backend｜已归档（2026-10-31）**
 - 交付：两张结果表（与原系统同构、只存 ln 值）、数据库输入适配、地块级覆盖写库、mg/kg 读取还原、批量入口
 - 前置：阶段 0
-- 备注：输入覆盖率实测为 0（`docs/cd-input-coverage-report.md`），本阶段改为"完整特征行外部供给"；剩 2.4（待数据字典）与 6.5（归档回填）
+- 备注：输入覆盖率实测为 0（`docs/cd-input-coverage-report.md`），本阶段改为"完整特征行外部供给"；归档时 25/27 tasks，剩 2.4（待数据字典，未完成）
+- 归档目录：`openspec/changes/archive/2026-10-31-add-heavy-metal-cd-database-backend/`
 
 **阶段 2｜add-heavy-metal-cd-statistics-api｜规划中**
 - 交付：作物/有效态基础统计、双模型综合统计、按地块/区域查询、CSV 导出、模型清单与输入契约查询

@@ -41,7 +41,7 @@
 - [x] 6.2 定向测试 `tests/test_heavy_metal_cd_db.py` 11 passed：缺输入拒绝、整批不写、重跑幂等、多样点替换、dry-run 不写、读取还原、映射禁止项、单位标注
 - [x] 6.3 真实数据探针：`--all --limit 5` dry-run 全部 rejected（缺 11 个特征含 solution），整批零写入；探针脚本与 JSON 已删除
 - [x] 6.4 `openspec validate add-heavy-metal-cd-database-backend` = valid；`git diff --check` 通过
-- [ ] 6.5 归档时回填 `docs/cd-migration-roadmap.md` 中阶段 1 的状态与归档日期（与归档动作同一提交）
+- [x] 6.5 归档时回填 `docs/cd-migration-roadmap.md` 中阶段 1 的状态与归档日期（已完成：2026-10-31 归档，roadmap 阶段 1 标为已归档）
 
 ## 未完成（需人工确认后执行）
 
