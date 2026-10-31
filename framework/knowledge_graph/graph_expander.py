@@ -49,7 +49,7 @@ class BoundedGraphExpander:
         )
 
     def _measure_indicator_surfaces(self, job_id: int) -> list[tuple[str, str]]:
-        """Return (measure_surface, indicator_surface) pairs for a job's relations."""
+        """Return (measure_surface, indicator_surface) and canonical pairs for a job's relations."""
         relations = (
             self.session.query(KnowledgeGraphRelationCandidate)
             .filter_by(job_id=job_id)
@@ -72,28 +72,38 @@ class BoundedGraphExpander:
             src = by_id.get(rel.source_candidate_id)
             tgt = by_id.get(rel.target_candidate_id)
             if src and tgt and src.entity_type == "measure" and tgt.entity_type == "indicator":
-                pairs.append((src.mention, tgt.mention))
+                # Use canonical_entity_id when available, fall back to surface.
+                measure_key = src.canonical_entity_id or src.mention
+                indicator_key = tgt.canonical_entity_id or tgt.mention
+                pairs.append((measure_key, indicator_key))
         return pairs
 
     def _documents_with_matching_surfaces(
         self, surfaces: Sequence[tuple[str, str]], exclude_ids: set[int]
     ) -> list[int]:
-        """Find document ids whose jobs have entities matching the surfaces."""
+        """Find document ids whose jobs have entities matching the surfaces or canonical IDs.
+
+        Matching checks both surface text (e.mention) and canonical entity
+        ID (e.canonical_entity_id) so that resolved entities match across
+        documents even when surface text differs.
+        """
         if not surfaces:
             return []
-        measure_mentions = list({s[0] for s in surfaces})
-        indicator_mentions = list({s[1] for s in surfaces})
+        measure_keys = list({s[0] for s in surfaces})
+        indicator_keys = list({s[1] for s in surfaces})
         exclude_list = list(exclude_ids) if exclude_ids else []
         clause = (
             "SELECT DISTINCT j.document_id "
             "FROM kg_entity_candidate e "
             "JOIN kg_extraction_job j ON e.job_id = j.id "
-            "WHERE ((e.entity_type = 'measure' AND e.mention IN :measures) "
-            "   OR (e.entity_type = 'indicator' AND e.mention IN :indicators))"
+            "WHERE ((e.entity_type = 'measure' "
+            "        AND (e.mention IN :measures OR e.canonical_entity_id IN :measures)) "
+            "   OR (e.entity_type = 'indicator' "
+            "       AND (e.mention IN :indicators OR e.canonical_entity_id IN :indicators)))"
         )
         params: dict[str, Any] = {
-            "measures": measure_mentions,
-            "indicators": indicator_mentions,
+            "measures": measure_keys,
+            "indicators": indicator_keys,
         }
         if exclude_list:
             clause += " AND j.document_id NOT IN :exclude"
