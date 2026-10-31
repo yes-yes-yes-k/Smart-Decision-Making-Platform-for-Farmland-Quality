@@ -36,6 +36,7 @@ def test_additive_knowledge_graph_migration_creates_governance_tables_and_indexe
         inspector = inspect(db.engine)
         expected = {
             "kg_extraction_job",
+            "kg_study_candidate",
             "kg_entity_candidate",
             "kg_relation_candidate",
             "kg_claim_candidate",

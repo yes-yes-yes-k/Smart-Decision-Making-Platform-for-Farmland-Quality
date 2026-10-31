@@ -71,9 +71,9 @@ M2于2026-10-30完成当前全量112168块隔离运行验证，含真实Chroma/H
 - [x] R2.3 修复选择协议及验证：实体原文片段/位置先确定，再判关系；重复片段需显式位置。
 - [x] R2.4 准备原十篇任务相关全文范围的实际请求、调用预留和恢复点。
 - [x] R2.5 经授权运行有限批次，编译并核实有效候选。
-- [ ] R2.6 复用PG实现候选、Claim/研究记录与证据的持久关联；连接实际读取接口。
-- [ ] R2.7 实现有界图关联检索及领域规则；与基线共享来源/权限检查。
-- [ ] R2.8 打通单篇再十篇真实文件链路。
+- [x] R2.6 复用PG实现候选、Claim/研究记录与证据的持久关联；连接实际读取接口。
+- [x] R2.7 实现有界图关联检索及领域规则；与基线共享来源/权限检查。
+- [x] R2.8 打通单篇再十篇真实文件链路。
 
 ### R3
 
@@ -277,3 +277,43 @@ D：提示词改为只给`{chunk_index,quote}`，坐标由服务端定位（块�
 账目双口径：台账累计617,962，实测回报用量243,910，差额374,052为16次无usage中断按预留记账。**此前"22万额度已耗尽"应按实测口径修正为约24.4万**。
 
 勾选表示十篇已全部执行并逐篇核验，**不表示十篇都有产出**；R4对照可用素材为5篇9条关系。结果见[十篇终态](../../../docs/knowledge-engineering-r25-final-batch-results-v1.md)。
+
+## R2.6—R2.8 实施交付记录（2026-10-31）
+
+### R2.6 持久化与读取接口
+
+**R2.6a 显式迁移**：新增 `kg_study_candidate` 表（研究记录候选，承载 v2 契约的 study：kind/context/attribution），扩展 `ensure_knowledge_graph_platform_schema` 纳入该表并加 pending-review 索引；提供 `--rollback-study` 回退选项（仅 drop 新表，其余 KG 平台表不动）。迁移对 PG 执行成功，16 张 kg_* 表全部创建，幂等重跑通过。模型导出至 `framework/models/__init__.py`。
+
+**R2.6b 候选写入器**（`framework/knowledge_graph/candidate_store.py`）：`write_bundle(bundle)` 将 v2 产物写入 PG——job（幂等键=document+sha+schema+backend+extractor）、study 候选、entity 候选（mention=surface 文本、candidate_payload 存完整 span+normalization）、relation 候选（source/target FK）、kg_candidate_evidence（result + qualifier 跨度）、kg_claim_candidate（direction 断言）+ kg_claim_evidence。全部 review_status=pending。重写同一 bundle 时先删旧候选再插入（幂等）。5 项单元测试通过（行数、外键、pending 状态、幂等重写、claim 链接）。
+
+**R2.6c 候选读取接口**（`framework/knowledge_graph/candidate_reader.py`）：`read_candidates(document_id)` 按文档读取候选，复用基线来源检查（visibility_scope=public、review_status=approved、document_kind、completed），版本不一致返回 `invalidated`（非静默丢弃），候选保持 pending 身份不经过发布 API。5 项单元测试通过（正常读取、非公开拒绝、未批准拒绝、版本漂移 invalidated、无 job not_found）。
+
+### R2.7 有界图关联检索
+
+**`framework/knowledge_graph/graph_expander.py`**：`BoundedGraphExpander` 在基线混合检索后做一跳扩展——从基线文档的最新 extraction job 提取 measure/indicator surface 对，在 kg_entity_candidate 中查找其他文档是否有匹配 surface，经共享来源/权限检查后返回有界结果（hop1、上限 5 篇）。领域规则：source=measure、target=indicator、direction 已知（由 v2 契约保证）。graph trace 记录 schema_version/state/contributing_hits/matched_surfaces，替换 `not_used_in_corpus_baseline` 占位符。
+
+**PublishedCorpusSearch 集成**：新增 `graph_expander` 可选参数和 `graph` 请求字段（bool）；graph=True 时在文档排序后调用扩展器，将扩展文档以 `graph_expanded=True` 标记加入 documents 列表。4 项单元测试通过（扩展命中、graph off 保持占位符、不合格来源排除、无匹配 surface 返回 not_used）。基线检索 37 项测试无回归。
+
+### R2.8 真实文件链路
+
+**`scripts/verify_r2_8_file_link.py`**：端到端脚本，零模型调用。读取 5 篇候选 JSON → 验证 kb_document 存在且 content_sha256 匹配 → 跨度复验（quote_sha256、偏移合法性）→ 写入 PG → 读回验证 → 图扩展验证。
+
+**验证结果**：
+- 5 篇全部在 PG 中存在，hash 全部匹配
+- 73 个跨度复验通过，0 拒收
+- 写入：11 studies、31 entities、9 relations、9 claims（与 R2.5 终态一致）
+- 读回：write==read YES
+- 图扩展：matched_surfaces=9（篇内 surface 对），contributing_hits=0（跨文档无匹配——实体未消解，符合预期）
+
+4 项跨度复验单元测试通过。
+
+### 测试汇总
+
+R2.6—R2.8 新增 18 项单元测试（迁移 2 + 写入器 5 + 读取器 5 + 图扩展 4 + 跨度复验 4 - 重叠 2），回归 90 项全部通过，合计 108 passed + 18 subtests。
+
+### 遗留问题
+
+1. **实体消解缺失**：31 个实体全是篇内孤点，measure/indicator surface 跨文档不匹配，图扩展 contributing_hits=0。跨文献对照前必须先做别名表/surface 归一。
+2. **发散 4 篇未持久化**：104/224/1149/449 触发推理上限零输出，无候选写入 PG。
+3. **PG 候选全部 pending**：未经人工审核，不可发布。
+4. **跨度复验仅校验内部一致性**：未重新从向量库取活分块做 content[start:end]==quote 验证（需向量库在线）。

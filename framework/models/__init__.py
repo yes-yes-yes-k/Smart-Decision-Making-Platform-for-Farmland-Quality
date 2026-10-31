@@ -16,6 +16,7 @@ from .knowledge_graph import (
     KnowledgeGraphRelease,
     KnowledgeGraphReleaseChange,
     KnowledgeGraphReviewDecision,
+    KnowledgeGraphStudyCandidate,
 )
 from .data_file import DataFile
 from .soil_data import (

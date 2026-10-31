@@ -30,12 +30,14 @@ def ensure_knowledge_graph_platform_schema(engine) -> None:
         KnowledgeGraphReleaseChange,
         KnowledgeGraphRollbackAudit,
         KnowledgeGraphReviewDecision,
+        KnowledgeGraphStudyCandidate,
     )
 
     if not inspect(engine).has_table("kb_document"):
         return
     tables = (
         KnowledgeGraphExtractionJob,
+        KnowledgeGraphStudyCandidate,
         KnowledgeGraphEntityCandidate,
         KnowledgeGraphRelationCandidate,
         KnowledgeGraphClaimCandidate,
@@ -168,6 +170,8 @@ def ensure_knowledge_graph_platform_schema(engine) -> None:
         "ON kg_extraction_job (lease_expires_at, id) WHERE state = 'running'",
         "CREATE INDEX IF NOT EXISTS idx_kg_entity_pending_review "
         "ON kg_entity_candidate (risk_level, id) WHERE review_status = 'pending'",
+        "CREATE INDEX IF NOT EXISTS idx_kg_study_pending_review "
+        "ON kg_study_candidate (study_kind, id) WHERE review_status = 'pending'",
         "CREATE INDEX IF NOT EXISTS idx_kg_relation_pending_review "
         "ON kg_relation_candidate (risk_level, relation_type, id) "
         "WHERE review_status = 'pending'",
@@ -189,14 +193,40 @@ def ensure_knowledge_graph_platform_schema(engine) -> None:
             connection.execute(text(statement))
 
 
+def rollback_study_candidate_table(engine) -> None:
+    """Drop the ``kg_study_candidate`` table added by R2.6a.
+
+    Additive rollback: only the study-record table is removed. The remaining
+    KG platform tables are left untouched so candidate/review/release state
+    survives. Re-running :func:`ensure_knowledge_graph_platform_schema`
+    recreates the table idempotently.
+    """
+    with engine.begin() as connection:
+        connection.execute(text("DROP TABLE IF EXISTS kg_study_candidate CASCADE"))
+
+
 def main() -> None:
+    import argparse
+
+    parser = argparse.ArgumentParser(description="Knowledge graph platform schema")
+    parser.add_argument(
+        "--rollback-study",
+        action="store_true",
+        help="drop only the kg_study_candidate table added by R2.6a",
+    )
+    args = parser.parse_args()
+
     from framework.api.app import create_app
     from framework.models.user import db
 
     app = create_app()
     with app.app_context():
-        ensure_knowledge_graph_platform_schema(db.engine)
-    print("Knowledge graph platform schema is ready.")
+        if args.rollback_study:
+            rollback_study_candidate_table(db.engine)
+            print("Rolled back kg_study_candidate table.")
+        else:
+            ensure_knowledge_graph_platform_schema(db.engine)
+            print("Knowledge graph platform schema is ready.")
 
 
 if __name__ == "__main__":

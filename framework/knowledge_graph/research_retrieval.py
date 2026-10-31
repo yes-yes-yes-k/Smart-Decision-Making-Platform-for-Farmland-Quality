@@ -23,7 +23,7 @@ SOURCE_SCOPES = {
     "all_qualified": ("academic_paper", "standard", "policy", "method_guideline"),
 }
 CONDITION_FIELDS = ("measure", "indicator", "soil_type", "conditions")
-REQUEST_FIELDS = {"query", "limit", "document_ids", "source_scope", "require_condition_match"} | set(CONDITION_FIELDS)
+REQUEST_FIELDS = {"query", "limit", "document_ids", "source_scope", "require_condition_match", "graph"} | set(CONDITION_FIELDS)
 
 
 def locate_surface(text, value):
@@ -77,7 +77,7 @@ def _support(conditions):
 
 class PublishedCorpusSearch:
     def __init__(self, vector_store, current_sources, *, enhance_recall=True, rerank=None, window=0,
-                 window_anchors=0):
+                 window_anchors=0, graph_expander=None):
         self.vector_store, self.current_sources = vector_store, current_sources
         self.enhance_recall = enhance_recall
         if rerank not in (None, "answerability"):
@@ -89,6 +89,7 @@ class PublishedCorpusSearch:
         self.rerank = rerank
         self.window = window
         self.window_anchors = window_anchors
+        self.graph_expander = graph_expander
 
     def _expand_window(self, values, live_by_document, scope, request):
         """Append the ±window neighbours of each verified chunk.
@@ -166,6 +167,9 @@ class PublishedCorpusSearch:
         strict = request.get("require_condition_match", False)
         if type(strict) is not bool:
             raise ResearchError("invalid_research_filter")
+        graph_mode = request.get("graph", False)
+        if graph_mode is not None and type(graph_mode) is not bool:
+            raise ResearchError("invalid_research_filter")
         requested_conditions = [field for field in CONDITION_FIELDS
                                 if isinstance(request.get(field), str) and request[field].strip()]
         if strict and not requested_conditions:
@@ -238,6 +242,40 @@ class PublishedCorpusSearch:
             from framework.knowledge_graph.answerability_rerank import rerank_values
             values, rerank_trace = rerank_values(query, values)
         documents = rank_documents(values)
+        graph_trace = {"state": "not_used_in_corpus_baseline", "contributing_hits": 0}
+        if graph_mode and self.graph_expander is not None and returned_ids:
+            expanded_ids, graph_trace = self.graph_expander.expand(
+                returned_ids,
+                current_sources=self.current_sources,
+                owner_id=owner_id,
+                kinds=kinds,
+            )
+            if expanded_ids:
+                try:
+                    live_expanded = self.current_sources.lookup_many(
+                        expanded_ids, owner_id, require_academic=require_academic)
+                except Exception:
+                    live_expanded = {}
+                baseline_ids = {d["document_id"] for d in documents}
+                for doc_id in expanded_ids:
+                    if doc_id in baseline_ids:
+                        continue
+                    live = live_expanded.get(doc_id)
+                    if not live or live.get("visibility_scope") != "public" \
+                            or live.get("review_status") != "approved" \
+                            or not live.get("completed") \
+                            or live.get("document_kind") not in kinds:
+                        continue
+                    documents.append({
+                        "document_id": doc_id,
+                        "content_sha256": live.get("content_sha256"),
+                        "title": live.get("title"),
+                        "retrieval": {"method": "graph_hop1", "ranks": {}, "score": 0.0},
+                        "evidence_candidates": [],
+                        "support_verified": False,
+                        "publication": _publication(doc_id, live, scope),
+                        "graph_expanded": True,
+                    })
         return {"state": "completed" if not rejected and trace.get("mode") == "hybrid" else "partial", "sources": values[:limit],
             "documents": documents[:limit], "document_ranking": "document_rrf_over_current_verified_candidates",
             "document_candidates": len(documents), "evidence_ranking": "chunk_rrf_not_semantic_support",
@@ -245,7 +283,7 @@ class PublishedCorpusSearch:
             "source_scope_kinds": list(kinds),
             "retrieval_backend": ("hybrid_with_current_source_checks" if trace.get("mode") == "hybrid"
                                   else "degraded_or_single_path_with_current_source_checks"), "retrieval": trace,
-            "graph": {"state": "not_used_in_corpus_baseline", "contributing_hits": 0},
+            "graph": graph_trace,
             "generation_performed": False, "candidate_budget": budget, "candidates_read": len(candidates),
             "filtered_unverified_or_stale": rejected, "truncated_by_limit": max(0, len(values)-limit),
             "conditions_structurally_evaluated": True,

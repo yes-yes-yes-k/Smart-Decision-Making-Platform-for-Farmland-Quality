@@ -53,6 +53,44 @@ class KnowledgeGraphExtractionJob(db.Model):
     )
 
 
+class KnowledgeGraphStudyCandidate(db.Model):
+    """Research-record (study) candidate produced by the v2 extraction contract.
+
+    Studies group entities and relations extracted from the same primary
+    experiment or cited work. Context and attribution spans are stored in
+    ``candidate_payload``; dedicated evidence rows remain attached to
+    relation/claim candidates where span re-verification is required.
+    """
+
+    __tablename__ = "kg_study_candidate"
+    __table_args__ = (
+        db.UniqueConstraint("job_id", "candidate_key", name="uq_kg_study_candidate"),
+        db.Index("idx_kg_study_pending_review", "study_kind", "id"),
+    )
+
+    id = db.Column(db.Integer, primary_key=True, autoincrement=True)
+    job_id = db.Column(
+        db.Integer,
+        db.ForeignKey("kg_extraction_job.id", ondelete="CASCADE"),
+        nullable=False,
+    )
+    candidate_key = db.Column(db.String(128), nullable=False)
+    study_kind = db.Column(db.String(40), nullable=False)
+    attribution_evidence_key = db.Column(db.String(128), nullable=True)
+    context_evidence_count = db.Column(db.Integer, nullable=False, default=0)
+    risk_level = db.Column(db.String(40), nullable=False, default="new_study")
+    review_status = db.Column(db.String(30), nullable=False, default="pending")
+    confidence = db.Column(db.Float, nullable=False, default=0.0)
+    candidate_payload = db.Column(db.JSON, nullable=True)
+    created_at = db.Column(db.DateTime, nullable=False, default=db.func.current_timestamp())
+    updated_at = db.Column(
+        db.DateTime,
+        nullable=False,
+        default=db.func.current_timestamp(),
+        onupdate=db.func.current_timestamp(),
+    )
+
+
 class KnowledgeGraphEntityCandidate(db.Model):
     __tablename__ = "kg_entity_candidate"
     __table_args__ = (
