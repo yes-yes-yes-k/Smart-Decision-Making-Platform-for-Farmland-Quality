@@ -1,23 +1,30 @@
 """R2.5: authorized ten-paper extraction with the v2 selection contract.
 
 One request per verified paper, one transient retry at most, hard caps from the
-approved R2.4 plan (20 attempts / 60k tokens). Output goes to a local candidate
-area only: no PG writes, no release, no published claims.
+approved R2.4 plan. Output goes to a local candidate area only: no PG writes,
+no release, no published claims.
+
+Calls are streamed so every attempt reports where its time went: first token,
+inter-chunk gaps, wall clock and a live reasoning estimate. Documents can run
+concurrently, but all of them share one budget ledger, and the ledger still
+enforces its own concurrency ceiling.
 """
 from __future__ import annotations
 
+from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime, timezone
 import hashlib
 import json
 import os
 from pathlib import Path
 import sys
+import threading
 import time
 
 REPO = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(REPO))
 
-from framework.knowledge_graph.acceptance_budget import Budget
+from framework.knowledge_graph.acceptance_budget import Budget, BudgetStop
 from framework.knowledge_graph.research_extraction import select_chunks
 from framework.knowledge_graph.research_contract_v2 import ENTITY_TYPES, DIRECTIONS, QUALIFIERS, STUDY_KINDS
 from framework.knowledge_graph.selection_protocol_v2 import (
@@ -82,6 +89,8 @@ def run() -> int:
     parser.add_argument("--thinking-budget", type=int, default=0, help="0 means provider default")
     parser.add_argument("--max-tokens", type=int, default=1536)
     parser.add_argument("--chunks", type=int, default=8)
+    parser.add_argument("--workers", type=int, default=1,
+                        help="documents in flight; the ledger still caps concurrency at 2")
     parser.add_argument("--ttft-limit", type=float, default=300.0,
                         help="seconds allowed before the first delta arrives")
     parser.add_argument("--gap-limit", type=float, default=180.0,
@@ -91,6 +100,8 @@ def run() -> int:
     parser.add_argument("--reasoning-cap", type=int, default=0,
                         help="abort once the live reasoning estimate passes this; 0 disables")
     args = parser.parse_args()
+    if args.workers < 1:
+        raise SystemExit("workers must be at least 1")
     global OUT
     OUT = REPO / "artifacts/knowledge_platform/research-extraction-v2" / args.run_id
     from dotenv import load_dotenv
@@ -101,7 +112,8 @@ def run() -> int:
 
     OUT.mkdir(parents=True, exist_ok=True)
     authorization = {"scope": "research-R2.5-ten-paper-v2", "approved_at_utc": datetime.now(timezone.utc).isoformat(),
-                     "caps": {"attempts": MAX_ATTEMPTS, "tokens": TOTAL_TOKENS, "retry_per_document": 1},
+                     "caps": {"attempts": args.attempts, "tokens": args.total_tokens,
+                              "retry_per_document": 1, "workers": args.workers},
                      "source": "user approved R2.4 plan"}
     save(OUT / "budget-authorization.json", authorization)
     budget = Budget(OUT / "execution/budget.sqlite3", total=args.total_tokens, requests=args.attempts)
@@ -121,102 +133,124 @@ def run() -> int:
     summary = {"started_at_utc": datetime.now(timezone.utc).isoformat(), "state": "running",
                "documents": len(documents), "attempts": 0, "tokens": 0,
                "accepted": 0, "rejected": 0, "failed": 0, "reasons": {}, "aborts": {},
+               "workers": args.workers,
                "stream_budgets": {"ttft": args.ttft_limit, "gap": args.gap_limit,
                                   "total": args.total_limit, "reasoning_cap": args.reasoning_cap}}
-    try:
-        for document in documents:
-            if document.get("verification", {}).get("state") != "verified":
-                continue
+    lock = threading.Lock()
+
+    def reserve(phase: str, job: str, options: dict):
+        """Reserve, waiting out the ledger's concurrency ceiling instead of failing."""
+        for _ in range(120):
+            try:
+                return budget.reserve(phase, job, options)
+            except BudgetStop as error:
+                if "concurrency" not in str(error):
+                    raise
+                time.sleep(1)
+        raise BudgetStop("concurrency_wait_exhausted")
+
+    def process(document: dict) -> None:
+        if document.get("verification", {}).get("state") != "verified":
+            return
+        with lock:
+            if summary["state"] != "running":
+                return
             spent = budget.summary()["tokens_charged_or_reserved"]
-            if spent > TOTAL_TOKENS - 8_000:
+            if spent > args.total_tokens - 8_000:
                 summary["state"] = "stopped_budget_guard"
-                break
-            doc_id = document["document_id"]
-            checkpoint = OUT / "checkpoints" / f"{doc_id}.json"
-            if checkpoint.exists():
-                saved = json.loads(checkpoint.read_text(encoding="utf-8"))
-                if saved.get("state") == "accepted":
+                return
+        doc_id = document["document_id"]
+        checkpoint = OUT / "checkpoints" / f"{doc_id}.json"
+        if checkpoint.exists():
+            saved = json.loads(checkpoint.read_text(encoding="utf-8"))
+            if saved.get("state") == "accepted":
+                with lock:
                     summary["accepted"] += 1
-                    continue
-            value = packet(document, args.chunks)
-            prompt = prompt_for(value, document.get("title", ""))
-            thinking = {"enable_thinking": args.enable_thinking == "true"}
-            if args.thinking_budget:
-                thinking["thinking_budget"] = args.thinking_budget
-            request = {"model": MODEL, "temperature": 0, "max_tokens": args.max_tokens,
-                       "extra_body": thinking,
-                       "messages": [{"role": "user", "content": prompt}],
-                       "response_format": {"type": "json_object"}}
-            request_sha = sha256_text(json.dumps(request, ensure_ascii=False, sort_keys=True))
-            row = {"document_id": doc_id, "request_sha256": request_sha, "state": "failed",
-                   "attempts": [], "usage": None, "error": None}
-            for retry in range(2):
-                if summary["attempts"] >= MAX_ATTEMPTS:
+                return
+        value = packet(document, args.chunks)
+        prompt = prompt_for(value, document.get("title", ""))
+        thinking = {"enable_thinking": args.enable_thinking == "true"}
+        if args.thinking_budget:
+            thinking["thinking_budget"] = args.thinking_budget
+        request = {"model": MODEL, "temperature": 0, "max_tokens": args.max_tokens,
+                   "extra_body": thinking,
+                   "messages": [{"role": "user", "content": prompt}],
+                   "response_format": {"type": "json_object"}}
+        request_sha = sha256_text(json.dumps(request, ensure_ascii=False, sort_keys=True))
+        row = {"document_id": doc_id, "request_sha256": request_sha, "state": "failed",
+               "attempts": [], "usage": None, "error": None}
+        for retry in range(2):
+            with lock:
+                if summary["attempts"] >= args.attempts:
                     row["error"] = "attempt_cap_reached"
                     break
-                try:
-                    attempt = budget.reserve("research_R2_5", str(doc_id), request)
-                except Exception:
-                    row["error"] = "budget_hard_stop"
-                    break
+            try:
+                attempt = reserve("research_R2_5", str(doc_id), request)
+            except Exception:
+                row["error"] = "budget_hard_stop"
+                break
+            with lock:
                 summary["attempts"] += 1
-                started = time.perf_counter()
-                try:
-                    payload_request = dict(request)
-                    payload_request["extra_body"] = payload_request.pop("extra_body")
-                    streamed = stream_completion(
-                        client, payload_request,
-                        ttft_limit=args.ttft_limit, gap_limit=args.gap_limit,
-                        total_limit=args.total_limit, reasoning_token_cap=args.reasoning_cap)
-                    metrics = {key: streamed[key] for key in
-                               ("ttft_seconds", "seconds", "chunks", "finish_reason",
-                                "reasoning_characters", "reasoning_tokens_estimated", "aborted")}
-                    if streamed["aborted"]:
-                        budget.finish(attempt, streamed["usage"], error=streamed["aborted"])
-                        row["error"] = streamed["aborted"]
-                        row["attempts"].append({"at_utc": datetime.now(timezone.utc).isoformat(),
-                                                "status": "aborted", **metrics})
-                        if streamed["content"]:
-                            row["content_partial"] = streamed["content"][:4000]
+            started = time.perf_counter()
+            try:
+                payload_request = dict(request)
+                payload_request["extra_body"] = payload_request.pop("extra_body")
+                streamed = stream_completion(
+                    client, payload_request,
+                    ttft_limit=args.ttft_limit, gap_limit=args.gap_limit,
+                    total_limit=args.total_limit, reasoning_token_cap=args.reasoning_cap)
+                metrics = {key: streamed[key] for key in
+                           ("ttft_seconds", "seconds", "chunks", "finish_reason",
+                            "reasoning_characters", "reasoning_tokens_estimated", "aborted")}
+                if streamed["aborted"]:
+                    budget.finish(attempt, streamed["usage"], error=streamed["aborted"])
+                    row["error"] = streamed["aborted"]
+                    row["attempts"].append({"at_utc": datetime.now(timezone.utc).isoformat(),
+                                            "status": "aborted", **metrics})
+                    if streamed["content"]:
+                        row["content_partial"] = streamed["content"][:4000]
+                    with lock:
                         summary["aborts"][streamed["aborted"]] = (
                             summary["aborts"].get(streamed["aborted"], 0) + 1)
-                        # A runaway chain of thought repeats itself; a stall may not.
-                        if streamed["aborted"] != "reasoning_cap_exceeded" and retry == 0:
-                            continue
-                        break
-                    budget.finish(attempt, streamed["usage"])
-                    row["usage"] = streamed["usage"].model_dump() if streamed["usage"] else None
-                    summary["tokens"] += int((row["usage"] or {}).get("total_tokens") or 0)
-                    content = streamed["content"]
-                    row["content_raw"] = content[:4000]
-                    row["attempts"].append({"at_utc": datetime.now(timezone.utc).isoformat(),
-                                            "status": "returned", **metrics})
-                    payload = json.loads(content)
-                    result = compile_partial_quote_only(value, payload.get("enumeration", {}),
-                                                        payload.get("decision", {}),
-                                                        provenance={"origin": "R2.5 authorized batch",
-                                                                    "configuration_sha256": request_sha})
-                    row.update(state="accepted", counts=result["accepted_counts"],
-                               rejected=result["rejected"], reason_counts=result["reason_counts"])
-                    save(OUT / "candidates" / f"{doc_id}.json", result["candidates"])
-                    break
-                except SelectionError as error:
-                    budget.finish(attempt, error=error.code)
-                    row.update(state="rejected", error=error.code)
-                    row["attempts"][-1]["status"] = "rejected"
-                    break
-                except Exception as error:  # validation or transport failure
-                    budget.finish(attempt, error=type(error).__name__)
-                    row["error"] = f"{type(error).__name__}: {str(error)[:160]}"
-                    row["attempts"].append({"at_utc": datetime.now(timezone.utc).isoformat(),
-                                            "seconds": round(time.perf_counter() - started, 2),
-                                            "status": "failed", "error": type(error).__name__})
-                    transient = isinstance(error, (APIConnectionError, RateLimitError, InternalServerError)) or (
-                        isinstance(error, APIStatusError) and error.status_code >= 500)
-                    if retry == 0 and transient:
-                        time.sleep(1)
+                    # A runaway chain of thought repeats itself; a stall may not.
+                    if streamed["aborted"] != "reasoning_cap_exceeded" and retry == 0:
                         continue
                     break
+                budget.finish(attempt, streamed["usage"])
+                row["usage"] = streamed["usage"].model_dump() if streamed["usage"] else None
+                with lock:
+                    summary["tokens"] += int((row["usage"] or {}).get("total_tokens") or 0)
+                content = streamed["content"]
+                row["content_raw"] = content[:4000]
+                row["attempts"].append({"at_utc": datetime.now(timezone.utc).isoformat(),
+                                        "status": "returned", **metrics})
+                payload = json.loads(content)
+                result = compile_partial_quote_only(value, payload.get("enumeration", {}),
+                                                    payload.get("decision", {}),
+                                                    provenance={"origin": "R2.5 authorized batch",
+                                                                "configuration_sha256": request_sha})
+                row.update(state="accepted", counts=result["accepted_counts"],
+                           rejected=result["rejected"], reason_counts=result["reason_counts"])
+                save(OUT / "candidates" / f"{doc_id}.json", result["candidates"])
+                break
+            except SelectionError as error:
+                budget.finish(attempt, error=error.code)
+                row.update(state="rejected", error=error.code)
+                row["attempts"][-1]["status"] = "rejected"
+                break
+            except Exception as error:  # validation or transport failure
+                budget.finish(attempt, error=type(error).__name__)
+                row["error"] = f"{type(error).__name__}: {str(error)[:160]}"
+                row["attempts"].append({"at_utc": datetime.now(timezone.utc).isoformat(),
+                                        "seconds": round(time.perf_counter() - started, 2),
+                                        "status": "failed", "error": type(error).__name__})
+                transient = isinstance(error, (APIConnectionError, RateLimitError, InternalServerError)) or (
+                    isinstance(error, APIStatusError) and error.status_code >= 500)
+                if retry == 0 and transient:
+                    time.sleep(1)
+                    continue
+                break
+        with lock:
             if row["state"] == "accepted":
                 summary["accepted"] += 1
             elif row["state"] == "rejected":
@@ -224,9 +258,17 @@ def run() -> int:
                 summary["reasons"][row["error"]] = summary["reasons"].get(row["error"], 0) + 1
             else:
                 summary["failed"] += 1
-            save(checkpoint, row)
-            print(json.dumps({"document_id": doc_id, "state": row["state"], "error": row["error"],
-                              "counts": row.get("counts")}, ensure_ascii=False), flush=True)
+        save(checkpoint, row)
+        print(json.dumps({"document_id": doc_id, "state": row["state"], "error": row["error"],
+                          "counts": row.get("counts")}, ensure_ascii=False), flush=True)
+
+    try:
+        if args.workers > 1:
+            with ThreadPoolExecutor(max_workers=args.workers) as pool:
+                list(pool.map(process, documents))
+        else:
+            for document in documents:
+                process(document)
     finally:
         client.close()
         summary.update(finished_at_utc=datetime.now(timezone.utc).isoformat(),
