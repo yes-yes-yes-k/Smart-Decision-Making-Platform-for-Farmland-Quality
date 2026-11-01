@@ -279,16 +279,16 @@ def get_documents():
     legacy_categories = [c for c in doc_categories if c not in DOMAIN_CODES]
     category_conditions = []
     if domain_categories:
-        query = query.outerjoin(DocumentLabel)
-        category_conditions.append(and_(
-            DocumentLabel.review_status == DocumentLabel.STATUS_APPROVED,
-            DocumentLabel.label_code.in_(domain_categories),
+        category_conditions.append(Document.id.in_(
+            db.session.query(DocumentLabel.document_id).filter(
+                DocumentLabel.review_status == DocumentLabel.STATUS_APPROVED,
+                DocumentLabel.label_code.in_(domain_categories),
+            )
         ))
     if legacy_categories:
         category_conditions.append(Document.category.in_(legacy_categories))
     if category_conditions:
         query = query.filter(or_(*category_conditions))
-    query = query.distinct()
     query = query.order_by(Document.create_time.desc())
 
     pagination = query.paginate(page=page, per_page=page_size, error_out=False)
