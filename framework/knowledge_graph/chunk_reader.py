@@ -7,6 +7,8 @@ class WorkerPublishedChunkReader:
         if client is None:
             if not persist_dir or not Path(persist_dir).is_dir():
                 raise ValueError("published_vector_directory_missing")
+            from framework.vector_store.runtime_temp import prepare_chroma_temp_directory
+            prepare_chroma_temp_directory()
             import chromadb
             from chromadb.config import Settings
             client = chromadb.PersistentClient(path=str(Path(persist_dir).resolve()),

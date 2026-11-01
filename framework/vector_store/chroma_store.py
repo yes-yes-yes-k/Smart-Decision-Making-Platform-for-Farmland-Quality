@@ -4,6 +4,10 @@ import re
 import threading
 import uuid
 from typing import Optional, List, Dict, Any
+from framework.vector_store.runtime_temp import prepare_chroma_temp_directory
+
+prepare_chroma_temp_directory()
+
 import chromadb
 from chromadb.api.types import EmbeddingFunction, Documents, Embeddings
 from chromadb.config import Settings
