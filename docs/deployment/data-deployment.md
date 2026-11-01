@@ -99,11 +99,11 @@ Test-Path bin\farmland_quality_eval\Farmland_quality_Level_Database.csv
 
 ```bash
 # 模型1 离线预计算（处理 3 期 shapefile，生成 SQLite 结果）
-python -m src.ai_culti_demo.farmland_stability.precompute
+python -m ai_culti_demo.farmland_stability.precompute
 
 # 模型3 批量评价和诊断（处理 CSV，生成诊断结果）
-python -m src.ai_culti_demo.farmland_diagnosis.batch_evaluate
-python -m src.ai_culti_demo.farmland_diagnosis.batch_diagnose
+python -m ai_culti_demo.farmland_diagnosis.batch_evaluate
+python -m ai_culti_demo.farmland_diagnosis.batch_diagnose
 ```
 
 预计算结果存储在 `instance/` 目录下，已通过 `.gitignore` 排除。

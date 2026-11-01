@@ -1245,13 +1245,24 @@
       "get": {
         "tags": ["耕地空间统计"],
         "summary": "获取统计指标配置",
-        "description": "返回 8 项指标的字段、单位、精度、分级边界和颜色。所有最高档均不封顶。",
+        "description": "返回指标分组、排序、可用性、数据年份、覆盖率、分级边界和颜色。",
         "security": [{"BearerAuth": []}],
         "responses": {
           "200": {
             "description": "成功",
-            "content": {"application/json": {"schema": {"type": "object", "required": ["status", "data"], "properties": {"status": {"type": "string", "enum": ["ok"]}, "data": {"type": "array", "items": {"$ref": "#/components/schemas/FarmlandIndicatorMetadata"}}}}}}
+            "content": {"application/json": {"schema": {"type": "object", "required": ["status", "data"], "properties": {"status": {"type": "string", "enum": ["ok"]}, "data": {"$ref": "#/components/schemas/FarmlandMetricCatalog"}}}}}
           },
+          "401": {"description": "未认证", "content": {"application/json": {"schema": {"$ref": "#/components/schemas/JwtErrorResponse"}}}}
+        }
+      }
+    },
+    "/api/v1/farmland-statistics/years": {
+      "get": {
+        "tags": ["耕地空间统计"],
+        "summary": "获取可选调查年份",
+        "security": [{"BearerAuth": []}],
+        "responses": {
+          "200": {"description": "成功", "content": {"application/json": {"schema": {"type": "object", "required": ["status", "data"], "properties": {"status": {"type": "string", "enum": ["ok"]}, "data": {"type": "object", "required": ["years", "defaultYear"], "properties": {"years": {"type": "array", "items": {"$ref": "#/components/schemas/FarmlandDataYear"}}, "defaultYear": {"type": "integer", "nullable": true}}}}}}}},
           "401": {"description": "未认证", "content": {"application/json": {"schema": {"$ref": "#/components/schemas/JwtErrorResponse"}}}}
         }
       }
@@ -1278,17 +1289,40 @@
         }
       }
     },
+    "/api/v1/farmland-statistics/boundaries": {
+      "get": {
+        "tags": ["耕地空间统计"],
+        "summary": "获取行政边界 GeoJSON",
+        "description": "按层级、父级、WGS84 bbox 和地图缩放级别返回行政边界。低于层级 minZoom 时返回空 FeatureCollection。",
+        "security": [{"BearerAuth": []}],
+        "parameters": [
+          {"name": "region_type", "in": "query", "required": true, "schema": {"type": "string", "enum": ["province", "city", "county", "township", "village", "zone"]}},
+          {"name": "parent_type", "in": "query", "required": false, "description": "必须与 parent_id 同时提供", "schema": {"type": "string", "enum": ["province", "city", "county", "township", "village", "zone"]}},
+          {"name": "parent_id", "in": "query", "required": false, "schema": {"type": "string"}},
+          {"name": "bbox", "in": "query", "required": false, "description": "WGS84 minLon,minLat,maxLon,maxLat", "schema": {"type": "string", "example": "112,24,114,26"}},
+          {"name": "zoom", "in": "query", "required": false, "schema": {"type": "number", "minimum": 0, "maximum": 24, "example": 10}}
+        ],
+        "responses": {
+          "200": {"description": "成功", "content": {"application/json": {"schema": {"type": "object", "required": ["status", "data"], "properties": {"status": {"type": "string", "enum": ["ok"]}, "data": {"$ref": "#/components/schemas/FarmlandBoundaryCollection"}}}}}},
+          "400": {"description": "参数无效", "content": {"application/json": {"schema": {"$ref": "#/components/schemas/StatisticsErrorResponse"}}}},
+          "401": {"description": "未认证", "content": {"application/json": {"schema": {"$ref": "#/components/schemas/JwtErrorResponse"}}}},
+          "503": {"description": "边界服务暂时不可用", "content": {"application/json": {"schema": {"$ref": "#/components/schemas/StatisticsErrorResponse"}}}}
+        }
+      }
+    },
     "/api/v1/farmland-statistics/aggregate": {
       "post": {
         "tags": ["耕地空间统计"],
         "summary": "聚合耕地统计",
-        "description": "按行政区域边界或 WGS84 地图视窗裁剪地块后，返回面积加权平均值、面积、地块数、范围及柱状图/饼图共用的等级分布。视窗变化时可用新 bbox 重新请求。",
+        "description": "按单个行政区、多个同级行政区、自定义 Polygon/MultiPolygon 或 WGS84 地图视窗裁剪地块后，返回面积加权平均值、面积、地块数、范围及柱状图/饼图共用的等级分布。",
         "security": [{"BearerAuth": []}],
         "requestBody": {
           "required": true,
           "content": {"application/json": {"schema": {"$ref": "#/components/schemas/FarmlandStatisticsRequest"}, "examples": {
-            "village": {"summary": "按村统计", "value": {"scope": {"type": "administrative_region", "region_type": "village", "region_id": "440281001208"}, "metrics": "all"}},
-            "viewport": {"summary": "按地图视窗统计", "value": {"scope": {"type": "viewport", "bbox": [113.0, 24.0, 114.0, 25.0]}, "metrics": ["soil_ph", "organic_matter", "available_phosphorus"]}}
+            "village": {"summary": "按村统计", "value": {"scope": {"type": "administrative_region", "region_type": "village", "region_id": "440281001208"}, "year": 2024, "metrics": "all"}},
+            "viewport": {"summary": "按地图视窗统计", "value": {"scope": {"type": "viewport", "bbox": [113.0, 24.0, 114.0, 25.0]}, "year": 2021, "metrics": ["soil_ph", "organic_matter", "available_phosphorus"]}},
+            "multipleRegions": {"summary": "多个同级行政区联合统计", "value": {"scope": {"type": "administrative_regions", "region_type": "county", "region_ids": ["440281", "440282"]}, "metrics": "all"}},
+            "polygon": {"summary": "按圈选多边形统计", "value": {"scope": {"type": "polygon", "geometry": {"type": "Polygon", "coordinates": [[[113.0, 24.0], [113.1, 24.0], [113.1, 24.1], [113.0, 24.0]]]}}, "metrics": ["organic_matter"]}}
           }}}
         },
         "responses": {
@@ -1306,16 +1340,66 @@
       "post": {
         "tags": ["耕地空间统计"],
         "summary": "按经纬度点选地块",
-        "description": "传入 WGS84 坐标，返回覆盖该点的地块及左侧详情所需指标。多个地块重叠时优先返回面积较小的地块。",
+        "description": "传入 WGS84 坐标，可按当前指标返回轻量结果，并支持最多 50 米容差。精确覆盖优先，否则返回容差内最近地块。每用户限制 120 次/分钟。",
         "security": [{"BearerAuth": []}],
-        "requestBody": {"required": true, "content": {"application/json": {"schema": {"type": "object", "required": ["longitude", "latitude"], "properties": {"longitude": {"type": "number", "minimum": -180, "maximum": 180, "example": 113.347}, "latitude": {"type": "number", "minimum": -90, "maximum": 90, "example": 25.132}}}}}},
+        "requestBody": {"required": true, "content": {"application/json": {"schema": {"type": "object", "required": ["longitude", "latitude"], "properties": {"longitude": {"type": "number", "minimum": -180, "maximum": 180, "example": 113.347}, "latitude": {"type": "number", "minimum": -90, "maximum": 90, "example": 25.132}, "metric": {"type": "string", "description": "省略时返回完整指标"}, "toleranceMeters": {"type": "number", "minimum": 0, "maximum": 50, "default": 0}, "year": {"type": "integer", "minimum": 1900, "maximum": 2100}}}}}},
         "responses": {
-          "200": {"description": "命中地块", "content": {"application/json": {"schema": {"type": "object", "required": ["status", "data"], "properties": {"status": {"type": "string", "enum": ["ok"]}, "data": {"$ref": "#/components/schemas/FarmlandParcelSummary"}}}}}},
+          "200": {"description": "命中地块", "content": {"application/json": {"schema": {"type": "object", "required": ["status", "data"], "properties": {"status": {"type": "string", "enum": ["ok"]}, "data": {"$ref": "#/components/schemas/FarmlandParcelPickResult"}}}}}},
           "400": {"description": "经纬度无效", "content": {"application/json": {"schema": {"$ref": "#/components/schemas/StatisticsErrorResponse"}}}},
           "401": {"description": "未认证", "content": {"application/json": {"schema": {"$ref": "#/components/schemas/JwtErrorResponse"}}}},
           "404": {"description": "该位置未命中地块", "content": {"application/json": {"schema": {"$ref": "#/components/schemas/StatisticsErrorResponse"}}}},
           "500": {"description": "内部错误", "content": {"application/json": {"schema": {"$ref": "#/components/schemas/StatisticsErrorResponse"}}}},
+          "429": {"description": "请求过于频繁", "content": {"application/json": {"schema": {"$ref": "#/components/schemas/StatisticsErrorResponse"}}}},
           "503": {"description": "地块点选服务暂时不可用", "content": {"application/json": {"schema": {"$ref": "#/components/schemas/StatisticsErrorResponse"}}}}
+        }
+      }
+    },
+    "/api/v1/farmland-statistics/parcels/query": {
+      "post": {
+        "tags": ["耕地空间统计"],
+        "summary": "按统一范围和年份查询地块",
+        "security": [{"BearerAuth": []}],
+        "requestBody": {"required": true, "content": {"application/json": {"schema": {"$ref": "#/components/schemas/FarmlandParcelQueryRequest"}}}},
+        "responses": {
+          "200": {"description": "成功", "content": {"application/json": {"schema": {"type": "object", "required": ["status", "data"], "properties": {"status": {"type": "string", "enum": ["ok"]}, "data": {"type": "object"}}}}}},
+          "400": {"description": "参数无效", "content": {"application/json": {"schema": {"$ref": "#/components/schemas/StatisticsErrorResponse"}}}},
+          "401": {"description": "未认证", "content": {"application/json": {"schema": {"$ref": "#/components/schemas/JwtErrorResponse"}}}},
+          "503": {"description": "服务暂时不可用", "content": {"application/json": {"schema": {"$ref": "#/components/schemas/StatisticsErrorResponse"}}}}
+        }
+      }
+    },
+    "/api/v1/farmland-statistics/parcels/viewport": {
+      "get": {
+        "tags": ["耕地空间统计"],
+        "summary": "获取当前视口轻量地块要素",
+        "description": "返回当前指标的值、等级、颜色、来源及质心/简化几何，供地图专题渲染和本地悬浮拾取。每用户限制 60 次/分钟。",
+        "security": [{"BearerAuth": []}],
+        "parameters": [
+          {"name": "bbox", "in": "query", "required": true, "schema": {"type": "string", "example": "113,24,114,25"}},
+          {"name": "metric", "in": "query", "required": true, "schema": {"type": "string"}},
+          {"name": "geometry", "in": "query", "required": false, "schema": {"type": "string", "enum": ["centroid", "simplified", "none"], "default": "centroid"}},
+          {"name": "zoom", "in": "query", "required": false, "schema": {"type": "number", "minimum": 0, "maximum": 24, "default": 14}},
+          {"name": "limit", "in": "query", "required": false, "schema": {"type": "integer", "minimum": 1, "maximum": 5000, "default": 2000}}
+        ],
+        "responses": {
+          "200": {"description": "成功", "content": {"application/json": {"schema": {"type": "object", "required": ["status", "data"], "properties": {"status": {"type": "string", "enum": ["ok"]}, "data": {"$ref": "#/components/schemas/FarmlandParcelFeatureCollection"}}}}}},
+          "400": {"description": "参数无效", "content": {"application/json": {"schema": {"$ref": "#/components/schemas/StatisticsErrorResponse"}}}},
+          "401": {"description": "未认证", "content": {"application/json": {"schema": {"$ref": "#/components/schemas/JwtErrorResponse"}}}},
+          "429": {"description": "请求过于频繁", "content": {"application/json": {"schema": {"$ref": "#/components/schemas/StatisticsErrorResponse"}}}},
+          "503": {"description": "服务暂时不可用", "content": {"application/json": {"schema": {"$ref": "#/components/schemas/StatisticsErrorResponse"}}}}
+        }
+      }
+    },
+    "/api/v1/farmland-statistics/quality/audit": {
+      "get": {
+        "tags": ["耕地空间统计"],
+        "summary": "获取指标质量审计",
+        "description": "返回全部指标的覆盖率、分布、异常和来源汇总，结果缓存 5 分钟。",
+        "security": [{"BearerAuth": []}],
+        "responses": {
+          "200": {"description": "成功", "content": {"application/json": {"schema": {"type": "object", "required": ["status", "data"], "properties": {"status": {"type": "string", "enum": ["ok"]}, "data": {"$ref": "#/components/schemas/FarmlandQualityAudit"}}}}}},
+          "401": {"description": "未认证", "content": {"application/json": {"schema": {"$ref": "#/components/schemas/JwtErrorResponse"}}}},
+          "503": {"description": "服务暂时不可用", "content": {"application/json": {"schema": {"$ref": "#/components/schemas/StatisticsErrorResponse"}}}}
         }
       }
     },
@@ -1325,7 +1409,11 @@
         "summary": "获取地块详情",
         "description": "按地块 ID 返回耕地质量等级、有机质、pH 和有效磷。",
         "security": [{"BearerAuth": []}],
-        "parameters": [{"name": "parcel_id", "in": "path", "required": true, "description": "地块唯一标识", "schema": {"type": "string"}}],
+        "parameters": [
+          {"name": "parcel_id", "in": "path", "required": true, "description": "地块唯一标识", "schema": {"type": "string"}},
+          {"name": "year", "in": "query", "required": false, "description": "调查年份；省略时使用默认年份", "schema": {"type": "integer", "minimum": 1900, "maximum": 2100}},
+          {"name": "metric", "in": "query", "required": false, "schema": {"type": "string"}}
+        ],
         "responses": {
           "200": {"description": "成功", "content": {"application/json": {"schema": {"type": "object", "required": ["status", "data"], "properties": {"status": {"type": "string", "enum": ["ok"]}, "data": {"$ref": "#/components/schemas/FarmlandParcelSummary"}}}}}},
           "401": {"description": "未认证", "content": {"application/json": {"schema": {"$ref": "#/components/schemas/JwtErrorResponse"}}}},
@@ -2057,14 +2145,45 @@
       },
       "FarmlandIndicatorMetadata": {
         "type": "object",
-        "required": ["key", "label", "sourceField", "unit", "decimals", "buckets"],
+        "required": ["key", "metricKey", "classificationVersion", "label", "sourceField", "sourceAliases", "unit", "decimals", "groupKey", "order", "valueType", "availability", "dataYears", "buckets"],
         "properties": {
-          "key": {"type": "string", "enum": ["quality_grade", "soil_ph", "organic_matter", "available_phosphorus", "available_potassium", "bulk_density", "plow_layer_thickness", "effective_soil_depth"]},
+          "key": {"type": "string"},
+          "metricKey": {"type": "string", "description": "与 key 相同，供地图与图表使用"},
+          "classificationVersion": {"type": "string", "example": "2026-09-21.1"},
           "label": {"type": "string", "example": "有机质含量"},
           "sourceField": {"type": "string", "description": "soil_indicators 中的来源字段", "example": "organic_matter"},
+          "sourceAliases": {"type": "array", "description": "兼容读取的历史字段；规范字段优先", "items": {"type": "string"}, "example": []},
           "unit": {"type": "string", "example": "g/kg"},
           "decimals": {"type": "integer", "minimum": 0, "example": 2},
+          "groupKey": {"type": "string", "example": "soil_nutrients"},
+          "order": {"type": "integer", "example": 10},
+          "valueType": {"type": "string", "enum": ["number", "category"]},
+          "aggregatable": {"type": "boolean"},
+          "availability": {"type": "string", "enum": ["available", "partial", "unavailable", "unknown"]},
+          "dataYears": {"type": "array", "items": {"type": "integer"}},
+          "coverageByYear": {"type": "object", "additionalProperties": {"type": "object"}},
+          "availabilityNote": {"type": "string", "nullable": true},
           "buckets": {"type": "array", "description": "按展示顺序排列的分级", "items": {"$ref": "#/components/schemas/FarmlandIndicatorBucketDefinition"}}
+        }
+      },
+      "FarmlandDataYear": {
+        "type": "object",
+        "required": ["year", "parcelCount", "selectable"],
+        "properties": {
+          "year": {"type": "integer", "example": 2024},
+          "parcelCount": {"type": "integer", "minimum": 0},
+          "selectable": {"type": "boolean"}
+        }
+      },
+      "FarmlandMetricCatalog": {
+        "type": "object",
+        "required": ["classificationVersion", "groups", "metrics", "availableYears", "defaultYear"],
+        "properties": {
+          "classificationVersion": {"type": "string", "example": "2026-09-21.1"},
+          "groups": {"type": "array", "items": {"type": "object"}},
+          "metrics": {"type": "array", "items": {"$ref": "#/components/schemas/FarmlandIndicatorMetadata"}},
+          "availableYears": {"type": "array", "items": {"$ref": "#/components/schemas/FarmlandDataYear"}},
+          "defaultYear": {"type": "integer", "nullable": true}
         }
       },
       "FarmlandRegion": {
@@ -2079,6 +2198,48 @@
           "parentId": {"type": "string", "nullable": true},
           "selectable": {"type": "boolean", "description": "争议区通常为 false"},
           "hasGeometry": {"type": "boolean", "description": "是否已有可用于空间统计的边界"}
+        }
+      },
+      "FarmlandBoundaryCollection": {
+        "type": "object",
+        "required": ["type", "regionType", "minZoom", "maxZoom", "suppressedByZoom", "truncated", "features"],
+        "properties": {
+          "type": {"type": "string", "enum": ["FeatureCollection"]},
+          "regionType": {"type": "string", "enum": ["province", "city", "county", "township", "village", "zone"]},
+          "minZoom": {"type": "integer", "minimum": 0},
+          "maxZoom": {"type": "integer", "nullable": true},
+          "zoom": {"type": "number", "nullable": true},
+          "bbox": {"type": "array", "nullable": true, "minItems": 4, "maxItems": 4, "items": {"type": "number"}},
+          "suppressedByZoom": {"type": "boolean"},
+          "truncated": {"type": "boolean", "description": "true 时应增加父级或 bbox 过滤"},
+          "features": {
+            "type": "array",
+            "maxItems": 5000,
+            "items": {
+              "type": "object",
+              "required": ["type", "id", "properties", "geometry"],
+              "properties": {
+                "type": {"type": "string", "enum": ["Feature"]},
+                "id": {"type": "string"},
+                "properties": {
+                  "type": "object",
+                  "required": ["regionType", "regionId", "displayName", "selectable", "minZoom", "maxZoom"],
+                  "properties": {
+                    "regionType": {"type": "string"},
+                    "regionId": {"type": "string"},
+                    "displayName": {"type": "string"},
+                    "areaCode": {"type": "string", "nullable": true},
+                    "parentType": {"type": "string", "nullable": true},
+                    "parentId": {"type": "string", "nullable": true},
+                    "selectable": {"type": "boolean"},
+                    "minZoom": {"type": "integer"},
+                    "maxZoom": {"type": "integer", "nullable": true}
+                  }
+                },
+                "geometry": {"type": "object", "description": "GeoJSON Polygon 或 MultiPolygon"}
+              }
+            }
+          }
         }
       },
       "FarmlandAdministrativeScopeRequest": {
@@ -2105,6 +2266,38 @@
           }
         }
       },
+      "FarmlandParcelScopeRequest": {
+        "type": "object",
+        "required": ["type", "parcel_id"],
+        "properties": {
+          "type": {"type": "string", "enum": ["parcel"]},
+          "parcel_id": {"type": "string"}
+        }
+      },
+      "FarmlandMultiAdministrativeScopeRequest": {
+        "type": "object",
+        "required": ["type", "region_type", "region_ids"],
+        "properties": {
+          "type": {"type": "string", "enum": ["administrative_regions"]},
+          "region_type": {"type": "string", "enum": ["province", "city", "county", "township", "village", "zone"]},
+          "region_ids": {"type": "array", "minItems": 1, "maxItems": 100, "uniqueItems": true, "items": {"type": "string"}}
+        }
+      },
+      "FarmlandPolygonScopeRequest": {
+        "type": "object",
+        "required": ["type", "geometry"],
+        "properties": {
+          "type": {"type": "string", "enum": ["polygon"]},
+          "geometry": {
+            "type": "object",
+            "required": ["type", "coordinates"],
+            "properties": {
+              "type": {"type": "string", "enum": ["Polygon", "MultiPolygon"]},
+              "coordinates": {"type": "array", "description": "WGS84 GeoJSON 坐标；最多 5000 个顶点，面积最多 200000 平方公里"}
+            }
+          }
+        }
+      },
       "FarmlandStatisticsRequest": {
         "type": "object",
         "required": ["scope"],
@@ -2112,11 +2305,15 @@
           "scope": {
             "oneOf": [
               {"$ref": "#/components/schemas/FarmlandAdministrativeScopeRequest"},
-              {"$ref": "#/components/schemas/FarmlandViewportScopeRequest"}
+              {"$ref": "#/components/schemas/FarmlandMultiAdministrativeScopeRequest"},
+              {"$ref": "#/components/schemas/FarmlandPolygonScopeRequest"},
+              {"$ref": "#/components/schemas/FarmlandViewportScopeRequest"},
+              {"$ref": "#/components/schemas/FarmlandParcelScopeRequest"}
             ]
           },
+          "year": {"type": "integer", "minimum": 1900, "maximum": 2100},
           "metrics": {
-            "description": "all、null 或非空指标 key 数组；省略时统计全部 8 项",
+            "description": "all、null 或非空指标 key 数组；省略时统计全部指标",
             "oneOf": [
               {"type": "string", "enum": ["all"]},
               {"type": "array", "minItems": 1, "uniqueItems": true, "items": {"type": "string", "enum": ["quality_grade", "soil_ph", "organic_matter", "available_phosphorus", "available_potassium", "bulk_density", "plow_layer_thickness", "effective_soil_depth"]}}
@@ -2124,6 +2321,19 @@
             "default": "all"
           }
         }
+      },
+      "FarmlandParcelQueryRequest": {
+        "allOf": [
+          {"$ref": "#/components/schemas/FarmlandStatisticsRequest"},
+          {
+            "type": "object",
+            "properties": {
+              "geometry": {"type": "string", "enum": ["centroid", "none"], "default": "centroid"},
+              "limit": {"type": "integer", "minimum": 1, "maximum": 500, "default": 100},
+              "offset": {"type": "integer", "minimum": 0, "default": 0}
+            }
+          }
+        ]
       },
       "FarmlandStatisticsBucket": {
         "allOf": [
@@ -2161,11 +2371,22 @@
       },
       "FarmlandMetricSummary": {
         "type": "object",
-        "required": ["key", "label", "unit", "table", "distribution", "unclassified"],
+        "required": ["key", "metricKey", "label", "unit", "groupKey", "order", "valueType", "dataYear", "table", "distribution", "unclassified"],
         "properties": {
           "key": {"type": "string", "example": "organic_matter"},
+          "metricKey": {"type": "string", "example": "organic_matter"},
           "label": {"type": "string", "example": "有机质含量"},
           "unit": {"type": "string", "example": "g/kg"},
+          "groupKey": {"type": "string"},
+          "order": {"type": "integer"},
+          "valueType": {"type": "string", "enum": ["number", "category"]},
+          "dataYear": {"type": "integer", "nullable": true},
+          "dataSource": {"type": "string", "nullable": true, "description": "单一来源、mixed 或 null"},
+          "measurementYear": {"type": "integer", "nullable": true},
+          "isImputed": {"type": "boolean", "nullable": true},
+          "imputationMethod": {"type": "string", "nullable": true},
+          "qualityFlag": {"type": "string", "nullable": true},
+          "provenanceSummary": {"type": "object", "description": "范围内来源字段的计数分布"},
           "table": {"$ref": "#/components/schemas/FarmlandMetricTable"},
           "distribution": {"type": "array", "description": "柱状图和饼图共用的有序等级数据", "items": {"$ref": "#/components/schemas/FarmlandStatisticsBucket"}},
           "unclassified": {
@@ -2181,8 +2402,10 @@
       },
       "FarmlandStatisticsResult": {
         "type": "object",
-        "required": ["dataAsOf", "scopeSummary", "metrics", "scope"],
+        "required": ["classificationVersion", "dataYear", "dataAsOf", "scopeSummary", "metrics", "scope"],
         "properties": {
+          "classificationVersion": {"type": "string", "example": "2026-09-21.1"},
+          "dataYear": {"type": "integer", "nullable": true},
           "dataAsOf": {"type": "string", "format": "date-time", "nullable": true, "description": "参与统计地块中最新的更新时间"},
           "scopeSummary": {
             "type": "object",
@@ -2195,43 +2418,172 @@
           "metrics": {"type": "array", "items": {"$ref": "#/components/schemas/FarmlandMetricSummary"}},
           "scope": {
             "type": "object",
-            "description": "服务端规范化后的统计范围。行政区返回 regionType/regionId/displayName，视窗返回 bbox/srid",
-            "required": ["type"],
+            "description": "服务端规范化后的统计范围",
+            "required": ["scopeVersion", "type"],
             "properties": {
-              "type": {"type": "string", "enum": ["administrative_region", "viewport"]},
+              "scopeVersion": {"type": "integer", "enum": [1]},
+              "type": {"type": "string", "enum": ["administrative_region", "administrative_regions", "polygon", "viewport", "parcel"]},
               "regionType": {"type": "string", "nullable": true},
               "regionId": {"type": "string", "nullable": true},
               "displayName": {"type": "string", "nullable": true},
+              "parcelId": {"type": "string", "nullable": true},
+              "areaCode": {"type": "string", "nullable": true},
+              "regionIds": {"type": "array", "items": {"type": "string"}},
+              "regions": {"type": "array", "items": {"type": "object"}},
+              "geometryType": {"type": "string", "nullable": true},
+              "vertexCount": {"type": "integer", "nullable": true},
+              "areaSqKm": {"type": "number", "nullable": true},
               "bbox": {"type": "array", "minItems": 4, "maxItems": 4, "items": {"type": "number"}},
               "srid": {"type": "integer", "example": 4326}
             }
           }
         },
         "example": {
+          "classificationVersion": "2026-09-21.1",
+          "dataYear": 2024,
           "dataAsOf": "2026-09-11T10:20:30",
           "scopeSummary": {"parcelCount": 2, "totalAreaMu": 18.5},
           "metrics": [{
             "key": "organic_matter",
+            "metricKey": "organic_matter",
             "label": "有机质含量",
             "unit": "g/kg",
             "table": {"average": 26.42, "totalAreaMu": 18.5, "parcelCount": 2, "validAreaMu": 18.5, "validParcelCount": 2, "range": {"min": 18.2, "max": 42.0}},
             "distribution": [{"key": "high", "label": "高", "rangeLabel": "(25,+∞)", "color": "#1A9850", "lower": 25, "upper": null, "lowerInclusive": false, "upperInclusive": false, "parcelCount": 1, "areaMu": 9.5, "countPercent": 50, "areaPercent": 51.3514}],
             "unclassified": {"parcelCount": 0, "areaMu": 0}
           }],
-          "scope": {"type": "administrative_region", "regionType": "village", "regionId": "440281001208", "displayName": "示例村"}
+          "scope": {"scopeVersion": 1, "type": "administrative_region", "regionType": "village", "regionId": "440281001208", "displayName": "示例村"}
+        }
+      },
+      "FarmlandMetricValue": {
+        "type": "object",
+        "required": ["metricKey", "value", "unit", "bucketKey", "bucketLabel", "rangeLabel", "color", "dataSource", "measurementYear", "isImputed", "imputationMethod", "qualityFlag"],
+        "properties": {
+          "metricKey": {"type": "string"},
+          "value": {"nullable": true, "oneOf": [{"type": "number"}, {"type": "string"}]},
+          "label": {"type": "string"},
+          "groupKey": {"type": "string"},
+          "order": {"type": "integer"},
+          "valueType": {"type": "string", "enum": ["number", "category"]},
+          "unit": {"type": "string"},
+          "bucketKey": {"type": "string", "nullable": true},
+          "bucketLabel": {"type": "string", "nullable": true},
+          "rangeLabel": {"type": "string", "nullable": true},
+          "color": {"type": "string", "nullable": true},
+          "dataSource": {"type": "string", "nullable": true},
+          "measurementYear": {"type": "integer", "nullable": true},
+          "isImputed": {"type": "boolean", "nullable": true, "description": "false 仅表示后端未回填，不等同于已确认实测"},
+          "imputationMethod": {"type": "string", "nullable": true},
+          "qualityFlag": {"type": "string", "nullable": true}
+        }
+      },
+      "FarmlandParcelPickResult": {
+        "type": "object",
+        "required": ["classificationVersion", "dataYear", "parcelId", "areaCode", "areaMu", "hit"],
+        "description": "传 metric 时含 metric；省略时含完整地块详情字段和 metrics",
+        "properties": {
+          "classificationVersion": {"type": "string"},
+          "dataYear": {"type": "integer", "nullable": true},
+          "parcelId": {"type": "string"},
+          "areaCode": {"type": "string", "nullable": true},
+          "areaMu": {"type": "number", "nullable": true},
+          "metric": {"$ref": "#/components/schemas/FarmlandMetricValue"},
+          "metrics": {"type": "object", "additionalProperties": {"$ref": "#/components/schemas/FarmlandMetricValue"}},
+          "hit": {
+            "type": "object",
+            "required": ["mode", "distanceMeters", "toleranceMeters"],
+            "properties": {
+              "mode": {"type": "string", "enum": ["exact", "nearest"]},
+              "distanceMeters": {"type": "number", "minimum": 0},
+              "toleranceMeters": {"type": "number", "minimum": 0, "maximum": 50}
+            }
+          }
+        }
+      },
+      "FarmlandParcelFeatureCollection": {
+        "type": "object",
+        "required": ["type", "classificationVersion", "metricKey", "bbox", "geometryMode", "truncated", "limit", "features"],
+        "properties": {
+          "type": {"type": "string", "enum": ["FeatureCollection"]},
+          "classificationVersion": {"type": "string"},
+          "metricKey": {"type": "string"},
+          "bbox": {"type": "array", "minItems": 4, "maxItems": 4, "items": {"type": "number"}},
+          "geometryMode": {"type": "string", "enum": ["centroid", "simplified", "none"]},
+          "zoom": {"type": "number", "nullable": true},
+          "dataAsOf": {"type": "string", "format": "date-time", "nullable": true},
+          "truncated": {"type": "boolean"},
+          "limit": {"type": "integer", "maximum": 5000},
+          "features": {
+            "type": "array",
+            "maxItems": 5000,
+            "items": {
+              "type": "object",
+              "required": ["type", "id", "properties", "geometry"],
+              "properties": {
+                "type": {"type": "string", "enum": ["Feature"]},
+                "id": {"type": "string"},
+                "properties": {"allOf": [{"$ref": "#/components/schemas/FarmlandMetricValue"}, {"type": "object", "required": ["parcelId"], "properties": {"parcelId": {"type": "string"}, "areaCode": {"type": "string", "nullable": true}}}]},
+                "geometry": {"type": "object", "nullable": true}
+              }
+            }
+          }
+        }
+      },
+      "FarmlandQualityAudit": {
+        "type": "object",
+        "required": ["classificationVersion", "generatedAt", "dataAsOf", "parcelCount", "metrics"],
+        "properties": {
+          "classificationVersion": {"type": "string"},
+          "generatedAt": {"type": "string", "format": "date-time"},
+          "dataAsOf": {"type": "string", "format": "date-time", "nullable": true},
+          "parcelCount": {"type": "integer", "minimum": 0},
+          "metrics": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "required": ["metricKey", "label", "unit", "parcelCount", "nonEmptyCount", "nonEmptyRate", "parseableCount", "parseFailureCount", "unclassifiedCount", "uniqueValueCount", "qualityFlags", "provenance"],
+              "properties": {
+                "metricKey": {"type": "string"},
+                "label": {"type": "string"},
+                "unit": {"type": "string"},
+                "parcelCount": {"type": "integer"},
+                "nonEmptyCount": {"type": "integer"},
+                "nonEmptyRate": {"type": "number"},
+                "parseableCount": {"type": "integer"},
+                "parseFailureCount": {"type": "integer"},
+                "unclassifiedCount": {"type": "integer"},
+                "min": {"type": "number", "nullable": true},
+                "max": {"type": "number", "nullable": true},
+                "uniqueValueCount": {"type": "integer"},
+                "qualityFlags": {"type": "array", "items": {"type": "string"}},
+                "provenance": {"type": "object"}
+              }
+            }
+          }
         }
       },
       "FarmlandParcelSummary": {
         "type": "object",
-        "required": ["parcelId", "areaCode", "areaMu", "qualityGrade", "organicMatter", "soilPh", "availablePhosphorus"],
+        "required": ["classificationVersion", "parcelId", "areaCode", "areaMu", "dataYear", "metrics"],
         "properties": {
+          "classificationVersion": {"type": "string", "example": "2026-09-21.1"},
+          "dataYear": {"type": "integer", "nullable": true},
           "parcelId": {"type": "string", "example": "parcel-0001"},
           "areaCode": {"type": "string", "nullable": true, "description": "经空间审计纠正后的地块区域代码", "example": "440281"},
           "areaMu": {"type": "number", "nullable": true, "minimum": 0, "description": "完整地块 geom 的测地面积换算为亩，保留 4 位小数；不按当前视窗或行政区边界裁剪，几何缺失时为 null", "example": 379.8501},
           "qualityGrade": {"nullable": true, "description": "耕地质量等级；源数据可能为数字或等级文本", "oneOf": [{"type": "number"}, {"type": "string"}]},
           "organicMatter": {"type": "number", "nullable": true, "description": "有机质（g/kg）"},
           "soilPh": {"type": "number", "nullable": true, "description": "土壤 pH"},
-          "availablePhosphorus": {"type": "number", "nullable": true, "description": "有效磷（mg/kg）"}
+          "availablePhosphorus": {"type": "number", "nullable": true, "description": "有效磷（mg/kg）"},
+          "availablePotassium": {"type": "number", "nullable": true, "description": "速效钾（mg/kg）"},
+          "bulkDensity": {"type": "number", "nullable": true, "description": "土壤容重（g/cm³）"},
+          "plowLayerThickness": {"type": "number", "nullable": true, "description": "耕层厚度（cm）"},
+          "effectiveSoilDepth": {"type": "number", "nullable": true, "description": "有效土层厚度（cm）；兼容读取历史 topsoil_thickness 字段"},
+          "metrics": {
+            "type": "object",
+            "description": "全部指标的统一值、单位、等级、区间和颜色；缺失指标的 value 与分级字段为 null",
+            "additionalProperties": {"$ref": "#/components/schemas/FarmlandMetricValue"}
+          }
         }
       },
       "StatisticsErrorResponse": {
@@ -2239,7 +2591,7 @@
         "required": ["status", "code", "message"],
         "properties": {
           "status": {"type": "string", "enum": ["error"]},
-          "code": {"type": "string", "enum": ["invalid_parent", "invalid_request", "invalid_scope", "invalid_metrics", "invalid_coordinate", "region_not_found", "region_geometry_missing", "parcel_not_found", "statistics_unavailable", "internal_error"], "example": "invalid_scope"},
+          "code": {"type": "string", "enum": ["invalid_parent", "invalid_region_type", "invalid_request", "invalid_scope", "invalid_metrics", "invalid_metric", "invalid_coordinate", "invalid_tolerance", "invalid_bbox", "invalid_zoom", "invalid_year", "year_not_available", "invalid_geometry", "invalid_geometry_mode", "invalid_pagination", "invalid_limit", "too_many_regions", "geometry_too_complex", "geometry_too_large", "region_not_found", "region_geometry_missing", "parcel_not_found", "parcel_year_not_found", "parcel_geometry_missing", "rate_limited", "statistics_unavailable", "internal_error"], "example": "invalid_scope"},
           "message": {"type": "string", "example": "请求必须包含 scope 对象"}
         }
       },

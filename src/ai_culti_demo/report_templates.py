@@ -76,7 +76,7 @@ _INDICATOR_LABELS: dict[str, str] = {
     "organic_matter": "有机质 (g/kg)",
     "available_potassium": "速效钾 (mg/kg)",
     "available_phosphorus": "有效磷 (mg/kg)",
-    "total_nitrogen": "全氮 (g/kg)",
+    "total_n": "全氮 (g/kg)",
     "bulk_density": "容重 (g/cm³)",
     "topsoil_thickness": "表土厚度 (cm)",
     "terrain_position": "地形部位",
@@ -100,7 +100,7 @@ def render_parcel_indicators_table(ctx: dict[str, Any]) -> str:
     # 区域范围 → 渲染聚合统计
     if scope.get("type") == "region" and region:
         parts: list[str] = ["<table><thead><tr><th>指标</th><th>均值</th><th>最小</th><th>最大</th><th>样本数</th></tr></thead><tbody>"]
-        for key in ("soil_ph", "organic_matter", "available_potassium", "available_phosphorus", "total_nitrogen"):
+        for key in ("soil_ph", "organic_matter", "available_potassium", "available_phosphorus", "total_n"):
             s = region.get(key)
             if s:
                 label = _INDICATOR_LABELS.get(key, key)
@@ -152,19 +152,32 @@ def render_acidification_dosage_table(ctx: dict[str, Any]) -> str:
             "<th>来源</th>"
             "</tr></thead><tbody>"
         )
+        imputed_fields_seen: set[str] = set()
         for r in rows:
             pid = r.get("parcel_id", "—")
             ph = _fmt(r.get("soil_ph"))
             hex_ = _fmt(r.get("exchangeable_hydrogen"))
             alex = _fmt(r.get("exchangeable_aluminum"))
-            lime = _fmt(r.get("lime_dosage") if r.get("lime_dosage") is not None else r.get("soil_conditioner_dosage"))
-            of = _fmt(r.get("organic_fertilizer_dosage") if r.get("organic_fertilizer_dosage") is not None else r.get("woody_peat_dosage"))
+            imputed = list(r.get("imputed_inputs") or [])
+            if imputed:
+                # 输入含回填/默认取值 → 用量不作为结论展示
+                imputed_fields_seen.update(imputed)
+                lime = organic = "暂无可靠估计"
+            else:
+                lime = _fmt(r.get("lime_dosage") if r.get("lime_dosage") is not None else r.get("soil_conditioner_dosage"))
+                organic = _fmt(r.get("organic_fertilizer_dosage") if r.get("organic_fertilizer_dosage") is not None else r.get("woody_peat_dosage"))
             src = "已落库" if r.get("source") == "db" else "现场补算"
             parts.append(
                 f"<tr><td>{pid}</td><td>{ph}</td><td>{hex_}</td><td>{alex}</td>"
-                f"<td>{lime}</td><td>{of}</td><td>{src}</td></tr>"
+                f"<td>{lime}</td><td>{organic}</td><td>{src}</td></tr>"
             )
         parts.append("</tbody></table>")
+        if imputed_fields_seen:
+            parts.append(
+                "<p>注：上表中标注“暂无可靠估计”的用量未给出，原因是这些地块的酸化计算输入包含"
+                f"区域平均回填或默认取值（{'、'.join(sorted(imputed_fields_seen))}），"
+                "不足以支撑地块级用量结论。</p>"
+            )
 
     if region:
         parts.append("<p>区域统计：</p><ul>")
@@ -189,6 +202,13 @@ def _acid_data_brief(ctx: dict[str, Any]) -> str:
     for r in rows[:50]:
         pid = r.get("parcel_id", "?")
         ph = _fmt(r.get("soil_ph"))
+        imputed = list(r.get("imputed_inputs") or [])
+        if imputed:
+            lines.append(
+                f"- 地块 {pid}: pH={ph}，石灰/调理剂=暂无可靠估计，有机肥/泥炭=暂无可靠估计"
+                f"（输入含回填或默认取值：{'、'.join(imputed)}，因此不给出用量结论）"
+            )
+            continue
         lime = _fmt(r.get("lime_dosage") if r.get("lime_dosage") is not None else r.get("soil_conditioner_dosage"))
         of = _fmt(r.get("organic_fertilizer_dosage") if r.get("organic_fertilizer_dosage") is not None else r.get("woody_peat_dosage"))
         lines.append(f"- 地块 {pid}: pH={ph}, 石灰/调理剂={lime} kg/亩, 有机肥/泥炭={of} kg/亩")
@@ -213,8 +233,8 @@ def acid_summary_prompt(ctx: dict[str, Any]) -> str:
     return (
         "计算结论（model-4，须基于此润色，不得编造数值）：\n"
         f"{_acid_data_brief(ctx)}\n\n"
-        "总结酸化治理方案的核心结论：酸化现状、推荐治理技术路线、"
-        "预期 pH 提升目标与增产潜力与效益。"  #、投资规模
+        "总结酸化治理方案的核心结论：酸化现状、推荐治理技术路线、治理用量与核验安排。"
+        "未提供可靠模型结果时，不得编造 pH 提升幅度、增产潜力或经济效益。"
         "以 HTML 输出，<ul>/<li> 列出核心结论，<p> 呈现展望。"
     )
 

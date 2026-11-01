@@ -47,4 +47,3 @@ API 与运维文档 SHALL 展示 manifest dry-run、管理员批次创建、查�
 - **WHEN** 管理员查看批次入库文档
 - **THEN** 文档 SHALL 展示 ready、duplicate、needs_review、invalid、processor_unavailable 和预计 OCR/CAJ 数量
 - **AND** SHALL 说明 dry-run 不写数据库和向量库
-

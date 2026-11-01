@@ -1,8 +1,13 @@
 import os
 import secrets
+import sys
 from typing import Optional
 
 ENV = os.environ.get('FLASK_ENV') or os.environ.get('ENV') or 'development'
+
+def _warn(prompt: str):
+    """打印到 stderr，避免污染标准输出并随正常日志一起可见。"""
+    print(prompt, file=sys.stderr, flush=True)
 
 class Config:
     PROJECT_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
@@ -12,11 +17,42 @@ class Config:
             raise ValueError("SECRET_KEY must be set in production environment")
         SECRET_KEY = 'dev-secret-key-change-in-production'
 
+    # --- 数据库连接参数（可被环境变量覆盖）---
     DB_HOST = os.environ.get('DB_HOST') or 'localhost'
     DB_PORT = int(os.environ.get('DB_PORT') or 5432)
     DB_USER = os.environ.get('DB_USER') or 'postgres'
     DB_PASSWORD = os.environ.get('DB_PASSWORD') or '123456'
     DB_NAME = os.environ.get('DB_NAME') or 'db_enterprise_qa'
+
+    # --- 防御：连接参数非 ASCII 校验 ---
+    # 服务器若通过环境变量 / GBK 编码的 .env 注入中文或乱码，
+    # psycopg2 会在连接前报 UnicodeDecodeError（如 0xd6 字节），
+    # 这里启动时提前暴露原因并打印当前生效参数，便于一眼定位。
+    _db_fields = [
+        ("DB_HOST", DB_HOST),
+        ("DB_PORT", str(DB_PORT)),
+        ("DB_USER", DB_USER),
+        ("DB_NAME", DB_NAME),
+    ]
+    for _var, _val in _db_fields:
+        try:
+            _val.encode("ascii")
+        except UnicodeEncodeError:
+            raise ValueError(
+                f"数据库配置 {_var} 含非 ASCII 字符（可能被 GBK 编码污染）：{_val!r}。"
+                "请改为纯 ASCII 值，并确保环境变量或 .env 以 UTF-8 编码保存。"
+            )
+    try:
+        DB_PASSWORD.encode("ascii")
+    except UnicodeEncodeError:
+        raise ValueError(
+            f"数据库配置 DB_PASSWORD 含非 ASCII 字符（可能被 GBK 编码污染）：{DB_PASSWORD!r}。"
+            "请改为纯 ASCII 密码。"
+        )
+    _warn(
+        f"[config] 数据库连接生效参数 -> user: {DB_USER} | host: {DB_HOST}:{DB_PORT} | "
+        f"db: {DB_NAME}"
+    )
 
     SQLALCHEMY_DATABASE_URI = (
         f"postgresql+psycopg2://{DB_USER}:{DB_PASSWORD}@{DB_HOST}:{DB_PORT}/{DB_NAME}"
@@ -65,12 +101,16 @@ class Config:
     SILICONFLOW_LLM_TIMEOUT = float(os.environ.get('SILICONFLOW_LLM_TIMEOUT') or 90)
     SILICONFLOW_LLM_MAX_RETRIES = int(os.environ.get('SILICONFLOW_LLM_MAX_RETRIES') or 1)
 
-    CHROMA_PERSIST_DIR = os.environ.get('CHROMA_PERSIST_DIR') or './chroma_db'
+    CHROMA_PERSIST_DIR = os.environ.get('CHROMA_PERSIST_DIR') or os.path.join(
+        PROJECT_ROOT, 'chroma_db'
+    )
     CHROMA_COLLECTION_NAME = os.environ.get('CHROMA_COLLECTION_NAME') or 'enterprise_kb'
     # Explicit opt-in: this store is migrated separately, never at app startup.
     LITERATURE_EVIDENCE_DATABASE_URI = os.environ.get("LITERATURE_EVIDENCE_DATABASE_URI") or None
 
-    UPLOAD_FOLDER = os.environ.get('UPLOAD_FOLDER') or './uploads'
+    UPLOAD_FOLDER = os.environ.get('UPLOAD_FOLDER') or os.path.join(
+        PROJECT_ROOT, 'uploads'
+    )
     MAX_CONTENT_LENGTH = 200 * 1024 * 1024  # 200MB，对齐 MAX_DATA_IMPORT_SIZE，允许数据导入大文件
 
     CHUNK_SIZE = 800

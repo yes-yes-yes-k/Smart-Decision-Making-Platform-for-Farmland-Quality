@@ -6,7 +6,7 @@ from pathlib import Path
 import sys
 ROOT=Path(__file__).resolve().parents[2];sys.path.insert(0,str(ROOT))
 import scripts.run_kg_benchmark_pilot as engine
-import scripts.run_kg_benchmark_pilot_r3 as r3
+import scripts.archive.run_kg_benchmark_pilot_r3 as r3
 import scripts.adjudicate_kg_benchmark_pilot as arbitration
 from scripts.rebuild_kg_extraction_benchmark import OUT,dump,lines,readlines,verify_history
 from framework.knowledge_graph.benchmark_protocol import source_packet,load_schema

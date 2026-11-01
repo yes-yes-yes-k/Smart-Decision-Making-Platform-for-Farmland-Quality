@@ -23,7 +23,7 @@ logger = logging.getLogger(__name__)
 # Bump the affected value whenever calculation code or its interpretation
 # changes.  A new value produces a new immutable result row automatically.
 MODEL_RUNTIME_VERSIONS: dict[str, str] = {
-    "model-1": "stability-1.1.0",
+    "model-1": "stability-1.2.0",
     "model-2": "quality-grade-2.1.0",
     "model-3": "obstacle-diagnosis-2.1.0",
     "model-4": "acidification-1.1.0",
@@ -363,4 +363,3 @@ def business_result(row_or_execution: Any) -> dict[str, Any]:
         return {}
     nested = payload.get("result")
     return dict(nested) if isinstance(nested, Mapping) else dict(payload)
-

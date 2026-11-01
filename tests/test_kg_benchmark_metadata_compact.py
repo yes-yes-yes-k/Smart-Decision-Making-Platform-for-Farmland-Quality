@@ -1,5 +1,5 @@
 import pytest
-from scripts.review_kg_benchmark_metadata_v2 import check,schema
+from scripts.archive.review_kg_benchmark_metadata_v2 import check,schema
 
 
 def test_short_ids_resolve_to_full_provenance_and_do_not_rewrite_text():

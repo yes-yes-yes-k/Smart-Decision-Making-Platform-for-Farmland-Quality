@@ -2,6 +2,7 @@ from .user import db
 from .user import User
 from .conversation import Conversation
 from .message import Message
+from .acidification_measurement import AcidificationMeasurement
 from .document import Document
 from .document_label import DocumentLabel
 from .ingestion import IngestionBatch, IngestionItem

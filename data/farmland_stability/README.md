@@ -70,7 +70,7 @@ Shapefile 的五个组件缺一不可。接收方应将它们解压到项目的 
 
 ```powershell
 & 'C:\Users\PC\.conda\envs\agent_culti_demo_py312\python.exe' `
-  -m src.ai_culti_demo.farmland_stability.precompute
+  -m ai_culti_demo.farmland_stability.precompute
 ```
 
 5. 成功后将生成以下本地文件：

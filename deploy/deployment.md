@@ -14,15 +14,15 @@ waitress（WSGI 服务器，多线程并发）
   ↓
 Flask 应用（production 配置）
   ↓
-SQLite + ChromaDB + SiliconFlow LLM
+PostgreSQL/PostGIS + ChromaDB + SiliconFlow LLM
 ```
 
 ## 环境要求
 
 | 组件     | 版本要求   | 说明                                      |
 | ------ | ------ | --------------------------------------- |
-| Python | ≥ 3.10 | 与开发环境一致                                 |
-| SQLite | 内置     | 无需单独安装，数据库文件位于 `instance/production.db` |
+| Python | ≥ 3.11 | scikit-learn 1.9 运行时要求 |
+| PostgreSQL/PostGIS | PostgreSQL 14+ | 应用主数据库与空间查询 |
 | NSSM   | 最新版    | Windows 服务管理（可选）                        |
 
 ## 部署步骤
@@ -52,8 +52,12 @@ copy deploy\production.env.example .env
 SECRET_KEY=替换为随机生成的64位十六进制密钥
 JWT_SECRET_KEY=替换为另一个随机生成的密钥
 
-# 数据库使用 SQLite，无需额外配置
-# 数据库文件自动创建于 instance/production.db
+# PostgreSQL / PostGIS
+DB_HOST=127.0.0.1
+DB_PORT=5432
+DB_USER=postgres
+DB_PASSWORD=替换为数据库密码
+DB_NAME=db_enterprise_qa
 
 # SiliconFlow LLM
 SILICONFLOW_API_KEY=sk-替换为实际API密钥
@@ -483,17 +487,17 @@ curl -N -v -X POST http://127.0.0.1:5000/api/v1/chat/stream \
 
 **解决**：检查 `.env` 文件是否已创建且包含所有必需变量。
 
-### 数据库文件访问失败
+### PostgreSQL 连接失败
 
 ```
-sqlalchemy.exc.OperationalError: (sqlite3.OperationalError) unable to open database file
+sqlalchemy.exc.OperationalError: connection refused
 ```
 
 **解决**：
 
-1. 确认 `instance/` 目录存在且有写入权限
-2. 首次部署运行 `python init_db.py` 自动创建目录和数据库文件
-3. 如果从开发环境迁移，可将 `instance/development.db` 复制为 `instance/production.db`
+1. 确认 PostgreSQL 已启动，目标数据库已创建并启用 PostGIS。
+2. 核对 `.env` 中 `DB_HOST`、`DB_PORT`、`DB_USER`、`DB_PASSWORD` 和 `DB_NAME`。
+3. 使用同一账号执行 `python init_db.py` 验证建表权限。
 
 ### Windows 服务启动后立即停止
 

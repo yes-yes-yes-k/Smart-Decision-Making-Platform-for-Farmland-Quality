@@ -100,14 +100,24 @@ REFERENCE_QUESTIONS: Dict[int, List[str]] = {
 }
 
 REFERENCE_VECTORS: Dict[int, List[List[float]]] = {}
+_REFERENCE_VECTORS_INITIALIZED = False
 
 def _precompute_reference_vectors() -> None:
+    """Build semantic routing vectors on first use, never during import.
+
+    Importing the Flask application must remain offline-safe.  The previous
+    module-level call made every CLI command and test collection contact the
+    embedding provider whenever a key happened to be present in the shell.
+    """
     if not EMBEDDING_AVAILABLE or not embedding_service.is_available():
         return
-    global REFERENCE_VECTORS
+    global REFERENCE_VECTORS, _REFERENCE_VECTORS_INITIALIZED
+    if _REFERENCE_VECTORS_INITIALIZED:
+        return
     for q_type, questions in REFERENCE_QUESTIONS.items():
         vectors = embedding_service.embed_documents(questions)
         REFERENCE_VECTORS[q_type] = vectors
+    _REFERENCE_VECTORS_INITIALIZED = True
 
 def _cosine_similarity(vec1: List[float], vec2: List[float]) -> float:
     if not vec1 or not vec2 or len(vec1) != len(vec2):
@@ -120,8 +130,6 @@ def _cosine_similarity(vec1: List[float], vec2: List[float]) -> float:
     if norm1 == 0 or norm2 == 0:
         return 0.0
     return float(dot_product / (norm1 * norm2))
-
-_precompute_reference_vectors()
 
 # LLM 路由观测状态：每次 identify_question_type 调用前重置
 _last_router_method: str = "keyword"
@@ -137,6 +145,7 @@ def check_relevance(question: str) -> float:
         return _check_relevance_keyword(question)
 
 def _check_relevance_vector(question: str) -> float:
+    _precompute_reference_vectors()
     query_vector = embedding_service.embed_query(question)
     if not query_vector:
         return _check_relevance_keyword(question)
@@ -250,6 +259,7 @@ def _infer_model_from_question(question: str, context: dict) -> int:
     return 1
 
 def _identify_question_type_vector(question: str) -> tuple[int, float]:
+    _precompute_reference_vectors()
     keyword_relevance = _check_relevance_keyword(question)
     query_vector = embedding_service.embed_query(question)
     if not query_vector:

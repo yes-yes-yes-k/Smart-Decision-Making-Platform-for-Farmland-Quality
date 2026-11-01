@@ -443,4 +443,3 @@ def test_conflicting_evidence_identity_is_rejected_and_original_is_retained(tmp_
     finally:
         db.session.remove()
         context.pop()
-

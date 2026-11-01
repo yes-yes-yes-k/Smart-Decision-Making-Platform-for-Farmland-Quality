@@ -139,4 +139,3 @@ def test_execution_error_is_retried_and_replaced_by_success():
         current = VersionedModelResult.query.filter_by(is_current=True).one()
         assert current.status == "ok"
         assert current.result_payload["result"]["call"] == 2
-

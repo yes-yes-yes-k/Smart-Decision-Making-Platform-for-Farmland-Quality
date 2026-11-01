@@ -8,12 +8,12 @@ class CoreEngine:
     def _ensure_import(self):
         if not self._initialized:
             try:
-                from src.ai_culti_demo.catalog import load_catalog, get_asset, get_layer
-                from src.ai_culti_demo.overview import get_county_overview
-                from src.ai_culti_demo.diagnosis import diagnose_county
-                from src.ai_culti_demo.thematic_models import list_thematic_models, run_thematic_model
-                from src.ai_culti_demo.report import build_report_summary
-                from src.ai_culti_demo.runtime import verify_standalone_runtime
+                from ai_culti_demo.catalog import load_catalog, get_asset, get_layer
+                from ai_culti_demo.overview import get_county_overview
+                from ai_culti_demo.diagnosis import diagnose_county
+                from ai_culti_demo.thematic_models import list_thematic_models, run_thematic_model
+                from ai_culti_demo.report import build_report_summary
+                from ai_culti_demo.runtime import verify_standalone_runtime
 
                 self._load_catalog = load_catalog
                 self._get_asset = get_asset
@@ -119,9 +119,9 @@ class CoreEngine:
     def _ensure_data_import_imports(self):
         """延迟导入数据导入相关模块，避免在 _ensure_import 中引入 geopandas 等重依赖。"""
         if not hasattr(self, '_data_import_ready'):
-            from src.ai_culti_demo.farmland_diagnosis.evaluation import bulk_evaluate
-            from src.ai_culti_demo.farmland_stability.precompute import main as precompute_main
-            from src.ai_culti_demo.farmland_grade_eval.runner import FarmlandGradeRunner
+            from ai_culti_demo.farmland_diagnosis.evaluation import bulk_evaluate
+            from ai_culti_demo.farmland_stability.precompute import main as precompute_main
+            from ai_culti_demo.farmland_grade_eval.runner import FarmlandGradeRunner
             self._bulk_evaluate = bulk_evaluate
             self._precompute_main = precompute_main
             self._FarmlandGradeRunner = FarmlandGradeRunner

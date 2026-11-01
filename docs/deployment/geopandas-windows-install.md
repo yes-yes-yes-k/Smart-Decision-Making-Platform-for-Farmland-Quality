@@ -4,7 +4,7 @@ GeoPandas 在 Windows 上的安装比 Linux/macOS 复杂，因为它依赖 GDAL�
 
 ## 前置条件
 
-- Python 3.10+（项目要求 >=3.10，当前使用 3.12.3）
+- Python 3.11+（当前验证环境为 Python 3.12）
 - pip 或 conda
 
 ## 方式一：conda 安装（推荐）

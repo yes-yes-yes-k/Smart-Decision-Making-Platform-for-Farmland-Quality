@@ -1,7 +1,7 @@
 # R4.3 质量门槛与恢复验收报告
 
-**日期**：2026-10-31  
-**对照结果来源**：`artifacts/.../r4-20261031-comparison-config/comparison-results-v1.json`  
+**日期**：2026-10-31
+**对照结果来源**：`artifacts/.../r4-20261031-comparison-config/comparison-results-v1.json`
 **恢复验证来源**：`tests/test_r3_3_lifecycle_verification.py`（6/6 通过）
 
 ## 一、质量门槛——文档级 vs 证据级分别报告

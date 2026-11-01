@@ -111,7 +111,7 @@ class AgentManager:
 
     def process(self, question: str, context: Dict[str, Any]) -> Dict[str, Any]:
         """处理用户问题，返回综合结果。"""
-        # src.ai_culti_demo 初始化可能与 framework.agents 形成循环导入；
+        # ai_culti_demo 初始化可能与 framework.agents 形成循环导入；
         # 首次请求时再刷新一次，避免 model-5 永久停留在占位桩。
         self._refresh_stub_agents()
         question_type = context.get("question_type")

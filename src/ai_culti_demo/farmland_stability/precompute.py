@@ -1,7 +1,7 @@
 """稳定性模型离线预计算入口。
 
 封装 run_all_models → StabilityStorage.save_results → save_final_results 完整流程。
-支持 `python -m src.ai_culti_demo.farmland_stability.precompute` 命令行调用（见 data/farmland_stability/README.md）。
+支持 `python -m ai_culti_demo.farmland_stability.precompute` 命令行调用（见 data/farmland_stability/README.md）。
 """
 import os
 from typing import Any, Dict, List

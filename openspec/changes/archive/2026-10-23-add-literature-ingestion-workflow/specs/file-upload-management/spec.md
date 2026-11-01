@@ -206,4 +206,3 @@ PDF 处理 SHALL 对每页检测文本层，仅将低文本页送入 OCR，并�
 - **WHEN** OCR 后仍存在空页或错误页
 - **THEN** 系统 SHALL 在质量摘要中记录数量
 - **AND** SHALL 根据配置质量门槛决定 completed 或 failed
-

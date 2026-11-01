@@ -1,6 +1,6 @@
 import pytest
 import numpy as np
-from src.ai_culti_demo.farmland_diagnosis.config import (
+from ai_culti_demo.farmland_diagnosis.config import (
     REGION_MAP, COEFFICIENTS, WEIGHTS, INDICATOR_DISPLAY_MAP,
     GRADE_CONFIG, ALL_INDICATORS, CONTINUOUS_INDICATORS, DISCRETE_INDICATORS,
     calc_obstacle_level
@@ -80,7 +80,7 @@ def test_calc_obstacle_level_dxbw_uses_lsd():
 
 
 # Storage tests
-from src.ai_culti_demo.farmland_diagnosis.storage import DiagnosisStorage
+from ai_culti_demo.farmland_diagnosis.storage import DiagnosisStorage
 import tempfile
 import os
 import sqlite3
@@ -222,7 +222,7 @@ def test_storage_is_ready():
 
 
 # Evaluation tests
-from src.ai_culti_demo.farmland_diagnosis.evaluation import bulk_evaluate, evaluate_single, calc_continuous, calc_discrete, translate_obstacle_level
+from ai_culti_demo.farmland_diagnosis.evaluation import bulk_evaluate, evaluate_single, calc_continuous, calc_discrete, translate_obstacle_level
 import pandas as pd
 
 def test_translate_obstacle_level_sjd_acidification():
@@ -303,8 +303,8 @@ def test_calc_discrete():
 
 
 # Diagnosis tests
-from src.ai_culti_demo.farmland_diagnosis.diagnosis import diagnosis_row, diagnose, query_parcel, replace_abbr_in_text
-from src.ai_culti_demo.farmland_diagnosis.config import WEIGHTED_INDICATORS
+from ai_culti_demo.farmland_diagnosis.diagnosis import diagnosis_row, diagnose, query_parcel, replace_abbr_in_text
+from ai_culti_demo.farmland_diagnosis.config import WEIGHTED_INDICATORS
 
 def test_replace_abbr_in_text():
     text = 'SJD(中度酸化, 25.0%)；SXJ(重度缺乏, 26.5%)'
@@ -381,7 +381,7 @@ def test_diagnose_flow():
 
 
 # Acidification tests
-from src.ai_culti_demo.farmland_diagnosis.acidification import classify_acidification, generate_amendment, evaluate_acidification, query_acidification
+from ai_culti_demo.farmland_diagnosis.acidification import classify_acidification, generate_amendment, evaluate_acidification, query_acidification
 
 def test_classify_acidification_severe():
     result = classify_acidification(4.0, 'HN')

@@ -10,6 +10,9 @@ src/ai_culti_demo/__pycache__/thematic_models.cpython-312.pyc
 tests/__pycache__/test_interfaces.cpython-312.pyc
 tests/__pycache__/test_thematic_models.cpython-312.pyc
 **/__pycache__/**
+.venv/
+.pytest_cache/
+*.egg-info/
 .env
 .env.*
 chroma_db/
@@ -17,6 +20,8 @@ instance/
 uploads/
 response.json
 .vscode/
+.idea/
+.ai/
 
 # Fertility ML 训练数据与模型文件（入库，不忽略）
 !data/fertility/
@@ -81,6 +86,16 @@ src/data/
 
 # 验证日志
 verify_output.log
+docs/generated/
+docs/superpowers/
+
+# 本地或历史资产（正式运行不引用）
+/models/
+backups/
+.tmp_test/
+.tmp_ppt_review/
+tools/.artifact_kg_review/
+artifacts/minimal_kg/
 
 # 根目录散落 xlsx 文件
 /*.xlsx

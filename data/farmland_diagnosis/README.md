@@ -75,10 +75,10 @@ curl -X POST http://localhost:5000/api/v1/data/import \
 
 ```bash
 # 批量评价（生成 test_with_LD.csv）
-python -m src.ai_culti_demo.farmland_diagnosis.batch_evaluate
+python -m ai_culti_demo.farmland_diagnosis.batch_evaluate
 
 # 批量障碍诊断（生成 test_with_LD_diagnosis.csv）
-python -m src.ai_culti_demo.farmland_diagnosis.batch_diagnose
+python -m ai_culti_demo.farmland_diagnosis.batch_diagnose
 ```
 
 在线查询通过 `query_parcel(parcel_id)` 和 `query_acidification(parcel_id)` 接口读取诊断结果。

@@ -66,8 +66,9 @@ _FIELDS: tuple[ParcelField, ...] = (
         ("土壤酸碱度", "酸碱度", "ph值", "ph 值", "ph"),
     ),
     ParcelField(
-        "effective_soil_depth", "topsoil_thickness", "有效土层厚度", "cm", 2,
+        "effective_soil_depth", "effective_soil_depth", "有效土层厚度", "cm", 2,
         ("有效土层厚度", "土层厚度"),
+        fallback_source_field="topsoil_thickness",
     ),
     ParcelField(
         "plow_layer_thickness", "plow_layer_thickness", "耕层厚度", "cm", 2,
@@ -304,10 +305,14 @@ def _field_value(
         return None, None, {}, "field_value_missing"
 
     value = snapshot.indicators.get(field.source_field)
+    value_source_field = field.source_field
+    if _is_missing(value) and field.fallback_source_field:
+        value = snapshot.indicators.get(field.fallback_source_field)
+        value_source_field = field.fallback_source_field
     provenance = _indicator_provenance(snapshot, field)
     if _is_missing(value):
         return None, f"parcel_info.soil_indicators.{field.source_field}", provenance, "field_value_missing"
-    return value, f"parcel_info.soil_indicators.{field.source_field}", provenance, None
+    return value, f"parcel_info.soil_indicators.{value_source_field}", provenance, None
 
 
 def _classification(field: ParcelField, value: Any) -> tuple[str | None, str | None]:

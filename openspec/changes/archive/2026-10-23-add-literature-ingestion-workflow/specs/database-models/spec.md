@@ -65,4 +65,3 @@
 - **THEN** 文档 SHALL 进入 status=3
 - **AND** 对应 item SHALL 保存失败阶段、错误码和 retryable
 - **AND** 文档 SHALL NOT 永久停留 processing
-

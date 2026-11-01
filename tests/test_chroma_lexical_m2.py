@@ -22,8 +22,12 @@ class ChromaLexicalIntegrationTests(unittest.TestCase):
             embed_documents=lambda texts: [[1.0, float(i+1)] for i, _ in enumerate(texts)], embed_query=lambda query: [1.0, 1.0])
         cls.patch_embedding = patch.dict(sys.modules, {"framework.embedding.service": embedding})
         cls.patch_embedding.start()
-        from framework.vector_store.chroma_store import ChromaVectorStore
-        cls.store_class = ChromaVectorStore
+        from framework.vector_store import chroma_store as module
+        # Conftest may already have imported this module, so patch its bound
+        # service too. Never let these offline test vectors call the real API.
+        cls.patch_bound_embedding = patch.object(module, "embedding_service", embedding.embedding_service)
+        cls.patch_bound_embedding.start()
+        cls.store_class = module.ChromaVectorStore
 
     @classmethod
     def tearDownClass(cls):
@@ -32,6 +36,7 @@ class ChromaLexicalIntegrationTests(unittest.TestCase):
         vector_store.close()
         chromadb.api.client.SharedSystemClient.clear_system_cache()
         cls.config.CHROMA_PERSIST_DIR = cls.original_path
+        cls.patch_bound_embedding.stop()
         cls.patch_embedding.stop(); gc.collect(); cls.temp.cleanup()
 
     def setUp(self):

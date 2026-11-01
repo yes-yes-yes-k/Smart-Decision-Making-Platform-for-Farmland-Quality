@@ -60,7 +60,7 @@ def test_ph_query_reads_authoritative_value_and_classification():
 
 def test_soil_depth_and_plow_depth_are_not_confused():
     snapshot = _snapshot({
-        "topsoil_thickness": 82.5,
+        "effective_soil_depth": 82.5,
         "plow_layer_thickness": 16.0,
     })
 
@@ -71,7 +71,7 @@ def test_soil_depth_and_plow_depth_are_not_confused():
         "该地块的耕层厚度多少？", "373", accessor=_Accessor(snapshot),
     )
 
-    assert soil["fields"][0]["source_field"] == "topsoil_thickness"
+    assert soil["fields"][0]["source_field"] == "effective_soil_depth"
     assert soil["answer"] == "地块 373：有效土层厚度为 82.5cm（中）。"
     assert plow["fields"][0]["source_field"] == "plow_layer_thickness"
     assert plow["answer"] == "地块 373：耕层厚度为 16cm（中）。"

@@ -161,3 +161,66 @@ def test_model5_untrusted_aliases_are_cleared_in_every_projection():
     legacy = legacy_projection(model)
     assert legacy["evidence"]["dose_prediction"] is None
     assert legacy["deprecation"]["code"] == "MODEL5_QUANTITATIVE_UNAVAILABLE"
+
+
+def test_model4_imputed_inputs_clear_dosages_and_issue_code():
+    """输入含回填/默认取值时，Model-4 的用量与酸缓冲量不作为结论输出。"""
+    agent = type("Agent", (), {
+        "model_id": "acidification-remediation",
+        "agent_id": "model-4",
+        "capability": {"model_id": "acidification-remediation"},
+    })()
+    model = normalize_execution(
+        agent,
+        {"parcel_id": "1"},
+        {
+            "status": "degraded",
+            "data_source": "db",
+            "simulated": False,
+            "model_version": "process_v2",
+            "metadata": {
+                "reason": "IMPUTED_INPUT",
+                "imputed_inputs": ["exchangeable_aluminum", "target_ph"],
+            },
+            "result": {
+                "parcel_id": "1",
+                "Aback": 108051.61,
+                "YTK": 5047.92,
+                "MBNT": 11671.28,
+                "Adep": 59.89,
+                "reason": "IMPUTED_INPUT",
+                "imputed_inputs": ["exchangeable_aluminum", "target_ph"],
+            },
+        },
+    )
+    assert model["result"]["soil_conditioner_dosage"] is None
+    assert model["result"]["woody_peat_dosage"] is None
+    assert model["result"]["background_acid"] is None
+    assert model["result"]["imputed_inputs"] == ["exchangeable_aluminum", "target_ph"]
+    codes = {item["code"] for item in model["issues"]}
+    assert {"IMPUTED_INPUT", "MODEL4_QUANTITATIVE_UNAVAILABLE"} <= codes
+
+
+def test_model4_without_imputed_inputs_keeps_dosages():
+    """来源全部为实测/未标注时，用量照常输出。"""
+    agent = type("Agent", (), {
+        "model_id": "acidification-remediation",
+        "agent_id": "model-4",
+        "capability": {"model_id": "acidification-remediation"},
+    })()
+    model = normalize_execution(
+        agent,
+        {"parcel_id": "1"},
+        {
+            "status": "ok",
+            "data_source": "db",
+            "simulated": False,
+            "model_version": "process_v2",
+            "result": {"parcel_id": "1", "Aback": 108051.61, "YTK": 5047.92, "MBNT": 11671.28,
+                       "imputed_inputs": []},
+        },
+    )
+    assert model["status"] == "ok"
+    assert model["result"]["soil_conditioner_dosage"] == 5047.92
+    assert model["result"]["woody_peat_dosage"] == 11671.28
+    assert "MODEL4_QUANTITATIVE_UNAVAILABLE" not in {item["code"] for item in model["issues"]}

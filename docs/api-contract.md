@@ -359,3 +359,24 @@ python -m ai_culti_demo.http_server
 | `MISSING_MODEL_ID`   | 请求体缺少 `model_id`            |
 | `INVALID_MODEL_ID`   | `model_id` 不在 6 个模型目录中   |
 | `UNSUPPORTED_AREA`   | 当前区域不支持                   |
+
+## `POST /api/v1/report/generate` 的状态与数字审计
+
+报告生成的响应在原有字段之外新增三项，调用方需按下表理解：
+
+| 字段          | 说明                                                                 |
+| ------------- | -------------------------------------------------------------------- |
+| `status`      | 可能为 `ok` 或 `degraded`。生成后审计发现无依据定量内容时为 `degraded` |
+| `audit`       | 审计结果：`checked_claims`、`grounded_claims`、`ungrounded_claims`、`issues[]` |
+| `issues[]`    | 稳定问题码列表，当前为 `UNGROUNDED_QUANTITATIVE_CLAIM`               |
+
+审计口径：
+
+- 白名单来源是报告上下文与 `data` 章节渲染结果，语言模型章节只允许引用其中已有的数值；
+- 被审计的表述限定为带单位或非 0 数值语义的内容（百分比、`g/kg`、`mg/kg`、`kg/亩`、`元/亩`、`cm`、pH 数值，以及预测性句子中的时长）；
+- 无法追溯的数值在正文中替换为“暂无可靠估计”，并在 `audit.issues[]` 记录章节、原始数值和说明；
+- 数据章节不参与替换，只作为白名单来源。
+
+被回填输入的披露：报告的“数据来源与计算依据”小节会列出被区域平均回填或使用默认值的输入字段（来自模型结果的 `imputed_features` / `imputed_inputs` 与地块来源标记），该内容由数据驱动，不由语言模型生成。
+
+兼容说明：旧调用方若只判断 `status == "ok"`，需要同时接受 `degraded`，并按 `audit` 判断报告是否需要人工复核；不解析 `audit` 时，正文中的“暂无可靠估计”已是安全表述。

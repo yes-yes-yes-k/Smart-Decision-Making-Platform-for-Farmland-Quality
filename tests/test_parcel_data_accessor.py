@@ -104,16 +104,27 @@ def test_map_model4_indicators():
     assert mapped["Alex"] == 0.5
 
 def test_map_model5_indicators():
-    """Model-5 映射: soil_ph→pH, organic_matter→SOMbe, etc."""
+    """Model-5 映射: soil_ph→pH, organic_matter→SOMbe, etc.（V3.0 命名 total_n）"""
     accessor = ParcelDataAccessor()
     indicators = {"soil_ph": 5.5, "organic_matter": 22.0, "available_potassium": 90.0,
-                  "available_phosphorus": 12.0, "total_nitrogen": 1.5}
+                  "available_phosphorus": 12.0, "total_n": 1.5}
     mapped = accessor._map_indicators_to_inputs(indicators, "model-5")
     assert mapped["pH"] == 5.5
     assert mapped["SOMbe"] == 22.0
     assert mapped["AK"] == 90.0
     assert mapped["AP"] == 12.0
     assert mapped["TN"] == 1.5
+
+
+def test_map_model1_excludes_provenance_metadata():
+    """来源标记是元数据，不应进入模型输入。"""
+    accessor = ParcelDataAccessor()
+    indicators = {"soil_ph": 5.5, "soil_texture": "壤土",
+                  "provenance": {"soil_ph": "measured"}}
+    mapped = accessor._map_indicators_to_inputs(indicators, "model-1")
+    assert "provenance" not in mapped
+    assert mapped["soil_ph"] == 5.5
+    assert mapped["GCZD"] == "RT"
 
 def test_to_code_chinese_fallback():
     """中文值通过 DISCRETE_CN_MAP 回退."""

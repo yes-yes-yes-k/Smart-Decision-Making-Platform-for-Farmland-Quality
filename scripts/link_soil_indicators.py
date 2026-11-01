@@ -6,7 +6,7 @@
 数据来源：
 - third_survey_profiles（05_ 剖面）：exchangeable_hydrogen, exchangeable_aluminum,
   exchangeable_acid_total, hydrolytic_total_acidity（Model-4 指标）
-- third_survey_topsoils（04_ 表层土）：total_n, organic_matter(som), available_phosphorus(ap),
+- third_survey_topsoils（04_ 表层土）：total_nitrogen, organic_matter(som), available_phosphorus(ap),
   available_potassium(ak), ph（Model-5 指标）
 
 用法:
@@ -68,7 +68,7 @@ def compute_profile_indicators() -> Dict[str, Optional[float]]:
         "exchangeable_acid_total": _avg([r[2] for r in rows]),
         "hydrolytic_total_acidity": _avg([r[3] for r in rows]),
         "soil_ph": _avg([r[4] for r in rows]),
-        "total_n": _avg([r[5] for r in rows]),
+        "total_nitrogen": _avg([r[5] for r in rows]),
         "organic_matter": _avg([r[6] for r in rows]),
     }
     logger.info("剖面数据平均值（%d 条记录）:", len(rows))
@@ -81,7 +81,7 @@ def compute_profile_indicators() -> Dict[str, Optional[float]]:
 def compute_topsoil_indicators() -> Dict[str, Optional[float]]:
     """从 third_survey_topsoils 表计算 Model-5 指标的平均值。
 
-    返回 {field: avg_value}，使用 V3.0 命名（total_n 而非 tn）。
+    返回 {field: avg_value}，统一使用公开字段名 total_nitrogen。
     """
     rows = db.session.query(
         ThirdSurveyTopsoil.ph,
@@ -103,7 +103,7 @@ def compute_topsoil_indicators() -> Dict[str, Optional[float]]:
     result = {
         "soil_ph": _avg([r[0] for r in rows]),
         "organic_matter": _avg([r[1] for r in rows]),
-        "total_n": _avg(total_n_vals),
+        "total_nitrogen": _avg(total_n_vals),
         "available_phosphorus": _avg([r[4] for r in rows]),
         "available_potassium": _avg([r[5] for r in rows]),
         "cation_exchange_capacity": _avg([r[6] for r in rows]),
@@ -130,7 +130,7 @@ def link_indicators_to_parcels(
     # 合并指标（topsoil 优先，profile 补充）
     merged: Dict[str, Optional[float]] = {}
     merged.update(profile_indicators)
-    # topsoil 的 organic_matter / total_n / soil_ph 覆盖 profile（表层土数据量更大）
+    # topsoil 的 organic_matter / total_nitrogen / soil_ph 覆盖 profile（表层土数据量更大）
     for k, v in topsoil_indicators.items():
         if v is not None:
             merged[k] = v
@@ -155,6 +155,10 @@ def link_indicators_to_parcels(
         if not parcel.fertilizer_type:
             parcel.fertilizer_type = "compound"
             changed = True
+        # Keep the legacy alias for existing model integrations.
+        if "total_nitrogen" in indicators and "total_n" not in indicators:
+            indicators["total_n"] = indicators["total_nitrogen"]
+            changed = True
         for duplicate in ("land_type", "fertilizer_type", "target_ph"):
             if duplicate in indicators:
                 indicators.pop(duplicate)
@@ -176,7 +180,7 @@ def link_indicators_to_parcels(
 
 def verify_link_result() -> Dict[str, float]:
     """验证关联后 soil_indicators 中关键字段的非空率。"""
-    fields = ["total_n", "exchangeable_hydrogen", "exchangeable_aluminum",
+    fields = ["total_nitrogen", "total_n", "exchangeable_hydrogen", "exchangeable_aluminum",
               "organic_matter", "soil_ph"]
     total = db.session.query(ParcelInfo).count()
     rates: Dict[str, float] = {}

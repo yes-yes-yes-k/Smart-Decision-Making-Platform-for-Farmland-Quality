@@ -125,7 +125,7 @@ def test_adapter_bulk_evaluate_csv_delegates():
 
     engine = CoreEngine()
 
-    with patch('src.ai_culti_demo.farmland_diagnosis.evaluation.bulk_evaluate', return_value={"status": "ok", "processed": 5}) as m:
+    with patch('ai_culti_demo.farmland_diagnosis.evaluation.bulk_evaluate', return_value={"status": "ok", "processed": 5}) as m:
         result = engine.bulk_evaluate_csv("/fake/test.csv")
         assert result["status"] == "ok"
         assert result["processed"] == 5
@@ -138,7 +138,7 @@ def test_adapter_bulk_evaluate_csv_error_handling():
 
     engine = CoreEngine()
 
-    with patch('src.ai_culti_demo.farmland_diagnosis.evaluation.bulk_evaluate', side_effect=RuntimeError("boom")):
+    with patch('ai_culti_demo.farmland_diagnosis.evaluation.bulk_evaluate', side_effect=RuntimeError("boom")):
         result = engine.bulk_evaluate_csv("/fake/test.csv")
         assert result["status"] == "error"
         assert result["error"]["code"] == "BULK_EVALUATE_ERROR"
@@ -152,7 +152,7 @@ def test_adapter_precompute_stability_delegates():
     engine = CoreEngine()
     manifest = {"current_filename": "2024.shp", "history_filenames": ["2018.shp"], "years": [2018, 2024]}
 
-    with patch('src.ai_culti_demo.farmland_stability.precompute.main', return_value={"status": "ok", "processed": 10}) as m:
+    with patch('ai_culti_demo.farmland_stability.precompute.main', return_value={"status": "ok", "processed": 10}) as m:
         result = engine.precompute_stability("/fake/dir", manifest)
         assert result["status"] == "ok"
         m.assert_called_once_with("/fake/dir", manifest)
@@ -164,7 +164,7 @@ def test_adapter_check_grade_eval_deployment_ok():
 
     engine = CoreEngine()
 
-    with patch('src.ai_culti_demo.farmland_grade_eval.runner.FarmlandGradeRunner') as MockRunner:
+    with patch('ai_culti_demo.farmland_grade_eval.runner.FarmlandGradeRunner') as MockRunner:
         MockRunner.return_value.check_deployment.return_value = {"exe_exists": True, "dat_exists": True, "ready": True}
         result = engine.check_grade_eval_deployment()
         assert result["deployment_ok"] is True

@@ -254,7 +254,7 @@ def import_model2():
         indicator_names = {
             "SJD": "soil_ph", "YJZ": "organic_matter", "YXL": "available_phosphorus",
             "SXJ": "available_potassium", "TRRZ": "soil_bulk_density",
-            "YXTCHD": "topsoil_thickness", "GCHD": "plow_layer_thickness",
+            "YXTCHD": "effective_soil_depth", "GCHD": "plow_layer_thickness",
         }
         for src_col, eng_name in indicator_names.items():
             if src_col in row.index:

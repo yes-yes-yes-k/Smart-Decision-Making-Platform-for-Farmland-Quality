@@ -220,7 +220,7 @@ def restore(
     host: str = "localhost",
     port: int = 5432,
     user: str = "postgres",
-    password: str = "",
+    password: str = "123456",
     dbname: str = "db_enterprise_qa",
 ) -> bool:
     """从备份文件恢复数据库。

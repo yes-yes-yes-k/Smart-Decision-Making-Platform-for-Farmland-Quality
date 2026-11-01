@@ -19,6 +19,7 @@ load_dotenv(PROJECT_ROOT / '.env')
 
 
 DOCUMENT_COLUMNS = {
+    "doc_type": "VARCHAR(30) DEFAULT 'other'",
     "idempotency_key": "VARCHAR(128)",
     "document_kind": "VARCHAR(40) NOT NULL DEFAULT 'other'",
     "title": "VARCHAR(500)",

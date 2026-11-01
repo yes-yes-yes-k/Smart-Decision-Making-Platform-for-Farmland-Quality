@@ -145,7 +145,7 @@ def test_organic_agent_and_model_registry_keep_model6_placeholder():
 
 
 def test_model5_thematic_api_exposes_ml_metadata():
-    from src.ai_culti_demo.thematic_models import run_thematic_model
+    from ai_culti_demo.thematic_models import run_thematic_model
 
     result = run_thematic_model({
         "model_id": "organic-matter-improvement",

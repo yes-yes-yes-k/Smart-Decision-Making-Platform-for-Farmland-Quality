@@ -1,7 +1,7 @@
 from pathlib import Path
 import pytest
 from framework.knowledge_graph.benchmark_protocol import source_packet,load_schema
-from scripts.run_kg_benchmark_pilot_r3 import check,controls,CONTRACT
+from scripts.archive.run_kg_benchmark_pilot_r3 import check,controls,CONTRACT
 
 
 def test_advisory_quality_cannot_exclude_scoring_task():

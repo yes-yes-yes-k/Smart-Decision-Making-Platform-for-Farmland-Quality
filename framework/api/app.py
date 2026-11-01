@@ -16,6 +16,8 @@ from framework.api.routes.observability import observability_bp
 from framework.api.routes.farmland_statistics import farmland_statistics_bp
 from framework.api.routes.knowledge_graph import knowledge_graph_bp
 from framework.api.routes.literature_evidence import literature_evidence_bp, configure_evidence_service
+from framework.api.routes.acidification_rf import acidification_rf_bp
+from framework.api.routes.acidification_measurements import acidification_measurements_bp
 # from framework.api.routes.tiles import tiles_bp
 # from framework.api.routes.gd_tiles import gd_tiles_bp
 from framework.agents.workflows.comprehensive.checkpointing import (
@@ -108,6 +110,57 @@ def _ensure_kb_message_columns(app: Flask):
                 conn.execute(sa_text(ddl))
 
 
+def _ensure_kb_report_columns(app: Flask):
+    """启动时自动给 kb_report 补 scope_json 列（无损，列已存在跳过）。
+
+    PostgreSQL / MySQL / SQLite 都兼容，避免漏跑迁移导致 500 "column scope_json does not exist"。
+    """
+    from sqlalchemy import text as sa_text
+    from sqlalchemy import inspect as sa_inspect
+
+    with app.app_context():
+        engine = db.engine
+        dialect = engine.dialect.name
+
+        if not sa_inspect(engine).has_table("kb_report"):
+            return
+
+        def _has_column(table: str, column: str) -> bool:
+            with engine.connect() as conn:
+                if dialect in ("mysql", "postgresql"):
+                    row = conn.execute(sa_text(
+                        "SELECT COUNT(*) FROM information_schema.COLUMNS "
+                        "WHERE table_schema = current_schema() AND table_name = :t AND column_name = :c"
+                    ), {"t": table, "c": column}).fetchone()
+                    return (row[0] if isinstance(row, tuple) else row[0]) > 0
+                # sqlite
+                rows = conn.execute(sa_text(f"PRAGMA table_info(`{table}`)")).fetchall()
+                return any(str(r[1]).lower() == column.lower() for r in rows)
+
+        if _has_column("kb_report", "scope_json"):
+            return
+
+        ddl = {
+            "postgresql": 'ALTER TABLE kb_report ADD COLUMN scope_json TEXT',
+            "mysql": 'ALTER TABLE kb_report ADD COLUMN scope_json TEXT NULL COMMENT \'范围 scope 序列化 JSON\'',
+            "sqlite": 'ALTER TABLE kb_report ADD COLUMN scope_json TEXT',
+        }.get(dialect)
+        if not ddl:
+            return
+        with engine.begin() as conn:
+            conn.execute(sa_text(ddl))
+
+
+def _ensure_acidification_measurement_table(app: Flask):
+    from framework.migrations.acidification_measurement import (
+        ensure_acidification_measurement_table,
+    )
+
+    with app.app_context():
+        with db.engine.begin() as connection:
+            ensure_acidification_measurement_table(connection)
+
+
 def _ensure_kb_taxonomy_schema(app: Flask):
     """Add the non-destructive KB ACL column and label table when upgrading."""
     from sqlalchemy import inspect as sa_inspect
@@ -177,7 +230,7 @@ def init_knowledge_graph_store(app: Flask) -> None:
 
 def _ensure_analysis_context_compatibility(app: Flask):
     """启动期只补可空列和新表；约束替换留给正式迁移脚本。"""
-    from scripts.migrate_analysis_context import (
+    from framework.migrations.analysis_context import (
         ensure_analysis_context_columns,
         ensure_execution_log_provenance,
         ensure_spatial_region_catalog,
@@ -233,8 +286,10 @@ def create_app(config_name: str = 'default') -> Flask:
 
     # 注册蓝图之前先把 ORM 需要的列补齐，防止首次请求 SELECT 时爆 no such column
     _ensure_kb_message_columns(app)
+    _ensure_kb_report_columns(app)
     _ensure_analysis_context_compatibility(app)
     _ensure_versioned_model_results(app)
+    _ensure_acidification_measurement_table(app)
 
     app.register_blueprint(auth_bp, url_prefix='/api/v1/auth')
     app.register_blueprint(chat_bp, url_prefix='/api/v1/chat')
@@ -253,6 +308,14 @@ def create_app(config_name: str = 'default') -> Flask:
     app.register_blueprint(
         farmland_statistics_bp,
         url_prefix='/api/v1/farmland-statistics',
+    )
+    app.register_blueprint(
+        acidification_rf_bp,
+        url_prefix='/api/v1/acidification-rf',
+    )
+    app.register_blueprint(
+        acidification_measurements_bp,
+        url_prefix='/api/v1/acidification-measurements',
     )
     # 本地瓦片端点（无 url_prefix，路由已含 /tiles/；生产由 Nginx 直接托管）
     # app.register_blueprint(tiles_bp)

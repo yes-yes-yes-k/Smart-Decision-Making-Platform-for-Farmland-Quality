@@ -29,6 +29,7 @@ class Document(db.Model):
     status = db.Column(db.SmallInteger, default=1, comment='状态')
     category = db.Column(db.String(30), default='other', comment='文档分类')
     treatment_type = db.Column(db.String(30), nullable=True, comment='治理类型')
+    doc_type = db.Column(db.String(30), default='other', comment='展示分类: regulation-规范标准, scheme-方案, report-报告, academic_paper-学术论文, other-其他 (前端列表按此展示; category 保留耕地质量语义)')
     visibility_scope = db.Column(
         db.String(20), nullable=False, default='private', comment='可见范围: public/private'
     )
@@ -78,6 +79,7 @@ class Document(db.Model):
             'category': self.category,
             'treatment_type': self.treatment_type,
             'visibility_scope': self.visibility_scope,
+            'doc_type': self.doc_type,
             'document_kind': self.document_kind,
             'title': self.title,
             'language': self.language,

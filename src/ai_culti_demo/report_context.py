@@ -237,10 +237,16 @@ def _compute_model4(record: dict) -> Optional[dict]:
     """现场补算 model-4：经 _map_indicators_to_inputs 取 SJD/Hex/Alex 后调 calculate_acidification。
 
     返回 YTK（石灰施用量）与 MBNT（有机肥施用量），不落库。
+    输入包含回填或默认取值时，用量置空并返回 imputed_inputs（与统一输出契约的 Model-4 规则一致）。
     """
     try:
         from framework.domain.data.parcel_data_accessor import ParcelDataAccessor
         from framework.domain.calculations.acidification_calculation import calculate_acidification
+        from framework.domain.provenance import (
+            MODEL4_CONTEXT_INPUTS,
+            MODEL4_INPUT_SOURCES,
+            imputed_fields,
+        )
         accessor = ParcelDataAccessor()
         indicators = record["soil_indicators"]
         mapped = accessor._map_indicators_to_inputs(indicators, "model-4")
@@ -257,14 +263,19 @@ def _compute_model4(record: dict) -> Optional[dict]:
             land_type=land_type, fertilizer_type=fertilizer_type,
             pHtarget=float(target_ph) if target_ph is not None else None,
         )
+        imputed_inputs = imputed_fields(
+            indicators, (*MODEL4_INPUT_SOURCES.values(), *MODEL4_CONTEXT_INPUTS)
+        )
+        dosage_available = not imputed_inputs
         return {
             "parcel_id": record["parcel_id"],
             "soil_ph": sjd,
             "exchangeable_hydrogen": hex_,
             "exchangeable_aluminum": alex,
             "target_ph": target_ph,
-            "lime_dosage": out.get("YTK"),          # 石灰施用量
-            "organic_fertilizer_dosage": out.get("MBNT"),  # 有机肥施用量
+            "lime_dosage": out.get("YTK") if dosage_available else None,          # 石灰施用量
+            "organic_fertilizer_dosage": out.get("MBNT") if dosage_available else None,  # 有机肥施用量
+            "imputed_inputs": imputed_inputs,
             "model_version": "process_v2_compute",
             "source": "computed",
         }
@@ -277,21 +288,26 @@ def _compute_model5_for_parcel(record: dict) -> Optional[dict]:
     """现场补算 model-5 单地块用量：predict_dose。
 
     返回 organic_fertilizer_dosage/level 等，不落库。
+    输入含回填字段时用量置空并返回 imputed_features（与统一输出契约的 Model-5 规则一致）。
     """
     try:
         from framework.domain.data.parcel_data_accessor import ParcelDataAccessor
         from framework.domain.calculations.organic_matter_calculation import predict_dose
+        from framework.domain.provenance import provenance_map
         accessor = ParcelDataAccessor()
-        mapped = accessor._map_indicators_to_inputs(record["soil_indicators"], "model-5")
+        indicators = record["soil_indicators"]
+        mapped = accessor._map_indicators_to_inputs(indicators, "model-5")
         land_type = record.get("land_type") or "upland"
-        prediction = predict_dose(mapped, land_type)
+        prediction = predict_dose(mapped, land_type, provenance=provenance_map(indicators))
+        imputed_features = list(prediction.imputed_features)
         som = mapped.get("SOMbe")
         level = _som_level(som)
         return {
             "parcel_id": record["parcel_id"],
             "organic_matter": som,
             "soil_ph": mapped.get("pH"),
-            "organic_fertilizer_dosage": prediction.dose,
+            "organic_fertilizer_dosage": prediction.dose if not imputed_features else None,
+            "imputed_features": imputed_features,
             "level": level,
             "potential_increase": None,
             "simulated": prediction.simulated,

@@ -1,6 +1,6 @@
 # R3.4 隔离迁移演练报告
 
-**日期**：2026-10-31  
+**日期**：2026-10-31
 **执行**：对 PG 执行 `ensure_knowledge_graph_platform_schema` + `rollback_study_candidate_table` + 重建
 
 ## 演练结果
