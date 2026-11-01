@@ -127,3 +127,12 @@ artifacts/knowledge_platform/
 # 数据库/知识库备份与一次性运行输出（本地保留，不入库）
 backups/
 outputs/
+
+# Local WSL keepalive process state
+artifacts/local-age/
+
+# Jieba runtime cache
+jieba.cache
+
+# Local live-validation outputs contain source excerpts and runtime data
+/artifacts/frontend-live-20261101/
