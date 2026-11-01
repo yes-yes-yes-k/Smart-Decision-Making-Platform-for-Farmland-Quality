@@ -82,6 +82,7 @@ def enqueue_document_indexed(
         aggregate_id=str(document.id),
         payload=payload,
         state="pending",
+        available_at=utcnow_naive(),
     )
     session.add(event)
     return event, True
@@ -140,7 +141,7 @@ class KnowledgeGraphOutboxDispatcher:
         self.session = session
         self.clock = clock
 
-    def dispatch(self, *, limit: int = 100) -> dict[str, int]:
+    def dispatch(self, *, limit: int = 100, document_id: int | None = None) -> dict[str, int]:
         if not 1 <= limit <= 1000:
             raise ValueError("outbox dispatch limit must be between 1 and 1000")
         now = self.clock()
@@ -148,6 +149,7 @@ class KnowledgeGraphOutboxDispatcher:
             self.session.query(KnowledgeGraphOutboxEvent)
             .filter(
                 KnowledgeGraphOutboxEvent.event_type == "knowledge_document_indexed",
+                True if document_id is None else KnowledgeGraphOutboxEvent.payload["document_id"].as_integer() == document_id,
                 KnowledgeGraphOutboxEvent.state.in_(("pending", "retry")),
                 KnowledgeGraphOutboxEvent.available_at <= now,
             )
@@ -181,7 +183,7 @@ class SqlAlchemyGraphJobExecutor:
         self.clock = clock
 
     def claim(
-        self, *, worker_id: str, limit: int, lease_seconds: int,
+        self, *, worker_id: str, limit: int, lease_seconds: int, document_id: int | None = None,
     ) -> Sequence[KnowledgeGraphExtractionJob]:
         if not worker_id or not 1 <= limit <= 1000 or lease_seconds <= 0:
             raise ValueError("valid worker_id, limit and lease_seconds are required")
@@ -196,8 +198,9 @@ class SqlAlchemyGraphJobExecutor:
                 KnowledgeGraphExtractionJob.lease_expires_at <= now,
             ),
         )
+        scope = () if document_id is None else (KnowledgeGraphExtractionJob.document_id == document_id,)
         exhausted_query = self.session.query(KnowledgeGraphExtractionJob).filter(
-            claimable,
+            claimable, *scope,
             KnowledgeGraphExtractionJob.attempt_count
             >= KnowledgeGraphExtractionJob.max_attempts,
         )
@@ -212,7 +215,7 @@ class SqlAlchemyGraphJobExecutor:
         query = (
             self.session.query(KnowledgeGraphExtractionJob)
             .filter(
-                claimable,
+                claimable, *scope,
                 KnowledgeGraphExtractionJob.attempt_count
                 < KnowledgeGraphExtractionJob.max_attempts,
             )

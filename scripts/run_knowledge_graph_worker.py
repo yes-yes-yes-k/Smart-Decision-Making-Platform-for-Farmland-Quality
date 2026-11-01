@@ -18,6 +18,7 @@ def main():
     from dotenv import load_dotenv
     load_dotenv(ROOT / ".env")
     parser = argparse.ArgumentParser()
+    parser.add_argument("--document-id", type=int, help="restrict dispatch and consumption to one document")
     parser.add_argument("--once", action="store_true")
     parser.add_argument("--check", action="store_true", help="check runtime/config without consuming jobs")
     parser.add_argument("--shadow", action="store_true", help="explicit candidate-only pilot before backend qualification")
@@ -26,6 +27,8 @@ def main():
     parser.add_argument("--heartbeat-seconds", type=float, default=30)
     parser.add_argument("--timeout", type=float, default=900)
     args = parser.parse_args()
+    if args.document_id is not None and args.document_id <= 0:
+        parser.error("document id must be positive")
     python = os.environ.get("KG_GRAPHRAG_PYTHON")
     if not python or not Path(python).is_file() or not os.environ.get("KG_EXTRACTION_MODEL"):
         parser.error("Configure KG_GRAPHRAG_PYTHON and KG_EXTRACTION_MODEL first")
@@ -78,7 +81,7 @@ def main():
             sessionmaker(bind=db.engine), backend,
             WorkerPublishedChunkReader(Config.CHROMA_PERSIST_DIR),
             worker_id=f"{socket.gethostname()[:40]}:{os.getpid()}:{uuid.uuid4().hex[:12]}",
-            lease_seconds=args.lease_seconds, heartbeat_seconds=args.heartbeat_seconds)
+            lease_seconds=args.lease_seconds, heartbeat_seconds=args.heartbeat_seconds, document_id=args.document_id)
         if args.once:
             report = worker.run_once()
             print(json.dumps(report))

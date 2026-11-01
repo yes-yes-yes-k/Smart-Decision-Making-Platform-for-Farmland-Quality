@@ -218,3 +218,49 @@ def test_crash_on_final_attempt_is_reaped_to_dead_letter(tmp_path):
     finally:
         db.session.remove()
         context.pop()
+
+
+def test_document_scoped_dispatch_and_claim_leave_other_work_untouched(tmp_path):
+    _, context, first = _setup(tmp_path)
+    try:
+        second = _document(2)
+        db.session.add(second)
+        db.session.commit()
+        event_first, _ = enqueue_document_indexed(db.session, first)
+        event_second, _ = enqueue_document_indexed(db.session, second)
+        db.session.commit()
+        counts = KnowledgeGraphOutboxDispatcher(db.session).dispatch(document_id=2)
+        db.session.commit()
+        assert counts["selected"] == 1
+        assert KnowledgeGraphExtractionJob.query.one().document_id == 2
+        assert db.session.get(KnowledgeGraphOutboxEvent, event_first.id).state == "pending"
+        KnowledgeGraphOutboxDispatcher(db.session).dispatch(document_id=1)
+        db.session.commit()
+        unrelated = KnowledgeGraphExtractionJob.query.filter_by(document_id=1).one()
+        unrelated.priority = 999
+        db.session.commit()
+        claimed = SqlAlchemyGraphJobExecutor(db.session).claim(worker_id="scoped-worker", limit=1, lease_seconds=30, document_id=2)
+        db.session.commit()
+        assert len(claimed) == 1 and claimed[0].document_id == 2
+        assert db.session.get(KnowledgeGraphExtractionJob, unrelated.id).state == "pending"
+    finally:
+        db.session.remove()
+        context.pop()
+
+
+def test_outbox_and_new_job_scheduling_use_python_utc(tmp_path, monkeypatch):
+    from datetime import UTC
+    from framework.models.knowledge_graph import scheduling_utcnow
+    import framework.knowledge_graph.jobs as jobs
+    _, context, document = _setup(tmp_path)
+    fixed = datetime(2026, 11, 1, 12, 0)
+    try:
+        monkeypatch.setattr(jobs, "utcnow_naive", lambda: fixed)
+        event, _ = enqueue_document_indexed(db.session, document)
+        db.session.commit()
+        assert event.available_at == fixed
+        assert abs((scheduling_utcnow() - datetime.now(UTC).replace(tzinfo=None)).total_seconds()) < 2
+        assert KnowledgeGraphExtractionJob.__table__.c.available_at.default.arg.__name__ == "scheduling_utcnow"
+    finally:
+        db.session.remove()
+        context.pop()

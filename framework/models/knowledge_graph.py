@@ -1,7 +1,14 @@
 """Relational governance models for incremental knowledge-graph updates."""
 from __future__ import annotations
 
+from datetime import UTC, datetime
+
 from .user import db
+
+
+def scheduling_utcnow():
+    return datetime.now(UTC).replace(tzinfo=None)
+
 
 
 class KnowledgeGraphExtractionJob(db.Model):
@@ -33,7 +40,7 @@ class KnowledgeGraphExtractionJob(db.Model):
     priority = db.Column(db.Integer, nullable=False, default=0)
     attempt_count = db.Column(db.Integer, nullable=False, default=0)
     max_attempts = db.Column(db.Integer, nullable=False, default=5)
-    available_at = db.Column(db.DateTime, nullable=False, default=db.func.current_timestamp())
+    available_at = db.Column(db.DateTime, nullable=False, default=scheduling_utcnow)
     lease_owner = db.Column(db.String(128), nullable=True)
     lease_expires_at = db.Column(db.DateTime, nullable=True)
     heartbeat_at = db.Column(db.DateTime, nullable=True)
@@ -464,7 +471,7 @@ class KnowledgeGraphOutboxEvent(db.Model):
     payload = db.Column(db.JSON, nullable=False)
     state = db.Column(db.String(30), nullable=False, default="pending")
     attempt_count = db.Column(db.Integer, nullable=False, default=0)
-    available_at = db.Column(db.DateTime, nullable=False, default=db.func.current_timestamp())
+    available_at = db.Column(db.DateTime, nullable=False, default=scheduling_utcnow)
     lease_owner = db.Column(db.String(128), nullable=True)
     lease_expires_at = db.Column(db.DateTime, nullable=True)
     published_at = db.Column(db.DateTime, nullable=True)

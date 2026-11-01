@@ -14,10 +14,11 @@ LOG = logging.getLogger(__name__)
 
 class GraphExtractionWorker:
     def __init__(self, session_factory, backend, chunk_reader, *, worker_id,
-                 lease_seconds=120, heartbeat_seconds=30, pipeline_factory=CandidatePipeline):
+                 lease_seconds=120, heartbeat_seconds=30, pipeline_factory=CandidatePipeline, document_id=None):
         if not worker_id or not 0 < heartbeat_seconds < lease_seconds:
             raise ValueError("worker identity and heartbeat shorter than lease are required")
         self.sessions, self.backend, self.reader = session_factory, backend, chunk_reader
+        self.document_id = document_id
         self.worker_id, self.lease_seconds = worker_id, lease_seconds
         self.heartbeat_seconds, self.pipeline_factory = heartbeat_seconds, pipeline_factory
 
@@ -43,11 +44,12 @@ class GraphExtractionWorker:
                 return
 
     def run_once(self):
+        scope = {} if self.document_id is None else {"document_id": self.document_id}
         with self.sessions() as session:
-            counts = KnowledgeGraphOutboxDispatcher(session).dispatch()
+            counts = KnowledgeGraphOutboxDispatcher(session).dispatch(**scope)
             session.commit()
             jobs = SqlAlchemyGraphJobExecutor(session).claim(
-                worker_id=self.worker_id, limit=1, lease_seconds=self.lease_seconds,
+                worker_id=self.worker_id, limit=1, lease_seconds=self.lease_seconds, **scope,
             )
             job_id = jobs[0].id if jobs else None
             session.commit()
