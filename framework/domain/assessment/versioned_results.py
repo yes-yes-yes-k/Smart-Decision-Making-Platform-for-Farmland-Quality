@@ -277,6 +277,19 @@ def _publish(
             )
             db.session.add(existing)
         else:
+            # Execution errors are deliberately excluded from the cache.  A
+            # later retry has the same unique identity, so keeping the old
+            # payload here would make a transient failure permanent even
+            # after ``calculate`` succeeds.  Only successful/deterministic
+            # publications are immutable; refresh a prior non-cacheable row
+            # with the latest retry outcome.
+            if str(existing.status or "error") not in _CACHEABLE_STATUSES:
+                existing.area_code = area_code
+                existing.coefficient_version = COEFFICIENT_VERSIONS.get(agent_id)
+                existing.input_snapshot = _json_safe(snapshot)
+                existing.result_payload = _json_safe(dict(execution))
+                existing.status = status
+                existing.calculated_at = now
             existing.is_current = current
         db.session.commit()
         return existing

@@ -10,6 +10,11 @@ def test_manifest_hash_is_checked(monkeypatch, tmp_path):
     manifest = {"models": [{"model_id": 35, "data_type": "reflux", "land_type": "dryland", "artifact_path": "bad.pkl", "source_model_file_path": "x", "sha256": "00", "verified_at": "x", "source": "x"}]}
     monkeypatch.setattr(acidification_rf, "MANIFEST_PATH", tmp_path / "manifest.json")
     monkeypatch.setattr(acidification_rf, "ARTIFACT_ROOT", tmp_path)
+    import sklearn
+    manifest["models"][0].update(
+        artifact_size_bytes=len(b"not-a-model"),
+        serialized_with_scikit_learn=sklearn.__version__,
+    )
     (tmp_path / "manifest.json").write_text(__import__("json").dumps(manifest), encoding="utf-8")
     (tmp_path / "bad.pkl").write_bytes(b"not-a-model")
     assert predict(35, {"H": 1, "Al": 2, "OM": 3, "NO3": 4, "NH4": 5, "CEC": 6})["reason"] == "model_integrity_mismatch"

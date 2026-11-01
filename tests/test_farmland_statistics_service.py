@@ -565,3 +565,37 @@ def test_aggregate_uses_precomputed_rows_for_administrative_region(monkeypatch):
 
     assert result["scopeSummary"] == {"parcelCount": 1, "totalAreaMu": 2.0}
     assert result["metrics"][0]["table"]["average"] == 5.5
+
+
+def test_parcel_response_uses_versioned_calculation_for_parcel_2038():
+    parcel = SimpleNamespace(
+        parcel_id="2038",
+        area_code="440205",
+        soil_indicators={
+            "quality_grade": "9",
+            "composite_index": 0.707,
+            "soil_ph": 5.504503,
+            "organic_matter": 31.80049,
+            "available_phosphorus": 50.578899,
+            "available_potassium": 51.145582,
+            "bulk_density": 1.16,
+            "topsoil_thickness": 100.0,
+            "plow_layer_thickness": 20.0,
+            "soil_texture": "壤土",
+            "irrigation_condition": "不满足",
+            "drainage_capacity": "满足",
+            "terrain_position": "山地坡中",
+            "soil_structure": "上松下紧型",
+        },
+    )
+
+    response = _parcel_response(
+        parcel,
+        area_mu=1737.44,
+        assessment={"quality_grade": "8", "composite_index": 0.7531518984529598},
+        version={"resultId": 12, "modelVersion": "quality-grade-2.1.0"},
+    )
+
+    assert response["qualityGrade"] == 8  # Canonical metric values are numeric.
+    assert response["compositeIndex"] == 0.7532
+    assert response["qualityAssessment"]["resultId"] == 12

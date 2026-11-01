@@ -112,7 +112,19 @@ class TestStabilityOnlineQuery:
             "terrain_position": "lower", "soil_structure": "loose",
         }
 
-        with patch("framework.agents.specialized.stability_agent.ParcelDataAccessor") as MockAccessor:
+        with patch("framework.agents.specialized.stability_agent.ParcelDataAccessor") as MockAccessor, patch(
+            "framework.domain.assessment.versioned_results.get_current_result",
+            return_value={"result": {"composite_index": 72.0, "quality_grade": 2}},
+        ), patch(
+            "framework.domain.assessment.versioned_results._find_exact",
+            return_value=None,
+        ), patch(
+            "framework.domain.assessment.versioned_results._publish",
+            return_value=None,
+        ), patch(
+            "framework.domain.calculations.stability_calculation.calculate_stability",
+            return_value={"modules": {"module_1": {"score": 80}}},
+        ):
             MockAccessor.return_value.get_parcel_indicators.return_value = mock_indicators
             MockAccessor.return_value._map_indicators_to_inputs.return_value = mock_indicators
             out = run_thematic_model({
@@ -120,7 +132,8 @@ class TestStabilityOnlineQuery:
                 "parcel_id": "110105001",
             })
 
-        assert out["status"] == "ok"
+        if out["status"] != "ok":
+            pytest.fail(f"unexpected stability envelope: {out!r}", pytrace=False)
         assert out["model_id"] == "stability-risk-evaluation"
         assert out["meta"]["data_source"] == "db"
         assert out["meta"]["simulated"] is False

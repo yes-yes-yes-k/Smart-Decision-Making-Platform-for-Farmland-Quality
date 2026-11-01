@@ -1,0 +1,77 @@
+{
+  "schema_version": "r4-comparison-config-v1",
+  "frozen_at": "2026-10-31T20:30:00+08:00",
+  "state": "frozen_before_r4_2_run",
+  "model_api_calls": 0,
+  "cases_source": "artifacts/knowledge_platform/retrieval-quality-r1/r0-20261030/query-cases.json",
+  "cases": ["U1", "U2", "U3", "U4", "U5", "U1.EN", "U2.PREMISE", "U4.CONDITION", "U4.UNSUPPORTED"],
+  "reference_documents": {
+    "U1": [449],
+    "U2": [1149],
+    "U3": [104],
+    "U4": [1141],
+    "U5": [1032]
+  },
+  "persisted_candidates": {
+    "U4": {"document_id": 1141, "studies": 1, "entities": 3, "relations": 1},
+    "U5": {"document_id": 1032, "studies": 6, "entities": 8, "relations": 2},
+    "U1": null,
+    "U2": null,
+    "U3": null
+  },
+  "retrieval_configurations": {
+    "C1_lexical_vector_hybrid": {
+      "description": "基线：词法/向量混合检索，academic_paper scope",
+      "source_scope": "papers",
+      "enhance_recall": true,
+      "rerank": null,
+      "window": 0,
+      "graph": false,
+      "limit": 20
+    },
+    "C2_same_domain_filter": {
+      "description": "同领域过滤：扩展到 standard/policy/method_guideline",
+      "source_scope": "all_qualified",
+      "enhance_recall": true,
+      "rerank": null,
+      "window": 0,
+      "graph": false,
+      "limit": 20
+    },
+    "C3_graph_associated": {
+      "description": "图关联：基线 + 一跳图扩展（measure→indicator surface 匹配）",
+      "source_scope": "papers",
+      "enhance_recall": true,
+      "rerank": null,
+      "window": 0,
+      "graph": true,
+      "limit": 20
+    }
+  },
+  "comparison_variables": {
+    "graph_on_off": "C1 vs C3：图扩展是否带来额外文档命中",
+    "scope_expansion": "C1 vs C2：同领域过滤是否换入新证据",
+    "rerank_on_off": "可选：answerability rerank 是否改变证据排序（C1+rerank vs C1）",
+    "window_0_1": "可选：邻块窗口是否补充上下文（C1+window=1 vs C1）"
+  },
+  "quality_gates": {
+    "document_rank_max": 10,
+    "evidence_rank_max": 5,
+    "per_subquestion_required": true,
+    "aggregate_cannot_hide_failure": true,
+    "document_level_vs_evidence_level": "分别报告，不得以文档级通过替代证据级验收"
+  },
+  "hard_constraints": [
+    "池外证据不计入失败原因推断：区分未召回与召回但排序靠后",
+    "未启用项需重新登记：邻块窗口、可答性重排均未进入生产",
+    "检索冻结边界：不得在未授权情况下调整排序权重、候选深度或分块粒度",
+    "对照是来源绑定的派生结果，不增加已发布断言量",
+    "候选保持 pending 身份，不经过发布 API",
+    "版本不一致时返回 invalidated 而非静默丢弃"
+  ],
+  "expected_limitations": {
+    "U1_U2_U3_no_candidates": "U1(449)/U2(1149)/U3(104) 均为发散篇，无持久化候选，图扩展无产出",
+    "graph_contributing_hits": "实体未消解，跨文档 surface 不匹配，C3 预期 contributing_hits=0",
+    "evidence_level_ceiling": "证据级支持前5上限 2/12（章节先验）/ 1/12（可答性重排），R4.3 必须分别报告"
+  }
+}

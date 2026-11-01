@@ -22,10 +22,14 @@ def test_rag_chat_without_documents():
     print("✓ 无文档 RAG 问答成功")
 
 @pytest.mark.skipif(not embedding_service.is_available(), reason="embedding_service API 不可用")
-def test_vector_store_operations():
+def test_vector_store_operations(tmp_path, monkeypatch):
     """测试向量存储操作"""
+    from framework.config import Config
+    from framework.vector_store.chroma_store import ChromaVectorStore
+    monkeypatch.setattr(Config, "CHROMA_PERSIST_DIR", str(tmp_path / "chroma"))
+    store = ChromaVectorStore()
     # 测试添加文档
-    count = vector_store.add_documents(
+    count = store.add_documents(
         texts=["测试文档内容"],
         metadatas=[{"source": "test.pdf"}],
         ids=["test_doc_1"]
@@ -34,17 +38,17 @@ def test_vector_store_operations():
     print("✓ 向量存储添加文档成功")
 
     # 测试搜索
-    results = vector_store.search("测试", n_results=1)
+    results = store.search("测试", n_results=1)
     assert results["count"] >= 0
     print("✓ 向量存储搜索成功")
 
     # 测试统计
-    stats = vector_store.get_collection_stats()
+    stats = store.get_collection_stats()
     assert "count" in stats
     print(f"✓ 向量存储统计成功: {stats}")
 
     # 清理测试数据
-    vector_store.delete_by_source("test.pdf")
+    store.delete_by_source("test.pdf")
     print("✓ 向量存储清理成功")
 
 @pytest.mark.skipif(not embedding_service.is_available(), reason="embedding_service API 不可用")

@@ -49,8 +49,8 @@ def _make_request(filename, category, domain_labels=None):
     return _Req()
 
 
-def test_upload_document_returns_202_and_submits(monkeypatch, tmp_path):
-    # 准备：mock 文件保存、查重、worker 提交
+def test_upload_document_returns_202_and_waits_for_review(monkeypatch, tmp_path):
+    # 准备：mock 文件保存、查重；上传阶段不得提交 worker
     saved_path = tmp_path / "uuid.pdf"
     saved_path.write_bytes(b"%PDF-1.4 fake")
 
@@ -58,6 +58,7 @@ def test_upload_document_returns_202_and_submits(monkeypatch, tmp_path):
                        lambda f: ("uuid.pdf", str(saved_path), "hash123"))
     monkeypatch.setattr(docs_route, "get_file_type", lambda name: "pdf")
     monkeypatch.setattr(docs_route, "allowed_file", lambda name: True)
+    monkeypatch.setattr(docs_route, "validate_file_content", lambda *args: None)
 
     # 查重：返回 None（不重复）—— 保留 Document.query descriptor 但 mock filter_by
     class _Q:
@@ -65,12 +66,18 @@ def test_upload_document_returns_202_and_submits(monkeypatch, tmp_path):
     class _Query:
         def filter_by(self, **kw):
             return _Q()
+        def filter(self, *args):
+            return _Q()
     monkeypatch.setattr(docs_route.Document, "query", _Query())
 
     # db.session.add 在调用时给 obj 设置 id（mock commit 后才有 id）
     def _fake_add(obj):
-        obj.id = 42
+        if isinstance(obj, docs_route.Document):
+            obj.id = 42
+        elif isinstance(obj, docs_route.IngestionItem):
+            obj.id = 99
     monkeypatch.setattr(docs_route.db.session, "add", _fake_add)
+    monkeypatch.setattr(docs_route.db.session, "flush", lambda: None)
     monkeypatch.setattr(docs_route.db.session, "commit", lambda: None)
 
     submitted = {}
@@ -90,10 +97,10 @@ def test_upload_document_returns_202_and_submits(monkeypatch, tmp_path):
     code = resp[1]
 
     assert code == 202
-    assert body["data"]["status"] == docs_route.Document.STATUS_PENDING
-    assert submitted.get("document_id") == 42
-    assert submitted.get("doc_name") == "test.pdf"
-    assert submitted.get("domain_labels") == ["cultivated_land_quality"]
+    assert body["data"]["document"]["status"] == docs_route.Document.STATUS_PENDING
+    assert body["data"]["ingestion"]["stage"] == "awaiting_admin_review"
+    assert body["data"]["ingestion"]["review_status"] == "pending"
+    assert submitted == {}
 
 
 def test_upload_data_file_stays_sync(monkeypatch, tmp_path):
@@ -104,6 +111,7 @@ def test_upload_data_file_stays_sync(monkeypatch, tmp_path):
                        lambda f: ("data.csv", str(saved_path), "hashcsv"))
     monkeypatch.setattr(docs_route, "get_file_type", lambda name: "csv")
     monkeypatch.setattr(docs_route, "allowed_file", lambda name: True)
+    monkeypatch.setattr(docs_route, "validate_file_content", lambda *args: None)
 
     class _Q:
         def first(self): return None

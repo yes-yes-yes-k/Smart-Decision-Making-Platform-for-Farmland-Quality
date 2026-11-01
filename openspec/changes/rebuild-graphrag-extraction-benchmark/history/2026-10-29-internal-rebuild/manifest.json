@@ -1,0 +1,11 @@
+{
+  "status": "superseded_scope_history_only",
+  "superseded_on": "2026-10-29",
+  "reason": "User requested external evaluation datasets as the primary benchmark",
+  "sha256": {
+    "proposal.md": "062ac7d09ff1d0a1ae51fda0466edb7b84af1c694f0366ac541cc1b1ef277457",
+    "design.md": "afde27126fbbb369adbcbaf889f75dfb8552ae281e6843f700dc92c2eaaebd3f",
+    "tasks.md": "19fe94f0de262ccb9b0adcc5192b6e8413159655dc0c0e81178545bf9e90f3dc",
+    "specs/graphrag-extraction-benchmark/spec.md": "4dff8864baf0099d51ee1e61ac5819dd3c5bda4d3ea5cdc78f6dd6b0faf44a01"
+  }
+}

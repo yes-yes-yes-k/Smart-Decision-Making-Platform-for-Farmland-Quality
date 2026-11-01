@@ -11,6 +11,7 @@ def test_status_constants():
     assert Document.STATUS_COMPLETED == 1
     assert Document.STATUS_PROCESSING == 2
     assert Document.STATUS_FAILED == 3
+    assert Document.STATUS_REJECTED == 4
 
 
 def test_status_default_preserved():

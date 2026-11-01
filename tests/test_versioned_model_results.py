@@ -28,6 +28,25 @@ class _GradeCalculationAgent(BaseAgent):
         return {}
 
 
+class _RetryingGradeCalculationAgent(_GradeCalculationAgent):
+    def execute(self, task):
+        self.calls += 1
+        if self.calls == 1:
+            return {
+                "status": "error",
+                "error": "temporary calculation failure",
+            }
+        return {
+            "status": "ok",
+            "result": {
+                "parcel_id": task["parcel_id"],
+                "quality_grade": "8",
+                "composite_index": 0.7531,
+                "call": self.calls,
+            },
+        }
+
+
 def _app():
     app = Flask(__name__)
     app.config.update(
@@ -93,3 +112,30 @@ def test_changed_authoritative_input_publishes_a_new_current_row():
         assert VersionedModelResult.query.count() == 2
         current = VersionedModelResult.query.filter_by(is_current=True).one()
         assert current.id == second["versioned_result"]["resultId"]
+
+
+def test_execution_error_is_retried_and_replaced_by_success():
+    app = _app()
+    with app.app_context():
+        ParcelInfo.__table__.create(db.engine)
+        VersionedModelResult.__table__.create(db.engine)
+        db.session.add(ParcelInfo(
+            parcel_id="P-RETRY",
+            area_code="440205",
+            soil_indicators={"soil_ph": 5.5},
+        ))
+        db.session.commit()
+
+        agent = _RetryingGradeCalculationAgent()
+        failed = agent.execute({"parcel_id": "P-RETRY"})
+        recovered = agent.execute({"parcel_id": "P-RETRY"})
+
+        assert agent.calls == 2
+        assert failed["status"] == "error"
+        assert recovered["status"] == "ok"
+        assert recovered["result"]["call"] == 2
+        assert recovered["versioned_result"]["cacheHit"] is False
+        assert VersionedModelResult.query.count() == 1
+        current = VersionedModelResult.query.filter_by(is_current=True).one()
+        assert current.status == "ok"
+        assert current.result_payload["result"]["call"] == 2

@@ -1,0 +1,124 @@
+{
+  "schema_version": "r4-2-c2-results-v1",
+  "generated_at": "2026-10-31T20:55:00+08:00",
+  "model_api_calls": 0,
+  "vector_store_status": "Chroma Rust bindings unable to open database (code 14); corpus scope analysis from PG",
+  "corpus_scope_analysis": {
+    "C1_papers": {
+      "document_kinds": ["academic_paper"],
+      "total_eligible": 642,
+      "description": "仅学术论文"
+    },
+    "C2_all_qualified": {
+      "document_kinds": ["academic_paper", "standard", "policy", "method_guideline"],
+      "total_eligible": 1144,
+      "description": "学术论文 + 标准 + 政策 + 方法指南"
+    },
+    "C2_new_documents": {
+      "standard": 491,
+      "method_guideline": 11,
+      "policy": 0,
+      "total_new": 502,
+      "expansion_ratio": "78% (642→1144)"
+    },
+    "reference_documents": {
+      "U1_doc449": {"kind": "academic_paper", "in_C1": true, "in_C2": true},
+      "U2_doc1149": {"kind": "academic_paper", "in_C1": true, "in_C2": true},
+      "U3_doc104": {"kind": "academic_paper", "in_C1": true, "in_C2": true},
+      "U4_doc1141": {"kind": "academic_paper", "in_C1": true, "in_C2": true},
+      "U5_doc1032": {"kind": "academic_paper", "in_C1": true, "in_C2": true}
+    }
+  },
+  "results": [
+    {
+      "case_id": "U1",
+      "query": "长期施用生物炭对土壤有机碳有什么影响，效果能持续多久？",
+      "reference_document_ids": [449],
+      "configs": {
+        "C1_papers": {"document_count": "not_retrieved", "reference_doc_in_C1": true},
+        "C2_all_qualified": {
+          "document_count": "not_retrieved",
+          "reference_doc_in_C2": true,
+          "potential_new_docs": "491 standards + 11 guidelines may contain biochar/SOC related content"
+        }
+      },
+      "swap_analysis": {
+        "C2_potential_swap": "C2 扩展到 502 篇标准/指南文档，可能换入土壤有机碳相关标准（如 GB 15618 土壤环境质量标准），但实际换入需向量检索确认",
+        "reference_doc_unchanged": "参考文档 449 在 C1 和 C2 中均存在"
+      }
+    },
+    {
+      "case_id": "U2",
+      "query": "酸性镉污染稻田施石灰后，稻米镉和水稻产量分别如何变化？",
+      "reference_document_ids": [1149],
+      "configs": {
+        "C1_papers": {"reference_doc_in_C1": true},
+        "C2_all_qualified": {
+          "reference_doc_in_C2": true,
+          "potential_new_docs": "491 standards may contain Cd 污染/石灰修复相关标准（如 GB 2762 食品中污染物限量）"
+        }
+      },
+      "swap_analysis": {
+        "C2_potential_swap": "标准类文档可能换入镉污染限值和石灰施用技术规范",
+        "reference_doc_unchanged": "参考文档 1149 在 C1 和 C2 中均存在"
+      }
+    },
+    {
+      "case_id": "U3",
+      "query": "长期施用粪肥对土壤物理性质的影响，是否取决于土壤和作物类型？",
+      "reference_document_ids": [104],
+      "configs": {
+        "C1_papers": {"reference_doc_in_C1": true},
+        "C2_all_qualified": {
+          "reference_doc_in_C2": true,
+          "potential_new_docs": "11 method_guidelines may contain soil physical property testing methods"
+        }
+      },
+      "swap_analysis": {
+        "C2_potential_swap": "方法指南类文档可能换入土壤物理性质测定标准",
+        "reference_doc_unchanged": "参考文档 104 在 C1 和 C2 中均存在"
+      }
+    },
+    {
+      "case_id": "U4",
+      "query": "紫云英、稻草和石灰联合使用，对土壤有效镉和稻米镉有哪些影响？",
+      "reference_document_ids": [1141],
+      "configs": {
+        "C1_papers": {"reference_doc_in_C1": true},
+        "C2_all_qualified": {
+          "reference_doc_in_C2": true,
+          "potential_new_docs": "491 standards may contain Cd remediation standards"
+        }
+      },
+      "swap_analysis": {
+        "C2_potential_swap": "标准类文档可能换入镉修复技术规范",
+        "reference_doc_unchanged": "参考文档 1141 在 C1 和 C2 中均存在"
+      }
+    },
+    {
+      "case_id": "U5",
+      "query": "珠江三角洲土壤镉的空间分布与分区管控，有哪些文献和原文依据？",
+      "reference_document_ids": [1032],
+      "configs": {
+        "C1_papers": {"reference_doc_in_C1": true},
+        "C2_all_qualified": {
+          "reference_doc_in_C2": true,
+          "potential_new_docs": "491 standards may contain soil Cd classification standards (GB 15618)"
+        }
+      },
+      "swap_analysis": {
+        "C2_potential_swap": "标准类文档可能换入土壤镉分级标准和风险管制值",
+        "reference_doc_unchanged": "参考文档 1032 在 C1 和 C2 中均存在"
+      }
+    }
+  ],
+  "aggregate_summary": {
+    "C1_eligible_corpus": 642,
+    "C2_eligible_corpus": 1144,
+    "C2_new_documents": 502,
+    "C2_expansion_ratio": "78%",
+    "reference_docs_in_both_scopes": "5/5",
+    "actual_retrieval": "未执行——Chroma Rust 绑定无法在脚本环境打开数据库（code 14），需在服务环境（应用服务器在线、Chroma 服务运行）补跑",
+    "key_finding": "C2 将语料从 642 扩展到 1144 篇（+78%），新增 491 篇标准和 11 篇方法指南。所有参考文档在两个 scope 中均存在。实际换入换出需在服务环境执行向量检索。"
+  }
+}

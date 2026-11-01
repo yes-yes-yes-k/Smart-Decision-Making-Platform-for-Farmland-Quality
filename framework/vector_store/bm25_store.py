@@ -1,121 +1,84 @@
-from __future__ import annotations
-from typing import Any, List, Optional, Dict
+"""BM25-compatible interface backed by a persistent, incremental FTS5 index."""
+import hashlib
+import json
+from pathlib import Path
+import tempfile
 
-import jieba
-from rank_bm25 import BM25Okapi
+from .lexical_index import LexicalIndex, tokenize
 
 
 class BM25Store:
-    """应用层 BM25 关键词索引，与 Chroma 无关但生命周期同步。
-
-    取舍：写时全量重建（O(语料) 分词），换取正确性与实现简单。
-    """
-
-    def __init__(self):
-        self._texts: List[str] = []
-        self._metadatas: List[Dict[str, Any]] = []
-        self._model = None
+    def __init__(self, path=None, collection="default"):
+        self._temporary = tempfile.TemporaryDirectory(prefix="knowledge-lexical-") if path is None else None
+        self.index = LexicalIndex(path or Path(self._temporary.name)/"index.sqlite3", collection)
 
     @staticmethod
-    def _tokenize(text: str) -> List[str]:
-        return jieba.lcut(text)
+    def _tokenize(text):
+        return tokenize(text)
 
-    def _rebuild(self) -> None:
-        if not self._texts:
-            self._model = None
-        else:
-            self._model = BM25Okapi([self._tokenize(t) for t in self._texts])
-
-    def add_documents(self, texts: List[str], metadatas: Optional[List[Dict]] = None) -> int:
-        metadatas = metadatas or []
-        for i, text in enumerate(texts):
-            self._texts.append(text)
-            metadata = metadatas[i] if i < len(metadatas) and metadatas[i] else {}
-            self._metadatas.append(dict(metadata))
-        self._rebuild()
+    def add_documents(self, texts, metadatas=None, ids=None):
+        metas = metadatas or [{} for _ in texts]
+        if len(metas) != len(texts) or (ids is not None and len(ids) != len(texts)):
+            raise ValueError("lexical_document_batch_alignment")
+        values = []
+        for index, (text, meta) in enumerate(zip(texts, metas)):
+            if not isinstance(text, str) or not text.strip():
+                raise ValueError("lexical_nonempty_text_required")
+            identity = ids[index] if ids is not None else hashlib.sha256(json.dumps(
+                {"text": text, "metadata": meta}, sort_keys=True, ensure_ascii=False).encode()).hexdigest()
+            values.append((identity, text, meta))
+            if len(values) == 500:
+                self.index.upsert(values); values = []
+        if values:
+            self.index.upsert(values)
+        self.index.mark_ready()
         return len(texts)
 
     @staticmethod
-    def _matches_filter(metadata: Dict[str, Any], filters: Optional[Dict]) -> bool:
-        """Evaluate the small subset of Chroma filters used by the application."""
+    def _matches_filter(metadata, filters):
         if not filters:
             return True
-        if "$and" in filters:
-            return all(BM25Store._matches_filter(metadata, item) for item in filters["$and"])
-        if "$or" in filters:
-            return any(BM25Store._matches_filter(metadata, item) for item in filters["$or"])
         for key, expected in filters.items():
+            if key in ("$and", "$or"):
+                matched = [BM25Store._matches_filter(metadata, item) for item in expected]
+                if not (all(matched) if key == "$and" else any(matched)):
+                    return False
+                continue
             actual = metadata.get(key)
-            if isinstance(expected, dict):
-                if "$in" in expected and actual not in set(expected["$in"]):
-                    return False
-                if "$eq" in expected and actual != expected["$eq"]:
-                    return False
-            elif actual != expected:
-                return False
+            operations = expected if isinstance(expected, dict) else {"$eq": expected}
+            for operation,value in operations.items():
+                if operation == "$in": valid = actual in value
+                elif operation == "$nin": valid = actual not in value
+                elif operation == "$eq": valid = actual == value
+                elif operation == "$ne": valid = actual != value
+                elif operation in ("$gt", "$gte", "$lt", "$lte"):
+                    try: valid = {"$gt": lambda: actual > value, "$gte": lambda: actual >= value, "$lt": lambda: actual < value, "$lte": lambda: actual <= value}[operation]()
+                    except TypeError: valid = False
+                else: raise ValueError("unsupported_lexical_filter_operator")
+                if not valid: return False
         return True
 
-    def search(self, query: str, n_results: int = 20, filters: Optional[Dict] = None) -> List[Dict]:
-        if not self._model:
-            return []
+    def search(self, query, n_results=20, filters=None, *, concept_groups=None):
+        return self.index.search(query, n_results, filters, concept_groups=concept_groups)
 
-        tokens = self._tokenize(query)
-        scores = self._model.get_scores(tokens)
+    def delete_by_source(self, source):
+        return self.index.delete({"source": source})
 
-        query_terms = set(tokens)
-        scored = []
-        for i, s in enumerate(scores):
-            if not self._matches_filter(self._metadatas[i], filters):
-                continue
-            # 小型语料下 BM25 idf 可能为 0（术语横跨半数文档），
-            # 用词项交集过滤，避免把与查询无交集的文档也排进结果
-            if not query_terms & set(self._tokenize(self._texts[i])):
-                continue
-            scored.append((s, i))
-        scored.sort(key=lambda x: -x[0])
+    def delete_by_document_id(self, document_id, owner_id=None):
+        where = {"document_id": document_id}
+        if owner_id is not None:
+            where = {"$and": [where, {"owner_id": owner_id}]}
+        return self.index.delete(where)
 
-        results = []
-        for s, i in scored[:n_results]:
-            results.append({
-                "content": self._texts[i],
-                "metadata": dict(self._metadatas[i]),
-                "score": float(s),
-            })
-        return results
+    def clear(self):
+        return self.index.clear()
 
-    def delete_by_source(self, source: str) -> int:
-        kept_texts, kept_metadatas = [], []
-        removed = 0
-        for text, metadata in zip(self._texts, self._metadatas):
-            if metadata.get("source") == source:
-                removed += 1
-            else:
-                kept_texts.append(text)
-                kept_metadatas.append(metadata)
-        self._texts = kept_texts
-        self._metadatas = kept_metadatas
-        self._rebuild()
-        return removed
+    def close(self):
+        if self._temporary is not None:
+            self._temporary.cleanup()
 
-    def delete_by_document_id(self, document_id: int, owner_id: Optional[int] = None) -> int:
-        kept_texts, kept_metadatas = [], []
-        removed = 0
-        for text, metadata in zip(self._texts, self._metadatas):
-            same_document = metadata.get("document_id") == document_id
-            same_owner = owner_id is None or metadata.get("owner_id") == owner_id
-            if same_document and same_owner:
-                removed += 1
-            else:
-                kept_texts.append(text)
-                kept_metadatas.append(metadata)
-        self._texts = kept_texts
-        self._metadatas = kept_metadatas
-        self._rebuild()
-        return removed
-
-    def clear(self) -> int:
-        count = len(self._texts)
-        self._texts = []
-        self._metadatas = []
-        self._model = None
-        return count
+    def __del__(self):
+        try:
+            self.close()
+        except OSError:
+            pass

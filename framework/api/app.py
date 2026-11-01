@@ -14,6 +14,8 @@ from framework.api.routes.report import report_bp
 from framework.api.routes.data_import import data_import_bp
 from framework.api.routes.observability import observability_bp
 from framework.api.routes.farmland_statistics import farmland_statistics_bp
+from framework.api.routes.knowledge_graph import knowledge_graph_bp
+from framework.api.routes.literature_evidence import literature_evidence_bp, configure_evidence_service
 from framework.api.routes.acidification_rf import acidification_rf_bp
 from framework.api.routes.acidification_measurements import acidification_measurements_bp
 # from framework.api.routes.tiles import tiles_bp
@@ -179,6 +181,53 @@ def _ensure_kb_taxonomy_schema(app: Flask):
         DocumentLabel.__table__.create(bind=db.engine, checkfirst=True)
 
 
+def _ensure_literature_ingestion_schema(app: Flask):
+    """Add new ingestion columns/tables without rewriting existing documents."""
+    from scripts.migrate_literature_ingestion import ensure_literature_ingestion_schema
+
+    with app.app_context():
+        ensure_literature_ingestion_schema(db.engine)
+
+
+def _ensure_knowledge_graph_platform_schema(app: Flask):
+    """Create additive graph-governance tables and indexes during upgrades."""
+    from scripts.migrate_knowledge_graph_platform import (
+        ensure_knowledge_graph_platform_schema,
+    )
+
+    with app.app_context():
+        ensure_knowledge_graph_platform_schema(db.engine)
+
+
+def init_knowledge_graph_store(app: Flask) -> None:
+    """Initialize the configured read store without making API startup depend on it."""
+    from framework.knowledge_graph.stores import (
+        AgeGraphStore, JsonGraphStore, SqlAlchemyAgeExecutor, age_engine_for_config,
+    )
+
+    try:
+        with app.app_context():
+            if app.config.get("KG_GRAPH_STORE", "json") == "age":
+                age_engine = age_engine_for_config(app.config, db.engine)
+                if age_engine is not db.engine:
+                    app.extensions["knowledge_graph_age_engine"] = age_engine
+                    atexit.register(age_engine.dispose)
+                store = AgeGraphStore(
+                    SqlAlchemyAgeExecutor(age_engine),
+                    graph_name=app.config.get("KG_AGE_GRAPH_NAME", "cultivated_land_kg"),
+                )
+            else:
+                store = JsonGraphStore(
+                    app.config["KG_GRAPH_PATH"],
+                    manifest=app.config.get("KG_MANIFEST_PATH"),
+                )
+        app.extensions["knowledge_graph_store"] = store
+        app.extensions["knowledge_graph_store_error"] = None
+    except (OSError, ValueError, KeyError) as exc:
+        app.extensions["knowledge_graph_store"] = None
+        app.extensions["knowledge_graph_store_error"] = type(exc).__name__
+
+
 def _ensure_analysis_context_compatibility(app: Flask):
     """启动期只补可空列和新表；约束替换留给正式迁移脚本。"""
     from framework.migrations.analysis_context import (
@@ -231,6 +280,9 @@ def create_app(config_name: str = 'default') -> Flask:
     init_comprehensive_workflow(app)
 
     _ensure_kb_taxonomy_schema(app)
+    _ensure_literature_ingestion_schema(app)
+    _ensure_knowledge_graph_platform_schema(app)
+    init_knowledge_graph_store(app)
 
     # 注册蓝图之前先把 ORM 需要的列补齐，防止首次请求 SELECT 时爆 no such column
     _ensure_kb_message_columns(app)
@@ -247,6 +299,12 @@ def create_app(config_name: str = 'default') -> Flask:
     app.register_blueprint(report_bp, url_prefix='/api/v1/report')
     app.register_blueprint(data_import_bp, url_prefix='/api/v1/data')
     app.register_blueprint(observability_bp, url_prefix='/api/v1/observability')
+    app.register_blueprint(
+        knowledge_graph_bp,
+        url_prefix='/api/v1/knowledge-graph',
+    )
+    configure_evidence_service(app)
+    app.register_blueprint(literature_evidence_bp, url_prefix='/api/v1/literature-evidence')
     app.register_blueprint(
         farmland_statistics_bp,
         url_prefix='/api/v1/farmland-statistics',
@@ -267,6 +325,14 @@ def create_app(config_name: str = 'default') -> Flask:
     @app.route('/')
     def index():
         return {"status": "ok", "message": "Unified Framework API"}
+
+    @app.errorhandler(413)
+    def request_entity_too_large(_error):
+        return {
+            "status": "error",
+            "error_code": "file_too_large",
+            "message": "上传文件超过允许大小",
+        }, 413
 
     return app
 

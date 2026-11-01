@@ -90,4 +90,3 @@ TBD - created by archiving change add-acidification-rf-http-api-and-parcel-prefi
 - **WHEN** 训练集与旧系统的单位记录缺失
 - **THEN** 参考值 SHALL 标注 `unit_status=unverified`
 - **AND** 接口与报告 MUST NOT 为其标注具体单位
-

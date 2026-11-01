@@ -15,6 +15,7 @@ class _FakeDoc:
         self.id = doc_id
         self.status = Document.STATUS_PENDING
         self.chunk_count = 0
+        self.file_hash = "a" * 64
 
 
 def _patch_app_context(monkeypatch):
@@ -56,9 +57,13 @@ def test_ingest_success_transitions_pending_to_completed(monkeypatch):
             assert ids == ["doc-1-chunk-0", "doc-1-chunk-1"]
             assert all(m["owner_id"] == 7 for m in metadatas)
             assert all(m["visibility_scope"] == "private" for m in metadatas)
+            assert all(m["content_sha256"] == "a" * 64 for m in metadatas)
             assert all(m["domain_cultivated_land_quality"] is True for m in metadatas)
             assert all("treatment_type" not in m for m in metadatas)
             return len(chunks)
+        def update_document_metadata(self, document_id, updates, owner_id=None):
+            assert updates["visibility_scope"] == "public"
+            return 2
         def delete_by_document_id(self, document_id, owner_id=None):
             return 0
     monkeypatch.setattr(ingestion_worker, "vector_store", _FakeVS())
@@ -76,6 +81,7 @@ def test_ingest_success_transitions_pending_to_completed(monkeypatch):
 
     assert fake.status == Document.STATUS_COMPLETED
     assert fake.chunk_count == 2
+    assert fake.visibility_scope == "public"
 
 
 def test_ingest_failure_promotes_to_failed(monkeypatch):
@@ -118,6 +124,8 @@ def test_ingest_incomplete_vector_write_promotes_to_failed(monkeypatch):
             self.deleted = []
         def add_documents(self, *args, **kwargs):
             return 1
+        def update_document_metadata(self, *args, **kwargs):
+            return 0
         def delete_by_document_id(self, document_id, owner_id=None):
             self.deleted.append((document_id, owner_id))
             return 1

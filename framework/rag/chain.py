@@ -396,18 +396,22 @@ class RAGChain:
                 expected_sha256=Config.KG_EXPECTED_SHA256,
             )
         graph_bundle = {"results": [], "claim_assessment": None, "matched": False}
+        graph_error = None
         if Config.KG_RETRIEVAL_ENABLED and decision["mode"] != "off":
-            graph_bundle = kg_retriever.retrieve(
-            # The synonym normalizer intentionally broadens vector recall, but
-            # it may collapse distinct graph entities (for example “有效土层厚度”
-            # and “耕层厚度” into “土层厚度”).  Keep the original wording for
-            # ontology matching so the reviewed relation remains unambiguous.
-            query,
-            vector_store=self.vector_store,
-            filters=filters,
-            category=category,
-            top_k=min(Config.KG_RETRIEVAL_TOP_K, Config.RETRIEVAL_TOP_K),
-            )
+            try:
+                graph_bundle = kg_retriever.retrieve(
+                # The synonym normalizer intentionally broadens vector recall, but
+                # it may collapse distinct graph entities. Keep the original wording.
+                query,
+                vector_store=self.vector_store,
+                filters=filters,
+                category=category,
+                top_k=min(Config.KG_RETRIEVAL_TOP_K, Config.RETRIEVAL_TOP_K),
+                )
+            except Exception:
+                # Graph enhancement is optional. Never expose provider/storage
+                # details and never discard the already successful vector recall.
+                graph_error = "graph_retrieval_unavailable"
         vector_results = list(results)
         if decision["active"]:
             results = kg_retriever.merge(
@@ -442,6 +446,7 @@ class RAGChain:
                 if relation_id
             )),
             "latency_ms": latency_ms,
+            "graph_error": graph_error,
         }
         kg_metrics.record(diagnostics)
         return {"results": results, "count": len(results), "diagnostics": diagnostics}

@@ -153,4 +153,3 @@ TBD - created by archiving change add-input-provenance-and-report-number-audit. 
 - **WHEN** 报告上下文中的模型结果依赖被回填输入
 - **THEN** 报告 SHALL 在数据来源小节列出被回填字段及其来源类型
 - **AND** 该内容 MUST NOT 由语言模型改写或补全
-

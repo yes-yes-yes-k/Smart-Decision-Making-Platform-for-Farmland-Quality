@@ -4,6 +4,8 @@ import os
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 import pytest
+import requests
+from framework.embedding import service as embedding_module
 from framework.embedding.service import EmbeddingService
 
 
@@ -140,3 +142,50 @@ def test_uninitialized_embed_query_returns_empty():
     svc._model = "BAAI/bge-m3"
     svc._initialized = False
     assert svc.embed_query("土壤酸化") == []
+
+
+def test_call_api_retries_transient_network_error(monkeypatch):
+    svc = EmbeddingService.__new__(EmbeddingService)
+    svc._api_key = "stub-key"
+    svc._api_base = "https://stub/v1"
+    svc._model = "BAAI/bge-m3"
+    svc._max_retries = 2
+    svc._retry_backoff = 0
+    calls = []
+
+    class Response:
+        def raise_for_status(self):
+            return None
+
+        def json(self):
+            return {"data": [{"embedding": [0.1, 0.2]}]}
+
+    def post(*args, **kwargs):
+        calls.append(1)
+        if len(calls) == 1:
+            raise requests.ProxyError("temporary proxy disconnect")
+        return Response()
+
+    monkeypatch.setattr(embedding_module.requests, "post", post)
+    assert svc._call_api(["土壤"]) == [[0.1, 0.2]]
+    assert len(calls) == 2
+
+
+def test_call_api_does_not_retry_non_retryable_http_error(monkeypatch):
+    svc = EmbeddingService.__new__(EmbeddingService)
+    svc._api_key = "stub-key"
+    svc._api_base = "https://stub/v1"
+    svc._model = "BAAI/bge-m3"
+    svc._max_retries = 3
+    svc._retry_backoff = 0
+    calls = []
+
+    def post(*args, **kwargs):
+        calls.append(1)
+        response = requests.Response()
+        response.status_code = 400
+        raise requests.HTTPError("bad request", response=response)
+
+    monkeypatch.setattr(embedding_module.requests, "post", post)
+    assert svc._call_api(["土壤"]) == [[]]
+    assert len(calls) == 1

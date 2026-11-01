@@ -939,24 +939,149 @@ Model-4 无空间对象情景试算：
 
 | 字段 | 类型 | 必填 | 说明 |
 |------|------|------|------|
-| `file` | file | 是 | 文档文件（支持 .txt, .md, .pdf, .docx, .xlsx） |
+| `file` | file | 是 | 文档文件（支持 .txt, .md, .pdf, .caj, .docx, .xlsx, .xls, .csv, .dat） |
+| `domain_labels` | string/string[] | 是 | 至少一个一级领域标签；不提供自动分类 |
+| `document_kind` | string | 否 | `academic_paper`、`standard`、`policy`、`method_guideline` 或 `other` |
+| `title` | string | 否 | 文献标题 |
+| `authors` | JSON string[] | 否 | 作者数组 |
+| `doi` | string | 否 | DOI，服务端会规范化 |
+| `journal` | string | 否 | 期刊名称 |
+| `publication_date` | date | 否 | ISO 8601 日期 |
+| `standard_number` | string | 否 | 标准号 |
+| `issuing_authority` | string | 否 | 发布机构 |
+| `source_url` | string | 否 | 来源 URL，仅保存、不自动请求 |
+| `source_category` | string | 否 | 来源目录分类，不替代领域标签 |
+| `cross_categories` | JSON string[] | 否 | 来源交叉分类 |
+| `language` | string | 否 | 文献语言 |
+| `idempotency_key` | string | 否 | 用户范围幂等键，最长 128 字符 |
 
-成功响应（200）：
+文献不支持私有发布。省略 `visibility_scope` 或提交 `public` 均表示：审核期仅上传者和管理员可见，管理员批准且索引完成后进入公共知识库。显式提交 `private` 返回 `visibility_not_configurable`。
+
+成功接收（202）：
 ```json
 {
     "status": "ok",
     "data": {
-        "id": 2,
-        "doc_name": "test.pdf",
-        "file_path": "uploads/20260713_xyz.pdf",
-        "file_type": "pdf",
-        "file_size": 51200,
-        "chunk_count": 3,
-        "status": 1,
-        "category": "report",
-        "create_by": 1
+        "document": {
+            "id": 2,
+            "doc_name": "test.pdf",
+            "status": 0,
+            "review_status": "pending",
+            "processing_stage": "awaiting_admin_review",
+            "visibility_scope": "private"
+        },
+        "ingestion": {
+            "state": "pending",
+            "stage": "awaiting_admin_review",
+            "progress": 0,
+            "review_status": "pending",
+            "status_url": "/api/v1/docs/2/ingestion"
+        },
+        "knowledge_graph": {
+            "state": "not_eligible",
+            "latest_job_id": null,
+            "schema_version": null,
+            "backend_name": null,
+            "extractor_version": null,
+            "retryable": false,
+            "failure_code": null
+        }
     },
-    "message": "文档上传成功"
+    "message": "文献上传成功，等待管理员审核"
+}
+```
+
+常见错误：`unsupported_file_type`（415）、`content_type_mismatch`（422）、`encrypted_document`（422）、`invalid_metadata`（422）、`domain_label_required`（422）、`visibility_not_configurable`（422）、`duplicate_document`（409）、`idempotency_conflict`（409）、`processor_unavailable`（503）。
+
+---
+
+### 查询文献入库状态
+
+**GET** `/api/v1/docs/{id}/ingestion`
+
+仅上传者或管理员可查询。响应包含 `state`、`stage`、`progress`、`review_status`、`attempt`、质量摘要、失败码和 `retryable`。独立的 `knowledge_graph` 子状态只返回任务状态、稳定失败码和组件版本，不返回模型原始输出、候选内容、堆栈或内部路径。
+
+### 重试失败入库
+
+**POST** `/api/v1/docs/{id}/retry`
+
+仅上传者或管理员可以重试已审核通过、`status=3` 且 `retryable=true` 的文档。成功返回 202；已完成、被驳回或不可重试时返回 409。
+
+### 管理员文献审核
+
+- **GET** `/api/v1/docs/reviews?state=pending`：分页查看待审核文献。
+- **POST** `/api/v1/docs/{id}/review`：批准或驳回。
+
+批准示例：
+
+```json
+{
+    "decision": "approve",
+    "domain_labels": ["cultivated_land_quality"],
+    "review_note": "标签与正文一致",
+    "idempotency_key": "review-2-v1"
+}
+```
+
+驳回时 `review_note` 必填。审核通过后才启动转换、解析、OCR、分块和索引；成功完成时文档与全部 chunk 的 `visibility_scope` 为 `public`。
+审核标准、政策或方法指南时可提交 `authority_status`。设为 `verified_current` 时必须同时提交 `authority_verification_source`，系统会保存核验人、核验时间和来源；未核验资料默认 `unverified`。
+
+### 管理员文献批次
+
+- **POST** `/api/v1/docs/batches`：dry-run 或正式创建批次。
+- **GET** `/api/v1/docs/batches/{batch_id}`：查询逐项进度和计数。
+- **POST** `/api/v1/docs/batches/{batch_id}/retry`：重试可恢复失败项。
+- **POST** `/api/v1/docs/batches/{batch_id}/cancel`：取消尚未开始的项目。
+
+dry-run 请求示例：
+
+```json
+{
+    "staging_token": "initial",
+    "manifest_path": "manifest.jsonl",
+    "dry_run": true
+}
+```
+
+正式执行还必须提供 `batch_key`。`staging_token` 必须预先配置于 `LITERATURE_STAGING_ROOTS_JSON`，API 不接受任意宿主机绝对路径。dry-run 不写数据库、向量库或永久派生文件。
+JSONL manifest 的每一项必须声明 `"schema_version":"1.0"`。
+
+---
+
+### 知识图谱任务与审核
+
+接口前缀为 `/api/v1/knowledge-graph`。任务管理只允许管理员；候选、证据和审核允许管理员与 `domain_reviewer`。所有审核请求必须提供非空 `reason` 和唯一 `idempotency_key`。
+
+- **GET** `/jobs`：按 `state`、`backend_name`、`extractor_version`、`document_id` 分页筛选任务。
+- **GET** `/jobs/{job_id}`：查询任务详情和候选计数；不返回内部失败文本。
+- **POST** `/jobs/{job_id}/retry`：手动重试 `retry` 或 `dead_letter` 任务。
+- **POST** `/documents/{document_id}/rerun`：按文档和指定 adapter/schema 重新排队；相同版本复用原任务身份。
+- **GET** `/candidates`：按 `kind`、`review_status`、`risk_level`、`relation_type`、`document_id` 筛选。
+- **GET** `/candidates/{kind}/{candidate_id}`：查询候选、证据定位和审核历史。
+- **GET** `/evidence/{kind}/{evidence_id}`：查询 quote、页码、chunk 和 span 定位。
+- **POST** `/entities/{entity_id}/resolve`：提交规范实体 ID 和名称，完成消歧或新实体确认。
+- **POST** `/candidates/{kind}/{candidate_id}/review`：批准或拒绝实体、关系或 claim。
+- **POST** `/evidence/{kind}/{evidence_id}/review`：批准或拒绝关系/claim 证据。
+- **GET** `/releases/preview`：管理员预览追加式差异、变更校验和与全部发布门禁。
+- **POST** `/releases`：管理员发布已验证变更并原子切换活动 release；请求体提供 `release_id`。
+- **GET** `/releases`：管理员查看发布历史、父版本、差异摘要和验证报告。
+- **POST** `/releases/{release_id}/rollback`：管理员回滚到兼容且验证通过的历史 release；请求体必须提供 `reason` 和 `idempotency_key`。
+- **POST** `/query`：认证用户执行受限图查询；支持 `relation_types`、`direction`、`max_hops`（1–2）、`top_k`（1–100）、`timeout_ms` 和 `max_result_bytes`。证据正文始终回到向量库并按公开/所有者权限过滤。
+
+关系或 claim 只有在结构校验通过、端点实体均已批准、所有有效证据均已批准后才能批准。审核记录为追加式不可变审计。`POST /production-relations` 始终返回 405；生产边只能通过已批准候选的 release 流程生成。
+
+发布门禁覆盖 schema 兼容、端点、方向、有效证据、重复、孤点、审核覆盖、代表性查询和变更校验和。发布成功后仅排队 JSON/Parquet 审计导出，不阻塞活动版本切换；运维 worker 使用 `python scripts/export_knowledge_graph_releases.py --limit 10` 处理待导出记录。图查询超时或图存储异常时返回脱敏的 `degraded` 状态，调用方应继续使用向量检索结果。
+
+已进入图谱证据链的文献删除会转为可审计撤回：对应文档哈希的关系/claim 证据失效，关系支持文档数重算；仍有其他支持文献时保留关系，最后一条证据失效时只创建待审核移除候选，不直接改变活动 release。重新解析会自动失效同一文档的旧内容哈希证据。历史文献回填可先执行 `python scripts/archive/backfill_knowledge_graph.py --dry-run --batch-size 100`，正式运行使用固定 `--run-key`；命令按文档 ID 保存 checkpoint，可重复调用续跑且复用已有幂等 outbox。
+
+实体消歧请求示例：
+
+```json
+{
+    "canonical_id": "measure:straw-returning",
+    "canonical_name": "秸秆还田",
+    "reason": "确认是新的治理措施实体",
+    "idempotency_key": "resolve-entity-102-v1"
 }
 ```
 
@@ -1579,9 +1704,39 @@ curl -X POST http://localhost:5000/api/v1/chat/ \
 # 上传文档
 curl -X POST http://localhost:5000/api/v1/docs/upload \
   -H "Authorization: Bearer <token>" \
-  -F "file=@/path/to/document.pdf"
+  -F "file=@/path/to/document.pdf" \
+  -F "document_kind=academic_paper" \
+  -F "domain_labels=cultivated_land_quality" \
+  -F "idempotency_key=paper-upload-001"
 ```
 # 专题模型输出契约
 
 专题模型和聊天接口的 Schema 2.0 结构、兼容请求及旧字段映射见
 [`thematic-model-output-contract.md`](thematic-model-output-contract.md)。
+# 文献证据检索与异步对照（M1，显式配置）
+
+新增蓝图前缀`/api/v1/literature-evidence`，所有接口要求有效JWT及活动身份。配置`LITERATURE_EVIDENCE_DATABASE_URI`并显式准备研究存储后才可使用；未配置返回503，不在应用初始化时创建研究表。本轮没有启用生产配置。已有聊天接口语义保留。
+
+| 方法 | 路径 | 用途 |
+| --- | --- | --- |
+| GET | `/sources` | 当前可访问的已登记来源与抽取覆盖 |
+| POST | `/search` | 同步来源全文检索，返回文献ID、版本、页码、分块和原文，单列图谱状态 |
+| GET | `/sources/{document_id}/chunks/{chunk_index}?content_sha256=...` | 按当前来源版本回看原文，过期/不可见拒绝 |
+| POST | `/comparisons` | 排队或复用同一身份/有效签名的证据对照，未完成返回202 |
+| GET | `/comparisons/{id}` | 查询自己的任务；完成结果返回前重验有效性 |
+| DELETE | `/comparisons/{id}` | 取消自己的queued/running任务 |
+| POST | `/records/{id}/reject` | admin/domain_reviewer拒绝待审记录，相关完成缓存随后失效 |
+
+检索/对照请求包含`query`（必填，最多500字）、`document_ids`（M1范围1—10篇）、可选`measure/indicator/soil_type/conditions`及`limit`（1—30）。示例：`{"query":"石灰 产量","document_ids":[1149],"soil_type":"红壤","limit":10}`。未知条件单列unknown，不冒称条件吻合；当前筛选是来源选定文字的明确匹配，不提供语义等价或因果推断。
+
+对照字段包含原文值和精确证据；全部新增记录pending。任务状态包括queued/running/completed/failed/cancelled/invalidated。completed表示任务执行完成，不表示每篇有正例或抽取完整；结果单列每篇覆盖、拒收选择及行数上限。没有匹配不能解释为无效应。接口不提供新断言批准或发布操作。
+
+原文及结果读取执行当前权限、内容和来源字节检查。缓存签名同时绑定研究记录状态、来源版本、请求和生成版本；权限收紧、候选拒绝等变化不会继续返回旧结果。部署及实际性能验证仍按阶段进行，详情见`docs/knowledge-engineering-m1-results.md`。
+
+#### 全库证据检索的文献列表与片段列表
+
+接入`PublishedCorpusSearch`的`/search`路径另返回`documents`文献列表，按已通过两次当前来源校验的候选计算文献级RRF；同一文献多个分块不重复投票。每条包含`document_id`、`content_sha256`、`title`、文献排序信息和`evidence_candidates`定位列表。定位列表保留同文献的多个段落，可通过上述原文接口读取；`support_verified:false`表示尚未核实其是否支持问题。`sources`继续返回分块级RRF排序的原文片段；两份列表分别截取`limit`，文献列表中的证据位置不受最终片段窗口截断。二者都受同一有界融合候选窗口及来源资格约束。
+
+全库路径默认启用版本化的土壤领域词法概念扩展。原查询仍只生成一个查询向量；词法候选配额在原词法与概念词法间平分，两路交错去重，不扩大原候选上限。措施、指标及已识别的时长/酸性/作物概念保留为独立约束，同一概念的别名用OR连接。概念路对多指标采用联合匹配，原词法和向量路继续保留仅涉及部分指标的候选；此策略不进行语义支持、条件适用或错误前提判断。具体别名、配额、命中数和版本位于`retrieval.lexical.expansion`；未识别措施时沿用原词法路，失败通过检索降级状态表达。
+
+应用可设置Flask配置`LITERATURE_EVIDENCE_DOMAIN_EXPANSION=False`关闭词法扩展，或构建`PublishedCorpusSearch(..., enhance_recall=False)`。这是词法策略回退，独立的`documents`输出仍保留；既有聊天检索默认策略未改。以上为代码能力，生产启用及质量验收分别记录。
