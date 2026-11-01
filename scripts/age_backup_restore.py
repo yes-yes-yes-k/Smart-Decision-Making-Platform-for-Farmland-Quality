@@ -41,6 +41,7 @@ def main() -> int:
     restore.add_argument("--graph-name", default="cultivated_land_kg")
     restore.add_argument("--pg-restore", default="pg_restore")
     restore.add_argument("--apply", action="store_true")
+    restore.add_argument("--repair-age-catalog", action="store_true", help="Repair restored AGE catalog OIDs before verification")
     restore.add_argument("--report", type=Path)
     args = parser.parse_args()
 
@@ -57,6 +58,7 @@ def main() -> int:
             dsn=args.dsn, dump_path=args.dump, manifest=manifest,
             restored_store=_store(args.dsn, args.graph_name),
             apply=args.apply, pg_restore=args.pg_restore,
+            repair_catalog_oids=args.repair_age_catalog,
         )
     payload = json.dumps(report, ensure_ascii=False, indent=2, sort_keys=True) + "\n"
     if getattr(args, "report", None):

@@ -134,6 +134,7 @@ class Config:
     KG_GRAPH_STORE = os.environ.get("KG_GRAPH_STORE", "json").lower()
     if KG_GRAPH_STORE not in {"json", "age"}:
         raise ValueError("KG_GRAPH_STORE must be json or age")
+    KG_AGE_DATABASE_URI = os.environ.get("KG_AGE_DATABASE_URI") or None
     KG_AGE_GRAPH_NAME = os.environ.get("KG_AGE_GRAPH_NAME", "cultivated_land_kg")
     KG_AUDIT_EXPORT_DIR = os.environ.get("KG_AUDIT_EXPORT_DIR") or os.path.join(
         PROJECT_ROOT, "artifacts", "knowledge_platform", "release_audits",

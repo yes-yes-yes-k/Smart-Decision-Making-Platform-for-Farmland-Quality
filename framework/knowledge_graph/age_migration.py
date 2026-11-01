@@ -29,7 +29,7 @@ def validate_reviewed_graph(
 ) -> None:
     schema = schema or load_graph_schema()
     graph_version = str(graph.get("schema_version") or "")
-    if graph_version not in schema.compatible_graph_versions:
+    if graph_version not in {schema.schema_version, *schema.compatible_graph_versions}:
         raise GraphMigrationError(f"graph version is not compatible: {graph_version}")
     entities = list(graph.get("entities") or [])
     relations = list(graph.get("relations") or [])

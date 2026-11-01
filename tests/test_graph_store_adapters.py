@@ -407,3 +407,68 @@ def test_restore_requires_explicit_apply_and_runs_post_restore_verification(tmp_
     assert report["passed"] is True
     assert "--single-transaction" in calls[0]
     assert "--clean" in calls[0]
+
+
+def test_migration_accepts_current_schema_version():
+    from framework.knowledge_graph.age_migration import validate_reviewed_graph
+    from framework.knowledge_graph.schema import load_graph_schema
+    graph = _graph()
+    graph["schema_version"] = load_graph_schema().schema_version
+    validate_reviewed_graph(graph)
+
+
+def test_dedicated_age_engine_reads_separate_database(tmp_path):
+    from sqlalchemy import create_engine
+    from framework.knowledge_graph.stores import age_engine_for_config
+    business = create_engine(f"sqlite:///{tmp_path / 'business.db'}")
+    dedicated = age_engine_for_config({"KG_AGE_DATABASE_URI": f"sqlite:///{tmp_path / 'age.db'}"}, business)
+    try:
+        with business.begin() as connection:
+            connection.execute(text("CREATE TABLE probe (value TEXT)"))
+            connection.execute(text("INSERT INTO probe VALUES ('business')"))
+        with dedicated.begin() as connection:
+            connection.execute(text("CREATE TABLE probe (value TEXT)"))
+            connection.execute(text("INSERT INTO probe VALUES ('age')"))
+        with dedicated.connect() as connection:
+            assert connection.execute(text("SELECT value FROM probe")).scalar() == "age"
+        assert age_engine_for_config({}, business) is business
+    finally:
+        dedicated.dispose()
+        business.dispose()
+
+
+def test_real_age_roundtrip_and_release_history():
+    """Opt-in integration test: exercise the real AGE parser and persistence."""
+    import os
+    import uuid
+    import pytest
+    from sqlalchemy import create_engine
+    from framework.knowledge_graph.stores import SqlAlchemyAgeExecutor
+    uri = os.environ.get("KG_TEST_AGE_URI")
+    if not uri:
+        pytest.skip("KG_TEST_AGE_URI is required for real AGE integration")
+    engine = create_engine(uri)
+    graph_name = "kg_test_" + uuid.uuid4().hex[:16]
+    store = AgeGraphStore(SqlAlchemyAgeExecutor(engine), graph_name=graph_name)
+    graph = _graph()
+    try:
+        first = migrate_reviewed_graph(graph, store, release_id="release-1", release_sequence=1, activate=True)
+        repeated = migrate_reviewed_graph(graph, store, release_id="release-1", release_sequence=1)
+        assert first.checksum == repeated.checksum
+        assert compare_graph_stores(JsonGraphStore(graph), store, [GraphQuery(("measure:liming",), max_hops=2, top_k=100)])["passed"]
+        key = "addresses|measure:liming|obstacle:acidification"
+        store.close_relation(key, valid_to_release="release-2", valid_to_sequence=2)
+        relation = dict(graph["relations"][0])
+        references = [dict(item) for item in relation["evidence"]]
+        references.append({"evidence_id": "evidence:new", "document_id": 7, "page": 3, "quote_sha256": "c" * 64})
+        store.upsert_relation(relation, evidence_references=references, valid_from_release="release-2", valid_from_sequence=2)
+        store.upsert_release(release_id="release-2", sequence=2, schema_version=graph["schema_version"], checksum="d" * 64, entity_count=3, relation_count=2, evidence_count=3, validated=True)
+        store.activate_release("release-2")
+        assert snapshot_counts(store.export_snapshot("release-1"))["evidence_count"] == 2
+        assert snapshot_counts(store.export_snapshot("release-2"))["evidence_count"] == 3
+        assert store.health()["ready"]
+    finally:
+        with engine.begin() as connection:
+            connection.exec_driver_sql("LOAD 'age'")
+            connection.execute(text("SELECT ag_catalog.drop_graph(:name, true)"), {"name": graph_name})
+        engine.dispose()

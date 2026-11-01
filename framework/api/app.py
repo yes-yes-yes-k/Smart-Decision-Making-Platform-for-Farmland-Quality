@@ -149,14 +149,18 @@ def _ensure_knowledge_graph_platform_schema(app: Flask):
 def init_knowledge_graph_store(app: Flask) -> None:
     """Initialize the configured read store without making API startup depend on it."""
     from framework.knowledge_graph.stores import (
-        AgeGraphStore, JsonGraphStore, SqlAlchemyAgeExecutor,
+        AgeGraphStore, JsonGraphStore, SqlAlchemyAgeExecutor, age_engine_for_config,
     )
 
     try:
         with app.app_context():
             if app.config.get("KG_GRAPH_STORE", "json") == "age":
+                age_engine = age_engine_for_config(app.config, db.engine)
+                if age_engine is not db.engine:
+                    app.extensions["knowledge_graph_age_engine"] = age_engine
+                    atexit.register(age_engine.dispose)
                 store = AgeGraphStore(
-                    SqlAlchemyAgeExecutor(db.engine),
+                    SqlAlchemyAgeExecutor(age_engine),
                     graph_name=app.config.get("KG_AGE_GRAPH_NAME", "cultivated_land_kg"),
                 )
             else:

@@ -76,3 +76,39 @@ python scripts/age_backup_restore.py restore --dsn $env:AGE_RESTORE_TEST_DSN `
 运行异常时先将 `KG_GRAPH_STORE=json` 并重启应用；文献、Chroma 和候选关系表不回滚。AGE 数据保留用于审计，不立即 `DROP EXTENSION`。如需回退数据库，停止写入消费者，在隔离环境验证备份后按变更流程恢复整库，再运行健康检查和双读。
 
 AGE 升级不得原地使用浮动镜像：先建立新实例、恢复备份、执行官方升级说明、重新运行反向校验和双读，最后切换连接。任何版本、源码 revision 或镜像 digest 变化都必须更新 SBOM 并重新通过金标与双读门禁。
+
+
+## Windows 本机独立 AGE 实例（2026-11 联调）
+
+业务 PostgreSQL 17 保持原库；AGE 使用 WSL Ubuntu 内的 PostgreSQL 16.10 / AGE 1.6.0。
+容器 `culti-age-live` 仅映射 `127.0.0.1:55432`，数据卷 `culti-age-pg16-data`，重启策略 `unless-stopped`。
+`.env` 设置 `KG_GRAPH_STORE=age`、`KG_AGE_DATABASE_URI`（专用数据库 URI，包含密码，不提交），图名保持不变。
+`deploy/production.env.example` 提供空配置项。未配置专用 URI 时仍复用业务数据库连接。
+
+启动或恢复本地服务：
+
+```powershell
+powershell -NoProfile -ExecutionPolicy Bypass -File scripts/start_local_age.ps1
+.\.venv\Scripts\python.exe scripts/check_age_graph.py
+```
+
+启动脚本在隐藏后台保持 WSL 在线，再启动 Docker 和现有容器；不安装系统组件、不重启 Windows、不修改登录启动项。
+Windows 重启后需重新运行此脚本；容器重启策略仅在 Docker/WSL 已启动后生效。
+
+真实联调修复了 AGE 1.6 的两个执行约束：Cypher 第三个参数必须是 PostgreSQL 服务端参数；
+`SET +=` 右侧必须为语法上的 map。执行器通过 PREPARE/EXECUTE 和受校验属性名的 map 完成绑定，值始终作为参数传入。
+EXECUTE 使用 savepoint，失败后也会释放 prepared statement。
+
+基线采用新的 `kg-v0.4-evidence-repaired-20261101`，而非覆盖旧 JSON release：
+38 实体、66 关系、100 条精确证据定位（旧版 94 条，跨页来源拆分后增加）。
+38 个实体的两跳双读全部匹配；迁移报告、修复计划与校验结果位于 `artifacts/frontend-live-20261101/`。
+原始 JSON 文件和源文献保留；业务库、AGE 库分别备份于 `backups/age-integration-20261102/`。
+两库部署须一并备份业务发布审计和 AGE 图数据，且在停止发布写入时取得一致恢复点；单独恢复其中一库不足以完成系统恢复。
+
+
+本次隔离恢复演练发现并验证了 [Apache AGE #2503](https://github.com/apache/age/issues/2503) 中的
+逻辑恢复图 OID 偏移：`namespace` 已指向新 schema，而 `graphid`/`ag_label.graph` 仍为旧库 OID。
+`age_backup_restore.py restore` 增加显式 `--repair-age-catalog`，仅在 `--apply` 恢复完成后执行目录修复，
+不会在普通读取/健康检查时自动修改目录。修复在事务内锁定目录，重建外键并释放缓存连接；存在 OID 交叉冲突则拒绝自动修复。
+修复后仍必须通过原 dump SHA256、活动 release、计数及图校验和验证，不能仅凭 pg_restore 退出码认定恢复成功。
+本次 `culti_age_restore_20261102` 隔离恢复库已验证 38/68/103 和图校验和一致，修复重复执行无变化。

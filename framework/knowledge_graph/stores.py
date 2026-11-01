@@ -7,7 +7,7 @@ from pathlib import Path
 import re
 from typing import Any, Mapping, Protocol
 
-from sqlalchemy import text
+from sqlalchemy import create_engine, text
 
 from .contracts import GraphQuery, GraphQueryResult
 
@@ -217,6 +217,12 @@ class AgeExecutor(Protocol):
     ) -> list[Mapping[str, Any]]: ...
 
 
+def age_engine_for_config(config, default_engine):
+    """Allow a dedicated PG16/AGE instance without moving the business database."""
+    uri = config.get("KG_AGE_DATABASE_URI")
+    return create_engine(uri, pool_pre_ping=True) if uri else default_engine
+
+
 class SqlAlchemyAgeExecutor:
     """Small SQLAlchemy bridge that configures AGE on each transaction."""
 
@@ -236,6 +242,25 @@ class SqlAlchemyAgeExecutor:
                 connection.exec_driver_sql(
                     f"SET LOCAL statement_timeout = {max(1, int(timeout_ms))}"
                 )
+            if "cypher_params" in bound and "cypher(" in statement:
+                # AGE requires a server-side Param node, while psycopg2 binds
+                # ordinary values as literals. PREPARE supplies the required $1.
+                prepared = statement.replace("CAST(:cypher_params AS agtype)", "$1")
+                connection.execute(
+                    text("PREPARE kg_age_query(agtype) AS " + prepared),
+                    {key: value for key, value in bound.items() if key != "cypher_params"},
+                )
+                try:
+                    # A savepoint permits cleanup even if EXECUTE is rejected.
+                    with connection.begin_nested():
+                        result = connection.execute(
+                            text("EXECUTE kg_age_query(CAST(:cypher_params AS agtype))"),
+                            {"cypher_params": bound["cypher_params"]},
+                        )
+                        rows = [dict(row) for row in result.mappings()] if result.returns_rows else []
+                    return rows
+                finally:
+                    connection.exec_driver_sql("DEALLOCATE kg_age_query")
             result = connection.execute(text(statement), bound)
             return [dict(row) for row in result.mappings()] if result.returns_rows else []
 
@@ -285,6 +310,17 @@ class AgeGraphStore:
     def _run(
         self, operation: str, body: str, columns: str, params=None, *, timeout_ms=None,
     ):
+        params = dict(params or {})
+        if "$properties" in body and "properties" in params:
+            # AGE 1.6 requires a syntactic map for SET +=, not a map parameter.
+            fields = []
+            for key, value in params["properties"].items():
+                if not re.fullmatch(r"[A-Za-z_][A-Za-z0-9_]*", key):
+                    raise ValueError("unsafe AGE property name")
+                parameter = "property_" + key
+                params[parameter] = value
+                fields.append(f"{key}: ${parameter}")
+            body = body.replace("$properties", "{" + ", ".join(fields) + "}")
         parameters = {
             "graph_name": self.graph_name,
             "cypher_params": json.dumps(params or {}, ensure_ascii=False, sort_keys=True),

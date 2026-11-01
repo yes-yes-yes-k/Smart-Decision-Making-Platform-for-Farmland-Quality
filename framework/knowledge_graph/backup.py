@@ -88,6 +88,43 @@ def create_postgres_age_backup(
     return manifest
 
 
+def repair_restored_age_catalog(engine) -> dict[str, Any]:
+    """Explicit post-restore operation; never run implicitly during normal reads.
+
+    Logical restores preserve bare source OIDs in AGE 1.6 catalogs. The
+    regnamespace column already resolves to the restored schema's real OID.
+    See https://github.com/apache/age/issues/2503.
+    """
+    from sqlalchemy import text
+    with engine.begin() as connection:
+        connection.exec_driver_sql("LOCK TABLE ag_catalog.ag_graph, ag_catalog.ag_label IN ACCESS EXCLUSIVE MODE")
+        rows = list(connection.execute(text(
+            "SELECT graphid, namespace::oid AS restored_oid FROM ag_catalog.ag_graph"
+        )).mappings())
+        changed = [row for row in rows if row["graphid"] != row["restored_oid"]]
+        if not changed:
+            return {"repaired_graphs": 0}
+        old_ids = {row["graphid"] for row in rows}
+        if any(row["restored_oid"] in old_ids for row in changed):
+            raise GraphBackupError("restored AGE graph OIDs overlap; manual recovery required")
+        connection.exec_driver_sql("ALTER TABLE ag_catalog.ag_label DROP CONSTRAINT fk_graph_oid")
+        connection.exec_driver_sql(
+            "UPDATE ag_catalog.ag_label AS label SET graph = graph.namespace::oid "
+            "FROM ag_catalog.ag_graph AS graph "
+            "WHERE label.graph = graph.graphid AND graph.graphid <> graph.namespace::oid"
+        )
+        connection.exec_driver_sql(
+            "UPDATE ag_catalog.ag_graph SET graphid = namespace::oid "
+            "WHERE graphid <> namespace::oid"
+        )
+        connection.exec_driver_sql(
+            "ALTER TABLE ag_catalog.ag_label ADD CONSTRAINT fk_graph_oid "
+            "FOREIGN KEY (graph) REFERENCES ag_catalog.ag_graph(graphid)"
+        )
+    engine.dispose()  # AGE caches graph metadata per connection.
+    return {"repaired_graphs": len(changed)}
+
+
 def verify_restored_store(
     store: AgeGraphStore, manifest: Mapping[str, Any], dump_path: str | Path,
 ) -> dict[str, Any]:
@@ -123,6 +160,7 @@ def restore_postgres_age_backup(
     manifest: Mapping[str, Any],
     restored_store: AgeGraphStore,
     apply: bool,
+    repair_catalog_oids: bool = False,
     pg_restore: str = "pg_restore",
     runner: Callable[..., Any] = subprocess.run,
 ) -> dict[str, Any]:
@@ -134,7 +172,12 @@ def restore_postgres_age_backup(
         pg_restore, "--dbname", dsn, "--clean", "--if-exists",
         "--exit-on-error", "--single-transaction", str(dump_path),
     ), runner)
+    catalog_repair = None
+    if repair_catalog_oids:
+        catalog_repair = repair_restored_age_catalog(restored_store.executor.engine)
     report = verify_restored_store(restored_store, manifest, dump_path)
+    if catalog_repair is not None:
+        report["catalog_repair"] = catalog_repair
     if not report["passed"]:
         raise GraphBackupError(f"restored graph verification failed: {report['issues']}")
     return report
