@@ -35,8 +35,10 @@ def list_models():
 def parcel_prefill(parcel_id):
     """按地块编号返回 RF 输入预填值，供前端"选地块→自动填表"。
 
-    可选查询参数 ``model_id`` 指定模型（须与地块土地类型匹配）；缺省取该
-    土地类型的 reflux 模型。
+    可选查询参数 ``model_id`` 指定模型；缺省取该土地类型的 reflux 模型。
+        传 ``model_id`` 时仅 reflux 要求与地块土地类型匹配（水田/旱地特征
+        契约不同），reduce（降酸）不区分土地类型，水田降酸沿用旱地 reduce
+        模型（与旧系统语义一致）。
 
     响应说明：
 

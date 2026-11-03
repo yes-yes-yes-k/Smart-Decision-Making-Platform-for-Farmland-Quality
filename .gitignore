@@ -90,6 +90,8 @@ docs/generated/
 docs/superpowers/
 
 # 本地或历史资产（正式运行不引用）
+# 注意：必须是 /models/（仅根目录）。写成 models/ 会连 framework/models/ 一起忽略，
+# 导致新增的 ORM 模型文件被静默漏提交（2026-10-31 实测踩到）。
 /models/
 backups/
 .tmp_test/
