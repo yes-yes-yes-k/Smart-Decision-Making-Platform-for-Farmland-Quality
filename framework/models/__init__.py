@@ -31,6 +31,11 @@ from .soil_data import (
     GrainYield,
 )
 from .report import Report
+from .cd_prediction import (
+    CdCropPredictionResult,
+    CdEffectivePredictionResult,
+    CdPortedParcelTownship,
+)
 from .thematic_model import (
     ThematicModelRegistry,
     ModelExecutionLog,
