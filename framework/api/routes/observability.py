@@ -20,6 +20,8 @@ from framework.observability.analysis_context_metrics import (
 )
 from framework.observability.schema_metrics import snapshot_schema_metrics
 from framework.rag.kg_runtime import kg_metrics
+from framework.models.user import db
+from framework.knowledge_graph.observability import snapshot_graph_governance_metrics
 
 observability_bp = Blueprint('observability', __name__)
 
@@ -103,4 +105,7 @@ def knowledge_graph_health():
 @observability_bp.route('/knowledge-graph/metrics', methods=['GET'])
 @jwt_required()
 def knowledge_graph_metrics():
-    return jsonify({"status": "ok", "data": kg_metrics.snapshot()})
+    return jsonify({"status": "ok", "data": {
+        "runtime": kg_metrics.snapshot(),
+        "governance": snapshot_graph_governance_metrics(db.session),
+    }})

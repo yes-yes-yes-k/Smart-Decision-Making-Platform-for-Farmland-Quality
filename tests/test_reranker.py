@@ -136,10 +136,8 @@ def test_rag_chain_preserves_original_query_for_graph_matching(monkeypatch):
     from framework.rag import chain as chain_mod
 
     monkeypatch.setattr(Config, "RERANK_ENABLED", False)
+    monkeypatch.setattr(chain_mod, "normalize_query", lambda q: q.replace("耕层厚度", "土层厚度"))
     seen = {}
-    monkeypatch.setattr(
-        chain_mod, "normalize_query", lambda q: q.replace("耕层厚度", "土层厚度")
-    )
 
     class FakeVS:
         def hybrid_search(self, query, n_results=None, filters=None, category=None):

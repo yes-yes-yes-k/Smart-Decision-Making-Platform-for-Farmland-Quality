@@ -130,8 +130,8 @@ def test_upload_first_occurrence_stores_hash(client):
     assert resp.status_code == 202
     data = resp.get_json()
     assert data['status'] == 'ok'
-    assert data['data']['file_hash'] is not None
-    assert len(data['data']['file_hash']) == 64
+    assert data['data']['document']['file_hash'] is not None
+    assert len(data['data']['document']['file_hash']) == 64
     print("✓ 首次上传成功，file_hash 已记录")
 
 
@@ -142,7 +142,7 @@ def test_upload_duplicate_same_user_returns_409(client):
     # 首次上传
     resp1 = _upload(client, token, 'original.txt', b'duplicate detection test content')
     assert resp1.status_code == 202
-    existing_id = resp1.get_json()['data']['id']
+    existing_id = resp1.get_json()['data']['document']['id']
 
     # 同用户再次上传相同内容，不同文件名
     resp2 = _upload(client, token, 'renamed_copy.txt', b'duplicate detection test content')
@@ -164,7 +164,7 @@ def test_upload_same_content_different_users_succeeds(client):
 
     resp2 = _upload(client, token2, 'user2_doc.txt', b'shared content across users')
     assert resp2.status_code == 202
-    assert resp2.get_json()['data']['id'] != resp1.get_json()['data']['id']
+    assert resp2.get_json()['data']['document']['id'] != resp1.get_json()['data']['document']['id']
     print("✓ 跨用户相同内容上传成功")
 
 
@@ -191,7 +191,7 @@ def test_upload_skips_historical_null_hash_documents(client):
     # 上传不同内容的新文档，应成功（不被历史 NULL hash 文档干扰）
     resp = _upload(client, token, 'new_content.txt', b'brand new content different from legacy')
     assert resp.status_code == 202
-    assert resp.get_json()['data']['file_hash'] is not None
+    assert resp.get_json()['data']['document']['file_hash'] is not None
     print("✓ 历史文档 file_hash=NULL 不参与查重")
 
 
@@ -214,8 +214,7 @@ def test_delete_removes_db_vector_and_file(client):
     token = _login(client, 'admin', 'admin123')
     resp = _upload(client, token, 'to_delete.txt', b'content to be deleted')
     assert resp.status_code == 202
-    doc_id = resp.get_json()['data']['id']
-    file_path_relative = resp.get_json()['data'].get('file_path')
+    doc_id = resp.get_json()['data']['document']['id']
 
     # 确认物理文件存在
     files_before = os.listdir(client._tmp_upload)
@@ -245,7 +244,7 @@ def test_delete_when_physical_file_missing(client):
     token = _login(client, 'admin', 'admin123')
     resp = _upload(client, token, 'file_will_be_missing.txt', b'content for missing file test')
     assert resp.status_code == 202
-    doc_id = resp.get_json()['data']['id']
+    doc_id = resp.get_json()['data']['document']['id']
 
     # 手动删除物理文件模拟文件已不存在
     files = os.listdir(client._tmp_upload)
@@ -270,7 +269,7 @@ def test_delete_when_physical_file_deletion_fails(client, monkeypatch):
     token = _login(client, 'admin', 'admin123')
     resp = _upload(client, token, 'protected.txt', b'content for deletion failure test')
     assert resp.status_code == 202
-    doc_id = resp.get_json()['data']['id']
+    doc_id = resp.get_json()['data']['document']['id']
 
     # mock os.remove 抛出权限异常
     import builtins
@@ -299,7 +298,7 @@ def test_delete_when_vector_store_fails(client):
     token = _login(client, 'admin', 'admin123')
     resp = _upload(client, token, 'vector_fail_test.txt', b'content for vector store failure test')
     assert resp.status_code == 202
-    doc_id = resp.get_json()['data']['id']
+    doc_id = resp.get_json()['data']['document']['id']
 
     # 配置 mock 向量库删除时抛异常
     client._mock_vs.set_fail(True)

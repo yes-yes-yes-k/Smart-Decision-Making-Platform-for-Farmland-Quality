@@ -90,7 +90,9 @@ docs/generated/
 docs/superpowers/
 
 # 本地或历史资产（正式运行不引用）
-models/
+# 注意：必须是 /models/（仅根目录）。写成 models/ 会连 framework/models/ 一起忽略，
+# 导致新增的 ORM 模型文件被静默漏提交（2026-10-31 实测踩到）。
+/models/
 backups/
 .tmp_test/
 .tmp_ppt_review/
@@ -107,6 +109,7 @@ logs/
 # 本地依赖目录（--target 安装的 geoalchemy2/sqlalchemy 等）
 .libs/
 .tmp_libs/
+.tools/
 
 # Trae IDE 本地配置与技能目录
 .trae-cn/
@@ -118,3 +121,35 @@ logs/
 # Codex 本地配置
 .codex/
 .understand-anything
+
+# M1 real-paper snapshots, model responses and isolated runtime (not redistributed)
+artifacts/knowledge_platform/evidence-m1-v1/corpus/
+artifacts/knowledge_platform/evidence-m1-v1/requests/
+artifacts/knowledge_platform/evidence-m1-v1/responses/
+artifacts/knowledge_platform/evidence-m1-v1/records/
+artifacts/knowledge_platform/evidence-m1-v1/runtime/
+artifacts/knowledge_platform/evidence-m1-v1/frozen-runtime/
+artifacts/knowledge_platform/evidence-m1-v1/execution/*.sqlite3*
+artifacts/knowledge_platform/evidence-m1-v1/product-pilot-*.json
+artifacts/knowledge_platform/evidence-m1-v1/review.html
+
+# M2 full-corpus source copies and mutable measurements (not redistributed)
+artifacts/knowledge_platform/operations-m2-v1/corpus/
+artifacts/knowledge_platform/operations-m2-v1/runtime/
+
+# 知识平台运行产物（本地证据，约5GB；仅保留在开发机，不入库）
+# 目录内 JSON 报告的索引与结论见 docs/knowledge-platform-operations.md
+artifacts/knowledge_platform/
+
+# 数据库/知识库备份与一次性运行输出（本地保留，不入库）
+backups/
+outputs/
+
+# Local WSL keepalive process state
+artifacts/local-age/
+
+# Jieba runtime cache
+jieba.cache
+
+# Local live-validation outputs contain source excerpts and runtime data
+/artifacts/frontend-live-20261101/

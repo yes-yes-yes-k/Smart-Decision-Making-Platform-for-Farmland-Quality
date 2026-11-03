@@ -1,0 +1,22 @@
+{
+  "gold_version": "cultivated-land-extraction-gold-v1",
+  "source": "artifacts/minimal_kg/cultivated_land_minimal_graph_v0.4.json",
+  "source_sha256": "481ca6206a77c842b4287d7cec5b57f10837e3037c8a2a9ed7648713ea2a7899",
+  "output": "artifacts/minimal_kg/extraction_gold_v1.jsonl",
+  "output_sha256": "16af6ee0743856f1a851f841e09b6cfbb6af79c1df83a70b4d7751845e3f29dd",
+  "entity_count": 38,
+  "relation_count": 66,
+  "evidence_count": 94,
+  "relation_counts": {
+    "addresses": 14,
+    "assessment_basis": 1,
+    "assigns_by_field_survey": 3,
+    "assigns_by_laboratory_test": 6,
+    "characterized_by": 7,
+    "classifies_basic_indicator": 6,
+    "classifies_regional_supplementary_indicator": 2,
+    "improves_indicator": 1,
+    "includes_indicator": 11,
+    "prescribes_measurement": 43
+  }
+}

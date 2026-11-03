@@ -1,5 +1,6 @@
 from __future__ import annotations
 import os
+import time
 from typing import List
 import requests
 from framework.config import Config
@@ -15,6 +16,8 @@ class EmbeddingService:
         self._api_base = None
         self._model = None
         self._batch_size = 32
+        self._max_retries = 3
+        self._retry_backoff = 1.0
         self._initialized = False
         self._init_embeddings()
 
@@ -32,6 +35,12 @@ class EmbeddingService:
         self._model = getattr(Config, "SILICONFLOW_EMBED_MODEL", "BAAI/bge-m3")
         self._batch_size = max(
             1, int(getattr(Config, "SILICONFLOW_EMBED_BATCH_SIZE", 32))
+        )
+        self._max_retries = max(
+            0, int(getattr(Config, "SILICONFLOW_EMBED_MAX_RETRIES", 3))
+        )
+        self._retry_backoff = max(
+            0.0, float(getattr(Config, "SILICONFLOW_EMBED_RETRY_BACKOFF", 1.0))
         )
 
         if self._api_key:
@@ -85,26 +94,40 @@ class EmbeddingService:
         """调用 SiliconFlow /v1/embeddings 接口，texts 必须全为非空字符串列表。"""
         if not texts:
             return []
-        try:
-            resp = requests.post(
-                f"{self._api_base}/embeddings",
-                headers={
-                    "Authorization": f"Bearer {self._api_key}",
-                    "Content-Type": "application/json",
-                },
-                json={
-                    "model": self._model,
-                    "input": texts,
-                },
-                timeout=30,
-            )
-            resp.raise_for_status()
-            data = resp.json()
-            # API 返回 { data: [ { embedding: [...] }, ... ] }
-            return [item["embedding"] for item in data.get("data", [])]
-        except Exception as e:
-            print(f"[Embedding] API 调用失败: {e}")
-            return [[] for _ in texts]
+        max_retries = max(0, int(getattr(self, "_max_retries", 3)))
+        backoff = max(0.0, float(getattr(self, "_retry_backoff", 1.0)))
+        for attempt in range(max_retries + 1):
+            try:
+                resp = requests.post(
+                    f"{self._api_base}/embeddings",
+                    headers={
+                        "Authorization": f"Bearer {self._api_key}",
+                        "Content-Type": "application/json",
+                    },
+                    json={
+                        "model": self._model,
+                        "input": texts,
+                    },
+                    timeout=30,
+                )
+                resp.raise_for_status()
+                data = resp.json()
+                # API 返回 { data: [ { embedding: [...] }, ... ] }
+                return [item["embedding"] for item in data.get("data", [])]
+            except Exception as exc:
+                status = getattr(getattr(exc, "response", None), "status_code", None)
+                retryable = status is None or status == 429 or status >= 500
+                if attempt >= max_retries or not retryable:
+                    print(f"[Embedding] API 调用失败: {exc}")
+                    return [[] for _ in texts]
+                delay = backoff * (2 ** attempt)
+                print(
+                    f"[Embedding] 临时故障，{delay:g}s 后重试 "
+                    f"({attempt + 1}/{max_retries}): {exc}"
+                )
+                if delay:
+                    time.sleep(delay)
+        return [[] for _ in texts]
 
 
 embedding_service = EmbeddingService()

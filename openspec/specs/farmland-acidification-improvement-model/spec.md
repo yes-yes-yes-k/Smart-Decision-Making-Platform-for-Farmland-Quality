@@ -291,4 +291,3 @@ TBD - created by archiving change add-stability-risk-and-grade-evaluation. Updat
 - **WHEN** 实现或调用路径试图依赖离线脚本的 CSV 处理或其生成结果完成 RF 在线预测
 - **THEN** 系统 SHALL 拒绝该路径或将其视为不支持
 - **AND** 系统 MUST NOT 把离线脚本文件路径当作 Web 模型身份或模型文件证据
-

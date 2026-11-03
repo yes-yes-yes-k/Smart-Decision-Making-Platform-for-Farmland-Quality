@@ -1,0 +1,29 @@
+{
+  "schema": "knowledge-graph-adapter-policy-v1",
+  "policy_version": "adapter-policy-v1",
+  "status": "pending_evaluation",
+  "candidates": [
+    {
+      "name": "microsoft-graphrag",
+      "version": "3.3.0",
+      "role": "primary",
+      "approved": false,
+      "minimum_metrics": {
+        "entities.precision": 0.9,
+        "relations.precision": 0.9,
+        "evidence_location.recall": 0.9
+      }
+    },
+    {
+      "name": "openspg-kag",
+      "version": "0.8.0",
+      "role": "fallback",
+      "approved": false,
+      "minimum_metrics": {
+        "entities.precision": 0.9,
+        "relations.precision": 0.9,
+        "evidence_location.recall": 0.9
+      }
+    }
+  ]
+}

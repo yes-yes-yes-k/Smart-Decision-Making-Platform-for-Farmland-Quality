@@ -154,3 +154,15 @@
    用于记录跨多个 change 的重大决策、阶段切换原因和未决问题。
 
 当前我建议先以 `openspec/project.md` 作为一级总纲即可。后续如果你发现跨 change 的决策越来越多，再补一个单独的“长期路线与决策记录”会更合适。
+
+**2026-10-31 更新**：Cd 能力迁移已经拆成 8 个阶段 change，跨会话遗忘风险真实存在，因此已启用 `docs/cd-migration-roadmap.md` 作为跨 change 的单一真相源（阶段表 / 状态 / 依赖 / 归档回填纪律）。处理 Cd 相关任务的工作，必须先读该文件。
+
+## 11. Cd 能力迁移的分阶段路线（跨 change 索引）
+
+重金属 Cd 能力从 AcidMap 迁入本系统，按业务依赖链拆成 8 个 change：阶段 0 已归档，阶段 1 进行中，阶段 2–7 规划中。
+
+- **单一真相源**：`docs/cd-migration-roadmap.md`（本文件只保留索引与原则，不重复阶段表）
+- **每个阶段一个独立 change、完成后独立归档**，不采用"全部攒到最后统一归档"的做法（原因：后续阶段的 MODIFIED 增量必须基于已归档基线；归档不冻结 tasks；全攒会让 `openspec list` 失去区分度）
+- **进度重建**：`openspec list`（在途与 N/M tasks）+ `openspec/changes/archive/`（已归档），不依赖聊天记忆
+- **归档纪律**：change 归档时 MUST 在同一提交回填 roadmap 中该阶段的状态与归档日期
+- **change 内坐标**：每个 Cd 阶段的 `proposal.md` MUST 带 `## Roadmap` 小节（阶段号 / 前置 change / 后续 change），使单独打开任一 change 也能定位全局

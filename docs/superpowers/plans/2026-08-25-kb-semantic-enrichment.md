@@ -2,7 +2,6 @@
 change: kb-semantic-enrichment
 design-doc: docs/superpowers/specs/2026-08-25-kb-semantic-enrichment-design.md
 base-ref: 1470acdcd1a52bffacfd1ff94fed44e039293a68
-archived-with: 2026-08-25-kb-semantic-enrichment
 ---
 
 # kb-semantic-enrichment 实施计划

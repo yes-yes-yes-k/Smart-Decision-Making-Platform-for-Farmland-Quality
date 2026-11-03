@@ -1,0 +1,40 @@
+{
+  "01_土壤调查监测与数字制图": [
+    "cultivated_land_quality"
+  ],
+  "02_土壤结构与物理过程": [
+    "cultivated_land_quality"
+  ],
+  "03_土壤养分碳循环与肥力": [
+    "cultivated_land_quality"
+  ],
+  "04_土壤酸化与障碍土壤(1)": [
+    "cultivated_land_quality"
+  ],
+  "05_土壤重金属污染与修复": [
+    "heavy_metal"
+  ],
+  "06_农业环境污染与生态风险": [
+    "heavy_metal",
+    "cultivated_land_quality"
+  ],
+  "07_耕地质量土壤健康与退化": [
+    "cultivated_land_quality"
+  ],
+  "08_农业管理与可持续生产": [
+    "cultivated_land_quality",
+    "food_security"
+  ],
+  "09_粮食安全与农产品质量安全": [
+    "food_security"
+  ],
+  "标准": [
+    "cultivated_land_quality"
+  ],
+  "发给张老师": [
+    "cultivated_land_quality"
+  ],
+  "知识库文件": [
+    "cultivated_land_quality"
+  ]
+}

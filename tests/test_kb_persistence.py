@@ -105,3 +105,70 @@ def test_update_document_metadata_updates_chroma_and_bm25(monkeypatch, tmp_path)
         "heavy_metal",
     )
     assert results[0]["metadata"]["document_id"] == 7
+
+
+def test_bulk_add_can_defer_bm25_until_single_rebuild(monkeypatch, tmp_path):
+    monkeypatch.setattr(Config, "CHROMA_PERSIST_DIR", str(tmp_path / "chroma"))
+    _patch_embeddings(monkeypatch)
+    store = ChromaVectorStore()
+    store.add_documents(
+        ["镉污染风险评价"],
+        [{"source": "risk.pdf", "document_id": 8, "owner_id": 1}],
+        ids=["doc-8-chunk-0"],
+        update_bm25=False,
+    )
+    assert store._bm25_search("镉污染", 5, None) == []
+    store.rebuild_bm25_indexes()
+    assert store._bm25_search("镉污染", 5, None)[0]["metadata"]["document_id"] == 8
+
+
+def test_add_documents_verifies_its_ids_not_global_count_delta(monkeypatch, tmp_path):
+    monkeypatch.setattr(Config, "CHROMA_PERSIST_DIR", str(tmp_path / "chroma"))
+    _patch_embeddings(monkeypatch)
+    store = ChromaVectorStore()
+    collection = store._get_collection()
+    original_add = collection.add
+
+    def concurrent_add(*args, **kwargs):
+        original_add(*args, **kwargs)
+        original_add(
+            ids=["other-worker"],
+            embeddings=[[0.1, 0.2]],
+            documents=["并发写入"],
+            metadatas=[{"document_id": 999}],
+        )
+
+    monkeypatch.setattr(collection, "add", concurrent_add)
+    assert store.add_documents(
+        ["当前文档"], [{"document_id": 9}], ids=["doc-9-chunk-0"]
+    ) == 1
+
+
+def test_bm25_rebuild_reads_large_collection_in_pages():
+    class PagedCollection:
+        def __init__(self):
+            self.calls = []
+
+        def count(self):
+            return 1201
+
+        def get(self, *, limit=None, offset=None, include=None):
+            assert limit == 500
+            self.calls.append(offset)
+            end = min(offset + limit, 1201)
+            return {
+                "ids": [f"chunk-{index}" for index in range(offset, end)],
+                "documents": [f"文档 {index}" for index in range(offset, end)],
+                "metadatas": [{"document_id": index} for index in range(offset, end)],
+            }
+
+    collection = PagedCollection()
+    store = ChromaVectorStore.__new__(ChromaVectorStore)
+    store._collections = {"large": collection}
+    store._bm25 = {}
+
+    store._rebuild_bm25_indexes()
+
+    assert collection.calls == [0, 500, 1000]
+    assert store._bm25["large"].index.health()["rows"] == 1201
+    assert store._bm25["large"].index.metrics["max_write_batch"] == 500

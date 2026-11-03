@@ -1,0 +1,274 @@
+﻿脚本,行数,最后修改,仓库内引用次数,分类,建议,理由
+run_kg_benchmark_pilot_r5.py,136,10-29,2,A 同族旧版本,保留,同族最新一轮实验，暂留；基准入口为 run_kg_benchmark_pilot.py
+run_kg_external_qa_pilot.py,278,10-30,2,A 同族旧版本,归档,同族基准入口为 run_kg_external_qa_pilot_v2.py，本文件为早期版本
+run_kg_benchmark_pilot_r4.py,133,10-28,6,A 同族旧版本,归档,同族基准入口为 run_kg_benchmark_pilot.py，本文件为早期版本
+calibrate_kg_v4_r3.py,130,10-27,1,A 同族旧版本,归档,同族基准入口为 calibrate_kg_v4_r4.py，本文件为早期版本
+run_kg_benchmark_pilot_r3.py,119,10-28,8,A 同族旧版本,归档,同族基准入口为 run_kg_benchmark_pilot.py，本文件为早期版本
+report_kg_external_qa_pilot.py,103,10-30,1,A 同族旧版本,归档,同族基准入口为 report_kg_external_qa_pilot_v2.py，本文件为早期版本
+prepare_kg_external_qa_pilot.py,88,10-30,4,A 同族旧版本,归档,同族基准入口为 prepare_kg_external_qa_pilot_v2.py，本文件为早期版本
+review_kg_benchmark_metadata_v2.py,77,10-29,5,A 同族旧版本,归档,同族基准入口为 review_kg_benchmark_metadata.py，本文件为早期版本
+review_kg_benchmark_metadata_v4.py,61,10-29,2,A 同族旧版本,归档,同族基准入口为 review_kg_benchmark_metadata.py，本文件为早期版本
+freeze_kg_external_qa_pilot.py,46,10-30,1,A 同族旧版本,归档,同族基准入口为 freeze_kg_external_qa_pilot_v2.py，本文件为早期版本
+adjudicate_kg_benchmark_pilot_r4.py,30,10-28,0,A 同族旧版本,归档,同族基准入口为 adjudicate_kg_benchmark_pilot.py，本文件为早期版本
+run_kg_benchmark_pilot_r2.py,147,10-28,0,A 同族旧版本,移出仓库,同族中间实验版本，零引用；基准入口为 run_kg_benchmark_pilot.py，git 历史可回溯
+migrate_analysis_context.py,394,09-13,7,B 一次性修复/迁移,保留,部署或数据导入仍需执行
+import_lechang_data.py,351,08-24,51,B 一次性修复/迁移,保留,部署或数据导入仍需执行
+import_lechang_boundaries.py,337,09-21,0,B 一次性修复/迁移,保留,部署或数据导入仍需执行
+migrate_canonical_parcel_management_fields.py,213,10-24,0,B 一次性修复/迁移,保留,部署或数据导入仍需执行
+migrate_knowledge_graph_platform.py,203,10-24,8,B 一次性修复/迁移,保留,部署或数据导入仍需执行
+migrate_kb_taxonomy.py,195,10-03,1,B 一次性修复/迁移,保留,部署或数据导入仍需执行
+import_soil_data.py,146,08-24,2,B 一次性修复/迁移,保留,部署或数据导入仍需执行
+migrate_chunk_content_hashes.py,121,10-26,6,B 一次性修复/迁移,保留,部署或数据导入仍需执行
+migrate_literature_ingestion.py,101,10-22,2,B 一次性修复/迁移,保留,部署或数据导入仍需执行
+migrate_v04_to_age.py,53,10-24,1,B 一次性修复/迁移,保留,部署或数据导入仍需执行
+migrate_research_evidence.py,41,10-30,3,B 一次性修复/迁移,保留,部署或数据导入仍需执行
+backfill_versioned_model_results.py,279,10-13,0,B 一次性修复/迁移,归档,一次性修复/迁移，已执行完毕
+migrate_chroma.py,122,07-13,1,B 一次性修复/迁移,归档,一次性修复/迁移，已执行完毕
+migrate_add_model45_fields.py,95,08-24,2,B 一次性修复/迁移,归档,一次性修复/迁移，已执行完毕
+migrate_add_message_agents.py,74,08-17,1,B 一次性修复/迁移,归档,一次性修复/迁移，已执行完毕
+backfill_knowledge_graph.py,48,10-24,1,B 一次性修复/迁移,归档,一次性修复/迁移，已执行完毕
+verify_thematic_models_db.py,496,08-19,13,C 纯审计/报告,保留,文档引用 13 处，作为证据生成入口
+verify_agent_capabilities.py,289,09-05,20,C 纯审计/报告,保留,文档引用 20 处，作为证据生成入口
+verify_dialogue.py,192,09-05,2,C 纯审计/报告,保留,文档引用 2 处，作为证据生成入口
+check_knowledge_platform_components.py,185,10-23,2,C 纯审计/报告,保留,文档引用 2 处，作为证据生成入口
+evaluate_kg_extraction_backend.py,177,10-26,7,C 纯审计/报告,保留,文档引用 7 处，作为证据生成入口
+score_kg_corpus.py,173,10-27,11,C 纯审计/报告,保留,文档引用 11 处，作为证据生成入口
+report_kg_benchmark_progress.py,151,10-29,1,C 纯审计/报告,保留,文档引用 1 处，作为证据生成入口
+score_kg_external_relation_pilot.py,148,10-29,3,C 纯审计/报告,保留,文档引用 3 处，作为证据生成入口
+report_kg_benchmark_metadata.py,112,10-29,2,C 纯审计/报告,保留,文档引用 2 处，作为证据生成入口
+verify_kg_annotator_controls.py,109,10-27,3,C 纯审计/报告,保留,文档引用 3 处，作为证据生成入口
+report_kg_benchmark_pilot.py,105,10-29,6,C 纯审计/报告,保留,文档引用 6 处，作为证据生成入口
+evaluate_kg_candidate_retention.py,103,10-27,1,C 纯审计/报告,保留,文档引用 1 处，作为证据生成入口
+report_kg_external_qa_pilot_v2.py,103,10-30,2,C 纯审计/报告,保留,文档引用 2 处，作为证据生成入口
+verify_kg_annotation_load.py,102,10-27,3,C 纯审计/报告,保留,文档引用 3 处，作为证据生成入口
+audit_kg_benchmark_identity.py,97,10-28,2,C 纯审计/报告,保留,文档引用 2 处，作为证据生成入口
+verify_pg_init.py,94,08-17,25,C 纯审计/报告,保留,文档引用 25 处，作为证据生成入口
+audit_kg_gold_sources.py,93,10-26,3,C 纯审计/报告,保留,文档引用 3 处，作为证据生成入口
+audit_kg_external_qa_evidence.py,91,10-30,3,C 纯审计/报告,保留,文档引用 3 处，作为证据生成入口
+inspect_kg_acceptance_review.py,91,10-28,2,C 纯审计/报告,保留,文档引用 2 处，作为证据生成入口
+score_kg_external_calibration.py,85,10-30,3,C 纯审计/报告,保留,文档引用 3 处，作为证据生成入口
+audit_knowledge_m2_integrity.py,83,10-30,1,C 纯审计/报告,保留,文档引用 1 处，作为证据生成入口
+audit_kg_benchmark_reference_construction.py,82,10-29,2,C 纯审计/报告,保留,文档引用 2 处，作为证据生成入口
+report_kg_acceptance_v1.py,79,10-28,1,C 纯审计/报告,保留,文档引用 1 处，作为证据生成入口
+render_kg_benchmark_dataset_review.py,78,10-29,1,C 纯审计/报告,保留,文档引用 1 处，作为证据生成入口
+score_kg_external_qa.py,78,10-30,8,C 纯审计/报告,保留,文档引用 8 处，作为证据生成入口
+score_kg_acceptance_v1.py,75,10-28,2,C 纯审计/报告,保留,文档引用 2 处，作为证据生成入口
+report_kg_benchmark_reference_coverage.py,64,10-29,2,C 纯审计/报告,保留,文档引用 2 处，作为证据生成入口
+verify_graph_store_dual_read.py,62,10-24,2,C 纯审计/报告,保留,文档引用 2 处，作为证据生成入口
+verify_context_enhanced_routing.py,61,08-24,4,C 纯审计/报告,保留,文档引用 4 处，作为证据生成入口
+audit_kg_reference_correlated_errors.py,53,10-29,2,C 纯审计/报告,保留,文档引用 2 处，作为证据生成入口
+render_kg_external_qa_review.py,53,10-30,2,C 纯审计/报告,保留,文档引用 2 处，作为证据生成入口
+score_kg_silver100.py,50,10-27,5,C 纯审计/报告,保留,文档引用 5 处，作为证据生成入口
+audit_kg_external_qa_judge_stability.py,46,10-30,1,C 纯审计/报告,保留,文档引用 1 处，作为证据生成入口
+verify_kg_benchmark_budget_v2.py,45,10-29,1,C 纯审计/报告,保留,文档引用 1 处，作为证据生成入口
+verify_kg_silver100.py,45,10-27,1,C 纯审计/报告,保留,文档引用 1 处，作为证据生成入口
+evaluate_kg_capacity_run.py,43,10-24,1,C 纯审计/报告,保留,文档引用 1 处，作为证据生成入口
+evaluate_kg_adapter_policy.py,42,10-24,1,C 纯审计/报告,保留,文档引用 1 处，作为证据生成入口
+audit_kg_acceptance_isolation.py,39,10-27,1,C 纯审计/报告,保留,文档引用 1 处，作为证据生成入口
+check_kg_v4_release_gates.py,23,10-27,1,C 纯审计/报告,保留,文档引用 1 处，作为证据生成入口
+verify_kg_benchmark_membership.py,23,10-29,1,C 纯审计/报告,保留,文档引用 1 处，作为证据生成入口
+evaluate_minimal_kg_v03.py,495,10-15,0,C 纯审计/报告,归档,只读生成报告，仓库内无引用
+verify_model_data.py,262,08-16,0,C 纯审计/报告,归档,只读生成报告，仓库内无引用
+render_minimal_kg_html.py,221,10-17,0,C 纯审计/报告,归档,只读生成报告，仓库内无引用
+verify_live_e2e_database.py,160,09-05,0,C 纯审计/报告,归档,只读生成报告，仓库内无引用
+verify_real_parcels.py,130,08-19,0,C 纯审计/报告,归档,只读生成报告，仓库内无引用
+report_kg_external_benchmarks.py,116,10-30,0,C 纯审计/报告,归档,只读生成报告，仓库内无引用
+evaluate_v04_role_semantics.py,111,10-18,0,C 纯审计/报告,归档,只读生成报告，仓库内无引用
+audit_quality_grade_consistency.py,105,10-11,0,C 纯审计/报告,归档,只读生成报告，仓库内无引用
+audit_kg_evaluation_dataset.py,103,10-27,0,C 纯审计/报告,归档,只读生成报告，仓库内无引用
+render_kg_acceptance_inspection.py,98,10-28,0,C 纯审计/报告,归档,只读生成报告，仓库内无引用
+audit_minimal_kg_orphans.py,91,10-15,0,C 纯审计/报告,归档,只读生成报告，仓库内无引用
+evaluate_kg_candidate_pilot.py,91,10-27,0,C 纯审计/报告,归档,只读生成报告，仓库内无引用
+evaluate_kg_production_acceptance.py,88,10-18,0,C 纯审计/报告,归档,只读生成报告，仓库内无引用
+audit_kg_external_isolation.py,82,10-29,0,C 纯审计/报告,归档,只读生成报告，仓库内无引用
+score_kg_two_stage.py,79,10-27,0,C 纯审计/报告,归档,只读生成报告，仓库内无引用
+check_kg_corpus_conformance.py,76,10-27,0,C 纯审计/报告,归档,只读生成报告，仓库内无引用
+report_kg_quoted_selection_pilot.py,76,10-29,0,C 纯审计/报告,归档,只读生成报告，仓库内无引用
+summarize_kg_benchmark_arbitration.py,76,10-28,0,C 纯审计/报告,归档,只读生成报告，仓库内无引用
+compare_kg_source_gold.py,74,10-27,0,C 纯审计/报告,归档,只读生成报告，仓库内无引用
+score_kg_span_experiment.py,74,10-27,0,C 纯审计/报告,归档,只读生成报告，仓库内无引用
+diagnose_kg_model_capability.py,73,10-27,0,C 纯审计/报告,归档,只读生成报告，仓库内无引用
+report_kg_benchmark_dual_selector.py,71,10-29,0,C 纯审计/报告,归档,只读生成报告，仓库内无引用
+verify_kg_annotation_neutral_prompt.py,65,10-27,0,C 纯审计/报告,归档,只读生成报告，仓库内无引用
+summarize_kg_v4_r4_diagnostics.py,60,10-27,0,C 纯审计/报告,归档,只读生成报告，仓库内无引用
+report_kg_external_pilot_errors.py,57,10-29,0,C 纯审计/报告,归档,只读生成报告，仓库内无引用
+summarize_kg_v4_calibration.py,57,10-27,0,C 纯审计/报告,归档,只读生成报告，仓库内无引用
+audit_kg_verbatim_quote_counterfactual.py,56,10-29,0,C 纯审计/报告,归档,只读生成报告，仓库内无引用
+diagnose_kg_v4_r4_original_pilot.py,56,10-27,0,C 纯审计/报告,归档,只读生成报告，仓库内无引用
+verify_kg_corpus_artifacts.py,56,10-27,0,C 纯审计/报告,归档,只读生成报告，仓库内无引用
+audit_kg_external_qa_source_inputs.py,48,10-30,0,C 纯审计/报告,归档,只读生成报告，仓库内无引用
+summarize_kg_v4_r3.py,46,10-27,0,C 纯审计/报告,归档,只读生成报告，仓库内无引用
+render_codex_kg_review.py,45,10-27,0,C 纯审计/报告,归档,只读生成报告，仓库内无引用
+render_research_m1_review.py,40,10-30,0,C 纯审计/报告,归档,只读生成报告，仓库内无引用
+audit_kg_annotator_verification.py,38,10-27,0,C 纯审计/报告,归档,只读生成报告，仓库内无引用
+audit_kg_r4_fragment_failures.py,35,10-27,0,C 纯审计/报告,归档,只读生成报告，仓库内无引用
+inspect_postgres_parcels.py,28,09-05,0,C 纯审计/报告,归档,只读生成报告，仓库内无引用
+render_kg_benchmark_semantic_audit.py,27,10-29,0,C 纯审计/报告,归档,只读生成报告，仓库内无引用
+render_kg_silver100.py,25,10-27,0,C 纯审计/报告,归档,只读生成报告，仓库内无引用
+verify_postgres_workflow_fix.py,20,09-05,0,C 纯审计/报告,归档,只读生成报告，仓库内无引用
+gen_full_verification_report.py,529,09-05,47,保留,保留,运行、构建、部署或证据入口，仍在使用
+import_model_data.py,492,10-11,12,保留,保留,运行、构建、部署或证据入口，仍在使用
+retire_unverified_fallback_metrics.py,470,09-07,4,保留,保留,运行、构建、部署或证据入口，仍在使用
+run_live_chat_e2e.py,423,09-05,0,保留,保留,运行、构建、部署或证据入口，仍在使用
+rebuild_kg_extraction_benchmark.py,407,10-29,65,保留,保留,运行、构建、部署或证据入口，仍在使用
+build_minimal_kg_v03.py,366,10-15,1,保留,保留,运行、构建、部署或证据入口，仍在使用
+import_real_parcels.py,363,10-24,3,保留,保留,运行、构建、部署或证据入口，仍在使用
+restore_database.py,353,08-24,2,保留,保留,运行、构建、部署或证据入口，仍在使用
+export_anonymized_rag_acceptance_set.py,331,10-15,1,保留,保留,运行、构建、部署或证据入口，仍在使用
+run_kg_external_qa_pilot_v2.py,306,10-30,3,保留,保留,运行、构建、部署或证据入口，仍在使用
+model_field_mappings.py,298,08-17,10,保留,保留,运行、构建、部署或证据入口，仍在使用
+build_minimal_kg_v04.py,280,10-18,0,保留,保留,运行、构建、部署或证据入口，仍在使用
+run_kg_verbatim_quote_pilot_v2.py,265,10-29,2,保留,保留,运行、构建、部署或证据入口，仍在使用
+train_fertility_models.py,260,08-04,56,保留,保留,运行、构建、部署或证据入口，仍在使用
+run_live_rag_acceptance.py,247,10-18,0,保留,保留,运行、构建、部署或证据入口，仍在使用
+generate_customer_workflow_report.py,225,10-24,0,保留,保留,运行、构建、部署或证据入口，仍在使用
+link_soil_indicators.py,225,10-24,3,保留,保留,运行、构建、部署或证据入口，仍在使用
+run_kg_quoted_selection_pilot.py,223,10-29,0,保留,保留,运行、构建、部署或证据入口，仍在使用
+precompute_farmland_region_parcels.py,222,09-25,3,保留,保留,运行、构建、部署或证据入口，仍在使用
+benchmark_kg_relational_indexes.py,221,10-24,1,保留,保留,运行、构建、部署或证据入口，仍在使用
+build_designed_rag_acceptance.py,221,10-17,0,保留,保留,运行、构建、部署或证据入口，仍在使用
+run_kg_gold_evaluation.py,221,10-27,1,保留,保留,运行、构建、部署或证据入口，仍在使用
+annotate_kg_gold_corpus.py,209,10-27,10,保留,保留,运行、构建、部署或证据入口，仍在使用
+inventory_knowledge_engineering_m0.py,208,10-30,0,保留,保留,运行、构建、部署或证据入口，仍在使用
+run_retrieval_quality_policy_pilot.py,204,10-30,1,保留,保留,运行、构建、部署或证据入口，仍在使用
+judge_kg_external_qa.py,199,10-30,6,保留,保留,运行、构建、部署或证据入口，仍在使用
+run_kg_benchmark_pilot.py,199,10-28,37,保留,保留,运行、构建、部署或证据入口，仍在使用
+run_postgres_comprehensive_examples.py,192,10-24,0,保留,保留,运行、构建、部署或证据入口，仍在使用
+graphrag_extract.py,181,10-27,3,保留,保留,运行、构建、部署或证据入口，仍在使用
+prepare_retrieval_quality_r0_cases.py,180,10-30,1,保留,保留,运行、构建、部署或证据入口，仍在使用
+trace_retrieval_quality_candidates.py,180,10-30,1,保留,保留,运行、构建、部署或证据入口，仍在使用
+run_kg_external_calibration.py,174,10-29,2,保留,保留,运行、构建、部署或证据入口，仍在使用
+experiment_kg_recall.py,172,10-27,38,保留,保留,运行、构建、部署或证据入口，仍在使用
+export_database.py,168,08-24,1,保留,保留,运行、构建、部署或证据入口，仍在使用
+survey_natural_language_routing_llm.py,163,08-24,6,保留,保留,运行、构建、部署或证据入口，仍在使用
+reindex_documents.py,161,10-18,17,保留,保留,运行、构建、部署或证据入口，仍在使用
+graphrag_external_calibration.py,153,10-29,1,保留,保留,运行、构建、部署或证据入口，仍在使用
+review_kg_benchmark_reference.py,150,10-28,10,保留,保留,运行、构建、部署或证据入口，仍在使用
+run_retrieval_quality_baseline.py,149,10-30,0,保留,保留,运行、构建、部署或证据入口，仍在使用
+materialize_kg_external_datasets.py,148,10-29,0,保留,保留,运行、构建、部署或证据入口，仍在使用
+build_kg_production_acceptance.py,145,10-18,1,保留,保留,运行、构建、部署或证据入口，仍在使用
+measure_knowledge_m2_product.py,144,10-30,0,保留,保留,运行、构建、部署或证据入口，仍在使用
+prepare_kg_benchmark_protocol.py,142,10-28,2,保留,保留,运行、构建、部署或证据入口，仍在使用
+run_kg_corpus_graphrag.py,140,10-27,2,保留,保留,运行、构建、部署或证据入口，仍在使用
+resolve_kg_external_data_gates.py,138,10-29,4,保留,保留,运行、构建、部署或证据入口，仍在使用
+prepare_kg_quoted_selection_pilot.py,131,10-29,5,保留,保留,运行、构建、部署或证据入口，仍在使用
+build_kg_benchmark_references.py,130,10-29,9,保留,保留,运行、构建、部署或证据入口，仍在使用
+graphrag_external_relations.py,130,10-29,1,保留,保留,运行、构建、部署或证据入口，仍在使用
+run_routing_regression.py,130,08-18,81,保留,保留,运行、构建、部署或证据入口，仍在使用
+calibrate_kg_v4_r4.py,127,10-27,3,保留,保留,运行、构建、部署或证据入口，仍在使用
+export_kg_extraction_gold.py,126,10-23,1,保留,保留,运行、构建、部署或证据入口，仍在使用
+embed_retrieval_quality_queries.py,123,10-30,1,保留,保留,运行、构建、部署或证据入口，仍在使用
+run_kg_external_relation_pilot.py,123,10-29,3,保留,保留,运行、构建、部署或证据入口，仍在使用
+adjudicate_kg_acceptance_stability.py,122,10-28,1,保留,保留,运行、构建、部署或证据入口，仍在使用
+prepare_kg_acceptance_pool.py,121,10-27,0,保留,保留,运行、构建、部署或证据入口，仍在使用
+run_research_m1_product_pilot.py,121,10-30,0,保留,保留,运行、构建、部署或证据入口，仍在使用
+replay_kg_verbatim_quote_initial_for_review.py,118,10-29,0,保留,保留,运行、构建、部署或证据入口，仍在使用
+validate_retrieval_quality_r1_r2.py,118,10-30,1,保留,保留,运行、构建、部署或证据入口，仍在使用
+probe_openspg_environment.py,117,10-23,2,保留,保留,运行、构建、部署或证据入口，仍在使用
+validate_retrieval_quality_r0.py,117,10-30,1,保留,保留,运行、构建、部署或证据入口，仍在使用
+prepare_research_m1_pilot.py,116,10-30,6,保留,保留,运行、构建、部署或证据入口，仍在使用
+train_dose_rf_models.py,115,08-19,14,保留,保留,运行、构建、部署或证据入口，仍在使用
+build_kg_source_gold.py,114,10-27,2,保留,保留,运行、构建、部署或证据入口，仍在使用
+import_literature_batch.py,113,10-22,4,保留,保留,运行、构建、部署或证据入口，仍在使用
+run_research_m1_extraction.py,113,10-30,0,保留,保留,运行、构建、部署或证据入口，仍在使用
+build_v04_role_acceptance.py,112,10-18,0,保留,保留,运行、构建、部署或证据入口，仍在使用
+compile_kg_benchmark_source_pool.py,112,10-29,0,保留,保留,运行、构建、部署或证据入口，仍在使用
+finalize_research_m1_pilot.py,111,10-30,0,保留,保留,运行、构建、部署或证据入口，仍在使用
+freeze_codex_kg_reference.py,111,10-27,1,保留,保留,运行、构建、部署或证据入口，仍在使用
+run_kg_acceptance_v1.py,110,10-28,10,保留,保留,运行、构建、部署或证据入口，仍在使用
+pilot_kg_benchmark_dual_selector.py,108,10-29,2,保留,保留,运行、构建、部署或证据入口，仍在使用
+adjudicate_kg_benchmark_pilot.py,106,10-28,3,保留,保留,运行、构建、部署或证据入口，仍在使用
+assemble_kg_gold_rebuild.py,105,10-27,2,保留,保留,运行、构建、部署或证据入口，仍在使用
+prepare_kg_benchmark_metadata.py,105,10-29,14,保留,保留,运行、构建、部署或证据入口，仍在使用
+run_kg_live_shadow.py,104,10-25,2,保留,保留,运行、构建、部署或证据入口，仍在使用
+export_kg_final_silver.py,103,10-29,0,保留,保留,运行、构建、部署或证据入口，仍在使用
+resolve_kg_benchmark_source_identity.py,103,10-28,0,保留,保留,运行、构建、部署或证据入口，仍在使用
+measure_knowledge_m2_runtime.py,101,10-30,0,保留,保留,运行、构建、部署或证据入口，仍在使用
+finalize_kg_external_calibration.py,100,10-30,1,保留,保留,运行、构建、部署或证据入口，仍在使用
+extract_live_rag_remaining.py,99,10-17,0,保留,保留,运行、构建、部署或证据入口，仍在使用
+recover_kg_external_utf8_pilot.py,98,10-29,0,保留,保留,运行、构建、部署或证据入口，仍在使用
+group_kg_external_sources_v2.py,97,10-29,0,保留,保留,运行、构建、部署或证据入口，仍在使用
+watch_chunk_hash_migration.py,97,10-26,1,保留,保留,运行、构建、部署或证据入口，仍在使用
+adjudicate_kg_final_reference_issues.py,96,10-29,2,保留,保留,运行、构建、部署或证据入口，仍在使用
+measure_knowledge_m2_updates.py,96,10-30,0,保留,保留,运行、构建、部署或证据入口，仍在使用
+prepare_kg_acceptance_qa.py,96,10-28,0,保留,保留,运行、构建、部署或证据入口，仍在使用
+replay_kg_benchmark_reference_review.py,96,10-28,14,保留,保留,运行、构建、部署或证据入口，仍在使用
+adjudicate_kg_benchmark_source_profiles.py,94,10-29,1,保留,保留,运行、构建、部署或证据入口，仍在使用
+init_region_mappings.py,93,10-11,2,保留,保留,运行、构建、部署或证据入口，仍在使用
+probe_retrieval_candidate_misses.py,93,10-30,1,保留,保留,运行、构建、部署或证据入口，仍在使用
+register_kg_benchmark_cover_review.py,93,10-29,0,保留,保留,运行、构建、部署或证据入口，仍在使用
+validate_retrieval_quality_policy_pilot.py,93,10-30,1,保留,保留,运行、构建、部署或证据入口，仍在使用
+finalize_knowledge_m2.py,92,10-30,0,保留,保留,运行、构建、部署或证据入口，仍在使用
+prepare_kg_external_qa_pilot_v2.py,92,10-30,11,保留,保留,运行、构建、部署或证据入口，仍在使用
+register_kg_benchmark_semantic_audit.py,91,10-29,0,保留,保留,运行、构建、部署或证据入口，仍在使用
+run_knowledge_graph_worker.py,91,10-25,7,保留,保留,运行、构建、部署或证据入口，仍在使用
+adjudicate_kg_silver100.py,90,10-27,1,保留,保留,运行、构建、部署或证据入口，仍在使用
+validate_kg_reference_schema.py,89,10-28,1,保留,保留,运行、构建、部署或证据入口，仍在使用
+adjudicate_kg_corpus.py,87,10-27,0,保留,保留,运行、构建、部署或证据入口，仍在使用
+annotate_kg_v4_calibration.py,87,10-27,3,保留,保留,运行、构建、部署或证据入口，仍在使用
+review_kg_benchmark_metadata.py,87,10-29,9,保留,保留,运行、构建、部署或证据入口，仍在使用
+adjudicate_kg_reference_issues.py,86,10-29,3,保留,保留,运行、构建、部署或证据入口，仍在使用
+prepare_kg_external_benchmarks.py,86,10-29,31,保留,保留,运行、构建、部署或证据入口，仍在使用
+rebuild_kg_gold_corpus.py,86,10-27,0,保留,保留,运行、构建、部署或证据入口，仍在使用
+validate_retrieval_candidate_trace.py,86,10-30,1,保留,保留,运行、构建、部署或证据入口，仍在使用
+measure_knowledge_m2_baseline.py,84,10-30,0,保留,保留,运行、构建、部署或证据入口，仍在使用
+label_kg_acceptance_reference.py,81,10-28,0,保留,保留,运行、构建、部署或证据入口，仍在使用
+rebuild_collections.py,79,08-28,12,保留,保留,运行、构建、部署或证据入口，仍在使用
+build_kg_benchmark_final_references.py,76,10-29,2,保留,保留,运行、构建、部署或证据入口，仍在使用
+eval_retrieval.py,76,10-02,37,保留,保留,运行、构建、部署或证据入口，仍在使用
+export_kg_calibration_silver.py,76,10-29,0,保留,保留,运行、构建、部署或证据入口，仍在使用
+prepare_knowledge_m2_snapshot.py,76,10-30,5,保留,保留,运行、构建、部署或证据入口，仍在使用
+complete_kg_truncated_reference_fields.py,75,10-29,1,保留,保留,运行、构建、部署或证据入口，仍在使用
+validate_kg_metadata_contract.py,75,10-29,7,保留,保留,运行、构建、部署或证据入口，仍在使用
+validate_kg_metadata_identity_scope.py,75,10-29,4,保留,保留,运行、构建、部署或证据入口，仍在使用
+run_kg_live_conformance.py,73,10-27,0,保留,保留,运行、构建、部署或证据入口，仍在使用
+download_kg_external_datasets.py,72,10-29,0,保留,保留,运行、构建、部署或证据入口，仍在使用
+export_kg_adjudicated_gold.py,72,10-27,2,保留,保留,运行、构建、部署或证据入口，仍在使用
+precompute_diagnosis.py,72,09-07,1,保留,保留,运行、构建、部署或证据入口，仍在使用
+complete_kg_final_truncated_fields.py,71,10-29,1,保留,保留,运行、构建、部署或证据入口，仍在使用
+age_backup_restore.py,70,10-24,4,保留,保留,运行、构建、部署或证据入口，仍在使用
+inventory_chunk_content_hashes.py,70,10-25,2,保留,保留,运行、构建、部署或证据入口，仍在使用
+freeze_kg_external_qa_pilot_v2.py,66,10-30,1,保留,保留,运行、构建、部署或证据入口，仍在使用
+prepare_kg_benchmark_cover_ocr.py,66,10-29,0,保留,保留,运行、构建、部署或证据入口，仍在使用
+propose_kg_external_qa_acceptance.py,66,10-30,1,保留,保留,运行、构建、部署或证据入口，仍在使用
+materialize_kg_qasper_headers_v2.py,65,10-29,0,保留,保留,运行、构建、部署或证据入口，仍在使用
+prepare_kg_reference_full_index_comparison.py,65,10-29,2,保留,保留,运行、构建、部署或证据入口，仍在使用
+rebuild_retrieval_quality_layout.py,64,10-30,0,保留,保留,运行、构建、部署或证据入口，仍在使用
+prepare_kg_v4.py,62,10-27,0,保留,保留,运行、构建、部署或证据入口，仍在使用
+estimate_kg_external_final_qa.py,61,10-30,0,保留,保留,运行、构建、部署或证据入口，仍在使用
+freeze_kg_benchmark_partitions.py,61,10-29,0,保留,保留,运行、构建、部署或证据入口，仍在使用
+pilot_kg_benchmark_literal_selector.py,61,10-29,0,保留,保留,运行、构建、部署或证据入口，仍在使用
+review_kg_benchmark_metadata_remaining.py,61,10-29,3,保留,保留,运行、构建、部署或证据入口，仍在使用
+compile_kg_reference_trial.py,58,10-29,0,保留,保留,运行、构建、部署或证据入口，仍在使用
+finish_kg_benchmark_metadata.py,58,10-29,0,保留,保留,运行、构建、部署或证据入口，仍在使用
+benchmark_kg_age_runtime.py,56,10-24,1,保留,保留,运行、构建、部署或证据入口，仍在使用
+benchmark_kg_jobs.py,56,10-24,1,保留,保留,运行、构建、部署或证据入口，仍在使用
+screen_kg_benchmark_reference_boundaries.py,56,10-29,1,保留,保留,运行、构建、部署或证据入口，仍在使用
+query_minimal_knowledge_graph.py,55,10-18,0,保留,保留,运行、构建、部署或证据入口，仍在使用
+assemble_kg_capacity_report.py,54,10-24,1,保留,保留,运行、构建、部署或证据入口，仍在使用
+prepare_knowledge_m2_chroma_clone.py,51,10-30,0,保留,保留,运行、构建、部署或证据入口，仍在使用
+run_kg_reference_full_index_comparison.py,51,10-29,0,保留,保留,运行、构建、部署或证据入口，仍在使用
+plan_kg_v4_blind_pool.py,50,10-27,0,保留,保留,运行、构建、部署或证据入口，仍在使用
+seed_spatial_region_catalog.py,50,09-05,8,保留,保留,运行、构建、部署或证据入口，仍在使用
+gate_kg_benchmark_references.py,49,10-29,1,保留,保留,运行、构建、部署或证据入口，仍在使用
+load_kg_synthetic_age.py,48,10-24,1,保留,保留,运行、构建、部署或证据入口，仍在使用
+map_kg_qasper_evidence_spans_v3.py,48,10-29,0,保留,保留,运行、构建、部署或证据入口，仍在使用
+propose_kg_external_acceptance.py,48,10-30,0,保留,保留,运行、构建、部署或证据入口，仍在使用
+validate_knowledge_m2.py,46,10-30,0,保留,保留,运行、构建、部署或证据入口，仍在使用
+resume_kg_benchmark_final_references.py,45,10-29,2,保留,保留,运行、构建、部署或证据入口，仍在使用
+compile_research_m1_records.py,42,10-30,0,保留,保留,运行、构建、部署或证据入口，仍在使用
+complete_kg_external_qa_pilot_v2.py,42,10-30,1,保留,保留,运行、构建、部署或证据入口，仍在使用
+run_research_comparison_worker.py,42,10-30,2,保留,保留,运行、构建、部署或证据入口，仍在使用
+validate_knowledge_m2_compatibility.py,42,10-30,2,保留,保留,运行、构建、部署或证据入口，仍在使用
+generate_kg_synthetic.py,41,10-24,3,保留,保留,运行、构建、部署或证据入口，仍在使用
+generate_literature_manifest.py,41,10-22,2,保留,保留,运行、构建、部署或证据入口，仍在使用
+prepare_research_m1_extraction.py,40,10-30,0,保留,保留,运行、构建、部署或证据入口，仍在使用
+annotate_kg_internal_benchmark_history.py,39,10-30,0,保留,保留,运行、构建、部署或证据入口，仍在使用
+run_acidification_batch.py,39,08-01,26,保留,保留,运行、构建、部署或证据入口，仍在使用
+release_kg_artifact.py,36,10-18,0,保留,保留,运行、构建、部署或证据入口，仍在使用
+probe_kg_vector_resilience.py,35,10-24,1,保留,保留,运行、构建、部署或证据入口，仍在使用
+review_kg_benchmark_pilot_r5.py,35,10-29,0,保留,保留,运行、构建、部署或证据入口，仍在使用
+export_knowledge_graph_releases.py,33,10-24,1,保留,保留,运行、构建、部署或证据入口，仍在使用
+freeze_kg_v4_governance.py,30,10-27,0,保留,保留,运行、构建、部署或证据入口，仍在使用
+benchmark_comprehensive_routing.py,23,09-05,4,保留,保留,运行、构建、部署或证据入口，仍在使用
+setup_langgraph_checkpoint.py,21,09-05,5,保留,保留,运行、构建、部署或证据入口，仍在使用

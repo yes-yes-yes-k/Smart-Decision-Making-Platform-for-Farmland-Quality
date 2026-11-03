@@ -1,0 +1,92 @@
+{
+  "schema_version": "minimal-cultivated-land-kg-schema-v1",
+  "compatible_graph_versions": [
+    "minimal-cultivated-land-kg-v0.4"
+  ],
+  "entity_types": [
+    {"id": "indicator", "label": "指标"},
+    {"id": "obstacle", "label": "障碍"},
+    {"id": "measure", "label": "措施"},
+    {"id": "standard", "label": "标准/规范"}
+  ],
+  "relation_types": [
+    {
+      "id": "addresses",
+      "label": "治理或缓解",
+      "source_types": ["measure"],
+      "target_types": ["obstacle"]
+    },
+    {
+      "id": "improves_indicator",
+      "label": "改善指标",
+      "source_types": ["measure"],
+      "target_types": ["indicator"]
+    },
+    {
+      "id": "characterized_by",
+      "label": "由指标表征",
+      "source_types": ["obstacle"],
+      "target_types": ["indicator"]
+    },
+    {
+      "id": "includes_indicator",
+      "label": "纳入评价指标",
+      "source_types": ["standard"],
+      "target_types": ["indicator"]
+    },
+    {
+      "id": "prescribes_measurement",
+      "label": "规定测定方法",
+      "source_types": ["standard"],
+      "target_types": ["indicator"]
+    },
+    {
+      "id": "assessment_basis",
+      "label": "提供判定依据",
+      "source_types": ["standard"],
+      "target_types": ["obstacle"]
+    },
+    {
+      "id": "classifies_basic_indicator",
+      "label": "列为基础性指标",
+      "source_types": ["standard"],
+      "target_types": ["indicator"]
+    },
+    {
+      "id": "classifies_regional_supplementary_indicator",
+      "label": "列为区域补充性指标",
+      "source_types": ["standard"],
+      "target_types": ["indicator"]
+    },
+    {
+      "id": "assigns_by_field_survey",
+      "label": "依据实地踏勘赋值",
+      "source_types": ["standard"],
+      "target_types": ["indicator"]
+    },
+    {
+      "id": "assigns_by_laboratory_test",
+      "label": "依据实验室检测赋值",
+      "source_types": ["standard"],
+      "target_types": ["indicator"]
+    }
+  ],
+  "id_policy": {
+    "entity_id": "project-owned stable canonical id",
+    "relation_key": ["relation_type", "source_entity_id", "target_entity_id"],
+    "vendor_ids_are_canonical": false
+  },
+  "evidence_contract": {
+    "required_fields": [
+      "evidence_id",
+      "document_id",
+      "content_sha256",
+      "chunk_index",
+      "page",
+      "span_start",
+      "span_end",
+      "quote",
+      "quote_sha256"
+    ]
+  }
+}

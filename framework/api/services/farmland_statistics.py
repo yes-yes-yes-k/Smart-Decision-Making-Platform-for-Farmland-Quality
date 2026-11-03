@@ -907,6 +907,10 @@ def _precomputed_statistics_rows(
     return rows
 
 
+
+
+
+
 def aggregate_statistics(payload: Mapping[str, Any] | None) -> dict[str, Any]:
     if not isinstance(payload, Mapping):
         raise StatisticsError("invalid_request", "请求体必须为 JSON 对象")
@@ -1134,6 +1138,8 @@ def _parcel_response(
         metric_keys,
         metric_key,
     )
+    if metric_key is None:
+        response["compositeIndex"] = _round(indicators.get("composite_index"))
     if version:
         response["qualityAssessment"] = dict(version)
     return response
