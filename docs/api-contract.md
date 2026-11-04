@@ -1,5 +1,17 @@
 # 基础能力接口契约
 
+## Cd 对话查询与试算
+
+开发环境需要启用 `FUNCTION_CALLING_ENABLED` 和模型工具调用，并执行试算记录表迁移后再使用保存命令。
+
+通过 `POST /api/v1/chat/` 或 `POST /api/v1/chat/stream` 发送 `message`，多轮操作传相同的 `conversation_id`。地区和地块可使用聊天已有的 `analysis_context` 选择方式。带 `include_model_results: true` 时，普通响应和 SSE 的 `done` 事件都在 `data.cd_conversation` 返回结构化 Cd 结果。
+
+- 土壤总镉查询支持地块和已覆盖的省、市、县、乡镇，可指定快照年度。区域均值按相交面积加权。
+- 作物和土壤有效态 Cd 预测统计按来源分别返回。移植记录仅支持乡镇归属，预测记录时期未知且单位未核验。
+- 参数查询返回输入定义与地块已有值。试算缺项时返回 `missing_fields` 和 `input_issues`。只有缺少溶液态镉对数值且其他输入通过校验时，用户可回复「同意使用训练集中位数」。结果标记为 `degraded` 并记录实际使用的值与来源。
+- 完成试算后发送「保存这次试算结果」，返回 `status: saved` 和 `record_id`。再次保存同一结果返回相同编号。
+- 当前八类通量的查询会说明服务尚未接入。
+
 ## 运行方式
 
 当前实现提供两类调用方式：

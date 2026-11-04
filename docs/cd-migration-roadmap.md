@@ -57,6 +57,15 @@
 
 依赖主链：`0 → 1 → 2 → 3 → 4`，`2 → 5 → 6 → 7`。
 
+## 对话能力接入
+
+**阶段 C1｜add-cd-conversation-capabilities｜已归档（2026-11-04）**
+- 交付范围为已有土壤 Cd 统计、Cd 预测结果、参数查询、纯参数预测、多轮补参和独立试算保存的对话接入。
+- 前置能力为阶段 0–3、D1 及现有区域与地块统计服务，按实际数据覆盖开放。
+- 八类通量在本阶段登记能力状态与缺项说明。阶段 5、6 完成相应服务后，在后续独立变更中接入计算与统计。
+- 第一批通过文字和表格呈现结果，阶段 4 的可视化按独立需求推进。
+- 需求见 `docs/cd-conversation-design.md`，任务及验收见 `openspec/changes/archive/2026-11-04-add-cd-conversation-capabilities/`。相关回归 227 项通过。
+
 ## 二、为什么每个阶段独立归档，而不是"攒到最后统一归档"
 
 1. **归档 = 规格生效，不是项目完成。** `openspec archive` 把该 change 的 spec delta 合入 `openspec/specs/<capability>/spec.md`。后续阶段的 `MODIFIED Requirements` 是**基于已归档基线**写的：阶段 1 不归档，阶段 2 的 delta 就没有"阶段 1 引入的要求"可改，`openspec validate` 与实际基线都对不上。

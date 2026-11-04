@@ -1,5 +1,5 @@
 import json
-from flask import Blueprint, request, jsonify, Response, current_app
+from flask import Blueprint, request, jsonify, Response, current_app, stream_with_context
 from flask_jwt_extended import jwt_required, get_jwt_identity
 from framework.models.conversation import Conversation
 from framework.models.user import db
@@ -90,6 +90,11 @@ def _serialize_prepared_response(prepared, result, message_id, *, include_model_
         include_model_results=include_model_results,
         response_schema=response_schema,
     )
+    cd_result = models.get("cd_conversation") if isinstance(models, dict) else None
+    if include_model_results and isinstance(cd_result, dict):
+        response["data"]["cd_conversation"] = {
+            key: value for key, value in cd_result.items() if key != "draft"
+        }
     for key in (
         "interaction_state", "analysis_context", "provenance", "scenario_result",
         "spatial_object", "object_title", "required_object_types", "missing_inputs", "trace_id",
@@ -252,7 +257,7 @@ def chat_stream():
         except Exception as e:
             yield f"data: {json.dumps({'event': 'error', 'message': str(e)})}\n\n"
 
-    resp = Response(event_stream(), mimetype='text/event-stream')
+    resp = Response(stream_with_context(event_stream()), mimetype='text/event-stream')
     resp.headers['Cache-Control'] = 'no-cache, no-transform, must-revalidate, max-age=0'
     resp.headers['X-Accel-Buffering'] = 'no'
     resp.headers['Connection'] = 'keep-alive'

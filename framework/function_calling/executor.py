@@ -1,5 +1,6 @@
 from __future__ import annotations
 from typing import Dict, Any, List, Optional
+from langchain_core.tools import StructuredTool
 from framework.function_calling.registry import tool_registry
 
 class ToolExecutor:
@@ -15,7 +16,9 @@ class ToolExecutor:
             }
 
         try:
-            if arguments:
+            if isinstance(tool, StructuredTool):
+                result = tool.invoke(arguments)
+            elif arguments:
                 result = tool.func(**arguments)
             else:
                 result = tool.func()

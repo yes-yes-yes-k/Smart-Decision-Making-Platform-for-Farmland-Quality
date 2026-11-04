@@ -109,6 +109,11 @@ class MultiAgentOrchestrator:
             payload.setdefault("run_id", uuid4().hex)
             payload.setdefault("trace_id", uuid4().hex)
             return runtime.run_initial(payload).model_dump(mode="json")
+        from framework.agents.cd_conversation import answer_cd
+
+        cd_result = answer_cd(request, conversation_history)
+        if cd_result is not None:
+            return cd_result
         if self._app is None:
             self._graph = self.build_graph()
             self._app = self._graph.compile()
@@ -143,6 +148,13 @@ class MultiAgentOrchestrator:
 
     def run_stream(self, request: Dict[str, Any], conversation_history: list = None):
         try:
+            from framework.agents.cd_conversation import answer_cd
+
+            cd_result = answer_cd(request, conversation_history)
+            if cd_result is not None:
+                yield {"type": "token", "content": cd_result["answer"]}
+                yield {"type": "done", "data": cd_result}
+                return
             if self._app is None:
                 self._graph = self.build_graph()
                 self._app = self._graph.compile()
