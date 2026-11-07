@@ -43,7 +43,7 @@
 - 前置：阶段 3（已归档）
 - 实测：全部 Cd 测试 83 passed；真实库 40100 行 → 栅格 344×259、有效像元 17082、值域 0.0048–0.438 mg/kg；map.jpg / histogram.jpg / raster.tif 均生成
 - 资产：原系统 `template.tif` 迁入 `data/model_artifacts/heavy_metal_cd/visualization/`（manifest 记录 SHA-256）
-- 备注：归档时 21/21 tasks 中 18 条已勾选，剩 A（模板资产授权）/ B（有效态分级口径确认）/ C（产物保留策略）三条人工确认项
+- 备注：21/21 tasks 完成；A/B/C 三项人工确认已于 2026-11-07 拍板——保留模板资产、有效态保留分位数 6 级（相对分级）、产物不自动清理
 - 归档目录：`openspec/changes/archive/2026-11-07-add-heavy-metal-cd-visualization/`
 
 **阶段 5｜add-cd-flux-accounting｜规划中**
