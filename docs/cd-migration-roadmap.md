@@ -46,9 +46,13 @@
 - 备注：21/21 tasks 完成；A/B/C 三项人工确认已于 2026-11-07 拍板——保留模板资产、有效态保留分位数 6 级（相对分级）、产物不自动清理
 - 归档目录：`openspec/changes/archive/2026-11-07-add-heavy-metal-cd-visualization/`
 
-**阶段 5｜add-cd-flux-accounting｜规划中**
-- 交付：输入/输出/净 Cd 通量计算、统计与空间结果、结果持久化、CSV 导出
-- 前置：可与阶段 2 并行
+**阶段 5｜add-cd-flux-accounting｜已归档（2026-11-07）**
+- 交付：`cd_flux_input` / `cd_flux_output` 两表、CSV 导入（同键覆盖）、输入/输出/净通量与当年浓度计算（统一数据库模式公式，容重/初始值回退计数）、区域统计与四类分布（end 三档 GB15618、net 互斥三档、in/out 相对三档）、点位 GeoJSON、地图/直方图（复用阶段 4 引擎）、CSV 导出、7 个 HTTP 端点
+- 前置：阶段 2 统计口径 + 阶段 3 归属依据（均已归档）
+- 修正：原系统 net_cd 分箱重叠（负值/接近平衡可重复计入，占比可超 100%）→ 互斥三档并补差保证和恰为 100；CSV/DB 两套公式 → 统一数据库模式
+- 实测：test_cd_flux 11 passed、全部 Cd 相关 94 passed；真实库建表成功、探针导入 3 行（回退计数 bd020_90=1/initial_cd=1）、计算 3 行、net 分布 0/66.67/33.33、导出 3 行、探针数据已清理
+- 备注：22/25 tasks 完成；A（bd020_90 权威来源）/ B（net 平衡阈值 ±5）/ C（end_cd 阈值细分）三条人工确认项待拍板
+- 归档目录：`openspec/changes/archive/2026-11-07-add-cd-flux-accounting/`
 
 **阶段 6｜add-cd-removal-calculation｜规划中**
 - 交付：籽粒移除、秸秆移除、地下渗流、地表径流，触发通量重算
