@@ -19,6 +19,7 @@ from framework.api.routes.literature_evidence import literature_evidence_bp, con
 from framework.api.routes.acidification_rf import acidification_rf_bp
 from framework.api.routes.acidification_measurements import acidification_measurements_bp
 from framework.api.routes.heavy_metal_cd import heavy_metal_cd_bp
+from framework.api.routes.cd_flux import cd_flux_bp
 # from framework.api.routes.tiles import tiles_bp
 # from framework.api.routes.gd_tiles import gd_tiles_bp
 from framework.agents.workflows.comprehensive.checkpointing import (
@@ -328,6 +329,10 @@ def create_app(config_name: str = 'default') -> Flask:
     app.register_blueprint(
         heavy_metal_cd_bp,
         url_prefix='/api/v1/heavy-metal-cd',
+    )
+    app.register_blueprint(
+        cd_flux_bp,
+        url_prefix='/api/v1/cd-flux',
     )
     # 本地瓦片端点（无 url_prefix，路由已含 /tiles/；生产由 Nginx 直接托管）
     # app.register_blueprint(tiles_bp)

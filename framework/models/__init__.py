@@ -37,6 +37,7 @@ from .cd_prediction import (
     CdEffectivePredictionResult,
     CdPortedParcelTownship,
 )
+from .cd_flux import CdFluxInput, CdFluxOutput
 from .thematic_model import (
     ThematicModelRegistry,
     ModelExecutionLog,
