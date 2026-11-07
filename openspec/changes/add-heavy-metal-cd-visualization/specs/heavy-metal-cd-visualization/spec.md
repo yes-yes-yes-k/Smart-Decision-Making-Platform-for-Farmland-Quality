@@ -56,6 +56,12 @@
 - **THEN** 系统 MUST 用 `griddata` 填充内部 NaN
 - **AND** 系统 MUST 在填充后把边界外像元重新置为 NaN
 
+#### Scenario: 有效点不足时降级
+
+- **WHEN** 调用方开启 `linear` / `cubic` 插值但有效像元不足以构造三角剖分
+- **THEN** 系统 MUST 降级为 `nearest` 插值而不是让请求失败
+- **AND** 产物元信息 MUST 在 `interpolation_effective` 中标出实际使用的方法
+
 ### Requirement: 分级地图与图例
 
 系统 SHALL 输出分级地图，作物 Cd MUST 使用三档阈值 `0.0–0.2 / 0.2–0.3 / ≥0.3 mg/kg` 与对应颜色，有效态 Cd MUST 使用有效像元分位数 6 级。系统 MUST 在产物元信息中给出图例（`legend.mode` 为 `threshold` 或 `quantile`，含各档边界与颜色），且 MUST NOT 把展示分级表述为统计分箱或安全判定。

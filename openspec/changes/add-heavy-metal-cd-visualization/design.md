@@ -47,6 +47,8 @@
 
 `RASTER_CONFIG.enable_interpolation` 原系统默认 `False`，`engine.create_visualization` 调用时也传 `False`、`interpolation_method='nearest'`。本阶段照抄：默认不插值（保留 NaN 为空白），请求可显式开启 `nearest|linear|cubic`（`scipy.griddata`），插值后**重新回扣边界掩膜**（原系统的关键修正，避免边界外被填充）。
 
+实现时实测到一处需要加固：`linear` / `cubic` 依赖 Qhull 三角剖分，有效像元少于 4 个（小区域、稀疏点位）时会抛 `QhullError`。原系统没有这层保护，本实现降级为 `nearest` 并在 `meta.interpolation_effective` 标注实际方法——插值不足不该让整张图失败。
+
 **取舍**：不默认开启是因为插值会凭空造出采样点之间不存在的数值，与「数值必须可追溯」的项目口径冲突；开启时必须在响应里标注 `interpolated: true` 与方法名。
 
 ### 4. 分级：作物三档照抄，有效态用分位数 6 级（显示分级）
