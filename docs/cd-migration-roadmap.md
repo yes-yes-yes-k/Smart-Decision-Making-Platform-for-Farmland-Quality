@@ -38,10 +38,13 @@
 - 文档：`docs/cd-ported-dataset.md`、`docs/cd-data-requirements.md`（给业务方的需求清单）
 - 归档目录：`openspec/changes/archive/2026-10-31-import-cd-ported-dataset/`
 
-**阶段 4｜add-heavy-metal-cd-visualization｜规划中**
-- 交付：Cd 分布图、直方图、行政区描边、空间插值、栅格输出、图片与数据文件导出
-- 前置：阶段 3
-- 依赖：需补 `rasterio` / `geopandas` / `seaborn`
+**阶段 4｜add-heavy-metal-cd-visualization｜已归档（2026-11-07）**
+- 交付：结果表 + 地块质心栅格化、可选 griddata 插值（nearest/linear/cubic，点数不足降级 nearest）、分级地图（作物三档 / 有效态分位数 6 级）、行政区描边（多要素，凸包兜底）、直方图、GeoTIFF 可选导出、产物目录 + meta.json + 3 个 HTTP 端点
+- 前置：阶段 3（已归档）
+- 实测：全部 Cd 测试 83 passed；真实库 40100 行 → 栅格 344×259、有效像元 17082、值域 0.0048–0.438 mg/kg；map.jpg / histogram.jpg / raster.tif 均生成
+- 资产：原系统 `template.tif` 迁入 `data/model_artifacts/heavy_metal_cd/visualization/`（manifest 记录 SHA-256）
+- 备注：归档时 21/21 tasks 中 18 条已勾选，剩 A（模板资产授权）/ B（有效态分级口径确认）/ C（产物保留策略）三条人工确认项
+- 归档目录：`openspec/changes/archive/2026-11-07-add-heavy-metal-cd-visualization/`
 
 **阶段 5｜add-cd-flux-accounting｜规划中**
 - 交付：输入/输出/净 Cd 通量计算、统计与空间结果、结果持久化、CSV 导出
