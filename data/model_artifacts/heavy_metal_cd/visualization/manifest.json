@@ -1,0 +1,35 @@
+{
+  "template": {
+    "file": "template.tif",
+    "source_path": "D:/work/AcidMap/app/models/cd_prediction/common/template.tif",
+    "source_note": "原系统 AcidMap（app/models/cd_prediction/common/template.tif）Cd 预测可视化模板栅格",
+    "bytes": 179391,
+    "sha256": "ed7dfd490b68f28c780be924dc9292b41438fd3ed0e90ec8a3a0447ee28e9884",
+    "verified_at": "2026-11-07T18:08:32+08:00",
+    "raster": {
+      "crs": "GEOGCS[\"WGS 84\",DATUM[\"World Geodetic System 1984\",SPHEROID[\"WGS 84\",6378137,298.257223563]],PRIMEM[\"Greenwich\",0],UNIT[\"degree\",0.0174532925199433,AUTHORITY[\"EPSG\",\"9122\"]],AXIS[\"Latitude\",NORTH],AXIS[\"Longitude\",EAST]]",
+      "width": 227,
+      "height": 197,
+      "bounds": [
+        112.85255533856534,
+        23.88545735850139,
+        114.74422200523308,
+        25.52712402516899
+      ],
+      "transform": [
+        0.00833333333333808,
+        0.0,
+        112.85255533856534,
+        0.0,
+        -0.008333333333338078,
+        25.52712402516899
+      ],
+      "nodata": -999.0,
+      "dtype": "float32"
+    },
+    "usage": "Cd 可视化栅格化网格基准；resolution_factor 相对该网格放大",
+    "known_unknowns": [
+      "模板覆盖范围仅至 114.74E/25.53N（乐昌一带），超出范围的点会被丢弃"
+    ]
+  }
+}
