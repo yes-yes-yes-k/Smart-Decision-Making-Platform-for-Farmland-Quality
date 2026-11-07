@@ -75,7 +75,7 @@ def test_report_rejects_unbound_number():
 def test_report_renders_exact_fact():
     payload=report_payload(prose_template="综合指数为 [[fact:model-2.composite_index]]。",fact_refs=("model-2.composite_index",))
     text=ReportPolicyValidator().validate_and_render(payload,task_results={"quality":successful_model2_result()},evidence=valid_evidence())
-    assert "0.734" in text
+    assert "0.73" in text
 
 
 def test_report_rounds_customer_facing_values_without_changing_payload():
@@ -87,7 +87,7 @@ def test_report_rounds_customer_facing_values_without_changing_payload():
     text=ReportPolicyValidator().validate_and_render(
         payload,task_results={"quality":result},evidence=valid_evidence(),
     )
-    assert "综合指数为 0.834" in text
+    assert "综合指数为 0.83" in text
     assert result.payload["composite_index"] == 0.8339658156201359
 
 
@@ -169,9 +169,9 @@ def test_reporter_uses_user_facing_deterministic_report_when_llm_is_unavailable(
     assert "有机质" in text
     assert "有效磷" in text
     assert "速效钾" in text
-    assert "土壤调理剂（亿土康）建议施用量为 120.5 公斤/公顷" in text
-    assert "木本泥炭建议施用量为 240 公斤/公顷" in text
-    assert "有机质培肥建议施用量为 8.2 吨/公顷" in text
+    assert "土壤调理剂（亿土康）建议施用量为 120.50 公斤/公顷" in text
+    assert "木本泥炭建议施用量为 240.00 公斤/公顷" in text
+    assert "有机质培肥建议施用量为 8.20 吨/公顷" in text
     assert "YTK" not in text
     assert "MBNT" not in text
     assert "model-" not in text

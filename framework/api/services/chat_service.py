@@ -16,7 +16,11 @@ from framework.analysis_context.contracts import AnalysisContext
 from framework.analysis_context.errors import AnalysisObjectInvalid
 from framework.analysis_context.provenance import ResultProvenanceBuilder
 from framework.analysis_context.service import AnalysisContextService
-from framework.domain.public_field_labels import translate_public_text
+from framework.domain.public_field_labels import (
+    append_term_explanations,
+    translate_public_text,
+)
+from framework.domain.public_numbers import round_long_decimals
 from framework.models import AcidificationMeasurement, Conversation, Message, ParcelInfo, db
 from framework.observability.analysis_context_metrics import (
     EVENT_LEGACY_FIELD_USED,
@@ -289,6 +293,8 @@ class ChatRequestService:
                 if answer and not answer.startswith(title):
                     normalized["answer"] = f"{title}\n\n{answer}"
         normalized["answer"] = translate_public_text(normalized.get("answer", ""))
+        normalized["answer"] = round_long_decimals(normalized["answer"])
+        normalized["answer"] = append_term_explanations(normalized["answer"])
         if isinstance(normalized.get("report_draft"), str):
             normalized["report_draft"] = translate_public_text(normalized["report_draft"])
         recommendations = normalized.get("recommendations")

@@ -21,6 +21,13 @@ class ObjectType(str, Enum):
     PARCEL = "parcel"
 
 
+REGION_OBJECT_TYPES = frozenset({
+    ObjectType.PROVINCE,
+    ObjectType.CITY,
+    ObjectType.COUNTY,
+})
+
+
 class CalculationMode(str, Enum):
     SPATIAL = "spatial"
     SCENARIO = "scenario"
@@ -72,6 +79,23 @@ class ParentPathItem:
             display_name=item["display_name"],
             area_code=item["area_code"],
         )
+
+
+def region_path_label(parent_path: Sequence[ParentPathItem]) -> str:
+    """Concatenate administrative parent names in their original chain order."""
+    return "".join(
+        item.display_name
+        for item in parent_path
+        if item.type in REGION_OBJECT_TYPES and item.display_name
+    )
+
+
+def public_object_name(display_name: str, parent_path: Sequence[ParentPathItem]) -> str:
+    """Prefix an object name with its administrative path unless already present."""
+    region = region_path_label(parent_path)
+    if not region or region in display_name:
+        return display_name
+    return f"{region} {display_name}"
 
 
 @dataclass(frozen=True)

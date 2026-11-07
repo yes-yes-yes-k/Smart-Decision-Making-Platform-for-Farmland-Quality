@@ -6,7 +6,7 @@ from typing import Any, Mapping
 
 from framework.agents.capabilities import ProfessionalCapability
 
-from .contracts import AnalysisContext, CalculationMode
+from .contracts import AnalysisContext, CalculationMode, public_object_name
 
 
 SAFE_INPUT_KEYS = frozenset({
@@ -50,6 +50,10 @@ class ResultProvenanceBuilder:
             "object_title": (
                 "情景试算，非具体空间对象结果"
                 if scenario
-                else f"分析对象：{analysis_context.object.display_name}"
+                else "分析对象："
+                + public_object_name(
+                    analysis_context.object.display_name,
+                    analysis_context.object.parent_path,
+                )
             ),
         }

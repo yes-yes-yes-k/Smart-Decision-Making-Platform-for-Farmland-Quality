@@ -73,7 +73,7 @@ def test_client_display_fields_are_never_trusted(app):
                 },
             },
         }, user_id=7)
-        assert result.object.display_name == "地块 P001"
+        assert result.object.display_name == "乐昌市 地块 P001"
         assert result.object.area_code == "440281"
         assert result.object.source == "parcel_info"
 

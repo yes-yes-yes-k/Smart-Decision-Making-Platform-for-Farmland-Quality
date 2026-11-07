@@ -51,6 +51,17 @@ PUBLIC_FIELD_LABELS: dict[str, str] = {
 }
 
 
+# 面向非技术业务用户的标准术语解释。只有在最终答复文本中实际出现该术语时才
+# 追加，且同一解释不会重复追加，保证答复出口幂等。
+PUBLIC_TERM_EXPLANATIONS: dict[str, str] = {
+    "综合指数": "耕地质量综合指数，是 0~1 之间的综合得分，越接近 1 表示耕地质量越好",
+    "耕地质量等级": "按综合指数划分的 1~10 等，数字越小表示质量越好",
+    "有机肥建议施用量": "模型估算的每亩有机肥用量（公斤/亩），实际用量需结合田间试验核定",
+    "土壤有机碳预测值": "模型预测的土壤有机碳含量（g/kg），是反映土壤有机质水平的核心指标",
+    "障碍因素": "限制耕地质量提升的土壤或管理因素，分为主要和次要障碍因素",
+}
+
+
 _SOURCE_WORD_CHAR = re.compile(r"[A-Za-z0-9_-]")
 _TERMS_BY_LENGTH = tuple(
     sorted(PUBLIC_FIELD_LABELS, key=lambda item: (-len(item), item.casefold()))
@@ -137,9 +148,41 @@ def translate_public_text(value: Any) -> str:
     return translator.feed(value) + translator.flush()
 
 
+_TERM_SECTION = "\n\n术语说明：\n"
+
+
+def append_term_explanations(value: Any) -> str:
+    """在文本末尾追加实际出现术语的标准解释。
+
+    空文本原样返回；只追加正文中已出现的术语，且若解释原文已存在于文本中则
+    跳过。已有术语说明区时只补缺失条目，因此重复调用保持幂等。
+    """
+    text = "" if value is None else str(value)
+    if not text.strip():
+        return text
+    body, marker, existing = text.partition(_TERM_SECTION)
+    explained = {
+        line.strip()[2:].split("：", 1)[0]
+        for line in existing.splitlines()
+        if line.strip().startswith("- ") and "：" in line.strip()
+    } if marker else set()
+    missing = [
+        f"- {term}：{explanation}"
+        for term, explanation in PUBLIC_TERM_EXPLANATIONS.items()
+        if term in body and term not in explained and explanation not in text
+    ]
+    if not missing:
+        return text
+    if marker:
+        return text.rstrip() + "\n" + "\n".join(missing)
+    return text.rstrip() + _TERM_SECTION + "\n".join(missing)
+
+
 __all__ = [
     "PUBLIC_FIELD_LABELS",
+    "PUBLIC_TERM_EXPLANATIONS",
     "PublicTextStreamTranslator",
+    "append_term_explanations",
     "public_field_label",
     "translate_public_text",
 ]

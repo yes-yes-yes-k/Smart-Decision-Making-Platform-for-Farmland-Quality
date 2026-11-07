@@ -18,6 +18,7 @@ from framework.domain.data.parcel_data_accessor import (
     ParcelDataAccessor,
     ParcelDataSnapshot,
 )
+from framework.domain.public_numbers import format_public_number
 from framework.domain.statistics.indicator_definitions import (
     INDICATOR_DEFINITIONS,
 )
@@ -167,7 +168,7 @@ _FIELDS: tuple[ParcelField, ...] = (
         model_agent_id="model-2",
     ),
     ParcelField(
-        "composite_index", "composite_index", "耕地质量综合指数", "", 4,
+        "composite_index", "composite_index", "耕地质量综合指数", "", 2,
         ("耕地质量综合指数", "质量综合指数", "综合指数"),
         category="derived_model_result", source_kind="model",
         model_agent_id="model-2",
@@ -334,8 +335,7 @@ def _format_value(value: Any, decimals: int, key: str | None = None) -> str:
     if isinstance(value, bool):
         return "是" if value else "否"
     if isinstance(value, (int, float)):
-        rendered = f"{float(value):.{decimals}f}"
-        return rendered.rstrip("0").rstrip(".") if "." in rendered else rendered
+        return format_public_number(value, min(decimals, 2))
     return str(value)
 
 
@@ -389,9 +389,8 @@ def format_field_query_answer(field_query: dict[str, Any]) -> str:
         value = item.get("value")
         if value is None:
             if item.get("category") == "derived_model_result":
-                clause = f"{label}暂无可发布的已验证模型结果"
-            else:
-                clause = f"{label}暂无记录"
+                continue
+            clause = f"{label}暂无记录"
             metadata = _metadata_clauses(item, requested_metadata)
             clauses.append("，".join([clause, *metadata]))
             continue
@@ -406,6 +405,8 @@ def format_field_query_answer(field_query: dict[str, Any]) -> str:
         clause = f"{label}为 {rendered}{unit}{suffix}"
         metadata = _metadata_clauses(item, requested_metadata)
         clauses.append("，".join([clause, *metadata]))
+    if not clauses:
+        return ""
     return f"地块 {parcel_id}：" + "；".join(clauses) + "。"
 
 

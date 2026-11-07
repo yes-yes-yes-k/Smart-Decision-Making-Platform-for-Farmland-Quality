@@ -147,6 +147,10 @@ class MultiAgentOrchestrator:
                 self._app = self._graph.compile()
 
             state, route = prepare_routed_state(request, conversation_history)
+            if route == "rag_chat":
+                yield {"type": "progress", "stage": "searching"}
+            elif route not in {"needs_input", "boundary_pending"}:
+                yield {"type": "progress", "stage": "analyzing"}
             question = state["request"].get("question", "")
             question_type = state.get("question_type", 0)
 
@@ -182,6 +186,7 @@ class MultiAgentOrchestrator:
                     conversation_history=conversation_history,
                     user_id=state.get("user_id"),
                     conversation_id=state.get("conversation_id"),
+                    trace_id=state.get("trace_id"),
                 ):
                     if item["type"] == "token":
                         full_answer += item["content"]
@@ -197,7 +202,9 @@ class MultiAgentOrchestrator:
                 full_answer = state["model_results"]["data"]["summary"]
             else:
                 # 模型路径：先执行模型（阻塞），再流式生成
+                yield {"type": "progress", "stage": "analyzing"}
                 state = execute_models(state)
+                yield {"type": "progress", "stage": "searching"}
                 state = retrieve_professional_evidence(state)
                 model_results = state.get("model_results", {})
                 rag_response = state.get("rag_response", {})
@@ -213,6 +220,7 @@ class MultiAgentOrchestrator:
                     sources = rag_response.get("sources", [])
 
                 if question:
+                    yield {"type": "progress", "stage": "generating"}
                     # function calling 已生成答复时直接使用，避免重复调 LLM
                     fc_summary = agent_data.get("answer", "") if isinstance(agent_data, dict) else ""
                     routing_method = agent_data.get("routing_method", "") if isinstance(agent_data, dict) else ""
@@ -243,8 +251,11 @@ class MultiAgentOrchestrator:
                         prompt = (
                             "你是耕地质量与土壤改良领域的助手。请基于专业智能体结果，"
                             "整合成一份准确、简洁的中文答复。不要编造未提供的数据，"
-                            "保留明确的数值和单位。回复中必须使用中文标准字段名称，"
+                            "保留明确的数值和单位；没有配置单位的指标只展示数值，不提示单位缺失，也不得臆造单位。回复中必须使用中文标准字段名称，"
                             "不得向用户展示 GGNL、DXBW、SXJ 等模型内部字段缩写。\n"
+                            "若上下文提供 labels/units，必须使用其中的标准名称和单位；不得把 dose_prediction 改写成“有机质提升用量预测值”等自造名称；不得臆造单位。\n"
+                            "所有数值保留两位小数；不要在正文内自行解释术语，系统会统一附加术语说明。\n"
+                            "不得输出 potential_increase 等未在结果中提供的字段。\n"
                             "知识图谱证据只能解释专业模型结果，不得覆盖模型实际计算值；"
                             "若证据不足，应省略扩展解释。指标分类角色与指标获取方式是独立维度。\n"
                             "如有地块字段直查结果，该实际值已经由系统展示；不得否定或声称缺失，"
@@ -253,8 +264,8 @@ class MultiAgentOrchestrator:
                             "1. 当用户只询问当前土壤状态和酸化预测结果含义时，只输出两节：\n"
                             "“一、当前土壤状态”：只列本次提供的地块实测指标（名称、数值、单位、等级），"
                             "不得写入预测值或风险等级；\n"
-                            "“二、预测结果含义”：必须先给出预测值及风险等级"
-                            "（如“酸化预测值为 0.2299（轻度酸化风险）”），再解释该值代表的风险程度和取值范围；"
+                            "“二、预测结果含义”：给出模型返回的预测值，并按模型输出字段定义解释其含义；"
+                            "不得自行添加未定义的风险等级或取值范围。若请求提供了目标pH，必须准确呈现该目标值；"
                             "不得输出治理建议、用量方案、监测要求、参考文献或数据来源说明，"
                             "也不要补充铝毒害、氮素失衡等未被问到的衍生风险。\n"
                             "2. 只有当用户明确询问治理、改良、用量或措施时，才输出对应的建议。\n"
@@ -265,9 +276,17 @@ class MultiAgentOrchestrator:
                         )
                         from framework.llm.service import llm_service
                         try:
+                            import time
+                            from framework.observability.chat_timing import record_chat_stage
+                            llm_started = time.perf_counter()
+                            first_chunk = True
                             for chunk in llm_service.generate_stream(prompt, messages=conversation_history):
+                                if first_chunk:
+                                    record_chat_stage(state.get("trace_id") or "unlinked", "llm.first_chunk", llm_started, route="professional")
+                                    first_chunk = False
                                 full_answer += chunk
                                 yield {"type": "token", "content": chunk}
+                            record_chat_stage(state.get("trace_id") or "unlinked", "llm.complete", llm_started, route="professional")
                         except Exception:
                             # LLM 失败时直接根据同一份规范模型结果生成答复，
                             # 不重新执行任何专业 Agent。

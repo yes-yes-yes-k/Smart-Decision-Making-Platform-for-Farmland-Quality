@@ -10,6 +10,7 @@ from framework.domain.public_field_labels import (
     public_field_label,
     translate_public_text,
 )
+from framework.domain.public_numbers import format_public_number
 
 FACT_TOKEN=re.compile(r"\[\[fact:([a-z0-9_.-]+)\]\]")
 RAW_NUMBER=re.compile(r"(?<![a-zA-Z\[])\d+(?:\.\d+)?")
@@ -61,14 +62,7 @@ def flatten_scalar_payload(value:Any,*,prefix:str=""):
     return out
 def format_fact(value,unit=None,*,fact_key=""):
     if isinstance(value,float):
-        if fact_key.endswith("composite_index"):
-            rendered=f"{value:.3f}".rstrip("0").rstrip(".")
-        elif any(term in fact_key for term in (
-            "dosage", ".dose", ".ytk", ".mbnt", ".YTK", ".MBNT",
-        )):
-            rendered=f"{value:.1f}".rstrip("0").rstrip(".")
-        else:
-            rendered=f"{value:.3f}".rstrip("0").rstrip(".")
+        rendered=format_public_number(value)
     else:
         rendered=str(value)
     return f"{rendered} {unit}" if unit else rendered

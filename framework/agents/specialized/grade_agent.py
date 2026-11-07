@@ -5,6 +5,7 @@ import logging
 from ..base import BaseAgent
 from ..mock_data import MockDataLoader
 from ...domain.data.parcel_data_accessor import ParcelDataAccessor
+from ...domain.public_numbers import format_public_number
 
 logger = logging.getLogger(__name__)
 
@@ -207,13 +208,14 @@ class FarmlandGradeAgent(BaseAgent):
         if real_result:
             grade = real_result.get("quality_grade", "未知")
             composite_index = real_result.get("composite_index", 0)
+            composite_index_text = format_public_number(composite_index)
             indicators = real_result.get("indicators", [])
             obstacle_degree = real_result.get("obstacle_degree", [])
 
             if "质量等级" in question or "等级评价" in question:
                 answer = (
                     f"耕地质量等级评价结果：质量等级为{grade}级，"
-                    f"综合指数：{composite_index}。"
+                    f"综合指数：{composite_index_text}。"
                     f"共{len(indicators)}个指标参与评价。"
                 )
                 evidence = [
@@ -234,7 +236,7 @@ class FarmlandGradeAgent(BaseAgent):
                 confidence = 0.88
             elif "综合指数" in question:
                 answer = (
-                    f"综合指数评价结果：{composite_index}，"
+                    f"综合指数评价结果：{composite_index_text}，"
                     f"对应质量等级为{grade}级。"
                 )
                 evidence = [
@@ -245,7 +247,7 @@ class FarmlandGradeAgent(BaseAgent):
             else:
                 answer = (
                     f"耕地质量等级评价结果：质量等级为{grade}级，"
-                    f"综合指数：{composite_index}。"
+                    f"综合指数：{composite_index_text}。"
                 )
                 evidence = [
                     {"metric": "质量等级", "value": grade},

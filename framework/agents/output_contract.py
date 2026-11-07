@@ -11,6 +11,7 @@ from dataclasses import dataclass
 from typing import Any, Dict, Iterable, List, Mapping, Optional, Tuple
 
 from framework.domain.public_field_labels import translate_public_text
+from framework.domain.public_numbers import format_public_number, round_public_floats
 
 
 SCHEMA_VERSION = "2.0"
@@ -22,6 +23,25 @@ IMPUTED_INPUT = "IMPUTED_INPUT"
 #: Model-4 在回填/默认输入下不输出用量结论。
 MODEL4_QUANTITATIVE_UNAVAILABLE = "MODEL4_QUANTITATIVE_UNAVAILABLE"
 MODEL5_REAL_SOURCES = frozenset({"shaoguan_rf", "global_etr", "rf_model"})
+
+#: 面向最终 LLM 的标准化字段展示：字段 → (标准中文名称, 单位)。
+#: 空字符串表示无量纲指标，提示词要求只展示数值、不提示单位缺失。
+LLM_FIELD_PRESENTATION: Dict[str, Tuple[str, str]] = {
+    "quality_grade": ("耕地质量等级", "级"),
+    "composite_index": ("耕地质量综合指数", ""),
+    "score": ("综合得分", ""),
+    "obstacle_type": ("障碍类型", ""),
+    "primary_factors": ("主要障碍因素", ""),
+    "secondary_factors": ("次要障碍因素", ""),
+    "acidification_level": ("酸化程度", ""),
+    "soil_conditioner_dosage": ("土壤调理剂（亿土康）建议施用量", "公斤/公顷"),
+    "woody_peat_dosage": ("木本泥炭建议施用量", "公斤/公顷"),
+    "soc_prediction": ("土壤有机碳预测值", "g/kg"),
+    "dose_prediction": ("有机肥建议施用量", "公斤/亩"),
+    "soc_confidence": ("有机碳预测置信度", ""),
+    "dose_confidence": ("施用量预测置信度", ""),
+    "region": ("区域", ""),
+}
 
 
 @dataclass(frozen=True)
@@ -436,6 +456,7 @@ def chat_compact(model_result: Mapping[str, Any]) -> Dict[str, Any]:
                 key: value for key, value in compact_result["modules"].items()
                 if key in {"score", "grade", "risk_level", "退化风险等级", "稳定性得分"}
             }
+        compact_result = round_public_floats(compact_result)
     return sanitize_json({
         "model_id": model_result.get("model_id"),
         "status": model_result.get("status"),
@@ -444,6 +465,21 @@ def chat_compact(model_result: Mapping[str, Any]) -> Dict[str, Any]:
         "meta": model_result.get("meta"),
         "issues": model_result.get("issues", []),
     })
+
+
+def llm_field_presentation(result: Mapping[str, Any]) -> Dict[str, Dict[str, str]]:
+    """返回结果中实际存在字段的标准名称与单位，供 LLM 上下文和工具复用。"""
+    labels: Dict[str, str] = {}
+    units: Dict[str, str] = {}
+    if isinstance(result, Mapping):
+        for key in result:
+            presentation = LLM_FIELD_PRESENTATION.get(str(key))
+            if presentation is None:
+                continue
+            label, unit = presentation
+            labels[str(key)] = label
+            units[str(key)] = unit
+    return {"labels": labels, "units": units}
 
 
 def llm_context(model_result: Mapping[str, Any]) -> Dict[str, Any]:
@@ -458,12 +494,16 @@ def llm_context(model_result: Mapping[str, Any]) -> Dict[str, Any]:
         ):
             if key in result:
                 key_result[key] = result[key]
-    return sanitize_json({
+    key_result = round_public_floats(key_result)
+    context: Dict[str, Any] = {
         "model_id": model_result.get("model_id"),
         "status": model_result.get("status"),
         "result": key_result or None,
         "issues": model_result.get("issues", []),
-    })
+    }
+    if key_result:
+        context.update(llm_field_presentation(key_result))
+    return sanitize_json(context)
 
 
 def audit_projection(model_result: Mapping[str, Any], inputs: Optional[Mapping[str, Any]] = None, diagnostics: Optional[Any] = None) -> Dict[str, Any]:
@@ -541,11 +581,7 @@ def deterministic_answer(model_result: Mapping[str, Any]) -> str:
         if result.get(key) is not None:
             value = result[key]
             if isinstance(value, float):
-                precision = 3 if key in {
-                    "composite_index", "score", "soc_prediction",
-                    "soc_confidence", "dose_confidence",
-                } else 1
-                value = f"{value:.{precision}f}".rstrip("0").rstrip(".")
+                value = format_public_number(value)
             parts.append(f"{label}：{value}")
     if result.get("primary_factors"):
         parts.append(f"主要障碍因素：{result['primary_factors']}")
@@ -555,6 +591,7 @@ def deterministic_answer(model_result: Mapping[str, Any]) -> str:
 
 __all__ = [
     "SCHEMA_VERSION", "LEGACY_SCHEMA_VERSION", "VALID_STATUSES", "Issue", "sanitize_json", "validate_result",
+    "LLM_FIELD_PRESENTATION", "llm_field_presentation",
     "normalize_execution", "public_full", "chat_compact", "llm_context", "audit_projection",
     "legacy_projection", "deterministic_answer",
 ]

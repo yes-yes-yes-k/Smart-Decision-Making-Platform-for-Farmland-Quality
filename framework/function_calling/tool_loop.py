@@ -14,6 +14,7 @@ from langchain_core.messages import AIMessage, HumanMessage, SystemMessage, Tool
 from .executor import tool_executor
 from .registry import tool_registry
 from .specialized_tools import TOOL_NAME_TO_AGENT_ID
+from framework.agents.output_contract import llm_field_presentation
 from framework.analysis_context.errors import AnalysisContextConflict
 
 logger = logging.getLogger(__name__)
@@ -185,9 +186,19 @@ class ToolCallingLoop:
                         result.get("error", "unknown"),
                     )
 
-                # 把工具结果作为 ToolMessage 反馈给 LLM
+                # 把工具结果作为 ToolMessage 反馈给 LLM。结构化结果保持原有
+                # 扁平字段，仅在顶层附加 field_labels/field_units 元数据；该副本
+                # 只用于提示词，不回写工具结果、API 响应或数据库。
+                tool_payload = result.get("result", result.get("error", ""))
+                if isinstance(tool_payload, dict):
+                    presentation = llm_field_presentation(tool_payload)
+                    tool_payload = {
+                        **tool_payload,
+                        "field_labels": presentation["labels"],
+                        "field_units": presentation["units"],
+                    }
                 tool_msg_content = json.dumps(
-                    result.get("result", result.get("error", "")),
+                    tool_payload,
                     ensure_ascii=False,
                     default=str,
                 )
