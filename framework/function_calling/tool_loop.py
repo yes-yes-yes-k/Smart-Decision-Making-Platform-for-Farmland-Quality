@@ -14,7 +14,7 @@ from langchain_core.messages import AIMessage, HumanMessage, SystemMessage, Tool
 from .executor import tool_executor
 from .registry import tool_registry
 from .specialized_tools import TOOL_NAME_TO_AGENT_ID
-from framework.agents.output_contract import llm_field_presentation
+from framework.agents.output_contract import llm_context
 from framework.analysis_context.errors import AnalysisContextConflict
 
 logger = logging.getLogger(__name__)
@@ -34,6 +34,8 @@ _SYSTEM_PROMPT_TEMPLATE = """你是耕地质量与土壤改良领域的助手。
 - 空间对象参数由后端提供，不得自行选择、猜测或覆盖。
 - 调用完工具后，基于工具返回的计算结果，给出准确、简洁、可执行的中文答复。
 - 不要编造未提供的数据，保留明确的数值、单位和建议。
+- 【只答所问】严格围绕用户问题作答，只回答用户实际询问的内容；用户未问到的结论、建议、用量方案、补充参数请求、后续测算提议、其它模型的推荐、衍生风险或扩展解释，一律不得输出。
+- 用户未询问治理/改良/用量/措施时，不得输出调理剂/木本泥炭用量、补充参数或重算提议，也不得输出模型内部提示码（如 MODEL4_QUANTITATIVE_UNAVAILABLE 等）。
 
 当前上下文：
 {context}
@@ -186,17 +188,26 @@ class ToolCallingLoop:
                         result.get("error", "unknown"),
                     )
 
-                # 把工具结果作为 ToolMessage 反馈给 LLM。结构化结果保持原有
-                # 扁平字段，仅在顶层附加 field_labels/field_units 元数据；该副本
-                # 只用于提示词，不回写工具结果、API 响应或数据库。
-                tool_payload = result.get("result", result.get("error", ""))
-                if isinstance(tool_payload, dict):
-                    presentation = llm_field_presentation(tool_payload)
-                    tool_payload = {
-                        **tool_payload,
-                        "field_labels": presentation["labels"],
-                        "field_units": presentation["units"],
-                    }
+                # 把工具结果作为 ToolMessage 反馈给 LLM。使用 llm_context 紧凑投影，
+                # 只保留有展示名的业务字段与标准中文名/单位，避免把
+                # background_acid/acid_deposition_input 等中间产酸量分解暴露给 LLM
+                # （酸化 spec 要求不暴露中间变量）；该副本只用于提示词，不回写
+                # 工具结果、API 响应或数据库。
+                raw_payload = result.get("result", result.get("error", ""))
+                tool_payload = raw_payload
+                if result.get("success") and isinstance(raw_payload, dict):
+                    try:
+                        tool_payload = llm_context(raw_payload)
+                    except Exception:
+                        tool_payload = raw_payload
+                if isinstance(tool_payload, dict) and isinstance(tool_payload.get("issues"), list):
+                    # 内部问题码仅用于系统日志，不回灌 LLM；只保留可读说明与级别，
+                    # 避免 MODEL4_QUANTITATIVE_UNAVAILABLE 等内部标识泄露并诱发冗余补充说明。
+                    tool_payload["issues"] = [
+                        {"severity": item.get("severity", "warning"), "message": item.get("message", "")}
+                        for item in tool_payload["issues"]
+                        if item.get("message")
+                    ]
                 tool_msg_content = json.dumps(
                     tool_payload,
                     ensure_ascii=False,

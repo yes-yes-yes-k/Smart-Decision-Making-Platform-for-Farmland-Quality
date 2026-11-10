@@ -55,7 +55,7 @@ def test_ph_query_reads_authoritative_value_and_classification():
     assert field["classification_range"] == "<4.5"
     assert field["category"] == "measured_indicator"
     assert field["preconditions_met"] is True
-    assert result["answer"] == "地块 373：土壤酸碱度（pH）为 4.31（极强酸性）。"
+    assert result["answer"] == "地块 373：土壤酸碱度（pH）为 4.31。"
 
 
 def test_soil_depth_and_plow_depth_are_not_confused():
@@ -72,9 +72,9 @@ def test_soil_depth_and_plow_depth_are_not_confused():
     )
 
     assert soil["fields"][0]["source_field"] == "effective_soil_depth"
-    assert soil["answer"] == "地块 373：有效土层厚度为 82.50cm（中）。"
+    assert soil["answer"] == "地块 373：有效土层厚度为 82.50cm。"
     assert plow["fields"][0]["source_field"] == "plow_layer_thickness"
-    assert plow["answer"] == "地块 373：耕层厚度为 16.00cm（中）。"
+    assert plow["answer"] == "地块 373：耕层厚度为 16.00cm。"
 
 
 def test_supported_field_without_value_is_reported_as_missing():
@@ -275,7 +275,7 @@ def test_indicator_provenance_metadata_is_scoped_to_named_indicator():
 
     assert result["preconditions"]["indicator_provenance"]["met"] is True
     assert result["answer"] == (
-        "地块 373：土壤酸碱度（pH）为 5.29（强酸性），测量年份为2024年，"
+        "地块 373：土壤酸碱度（pH）为 5.29，测量年份为2024年，"
         "数据来源为模型1地块数据，是否插补为否，质量标记为来源未核验。"
     )
 
@@ -342,11 +342,11 @@ def test_aggregate_keeps_field_lookup_when_classifier_returns_rag_type():
     result = aggregate_results(state)["model_results"]
 
     assert result["field_query"] == field_query
-    assert result["answer"] == "地块 373：耕层厚度为 20cm（高）。"
+    assert result["answer"] == "地块 373：耕层厚度为 20cm。"
 
 
 def test_field_answer_is_prepended_once():
-    field_query = {"answer": "地块 373：有效土层厚度为 82.5cm（中）。"}
+    field_query = {"answer": "地块 373：有效土层厚度为 82.5cm。"}
     body = "建议结合坡度采取客土和水土保持措施。"
 
     combined = prepend_field_answer(field_query, body)
@@ -396,7 +396,7 @@ def test_execute_models_enriches_professional_result_with_raw_field(monkeypatch)
 
     assert result["field_query"]["fields"][0]["value"] == 4.31
     assert result["answer"].startswith(
-        "地块 373：土壤酸碱度（pH）为 4.31（极强酸性）。\n\n"
+        "地块 373：土壤酸碱度（pH）为 4.31。\n\n"
     )
     assert result["answer"].endswith("建议依据酸化改良模型结果治理。")
 

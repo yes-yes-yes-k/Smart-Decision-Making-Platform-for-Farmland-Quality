@@ -108,7 +108,7 @@ def source_chunk(document_id, index):
 @jwt_required()
 def reject_record(record_id):
     actor, service = context()
-    if actor.role not in {"admin", "domain_reviewer"}:
+    if actor.role != "admin":
         raise ResearchError("reviewer_required", 403)
     service.store.reject_record(record_id)
     return jsonify({"status": "rejected_or_already_absent", "record_id": record_id})

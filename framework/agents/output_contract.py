@@ -6,11 +6,12 @@
 from __future__ import annotations
 
 import math
+import re
 from copy import deepcopy
 from dataclasses import dataclass
 from typing import Any, Dict, Iterable, List, Mapping, Optional, Tuple
 
-from framework.domain.public_field_labels import translate_public_text
+from framework.domain.public_field_labels import public_field_label, translate_public_text
 from framework.domain.public_numbers import format_public_number, round_public_floats
 
 
@@ -33,6 +34,7 @@ LLM_FIELD_PRESENTATION: Dict[str, Tuple[str, str]] = {
     "obstacle_type": ("障碍类型", ""),
     "primary_factors": ("主要障碍因素", ""),
     "secondary_factors": ("次要障碍因素", ""),
+    "grade_boundary_note": ("等级临界说明", ""),
     "acidification_level": ("酸化程度", ""),
     "soil_conditioner_dosage": ("土壤调理剂（亿土康）建议施用量", "公斤/公顷"),
     "woody_peat_dosage": ("木本泥炭建议施用量", "公斤/公顷"),
@@ -40,8 +42,33 @@ LLM_FIELD_PRESENTATION: Dict[str, Tuple[str, str]] = {
     "dose_prediction": ("有机肥建议施用量", "公斤/亩"),
     "soc_confidence": ("有机碳预测置信度", ""),
     "dose_confidence": ("施用量预测置信度", ""),
+    "dose_warning": ("用量模型提示", ""),
+    "imputed_features": ("模型回填特征", ""),
+    "imputed_inputs": ("模型回填输入", ""),
     "region": ("区域", ""),
+    "land_type": ("土地利用类型", ""),
 }
+
+
+_NUMERIC_GRADE = re.compile(r"^\d+(?:\.\d+)?$")
+
+
+def _display_grade(value: Any) -> Any:
+    """等级是 1~10 的离散标签，用户可见时不得带小数。"""
+    if value is None or isinstance(value, bool):
+        return value
+    if isinstance(value, (int, float)):
+        return str(int(round(float(value))))
+    if isinstance(value, str) and _NUMERIC_GRADE.fullmatch(value.strip()):
+        return str(int(float(value.strip())))
+    return value
+
+
+def _round_dose_to_ten(value: Any) -> Any:
+    """模型估算的有机肥用量取整到最近的 10 公斤/亩，避免伪精度。"""
+    if isinstance(value, bool) or not isinstance(value, (int, float)):
+        return value
+    return float(int(round(float(value) / 10.0) * 10))
 
 
 @dataclass(frozen=True)
@@ -282,8 +309,17 @@ def _normalize_result(agent_key: str, raw: Any, payload: Mapping[str, Any]) -> O
         }
     if agent_key == "model-4":
         metadata = source.get("metadata") if isinstance(source.get("metadata"), Mapping) else {}
+        soil_ph = first_present("soil_ph", "SJD")
+        acidification_level = first_present("acidification_level", "level")
+        if acidification_level is None and soil_ph is not None:
+            from framework.domain.statistics.indicator_definitions import classify_indicator
+            bucket = classify_indicator("soil_ph", soil_ph)
+            if bucket is not None:
+                acidification_level = bucket.label
         return {
-            "acidification_level": first_present("acidification_level", "level"),
+            "soil_ph": soil_ph,
+            "acidification_level": acidification_level,
+            "land_type": first_present("land_type"),
             "background_acid": first_present("background_acid", "Aback"),
             "acid_deposition_input": first_present("acid_deposition_input", "Adep"),
             "crop_acid_output": first_present("crop_acid_output", "Acrop"),
@@ -433,6 +469,10 @@ def normalize_execution(agent: Any, payload: Optional[Mapping[str, Any]], execut
     extra_issues: List[Dict[str, Any]] = []
     envelope["result"] = sanitize_json(envelope["result"], extra_issues, "result")
     envelope["meta"] = sanitize_json(envelope["meta"], extra_issues, "meta")
+    # 等级临界提示是展示辅助信息，放在 meta 中，避免改变模型结果字段契约。
+    boundary_note = raw_result.get("grade_boundary_note") if isinstance(raw_result, Mapping) else None
+    if boundary_note:
+        envelope["meta"]["grade_boundary_note"] = boundary_note
     # 相同 issue 只保留一份。
     seen = set()
     envelope["issues"] = [item for item in envelope["issues"] + extra_issues if not ((item.get("code"), item.get("field")) in seen or seen.add((item.get("code"), item.get("field"))))]
@@ -488,12 +528,37 @@ def llm_context(model_result: Mapping[str, Any]) -> Dict[str, Any]:
     key_result: Dict[str, Any] = {}
     if isinstance(result, Mapping):
         for key in (
-            "region", "score", "grade", "quality_grade", "composite_index", "obstacle_type",
-            "primary_factors", "secondary_factors", "acidification_level", "soil_conditioner_dosage",
-            "woody_peat_dosage", "soc_prediction", "dose_prediction", "soc_confidence", "dose_confidence",
+            "region", "land_type", "score", "grade", "quality_grade", "composite_index",
+            "grade_boundary_note", "obstacle_type", "primary_factors", "secondary_factors",
+            "soil_ph", "acidification_level", "soil_conditioner_dosage", "woody_peat_dosage",
+            "soc_prediction", "dose_prediction", "soc_confidence", "dose_confidence",
+            "dose_warning", "imputed_features", "imputed_inputs", "modules",
         ):
             if key in result:
                 key_result[key] = result[key]
+        for key in ("primary_factors", "secondary_factors"):
+            factors = key_result.get(key)
+            if isinstance(factors, str):
+                key_result[key] = [
+                    public_field_label(item)
+                    for item in factors.replace("；", ";").split(";")
+                    if item and item != "无"
+                ]
+            elif isinstance(factors, (list, tuple)):
+                key_result[key] = [public_field_label(item) for item in factors]
+        if "quality_grade" in key_result:
+            key_result["quality_grade"] = _display_grade(key_result["quality_grade"])
+        if "grade" in key_result:
+            key_result["grade"] = _display_grade(key_result["grade"])
+        if "dose_prediction" in key_result:
+            key_result["dose_prediction"] = _round_dose_to_ten(key_result["dose_prediction"])
+    meta = model_result.get("meta")
+    if (
+        isinstance(result, Mapping)
+        and isinstance(meta, Mapping)
+        and meta.get("grade_boundary_note")
+    ):
+        key_result["grade_boundary_note"] = meta["grade_boundary_note"]
     key_result = round_public_floats(key_result)
     context: Dict[str, Any] = {
         "model_id": model_result.get("model_id"),
@@ -580,7 +645,9 @@ def deterministic_answer(model_result: Mapping[str, Any]) -> str:
     for key, label in labels.items():
         if result.get(key) is not None:
             value = result[key]
-            if isinstance(value, float):
+            if key in ("quality_grade", "grade"):
+                value = _display_grade(value)
+            elif isinstance(value, float):
                 value = format_public_number(value)
             parts.append(f"{label}：{value}")
     if result.get("primary_factors"):

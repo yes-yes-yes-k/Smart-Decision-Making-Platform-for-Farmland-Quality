@@ -135,9 +135,18 @@ class AcidificationRemediationAgent(BaseAgent):
                 except Exception:
                     parcel = None
                 land_type = (parcel.land_type if parcel else None) or land_type or "upland"
-                fertilizer_type = (parcel.fertilizer_type if parcel else None) or fertilizer_type or "compound"
-                pHtarget = parcel.target_ph if parcel else None
+                # 用户/调用方显式提供的参数优先，其次 DB 地块字段，最后默认值。
+                user_target_ph = task.get("target_ph")
+                user_fertilizer_type = task.get("fertilizer_type")
+                fertilizer_type = user_fertilizer_type or (parcel.fertilizer_type if parcel else None) or "compound"
+                pHtarget = user_target_ph if user_target_ph is not None else (parcel.target_ph if parcel else None)
                 imputed_inputs = _imputed_model4_inputs(parcel, mapped)
+                # 用户显式提供的上下文参数不算“回填/默认”，从判定结果中剔除，
+                # 避免因 DB 地块字段为空而把已提供的 target_ph/fertilizer_type 误判为缺失。
+                if user_target_ph is not None:
+                    imputed_inputs = [f for f in imputed_inputs if f != "target_ph"]
+                if user_fertilizer_type:
+                    imputed_inputs = [f for f in imputed_inputs if f != "fertilizer_type"]
                 result = calculate_acidification(
                     SJD=mapped["SJD"] or 0.0, Hex=mapped["Hex"] or 0.0, Alex=mapped["Alex"] or 0.0,
                     land_type=land_type, fertilizer_type=fertilizer_type, pHtarget=pHtarget)
@@ -151,6 +160,9 @@ class AcidificationRemediationAgent(BaseAgent):
                 outputs = {
                     "parcel_id": inputs.get("parcel_id"),
                     **result,
+                    "soil_ph": mapped["SJD"],
+                    # land_type 已由 DB 地块档案/默认值解析，透传给输出契约，供 LLM 知晓无需追问
+                    "land_type": land_type,
                     "imputed_inputs": imputed_inputs,
                     # 统一输出契约从嵌套 result 读取问题码，故与 Model-5 保持同一形状。
                     "reason": IMPUTED_INPUT if imputed_inputs else None,

@@ -287,11 +287,23 @@ def _execute_via_function_calling(
 
         from framework.function_calling.specialized_tools import (
             get_specialized_tools,
+            get_specialized_tools_for,
             TOOL_NAME_TO_AGENT_ID,
         )
         from framework.llm.service import llm_service
 
         tools = get_specialized_tools()
+        # 按 1:1 路由约束 tool 白名单：只暴露 question_type 对应的单一模型，
+        # 避免 LLM 为单一提问额外调用无关模型（如问酸化却同时诊断障碍），产生与提问无关的内容。
+        question_type = context.get("question_type")
+        if question_type:
+            from framework.agents.router import TYPE_AGENTS
+            agent_ids = TYPE_AGENTS.get(question_type, [])
+            if agent_ids:
+                try:
+                    tools = list(get_specialized_tools_for(set(agent_ids)).values())
+                except ValueError:
+                    tools = get_specialized_tools()
         if not tools or not llm_service.is_available():
             return None
 
@@ -512,6 +524,82 @@ def boundary_pending_node(state: MultiAgentState) -> MultiAgentState:
         "error": None,
     }
 
+def build_professional_answer_prompt(
+    *,
+    question: str,
+    field_query,
+    contexts: Dict[str, str],
+    evidence_context: str,
+) -> str:
+    """构造专业模型结果的最终总结提示词。
+
+    流式与非流式出口共用同一份提示词，避免两处规则漂移。
+    """
+    return (
+        "你是耕地质量与土壤改良领域的助手。请基于专业智能体结果，"
+        "整合成一份准确、简洁、可执行的中文答复。\n"
+        "通用要求：\n"
+        "- 【只答所问】严格围绕用户问题作答，只回答用户实际询问的内容；用户未问到的结论、建议、用量方案、"
+        "补充参数请求、后续测算提议、其它模型的推荐，以及衍生风险或扩展解释，一律不得输出。\n"
+        "- 不得编造未提供的数据，保留明确的数值和单位；没有配置单位的指标只展示数值，不提示单位缺失，也不得臆造单位。\n"
+        "- 必须使用中文标准字段名称，不得展示 GGNL、DXBW、SXJ 等模型内部字段缩写；"
+        "不得把 dose_prediction 改写成“有机质提升用量预测值”等自造名称。\n"
+        "- 若上下文提供 labels/units，必须使用其中的标准名称和单位。\n"
+        "- 综合指数保留两位小数；耕地质量等级必须是 1~10 的整数（如 7 级，不得写成 7.00 级）；"
+        "有机肥建议施用量取整到最近的 10 公斤/亩，并在数值前加“约”。\n"
+        "- 不得输出 potential_increase 等未在结果中提供的字段。\n"
+        "- 知识图谱证据只能解释专业模型结果，不得覆盖模型实际计算值；若证据不足，应省略扩展解释。\n"
+        "- 指标分类角色与指标获取方式是独立维度。\n"
+        "- 如有地块字段直查结果，该实际值已经由系统展示；不得否定或声称缺失，也不要重复该句。\n"
+        "- 术语解释随正文就地给出"
+        "不得单独输出“术语说明”段落。\n"
+        "- 不得输出数据来源、模型版本、计算时间等元信息。\n"
+        "回答结构与内容要求：\n"
+        "1. 当用户同时询问现状与改善（例如“等级如何，怎么改善”）时，输出两节：\n"
+        "“一、等级结论”：先写“耕地质量等级：X 级（整数，并说明数字越小质量越好）”，"
+        "再写“耕地质量综合指数：X.XX（范围0~1，越接近 1 越好）”；"
+        "等级解释必须紧跟等级数值，不得放到综合指数之后；若上下文提供等级临界说明，必须原样附上。\n"
+        "“二、改善建议”：必须先逐项列出主要障碍因素和次要障碍因素的具体名称，"
+        "不得只写“多障碍”或以“多障碍”代替因素名称；再按优先级逐条给出可执行措施（至少 3 条），"
+        "每条措施对应一个障碍因素，措施只能来自上下文或知识库证据，不得编造用量；"
+        "若上下文明确提供目标等级或复评时间则写出，未提供时直接省略，不得写“未提供”“本次结果未提供”。\n"
+        "结尾给出 2~3 个可继续追问的问题。\n"
+        "2. 当用户只询问当前土壤状态和酸化预测结果含义时，只输出两节：\n"
+        "“一、当前土壤状态”：只列本次提供的地块实测指标（名称、数值、单位），"
+        "不得写入预测值或风险等级；\n"
+        "“二、预测结果含义”：用一句话说明预测值表示“pH 相对当前水平预计下降的幅度”，"
+        "不得用多个等价说法反复解释同一含义；"
+        "酸化预测本身不涉及目标 pH，不得输出目标土壤酸碱度或调酸用量；"
+        "不得输出治理建议、用量方案、监测要求、参考文献或数据来源说明，"
+        "也不要补充铝毒害、氮素失衡等未被问到的衍生风险。\n"
+        "3. 只有当用户明确询问治理、改良、用量或措施时，才输出对应的建议。\n"
+        "专项规则：\n"
+        "- 主要障碍因素、次要障碍因素必须逐项列出；障碍类型只是分类标签，不能替代因素名称。\n"
+        "- 有机肥：若上下文含 dose_confidence 且低于 0.6，或含 dose_warning，"
+        "必须写成“约 N 公斤/亩（模型可信度偏低，仅供参考，实际用量需田间试验核定）”；"
+        "若存在 imputed_features 或 imputed_inputs，在同一句末用括号简要说明“部分输入为模型回填”。\n"
+        "- 酸化改良：若上下文提供了实测土壤 pH（soil_ph）与酸化程度（acidification_level），"
+        "必须先报告实测 pH 值及其酸性分级，不得写“酸化程度未给出”；"
+        "土地利用类型（land_type）已由地块档案确定，即使未在“模型回填输入”中列出也不得向用户追问，"
+        "仅可针对“模型回填输入”实际列出的字段（如目标 pH、肥料类型）请求补充；"
+        "若用户仅询问酸化严重程度（如“严重吗/什么程度/多少级/严不严重”），未询问治理、用量或改良措施，"
+        "则报告 pH 值与酸性分级，并用一句话直接回答严重程度：按分级阈值（强酸性<5.5、酸性5.5~6.5）明确是"
+        "“酸性，未达强酸性”还是“强酸性”；若数值距相邻档位阈值不足 0.1，须提示“接近临界，需留意”；"
+        "不得输出调理剂/木本泥炭用量、补充参数请求或培肥建议；"
+        "若用户询问治理/用量/改良措施，且模型用量字段为空，"
+        "只用一句话说明原因与所需补充项（目标 pH 建议 6.0~6.5、肥料类型为复合肥/尿素），暂不测算用量；"
+        "不得把“结论不可用”写成建议结论，不得使用“不宜据此制定用量”等免责式表述。\n"
+        "- 稳定性/退化风险：若模型结果 modules 中历史相关模块（module_5 历史变化趋势、module_6 掉级风险、"
+        "module_7 关键因子退化、module_9 持续低质）标记 reason=insufficient_history 或数值为空，"
+        "必须明确告知用户「因缺少该地块至少 2 期历史等级快照，暂无法判断稳定性与退化风险高低」，"
+        "并说明需补充历史等级记录后重新评估；不得含糊写成「无有效结果」或「不能判定」。\n"
+        f"用户问题：{question}\n"
+        f"地块字段直查结果：{field_query or '无'}\n"
+        f"专业模型紧凑结果：{contexts}\n"
+        f"经权限过滤的知识图谱/知识库证据：{evidence_context or '无'}"
+    )
+
+
 def llm_generate(state: MultiAgentState) -> MultiAgentState:
     model_results = state.get("model_results", {})
     if (
@@ -538,31 +626,11 @@ def llm_generate(state: MultiAgentState) -> MultiAgentState:
         }
         field_query = model_results.get("field_query")
         evidence_context = str(state.get("rag_response", {}).get("context") or "")
-        prompt = (
-            "你是耕地质量与土壤改良领域的助手。请基于专业智能体结果，"
-            "整合成一份准确、简洁的中文答复。不要编造未提供的数据，"
-            "保留明确的数值和单位；没有配置单位的指标只展示数值，不提示单位缺失，也不得臆造单位。回复中必须使用中文标准字段名称，"
-            "不得向用户展示 GGNL、DXBW、SXJ 等模型内部字段缩写。\n"
-            "若上下文提供 labels/units，必须使用其中的标准名称和单位；不得把 dose_prediction 改写成“有机质提升用量预测值”等自造名称；不得臆造单位。\n"
-            "所有数值保留两位小数；不要在正文内自行解释术语，系统会统一附加术语说明。\n"
-            "不得输出 potential_increase 等未在结果中提供的字段。\n"
-            "知识图谱证据只能解释专业模型结果，不得覆盖模型实际计算值；"
-            "若证据不足，应省略扩展解释。指标分类角色与指标获取方式是独立维度。\n"
-            "如有地块字段直查结果，该实际值会由系统作为首句展示；不得否定或声称缺失，"
-            "不要重复该句。\n"
-            "回答范围必须严格跟随用户所问：\n"
-            "1. 当用户只询问当前土壤状态和酸化预测结果含义时，只输出两节：\n"
-            "“一、当前土壤状态”：只列本次提供的地块实测指标（名称、数值、单位、等级），"
-            "不得写入预测值或风险等级；\n"
-            "“二、预测结果含义”：给出模型返回的预测值，并按模型输出字段定义解释其含义；"
-            "不得自行添加未定义的风险等级或取值范围。若请求提供了目标pH，必须准确呈现该目标值；"
-            "不得输出治理建议、用量方案、监测要求、参考文献或数据来源说明，"
-            "也不要补充铝毒害、氮素失衡等未被问到的衍生风险。\n"
-            "2. 只有当用户明确询问治理、改良、用量或措施时，才输出对应的建议。\n"
-            f"用户问题：{question}\n"
-            f"地块字段直查结果：{field_query or '无'}\n"
-            f"专业模型紧凑结果：{contexts}\n"
-            f"经权限过滤的知识图谱/知识库证据：{evidence_context or '无'}"
+        prompt = build_professional_answer_prompt(
+            question=question,
+            field_query=field_query,
+            contexts=contexts,
+            evidence_context=evidence_context,
         )
         llm_result = llm_service.generate(prompt)
         return {**state, "llm_response": llm_result, "error": None}

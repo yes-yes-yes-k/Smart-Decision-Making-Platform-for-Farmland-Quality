@@ -78,7 +78,10 @@ class FarmlandGradeAgent(BaseAgent):
         try:
             if data_source == "db":
                 # DB 路径：调用 evaluate_land_quality 计算质量等级
-                from framework.domain.calculations.grade_calculation import evaluate_soil_indicators
+                from framework.domain.calculations.grade_calculation import (
+                    evaluate_soil_indicators,
+                    grade_boundary_note,
+                )
                 area_code = data.get("area_code", "440281")
                 calculated_index, calculated_grade, memberships = evaluate_soil_indicators(inputs, area_code)
                 mapped = ParcelDataAccessor()._map_indicators_to_inputs(inputs, "model-2")
@@ -92,6 +95,7 @@ class FarmlandGradeAgent(BaseAgent):
                     "quality_grade": grade,
                     "composite_index": quality_index,
                     "quality_grade_source": grade_source,
+                    "grade_boundary_note": grade_boundary_note(quality_index, area_code),
                     "memberships": memberships,
                     "indicators": mapped,
                 }
@@ -136,6 +140,10 @@ class FarmlandGradeAgent(BaseAgent):
                         "persisted": False,
                     }
                 outputs = result
+                if outputs.get("composite_index") is not None and outputs.get("quality_grade"):
+                    outputs["grade_boundary_note"] = grade_boundary_note(
+                        float(outputs["composite_index"]), area_code
+                    )
                 status = "ok"
                 data_source = "csv"
 

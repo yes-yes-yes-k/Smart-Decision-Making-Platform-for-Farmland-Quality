@@ -86,6 +86,22 @@ def determine_model2_grade(quality_index: float, limits: list[float]) -> str:
     return "10"
 
 
+def grade_boundary_note(quality_index: float, area_code: str) -> str:
+    """返回“距离更好等级仅差不到 0.01”的临界提示；非临界返回空字符串。
+
+    等级阈值按二级农业区不同，因此提示必须基于当前区域的分界值。
+    """
+    region = get_region_mapping(area_code)
+    limits = MODEL2_GRADE_LIMITS[region["ejnyq_idx"]]
+    grade = int(determine_model2_grade(quality_index, limits))
+    if grade <= 1:
+        return "已处于最高等级（1 等）。"
+    gap = limits[grade - 2] - quality_index
+    if gap <= 0.005:
+        return f"距 {grade - 1} 等仅差不到 0.01，处于等级临界。"
+    return ""
+
+
 def evaluate_land_quality(indicators: dict, area_code: str) -> Tuple[float, str, List[float]]:
     """12 指标加权综合评价（移植自 evaluation.py evaluate_land_quality）。
 

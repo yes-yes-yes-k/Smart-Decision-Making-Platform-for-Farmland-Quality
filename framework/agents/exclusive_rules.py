@@ -19,6 +19,13 @@ BOUNDARY_PENDING_MESSAGE = (
     "暂不调用任一易混淆专业模型，请补充更明确的分析尺度或数据类型信息。"
 )
 
+# 已确认的易混淆对优先级消解：键为同时命中的目标集合，值为应路由的目标。
+# 「质量等级不稳定，退化风险高吗」同时命中 model-1/model-2，但「退化风险/稳定性」
+# 是真正提问意图，「质量等级」只是被评估对象，故稳定性退化风险优先。
+PRIORITY_RESOLUTION: dict = {
+    frozenset({"model-1", "model-2"}): "model-1",
+}
+
 
 @dataclass(frozen=True)
 class ExclusiveRule:
@@ -223,7 +230,11 @@ def apply_exclusive_rules(
     }
 
     if len(matched_targets) > 1:
-        # 优先级冲突：同一问题命中指向不同模型的规则，无法消解
+        # 先查已确认的消解表；命中则路由到消解目标，否则维持显式降级
+        resolved = PRIORITY_RESOLUTION.get(frozenset(matched_targets))
+        if resolved is not None:
+            return model_id_to_question_type(resolved), ROUTING_STATUS_NORMAL
+        # 优先级冲突：同一问题命中指向不同模型的规则，且未登记消解
         return question_type, ROUTING_STATUS_BOUNDARY_PENDING
     if len(matched_targets) == 1:
         target = next(iter(matched_targets))

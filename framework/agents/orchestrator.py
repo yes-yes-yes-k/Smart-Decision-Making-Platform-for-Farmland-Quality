@@ -16,6 +16,7 @@ from .nodes import (
     execute_models,
     retrieve_professional_evidence,
     llm_generate,
+    build_professional_answer_prompt,
     rag_chat_node,
     boundary_pending_node,
     aggregate_results,
@@ -199,7 +200,7 @@ class MultiAgentOrchestrator:
                         }}
             elif route == "boundary_pending":
                 state = boundary_pending_node(state)
-                full_answer = state["model_results"]["data"]["summary"]
+                full_answer = state["model_results"].get("answer", "")
             else:
                 # 模型路径：先执行模型（阻塞），再流式生成
                 yield {"type": "progress", "stage": "analyzing"}
@@ -248,31 +249,11 @@ class MultiAgentOrchestrator:
                         evidence_context = str(
                             state.get("rag_response", {}).get("context") or ""
                         )
-                        prompt = (
-                            "你是耕地质量与土壤改良领域的助手。请基于专业智能体结果，"
-                            "整合成一份准确、简洁的中文答复。不要编造未提供的数据，"
-                            "保留明确的数值和单位；没有配置单位的指标只展示数值，不提示单位缺失，也不得臆造单位。回复中必须使用中文标准字段名称，"
-                            "不得向用户展示 GGNL、DXBW、SXJ 等模型内部字段缩写。\n"
-                            "若上下文提供 labels/units，必须使用其中的标准名称和单位；不得把 dose_prediction 改写成“有机质提升用量预测值”等自造名称；不得臆造单位。\n"
-                            "所有数值保留两位小数；不要在正文内自行解释术语，系统会统一附加术语说明。\n"
-                            "不得输出 potential_increase 等未在结果中提供的字段。\n"
-                            "知识图谱证据只能解释专业模型结果，不得覆盖模型实际计算值；"
-                            "若证据不足，应省略扩展解释。指标分类角色与指标获取方式是独立维度。\n"
-                            "如有地块字段直查结果，该实际值已经由系统展示；不得否定或声称缺失，"
-                            "不要重复该句。\n"
-                            "回答范围必须严格跟随用户所问：\n"
-                            "1. 当用户只询问当前土壤状态和酸化预测结果含义时，只输出两节：\n"
-                            "“一、当前土壤状态”：只列本次提供的地块实测指标（名称、数值、单位、等级），"
-                            "不得写入预测值或风险等级；\n"
-                            "“二、预测结果含义”：给出模型返回的预测值，并按模型输出字段定义解释其含义；"
-                            "不得自行添加未定义的风险等级或取值范围。若请求提供了目标pH，必须准确呈现该目标值；"
-                            "不得输出治理建议、用量方案、监测要求、参考文献或数据来源说明，"
-                            "也不要补充铝毒害、氮素失衡等未被问到的衍生风险。\n"
-                            "2. 只有当用户明确询问治理、改良、用量或措施时，才输出对应的建议。\n"
-                            f"用户问题：{question}\n"
-                            f"地块字段直查结果：{field_query or '无'}\n"
-                            f"专业模型紧凑结果：{contexts}\n"
-                            f"经权限过滤的知识图谱/知识库证据：{evidence_context or '无'}"
+                        prompt = build_professional_answer_prompt(
+                            question=question,
+                            field_query=field_query,
+                            contexts=contexts,
+                            evidence_context=evidence_context,
                         )
                         from framework.llm.service import llm_service
                         try:

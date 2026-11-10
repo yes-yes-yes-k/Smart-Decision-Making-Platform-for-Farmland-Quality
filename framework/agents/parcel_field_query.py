@@ -11,6 +11,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from datetime import datetime
 import math
+import re
 from typing import Any, Iterable
 from collections.abc import Mapping
 
@@ -207,6 +208,10 @@ _QUALITY_FLAG_LABELS = {
 }
 
 
+#: “目标 pH = 数值”是用户指定计算参数，不是查询地块字段值。
+_TARGET_PH_ASSIGNMENT = re.compile(r"目标(?:土壤酸碱度|酸碱度|ph值|ph)[^\d]{0,5}\d")
+
+
 def requested_parcel_fields(question: str) -> tuple[ParcelField, ...]:
     """Return explicitly mentioned parcel fields, preserving registry order."""
     folded = str(question or "").casefold()
@@ -218,6 +223,10 @@ def requested_parcel_fields(question: str) -> tuple[ParcelField, ...]:
     # "目标 pH" is a management target, not a request for the current pH.
     if any(field.key == "target_ph" for field in matched):
         matched = [field for field in matched if field.key != "soil_ph"]
+        # “目标酸碱度为 6.5”是用户指定目标值用于测算，而非查询地块字段，
+        # 不应触发直查并误报“暂无记录”。
+        if _TARGET_PH_ASSIGNMENT.search(folded):
+            matched = [field for field in matched if field.key != "target_ph"]
     return tuple(matched)
 
 
@@ -374,13 +383,22 @@ def _metadata_clauses(item: Mapping[str, Any], requested: Iterable[str]) -> list
     return clauses
 
 
-def format_field_query_answer(field_query: dict[str, Any]) -> str:
-    """Build the exact, non-LLM answer prefix used by HTTP and SSE paths."""
+def format_field_query_answer(field_query: dict[str, Any], location_only: bool = False) -> str:
+    """Build the exact, non-LLM answer prefix used by HTTP and SSE paths.
+
+    ``location_only=True`` 用于“现状 + 预测”这类综合咨询：正文会由专业结果
+    统一列出指标，直查前缀只保留地域与地块编号，避免指标值重复出现。
+    """
     parcel_id = field_query.get("parcel_id") or "当前地块"
     if field_query.get("status") == "parcel_not_found":
         return f"未找到地块 {parcel_id} 的指标快照。"
     if field_query.get("status") == "needs_indicator_for_metadata":
         return "请明确需要查询哪个指标的测量年份、数据来源、插补状态或质量标记。"
+
+    region = field_query.get("region") or ""
+    region_prefix = f"{region} " if region else ""
+    if location_only:
+        return f"{region_prefix}地块 {parcel_id}"
 
     clauses: list[str] = []
     requested_metadata = field_query.get("requested_metadata", [])
@@ -400,14 +418,14 @@ def format_field_query_answer(field_query: dict[str, Any]) -> str:
         unit = item.get("unit") or ""
         if unit and rendered.endswith(unit):
             unit = ""
-        classification = item.get("classification")
-        suffix = f"（{classification}）" if classification else ""
-        clause = f"{label}为 {rendered}{unit}{suffix}"
+        clause = f"{label}为 {rendered}{unit}"
         metadata = _metadata_clauses(item, requested_metadata)
         clauses.append("，".join([clause, *metadata]))
     if not clauses:
         return ""
-    return f"地块 {parcel_id}：" + "；".join(clauses) + "。"
+    region = field_query.get("region") or ""
+    region_prefix = f"{region} " if region else ""
+    return f"{region_prefix}地块 {parcel_id}：" + "；".join(clauses) + "。"
 
 
 def query_requested_parcel_fields(
@@ -429,7 +447,8 @@ def query_requested_parcel_fields(
     if (not fields and not metadata_fields) or not parcel_id:
         return None
 
-    snapshot = (accessor or ParcelDataAccessor()).get_parcel_snapshot(str(parcel_id))
+    accessor = accessor or ParcelDataAccessor()
+    snapshot = accessor.get_parcel_snapshot(str(parcel_id))
     if snapshot is None:
         result: dict[str, Any] = {
             "status": "parcel_not_found",
@@ -439,6 +458,11 @@ def query_requested_parcel_fields(
         }
         result["answer"] = format_field_query_answer(result)
         return result
+
+    region = ""
+    resolve_region = getattr(accessor, "resolve_region_path", None)
+    if resolve_region is not None:
+        region = resolve_region(snapshot.area_code) or ""
 
     if metadata_fields and not fields:
         result = {
@@ -486,6 +510,7 @@ def query_requested_parcel_fields(
     result = {
         "status": "ok" if any(item["value"] is not None for item in items) else "missing",
         "parcel_id": snapshot.parcel_id,
+        "region": region,
         "fields": items,
         "requested_metadata": list(metadata_fields),
         "preconditions": {
@@ -509,7 +534,13 @@ def query_requested_parcel_fields(
             ),
             "rules": list(FIELD_CATEGORY_PRECONDITIONS["indicator_provenance"]),
         }
-    result["answer"] = format_field_query_answer(result)
+    # “现状 + 预测”综合咨询（如酸化现状与预测含义）由正文统一列出指标，
+    # 直查前缀只保留地域与地块编号，避免与正文重复。
+    location_only = (
+        "预测" in question
+        and ("酸化" in question or "现状" in question or "状态" in question)
+    )
+    result["answer"] = format_field_query_answer(result, location_only=location_only)
     return result
 
 

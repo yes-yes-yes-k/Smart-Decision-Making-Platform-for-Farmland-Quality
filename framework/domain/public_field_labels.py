@@ -55,10 +55,12 @@ PUBLIC_FIELD_LABELS: dict[str, str] = {
 # 追加，且同一解释不会重复追加，保证答复出口幂等。
 PUBLIC_TERM_EXPLANATIONS: dict[str, str] = {
     "综合指数": "耕地质量综合指数，是 0~1 之间的综合得分，越接近 1 表示耕地质量越好",
-    "耕地质量等级": "按综合指数划分的 1~10 等，数字越小表示质量越好",
+    "耕地质量等级": "按综合指数划分的 1~10 级，数字越小表示质量越好",
     "有机肥建议施用量": "模型估算的每亩有机肥用量（公斤/亩），实际用量需结合田间试验核定",
     "土壤有机碳预测值": "模型预测的土壤有机碳含量（g/kg），是反映土壤有机质水平的核心指标",
     "障碍因素": "限制耕地质量提升的土壤或管理因素，分为主要和次要障碍因素",
+    "障碍类型": "耕地质量障碍的组合分类，分为无明显障碍、单一障碍和多障碍",
+    "多障碍": "同时存在两个及以上限制耕地质量提升的障碍因素",
 }
 
 
@@ -144,8 +146,9 @@ def public_field_label(value: Any) -> str:
 
 def translate_public_text(value: Any) -> str:
     """将自然语言文本中的独立专业字段代码转换为标准中文名称。"""
+    text = str(value).replace("目标 pH", "目标pH").replace("目标 ph", "目标pH")
     translator = PublicTextStreamTranslator()
-    return translator.feed(value) + translator.flush()
+    return translator.feed(text) + translator.flush()
 
 
 _TERM_SECTION = "\n\n术语说明：\n"
