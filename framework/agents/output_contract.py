@@ -513,6 +513,7 @@ def llm_context(model_result: Mapping[str, Any]) -> Dict[str, Any]:
         for key in (
             "region", "land_type", "score", "grade", "quality_grade", "composite_index",
             "grade_boundary_note", "obstacle_type", "primary_factors", "secondary_factors",
+            "obstacle_degrees", "obstacle_levels",
             "soil_ph", "acidification_level", "soil_conditioner_dosage", "woody_peat_dosage",
             "soc_prediction", "dose_prediction", "soc_confidence", "dose_confidence",
             "dose_warning", "imputed_features", "imputed_inputs", "modules",
@@ -636,6 +637,33 @@ def deterministic_answer(model_result: Mapping[str, Any]) -> str:
     if result.get("primary_factors"):
         parts.append(f"主要障碍因素：{result['primary_factors']}")
     answer = "；".join(parts) or "模型已完成分析，但没有可展示的关键指标。"
+    # 确定性兜底：model-1 历史相关模块因历史不足无值且 LLM 不可用时，
+    # 仍须明确告知原因与补救路径，不得含糊成「无有效结果」。
+    if (
+        str(model_result.get("model_id") or "") == "stability-risk-evaluation"
+        and isinstance(result.get("modules"), Mapping)
+    ):
+        history_modules = ("module_5", "module_6", "module_7", "module_9")
+        lacks_history = False
+        for key in history_modules:
+            module = result["modules"].get(key)
+            if not isinstance(module, Mapping):
+                continue
+            if str(module.get("reason") or "") == "insufficient_history":
+                lacks_history = True
+                break
+            business_values = [
+                value for value in module.values()
+                if not str(value) == str(module.get("reason")) and value is not None
+            ]
+            if not business_values:
+                lacks_history = True
+                break
+        if lacks_history:
+            answer += (
+                "。因缺少该地块至少 2 期历史等级快照，"
+                "暂无法判断稳定性与退化风险高低，需补充历史等级记录后重新评估"
+            )
     return translate_public_text(answer)
 
 

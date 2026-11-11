@@ -370,7 +370,9 @@ def execute_models(state: MultiAgentState) -> MultiAgentState:
         from framework.agents.parcel_field_query import (
             prepend_field_answer,
             query_requested_parcel_fields,
+            requested_parcel_fields,
         )
+        from framework.agents.router import TYPE_AGENTS
 
         question = state["request"].get("question", "")
         context = _build_verified_execution_context(state)
@@ -385,9 +387,29 @@ def execute_models(state: MultiAgentState) -> MultiAgentState:
         if "question_type" in state:
             context["question_type"] = state["question_type"]
 
-        # 优先尝试 function calling 路径
+        # 字段联动：直查命中的字段由哪个模型负责（如"质量等级"归 model-2），
+        # 就把该模型追加进本轮执行名单。避免"质量等级稳不稳"这种问题因为
+        # 只路由到 model-1，导致质量等级/综合指数被误报"暂无可发布的已验证模型结果"。
+        required_agent_ids = {
+            f.model_agent_id
+            for f in requested_parcel_fields(question)
+            if getattr(f, "source_kind", None) == "model" and f.model_agent_id
+        }
+        extra_agent_ids = sorted(
+            required_agent_ids - set(TYPE_AGENTS.get(state.get("question_type"), []))
+        )
+        if extra_agent_ids:
+            context["extra_agent_ids"] = extra_agent_ids
+            print(f"[execute_models] 字段联动追加模型: {extra_agent_ids}")
+
+        # 优先尝试 function calling 路径（FC 白名单只暴露单一模型；
+        # 需要联动执行额外模型时跳过 FC，走 Manager 关键词路径以保证全部执行）
         trace_id = state.get("trace_id")
-        fc_result = _execute_via_function_calling(question, context, trace_id)
+        fc_result = (
+            None
+            if extra_agent_ids
+            else _execute_via_function_calling(question, context, trace_id)
+        )
         if fc_result is not None:
             refreshed_field_query = query_requested_parcel_fields(
                 question, context.get("parcel_id"), professional_results=fc_result,
@@ -524,6 +546,100 @@ def boundary_pending_node(state: MultiAgentState) -> MultiAgentState:
         "error": None,
     }
 
+def build_acidification_state_prefix(
+    models: Dict[str, Any],
+    parcel_id: Optional[str] = None,
+) -> str:
+    """Model-4 酸化状态的确定性前缀。
+
+    修复「数据库存在实测 soil_ph 却回复缺少数据」的断点：即使 model-4 envelope
+    中 soil_ph 在链路中丢失，也从地块权威快照兜底读取；有实测则输出 pH 与酸性
+    分级结论，无实测则给出明确补测引导（而非笼统"无法判断"）。
+    """
+    import math
+    from collections.abc import Mapping
+    from framework.domain.data.parcel_data_accessor import ParcelDataAccessor
+
+    soil_ph = None
+    envelope = (models or {}).get("model-4")
+    if isinstance(envelope, Mapping):
+        result = envelope.get("result") if isinstance(envelope.get("result"), Mapping) else {}
+        soil_ph = result.get("soil_ph")
+    # 兜底：从地块权威快照读取实测 soil_ph（与字段直查同源，修复链路丢字段）
+    if soil_ph is None and parcel_id:
+        try:
+            snapshot = ParcelDataAccessor().get_parcel_snapshot(str(parcel_id))
+            if snapshot is not None:
+                soil_ph = snapshot.indicators.get("soil_ph")
+        except Exception:
+            pass
+    if soil_ph is None or isinstance(soil_ph, bool):
+        return (
+            "该地块缺少实测土壤酸碱度（pH）记录，暂无法判定酸化严重程度。"
+            "分级阈值：强酸性 <5.5、酸性 5.5~6.5、中性及以上 ≥6.5；"
+            "建议补测土壤 pH 后重新评估。"
+        )
+    try:
+        ph = float(soil_ph)
+    except (TypeError, ValueError):
+        return ""
+    if not math.isfinite(ph):
+        return ""
+    from framework.domain.statistics.indicator_definitions import classify_indicator
+
+    bucket = classify_indicator("soil_ph", ph)
+    level = bucket.label if bucket is not None else "未知"
+    if ph < 5.5:
+        verdict = "属强酸性，酸化情况较严重，需重点关注"
+    elif ph < 6.5:
+        verdict = "属酸性，尚未达强酸性，需留意"
+    else:
+        verdict = "非酸性，酸化情况不严重"
+    return (
+        f"土壤酸碱度（pH）为 {ph:.2f}，酸化分级为「{level}」。"
+        f"按分级阈值（强酸性 <5.5、酸性 5.5~6.5）判定：{verdict}。"
+    )
+
+
+#: LLM 总结中禁止出现的幻觉字段名（模型结果中不存在，见修复提案 F6）。
+#: 命中即判定该段正文不可信，回退确定性模板，防止「耕层质地」被改写成
+#: 「耕作制度」这类字段名幻觉污染最终回答。
+PROHIBITED_FIELD_NAMES = ("耕作制度",)
+
+
+def has_prohibited_field_name(text: str) -> bool:
+    """正文中是否出现白名单外幻觉字段名。"""
+    return bool(text) and any(name in text for name in PROHIBITED_FIELD_NAMES)
+
+
+def extract_prior_knowledge(
+    conversation_history: Optional[list],
+    parcel_id: Optional[str],
+) -> str:
+    """从同会话历史中提取上一轮模型结论作为「已知前提」（仅同地块注入）。
+
+    用于「障碍度排序」等上一轮结论，供本轮酸化等问题引用（如障碍度中的
+    「土壤酸碱度 0.14」），让回答能区分「障碍度 ≠ 实测 pH」。
+    """
+    if not conversation_history or not parcel_id:
+        return ""
+    last_assistant = ""
+    for msg in reversed(list(conversation_history)):
+        if isinstance(msg, dict) and msg.get("role") == "assistant":
+            last_assistant = str(msg.get("content") or "")
+            break
+    if not last_assistant:
+        return ""
+    if f"地块 {parcel_id}" not in last_assistant:
+        return ""
+    lines = [
+        line.strip()
+        for line in last_assistant.splitlines()
+        if line.strip() and any(ch.isdigit() for ch in line)
+    ]
+    return "\n".join(lines[:6])
+
+
 def build_professional_answer_prompt(
     *,
     question: str,
@@ -544,6 +660,9 @@ def build_professional_answer_prompt(
         "- 不得编造未提供的数据，保留明确的数值和单位；没有配置单位的指标只展示数值，不提示单位缺失，也不得臆造单位。\n"
         "- 必须使用中文标准字段名称，不得展示 GGNL、DXBW、SXJ 等模型内部字段缩写；"
         "不得把 dose_prediction 改写成“有机质提升用量预测值”等自造名称。\n"
+        "- 字段白名单：只能使用「专业模型紧凑结果」中实际存在的标准字段名，"
+        "不得新增或改写字段名（如不得把「耕层质地」写成「耕作制度」）；"
+        "若结果未提供某字段则不得以任何名称输出该类字段。\n"
         "- 若上下文提供 labels/units，必须使用其中的标准名称和单位。\n"
         "- 综合指数保留两位小数；耕地质量等级必须是 1~10 的整数（如 7 级，不得写成 7.00 级）；"
         "有机肥建议施用量取整到最近的 10 公斤/亩，并在数值前加“约”。\n"
@@ -575,6 +694,9 @@ def build_professional_answer_prompt(
         "3. 只有当用户明确询问治理、改良、用量或措施时，才输出对应的建议。\n"
         "专项规则：\n"
         "- 主要障碍因素、次要障碍因素必须逐项列出；障碍类型只是分类标签，不能替代因素名称。\n"
+        "- 障碍度排序：若上下文提供各障碍因子具体障碍度数值（obstacle_degrees），用户询问障碍度排序时"
+        "必须逐项给出因子名称与数值，不得省略数值；若上下文未提供具体数值，"
+        "必须明确说明「本次仅提供障碍因子排序，未提供各障碍因子的具体障碍度数值」，不得编造数值。\n"
         "- 有机肥：若上下文含 dose_confidence 且低于 0.6，或含 dose_warning，"
         "必须写成“约 N 公斤/亩（模型可信度偏低，仅供参考，实际用量需田间试验核定）”；"
         "若存在 imputed_features 或 imputed_inputs，在同一句末用括号简要说明“部分输入为模型回填”。\n"
@@ -593,6 +715,9 @@ def build_professional_answer_prompt(
         "module_7 关键因子退化、module_9 持续低质）标记 reason=insufficient_history 或数值为空，"
         "必须明确告知用户「因缺少该地块至少 2 期历史等级快照，暂无法判断稳定性与退化风险高低」，"
         "并说明需补充历史等级记录后重新评估；不得含糊写成「无有效结果」或「不能判定」。\n"
+        "若历史模块（module_5 历史变化趋势、module_6 掉级风险等）已有数值（历史快照充足），"
+        "则必须基于这些数值给出稳定性与退化风险结论（等级趋势、是否有掉级风险），"
+        "不得仍复述「缺少历史快照/无法判断」。\n"
         f"用户问题：{question}\n"
         f"地块字段直查结果：{field_query or '无'}\n"
         f"专业模型紧凑结果：{contexts}\n"
@@ -626,28 +751,11 @@ def llm_generate(state: MultiAgentState) -> MultiAgentState:
         }
         field_query = model_results.get("field_query")
         evidence_context = str(state.get("rag_response", {}).get("context") or "")
-        prompt = (
-            "你是耕地质量与土壤改良领域的助手。请基于专业智能体结果，"
-            "整合成一份准确、简洁的中文答复。不要编造未提供的数据，"
-            "保留明确的数值和单位。回复中必须使用中文标准字段名称，"
-            "不得向用户展示 GGNL、DXBW、SXJ 等模型内部字段缩写。\n"
-            "知识图谱证据只能解释专业模型结果，不得覆盖模型实际计算值；"
-            "若证据不足，应省略扩展解释。指标分类角色与指标获取方式是独立维度。\n"
-            "如有地块字段直查结果，该实际值会由系统作为首句展示；不得否定或声称缺失，"
-            "不要重复该句。\n"
-            "回答范围必须严格跟随用户所问：\n"
-            "1. 当用户只询问当前土壤状态和酸化预测结果含义时，只输出两节：\n"
-            "“一、当前土壤状态”：只列本次提供的地块实测指标（名称、数值、单位、等级），"
-            "不得写入预测值或风险等级；\n"
-            "“二、预测结果含义”：必须先给出预测值及风险等级"
-            "（如“酸化预测值为 0.2299（轻度酸化风险）”），再解释该值代表的风险程度和取值范围；"
-            "不得输出治理建议、用量方案、监测要求、参考文献或数据来源说明，"
-            "也不要补充铝毒害、氮素失衡等未被问到的衍生风险。\n"
-            "2. 只有当用户明确询问治理、改良、用量或措施时，才输出对应的建议。\n"
-            f"用户问题：{question}\n"
-            f"地块字段直查结果：{field_query or '无'}\n"
-            f"专业模型紧凑结果：{contexts}\n"
-            f"经权限过滤的知识图谱/知识库证据：{evidence_context or '无'}"
+        prompt = build_professional_answer_prompt(
+            question=question,
+            field_query=field_query,
+            contexts=contexts,
+            evidence_context=evidence_context,
         )
         llm_result = llm_service.generate(prompt)
         return {**state, "llm_response": llm_result, "error": None}
@@ -726,6 +834,32 @@ def aggregate_results(state: MultiAgentState) -> MultiAgentState:
                 answer_body = prepend_field_answer(
                     model_results.get("field_query"), answer_body,
                 )
+
+            # 正文兜底：LLM 与 agent 摘要为空，或正文含白名单外幻觉字段名时，
+            # 用确定性模型摘要补齐正文，满足「最终回答正文非空」契约。
+            if (
+                not str(answer_body or "").strip()
+                or has_prohibited_field_name(str(answer_body))
+            ):
+                from .output_contract import deterministic_answer
+                body_only = "\n".join(
+                    deterministic_answer(item)
+                    for item in final_result.get("models", {}).values()
+                ) or "暂无可用结果"
+                answer_body = ("\n\n" + body_only) if answer_body else body_only
+
+            # 酸化状态确定性前缀：Model-4 有实测 pH 必须报告分级，修复
+            # 「数据库存在 soil_ph 却回复缺少数据」链路断点。
+            if question_type == 4:
+                object_ctx = (state.get("analysis_context") or {}).get("object") or {}
+                parcel_id = (
+                    object_ctx.get("id") if object_ctx.get("type") == "parcel" else None
+                )
+                acid_prefix = build_acidification_state_prefix(
+                    final_result.get("models", {}), parcel_id=parcel_id,
+                )
+                if acid_prefix:
+                    answer_body = acid_prefix + "\n\n" + answer_body
 
             capability = get_capability_by_question_type(question_type)
             context_data = state.get("analysis_context")

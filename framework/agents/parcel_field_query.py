@@ -173,6 +173,12 @@ _FIELDS: tuple[ParcelField, ...] = (
         category="derived_model_result", source_kind="model",
         model_agent_id="model-2",
     ),
+    ParcelField(
+        "obstacle_degree", "obstacle_degrees", "障碍度排序", "", 3,
+        ("障碍度排序", "障碍度", "障碍程度排序"),
+        category="derived_model_result", source_kind="model",
+        model_agent_id="model-3",
+    ),
 )
 
 
@@ -205,6 +211,24 @@ _QUALITY_FLAG_LABELS = {
     "low_variability": "低变异性",
     "verified": "已核验",
 }
+
+#: 模型结果不可发布的用户化原因文案。核心句「暂无可发布的已验证模型结果」
+#: 必须保留（对外契约与测试锚点），后缀给出具体原因辅助归因。
+_DERIVED_UNAVAILABLE_MESSAGES: dict[str, str] = {
+    "model_result_missing": "暂无可发布的已验证模型结果（对应模型本轮未执行评价）",
+    "model_status_not_ok": "暂无可发布的已验证模型结果（对应模型本轮计算未通过）",
+    "model_subject_mismatch": "暂无可发布的已验证模型结果（模型结果未通过地块一致性校验）",
+    "model_provenance_incomplete": "暂无可发布的已验证模型结果（结果缺少验证性发布元数据）",
+    "model_value_missing": "暂无可发布的已验证模型结果（对应模型未输出该指标数值）",
+}
+
+
+def _derived_unavailable_clause(label: str, unavailable_reason: str | None) -> str:
+    message = _DERIVED_UNAVAILABLE_MESSAGES.get(
+        unavailable_reason or "model_provenance_incomplete",
+        "暂无可发布的已验证模型结果",
+    )
+    return f"{label}{message}"
 
 
 #: “目标 pH = 数值”是用户指定计算参数，不是查询地块字段值。
@@ -337,6 +361,8 @@ def _classification(field: ParcelField, value: Any) -> tuple[str | None, str | N
 
 
 def _format_value(value: Any, decimals: int, key: str | None = None) -> str:
+    from collections.abc import Mapping
+
     enum_label = _ENUM_LABELS.get(key or "", {}).get(str(value).casefold())
     if enum_label is not None:
         return enum_label
@@ -345,6 +371,17 @@ def _format_value(value: Any, decimals: int, key: str | None = None) -> str:
     if isinstance(value, (int, float)):
         rendered = f"{float(value):.{decimals}f}"
         return rendered.rstrip("0").rstrip(".") if "." in rendered else rendered
+    if isinstance(value, Mapping):
+        # 障碍度排序等有序字典：按权威键顺序渲染为「标签 数值」，
+        # 禁止 str(dict) 把 Python 字面量暴露给用户。
+        return "；".join(
+            f"{str(item_key)} {_format_value(item_value, decimals, str(item_key))}"
+            for item_key, item_value in value.items()
+            if item_key not in (None, "无")
+        )
+    if isinstance(value, (list, tuple)):
+        # 障碍度排序、主要障碍因素等模型结果本身是列表，逐项渲染。
+        return "、".join(_format_value(item, decimals, key) for item in value if item not in (None, "无"))
     return str(value)
 
 
@@ -407,7 +444,9 @@ def format_field_query_answer(field_query: dict[str, Any], location_only: bool =
         value = item.get("value")
         if value is None:
             if item.get("category") == "derived_model_result":
-                clause = f"{label}暂无可发布的已验证模型结果"
+                clause = _derived_unavailable_clause(
+                    label, item.get("unavailable_reason")
+                )
             else:
                 clause = f"{label}暂无记录"
             metadata = _metadata_clauses(item, requested_metadata)
