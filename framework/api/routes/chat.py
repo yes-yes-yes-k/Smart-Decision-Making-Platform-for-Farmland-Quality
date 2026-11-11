@@ -152,12 +152,6 @@ def get_messages(id):
 @chat_bp.route('/', methods=['POST'])
 @jwt_required()
 def chat():
-    import time
-    from uuid import uuid4
-    from flask import g
-    from framework.observability.chat_timing import record_chat_stage
-    g.chat_trace_id = uuid4().hex
-    prepare_started = time.perf_counter()
     body = request.get_json(silent=True) or {}
     try:
         include_model_results, response_schema = _response_options(body)
@@ -170,8 +164,6 @@ def chat():
         prepared = chat_request_service.prepare(
             user_id=int(get_jwt_identity()), body=body,
         )
-        prepared.orchestrator_request["trace_id"] = g.chat_trace_id
-        record_chat_stage(g.chat_trace_id, "chat.prepare", prepare_started)
     except AnalysisContextError as exc:
         record_analysis_context_event({
             409: EVENT_ERROR_409, 422: EVENT_ERROR_422, 503: EVENT_ERROR_503,
@@ -196,12 +188,6 @@ def chat():
 @chat_bp.route('/stream', methods=['POST'])
 @jwt_required()
 def chat_stream():
-    import time
-    from uuid import uuid4
-    from flask import g
-    from framework.observability.chat_timing import record_chat_stage
-    g.chat_trace_id = uuid4().hex
-    prepare_started = time.perf_counter()
     body = request.get_json(silent=True) or {}
     try:
         include_model_results, response_schema = _response_options(body)
@@ -214,8 +200,6 @@ def chat_stream():
         prepared = chat_request_service.prepare(
             user_id=int(get_jwt_identity()), body=body,
         )
-        prepared.orchestrator_request["trace_id"] = g.chat_trace_id
-        record_chat_stage(g.chat_trace_id, "chat.prepare", prepare_started)
     except AnalysisContextError as exc:
         record_analysis_context_event({
             409: EVENT_ERROR_409, 422: EVENT_ERROR_422, 503: EVENT_ERROR_503,
@@ -226,28 +210,20 @@ def chat_stream():
 
     # 在生成器外部捕获 app 实例，因为生成器迭代时请求/应用上下文已销毁
     app = current_app._get_current_object()
-    trace_id = g.chat_trace_id
 
     def event_stream():
         public_text = PublicTextStreamTranslator()
-        stream_started = time.perf_counter()
-        first_event = True
         try:
             for item in multi_agent_orchestrator.run_stream(
                 prepared.orchestrator_request, conversation_history=prepared.history,
             ):
                 item_type = item.get("type")
-                if first_event:
-                    record_chat_stage(trace_id, "chat.server_first_event", stream_started)
-                    first_event = False
                 if item_type == "token":
                     content = public_text.feed(item.get("content", ""))
                     if content:
                         yield f"data: {json.dumps({'event': 'token', 'content': content}, ensure_ascii=False)}\n\n"
                 elif item_type == "meta":
                     yield f"data: {json.dumps({'event': 'meta', 'data': item.get('data', {})})}\n\n"
-                elif item_type == "progress":
-                    yield f"data: {json.dumps({'event': 'progress', 'stage': item.get('stage', 'working')}, ensure_ascii=False)}\n\n"
                 elif item_type == "done":
                     pending_text = public_text.flush()
                     if pending_text:
@@ -256,9 +232,7 @@ def chat_stream():
                     app_ctx = app.app_context()
                     app_ctx.push()
                     try:
-                        persist_started = time.perf_counter()
                         assistant = chat_request_service.persist_assistant(prepared, data_payload)
-                        record_chat_stage(trace_id, "chat.persist_assistant", persist_started)
                         response = _serialize_prepared_response(
                             prepared, data_payload, assistant.id,
                             include_model_results=include_model_results,

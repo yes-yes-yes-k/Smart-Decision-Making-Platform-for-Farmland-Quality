@@ -121,7 +121,7 @@ def test_management_context_uses_only_canonical_columns_even_when_json_conflicts
     assert fields["target_ph"]["value"] == 6.8
     assert fields["target_ph"]["value_source"] == "parcel_info.target_ph"
     assert result["answer"] == (
-        "地块 373：土地利用类型为 旱地；肥料类型为 尿素；目标 pH为 6.80。"
+        "地块 373：土地利用类型为 旱地；肥料类型为 尿素；目标 pH为 6.8。"
     )
 
 
@@ -232,8 +232,8 @@ def test_derived_quality_fields_require_and_publish_verified_current_result():
     assert fields["quality_grade"]["provenance"]["calculation_result_id"] == 91
     assert result["preconditions"]["derived_model_result"]["met"] is True
     assert result["answer"] == (
-        "地块 373：耕地质量等级为 2级，模型版本为quality-grade-2.1.0；"
-        "耕地质量综合指数为 0.88，模型版本为quality-grade-2.1.0。"
+        "地块 373：耕地质量等级为 2等，模型版本为quality-grade-2.1.0；"
+        "耕地质量综合指数为 0.8765，模型版本为quality-grade-2.1.0。"
     )
 
 
@@ -252,8 +252,7 @@ def test_derived_quality_fields_are_withheld_without_complete_provenance():
         for item in result["fields"]
     )
     assert result["preconditions"]["derived_model_result"]["met"] is False
-    assert result["answer"] == ""
-    assert "暂无可发布的已验证模型结果" not in result["answer"]
+    assert "暂无可发布的已验证模型结果" in result["answer"]
 
 
 def test_indicator_provenance_metadata_is_scoped_to_named_indicator():
@@ -448,5 +447,5 @@ def test_execute_models_refreshes_derived_fields_from_current_model2_result(monk
     assert fields["quality_grade"]["value"] == "2"
     assert fields["composite_index"]["value"] == 0.87654
     assert result["answer"].startswith(
-        "地块 373：耕地质量等级为 2级；耕地质量综合指数为 0.88。\n\n"
+        "地块 373：耕地质量等级为 2等；耕地质量综合指数为 0.8765。\n\n"
     )

@@ -12,7 +12,6 @@ from dataclasses import dataclass
 from typing import Any, Dict, Iterable, List, Mapping, Optional, Tuple
 
 from framework.domain.public_field_labels import public_field_label, translate_public_text
-from framework.domain.public_numbers import format_public_number, round_public_floats
 
 
 SCHEMA_VERSION = "2.0"
@@ -496,7 +495,6 @@ def chat_compact(model_result: Mapping[str, Any]) -> Dict[str, Any]:
                 key: value for key, value in compact_result["modules"].items()
                 if key in {"score", "grade", "risk_level", "退化风险等级", "稳定性得分"}
             }
-        compact_result = round_public_floats(compact_result)
     return sanitize_json({
         "model_id": model_result.get("model_id"),
         "status": model_result.get("status"),
@@ -505,21 +503,6 @@ def chat_compact(model_result: Mapping[str, Any]) -> Dict[str, Any]:
         "meta": model_result.get("meta"),
         "issues": model_result.get("issues", []),
     })
-
-
-def llm_field_presentation(result: Mapping[str, Any]) -> Dict[str, Dict[str, str]]:
-    """返回结果中实际存在字段的标准名称与单位，供 LLM 上下文和工具复用。"""
-    labels: Dict[str, str] = {}
-    units: Dict[str, str] = {}
-    if isinstance(result, Mapping):
-        for key in result:
-            presentation = LLM_FIELD_PRESENTATION.get(str(key))
-            if presentation is None:
-                continue
-            label, unit = presentation
-            labels[str(key)] = label
-            units[str(key)] = unit
-    return {"labels": labels, "units": units}
 
 
 def llm_context(model_result: Mapping[str, Any]) -> Dict[str, Any]:
@@ -559,16 +542,12 @@ def llm_context(model_result: Mapping[str, Any]) -> Dict[str, Any]:
         and meta.get("grade_boundary_note")
     ):
         key_result["grade_boundary_note"] = meta["grade_boundary_note"]
-    key_result = round_public_floats(key_result)
-    context: Dict[str, Any] = {
+    return sanitize_json({
         "model_id": model_result.get("model_id"),
         "status": model_result.get("status"),
         "result": key_result or None,
         "issues": model_result.get("issues", []),
-    }
-    if key_result:
-        context.update(llm_field_presentation(key_result))
-    return sanitize_json(context)
+    })
 
 
 def audit_projection(model_result: Mapping[str, Any], inputs: Optional[Mapping[str, Any]] = None, diagnostics: Optional[Any] = None) -> Dict[str, Any]:
@@ -648,7 +627,11 @@ def deterministic_answer(model_result: Mapping[str, Any]) -> str:
             if key in ("quality_grade", "grade"):
                 value = _display_grade(value)
             elif isinstance(value, float):
-                value = format_public_number(value)
+                precision = 3 if key in {
+                    "composite_index", "score", "soc_prediction",
+                    "soc_confidence", "dose_confidence",
+                } else 1
+                value = f"{value:.{precision}f}".rstrip("0").rstrip(".")
             parts.append(f"{label}：{value}")
     if result.get("primary_factors"):
         parts.append(f"主要障碍因素：{result['primary_factors']}")
@@ -658,7 +641,6 @@ def deterministic_answer(model_result: Mapping[str, Any]) -> str:
 
 __all__ = [
     "SCHEMA_VERSION", "LEGACY_SCHEMA_VERSION", "VALID_STATUSES", "Issue", "sanitize_json", "validate_result",
-    "LLM_FIELD_PRESENTATION", "llm_field_presentation",
     "normalize_execution", "public_full", "chat_compact", "llm_context", "audit_projection",
     "legacy_projection", "deterministic_answer",
 ]

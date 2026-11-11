@@ -8,7 +8,7 @@ from sqlalchemy.exc import SQLAlchemyError
 
 from framework.models import ParcelInfo, SpatialRegionCatalog
 
-from .contracts import AnalysisObject, ObjectType, ParentPathItem, region_path_label
+from .contracts import AnalysisObject, ObjectType, ParentPathItem
 from .errors import AnalysisObjectInvalid, AnalysisObjectValidationUnavailable
 
 
@@ -104,13 +104,10 @@ class ParcelObjectResolver:
                     display_name=region.display_name,
                     area_code=region.area_code,
                 ),)
-        region = region_path_label(parent_path)
         return AnalysisObject(
             type=ObjectType.PARCEL,
             id=parcel.parcel_id,
-            display_name=(
-                f"{region} 地块 {parcel.parcel_id}" if region else f"地块 {parcel.parcel_id}"
-            ),
+            display_name=f"地块 {parcel.parcel_id}",
             area_code=parcel.area_code,
             parent_path=parent_path,
             source="parcel_info",

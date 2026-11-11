@@ -148,7 +148,7 @@ def translate_public_text(value: Any) -> str:
     """将自然语言文本中的独立专业字段代码转换为标准中文名称。"""
     text = str(value).replace("目标 pH", "目标pH").replace("目标 ph", "目标pH")
     translator = PublicTextStreamTranslator()
-    return translator.feed(text) + translator.flush()
+    return translator.feed(value) + translator.flush()
 
 
 _TERM_SECTION = "\n\n术语说明：\n"
@@ -183,9 +183,7 @@ def append_term_explanations(value: Any) -> str:
 
 __all__ = [
     "PUBLIC_FIELD_LABELS",
-    "PUBLIC_TERM_EXPLANATIONS",
     "PublicTextStreamTranslator",
-    "append_term_explanations",
     "public_field_label",
     "translate_public_text",
 ]

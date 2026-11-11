@@ -209,7 +209,7 @@ class ToolCallingLoop:
                         if item.get("message")
                     ]
                 tool_msg_content = json.dumps(
-                    tool_payload,
+                    result.get("result", result.get("error", "")),
                     ensure_ascii=False,
                     default=str,
                 )

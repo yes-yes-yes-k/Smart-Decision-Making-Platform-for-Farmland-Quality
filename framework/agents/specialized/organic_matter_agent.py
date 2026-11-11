@@ -7,7 +7,6 @@ from ..base import BaseAgent, ProfessionalInputRejected
 from ...domain.data.parcel_data_accessor import ParcelDataAccessor
 from ...domain.other_models.model_5 import EXTERNAL_FIELD_MAP, model_5_execution
 from ...domain.provenance import IMPUTED_INPUT, provenance_map
-from ...domain.public_numbers import format_public_number
 
 logger = logging.getLogger(__name__)
 
@@ -284,8 +283,8 @@ class OrganicMatterAgent(BaseAgent):
 
         land_label = {"upland": "旱地", "paddy": "水田"}.get(result.get("land_type"), "非韶关区域")
         answer = (
-            f"有机质培肥模型（{land_label}）预测：SOC约 {format_public_number(result['soc_prediction'])} g/kg，"
-            f"建议施用量约 {format_public_number(result['dose_prediction'])} t/ha。"
+            f"有机质培肥模型（{land_label}）预测：SOC约 {result['soc_prediction']} g/kg，"
+            f"建议施用量约 {result['dose_prediction']} t/ha。"
             f"模型版本：{result.get('model_version', '未知')}。"
         )
         if "原因" in question:
@@ -324,7 +323,7 @@ class OrganicMatterAgent(BaseAgent):
             evidence = [{"factors": "土壤类型/气候/地形/耕作制度/秸秆还田/施肥管理"}]
         elif computed.get("organic_matter") is not None:
             answer = (
-                f"提供的有机质实测值为 {format_public_number(computed['organic_matter'])} g/kg，定性等级为{computed['level']}。"
+                f"提供的有机质实测值为 {computed['organic_matter']} g/kg，定性等级为{computed['level']}。"
                 "该等级不构成施肥处方；当前暂无可靠施用量或提升量估计，请补充完整模型输入并核验模型版本。"
             )
             evidence = [{"metric": "organic_matter", "value": computed["organic_matter"], "unit": "g/kg"}]

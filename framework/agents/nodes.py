@@ -626,11 +626,28 @@ def llm_generate(state: MultiAgentState) -> MultiAgentState:
         }
         field_query = model_results.get("field_query")
         evidence_context = str(state.get("rag_response", {}).get("context") or "")
-        prompt = build_professional_answer_prompt(
-            question=question,
-            field_query=field_query,
-            contexts=contexts,
-            evidence_context=evidence_context,
+        prompt = (
+            "你是耕地质量与土壤改良领域的助手。请基于专业智能体结果，"
+            "整合成一份准确、简洁的中文答复。不要编造未提供的数据，"
+            "保留明确的数值和单位。回复中必须使用中文标准字段名称，"
+            "不得向用户展示 GGNL、DXBW、SXJ 等模型内部字段缩写。\n"
+            "知识图谱证据只能解释专业模型结果，不得覆盖模型实际计算值；"
+            "若证据不足，应省略扩展解释。指标分类角色与指标获取方式是独立维度。\n"
+            "如有地块字段直查结果，该实际值会由系统作为首句展示；不得否定或声称缺失，"
+            "不要重复该句。\n"
+            "回答范围必须严格跟随用户所问：\n"
+            "1. 当用户只询问当前土壤状态和酸化预测结果含义时，只输出两节：\n"
+            "“一、当前土壤状态”：只列本次提供的地块实测指标（名称、数值、单位、等级），"
+            "不得写入预测值或风险等级；\n"
+            "“二、预测结果含义”：必须先给出预测值及风险等级"
+            "（如“酸化预测值为 0.2299（轻度酸化风险）”），再解释该值代表的风险程度和取值范围；"
+            "不得输出治理建议、用量方案、监测要求、参考文献或数据来源说明，"
+            "也不要补充铝毒害、氮素失衡等未被问到的衍生风险。\n"
+            "2. 只有当用户明确询问治理、改良、用量或措施时，才输出对应的建议。\n"
+            f"用户问题：{question}\n"
+            f"地块字段直查结果：{field_query or '无'}\n"
+            f"专业模型紧凑结果：{contexts}\n"
+            f"经权限过滤的知识图谱/知识库证据：{evidence_context or '无'}"
         )
         llm_result = llm_service.generate(prompt)
         return {**state, "llm_response": llm_result, "error": None}

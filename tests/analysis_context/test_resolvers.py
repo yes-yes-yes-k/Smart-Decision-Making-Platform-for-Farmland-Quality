@@ -41,7 +41,7 @@ def test_parcel_resolver_builds_backend_owned_parent_path(app):
         ])
         db.session.commit()
         obj = SpatialObjectResolverRegistry().resolve(ObjectType.PARCEL, "P001", user_id=7)
-        assert obj.display_name == "广东省韶关市乐昌市 地块 P001"
+        assert obj.display_name == "地块 P001"
         assert [item.type.value for item in obj.parent_path] == ["province", "city", "county"]
         assert obj.area_code == "440281"
 

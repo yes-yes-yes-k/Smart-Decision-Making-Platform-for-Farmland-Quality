@@ -278,7 +278,7 @@ class RAGChain:
     def chat_stream(
         self, query: str, conversation_history: Optional[List[Dict]] = None,
         valid_doc_names: Optional[set] = None, user_id: Optional[int] = None,
-        conversation_id: Optional[int] = None, trace_id: Optional[str] = None,
+        conversation_id: Optional[int] = None,
     ):
         """流式版本的 chat：检索文档后，使用流式 LLM 生成回答，逐 token yield"""
         retrieval_kwargs: Dict[str, Any] = {"user_id": user_id}
@@ -337,15 +337,8 @@ class RAGChain:
         }
 
         # 流式 LLM 生成
-        from framework.observability.chat_timing import record_chat_stage
-        llm_started = time.perf_counter()
-        first_chunk = True
         for chunk in self.llm_service.generate_stream(prompt, conversation_history):
-            if first_chunk:
-                record_chat_stage(trace_id, "llm.first_chunk", llm_started, route="rag")
-                first_chunk = False
             yield {"type": "token", "content": chunk}
-        record_chat_stage(trace_id, "llm.complete", llm_started, route="rag")
         reference_suffix = self._reference_suffix(results)
         if reference_suffix:
             yield {"type": "token", "content": reference_suffix}
@@ -378,24 +371,17 @@ class RAGChain:
         user_id: Optional[int] = None, conversation_id: Optional[int] = None,
         conversation_history: Optional[List[Dict]] = None,
     ) -> Dict[str, Any]:
-        from framework.observability.chat_timing import record_chat_stage
-        trace_id = trace_id or "unlinked"
         started = time.perf_counter()
         retrieval_query = rewrite_query_for_retrieval(query, conversation_history)
         normalized_query = normalize_query(retrieval_query)
         category = route_category(normalized_query)
-        record_chat_stage(trace_id, "rag.query_prepare", started, route="rag")
         filters = self._build_filters(valid_doc_names, user_id, category)
-        stage_started = time.perf_counter()
         recalled = self.vector_store.hybrid_search(
             query=normalized_query, n_results=Config.RECALL_TOP_K, filters=filters,
             category=category)
-        record_chat_stage(trace_id, "rag.hybrid_search", stage_started, route="rag", candidate_count=len(recalled.get("results", [])))
         results = recalled["results"]
         if Config.RERANK_ENABLED and len(results) > Config.RETRIEVAL_TOP_K:
-            stage_started = time.perf_counter()
             results = rerank_service.rerank(retrieval_query, results)
-            record_chat_stage(trace_id, "rag.rerank", stage_started, route="rag", candidate_count=len(results))
         decision = rollout_decision(
             mode=Config.KG_ROLLOUT_MODE,
             user_id=user_id, conversation_id=conversation_id, query=query,
@@ -413,7 +399,6 @@ class RAGChain:
         graph_error = None
         if Config.KG_RETRIEVAL_ENABLED and decision["mode"] != "off":
             try:
-                stage_started = time.perf_counter()
                 graph_bundle = kg_retriever.retrieve(
                 # The synonym normalizer intentionally broadens vector recall, but
                 # it may collapse distinct graph entities. Keep the original wording.
@@ -423,7 +408,6 @@ class RAGChain:
                 category=category,
                 top_k=min(Config.KG_RETRIEVAL_TOP_K, Config.RETRIEVAL_TOP_K),
                 )
-                record_chat_stage(trace_id, "rag.knowledge_graph", stage_started, route="rag", candidate_count=len(graph_bundle.get("results", [])))
             except Exception:
                 # Graph enhancement is optional. Never expose provider/storage
                 # details and never discard the already successful vector recall.
