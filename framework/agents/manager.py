@@ -115,7 +115,13 @@ class AgentManager:
         # 首次请求时再刷新一次，避免 model-5 永久停留在占位桩。
         self._refresh_stub_agents()
         question_type = context.get("question_type")
-        agent_ids = self.router.get_agents_for_type(question_type)
+        agent_ids = list(self.router.get_agents_for_type(question_type))
+
+        # 字段联动：直查命中的额外模型（nodes.execute_models 写入的 extra_agent_ids，
+        # 如"质量等级"归 model-2）也一并执行，保证其已验证结果本轮可发布。
+        for extra_id in context.get("extra_agent_ids") or []:
+            if extra_id in self.agents and extra_id not in agent_ids:
+                agent_ids.append(extra_id)
 
         if not agent_ids:
             return {

@@ -34,6 +34,7 @@ QUESTION_TYPE_1_KEYWORDS = [
 QUESTION_TYPE_2_KEYWORDS = [
     "质量等级", "等级评价", "综合指数", "指标隶属度", "障碍度排序",
     "耕地质量等级", "质量评价", "等级评定", "指标权重",
+    "肥力", "肥力如何", "这块地怎么样",
 ]
 QUESTION_TYPE_3_KEYWORDS = [
     "障碍因素", "主要问题", "障碍诊断", "障碍组合", "地块诊断", "毛病",
@@ -136,6 +137,20 @@ _last_router_method: str = "keyword"
 _last_llm_reason: Optional[str] = None
 _last_llm_duration_ms: Optional[float] = None
 
+#: 稳定性/退化风险强先验关键词：命中即强制回落到 type-1（Model-1），
+#: 即使 LLM 初判或向量判定为其他类型（如"质量等级稳不稳，退化风险高吗"被
+#: LLM 判成 type-2 等级，导致只返回等级、不回答稳定性）。
+STABILITY_PRIORITY_KEYWORDS = (
+    "稳不稳", "稳定吗", "退化风险", "掉级", "等级稳定", "稳定性",
+)
+
+
+def _has_stability_priority(question: str) -> bool:
+    """问题是否命中稳定性/退化风险的强先验意图关键词。"""
+    return bool(question) and any(
+        keyword in question for keyword in STABILITY_PRIORITY_KEYWORDS
+    )
+
 def check_relevance(question: str) -> float:
     if not question:
         return 0.0
@@ -234,6 +249,21 @@ def identify_question_type(question: str, context: Optional[dict] = None) -> tup
                 print(f"[路由] 用户已选地块({has_parcel})，关键词未命中，回退到模型 type={base_type}")
 
     if context is not None:
+        # 稳定性复合意图保底：命中强先验关键词时，即使 LLM/向量初判为其他类型
+        # （如"质量等级稳不稳，退化风险高吗"被判成 type-2 等级），也强制回落到
+        # type-1（Model-1 稳定性与退化风险评价），避免只返回等级不答稳定性。
+        if _has_stability_priority(question) and base_type != 1:
+            method_before = _last_router_method
+            _last_router_method = (
+                "keyword_override_llm" if method_before == "llm"
+                else "keyword_stability_priority"
+            )
+            print(
+                f"[路由] 稳定性复合意图保底: type={base_type}→1 "
+                f"(method={method_before}→{_last_router_method})"
+            )
+            base_type = 1
+            base_rel = max(base_rel, 0.9)
         refined_type, _status = apply_exclusive_rules(question, base_type, context)
         print(f"[路由] 问题='{question[:30]}...' → type={base_type}→{refined_type}, "
               f"relevance={base_rel:.2f}, method={_last_router_method}")
@@ -247,7 +277,7 @@ def _infer_model_from_question(question: str, context: dict) -> int:
     优先级：问题关键词 → 默认 model-1（稳定性退化分析，最通用的地块分析模型）。
     """
     # 尝试从问题中找线索
-    if any(w in question for w in ("等级", "评价", "质量", "这块地怎么样", "肥力如何")):
+    if any(w in question for w in ("等级", "评价", "质量", "肥力", "这块地怎么样", "肥力如何")):
         return 2
     if any(w in question for w in ("障碍", "问题", "毛病", "诊断")):
         return 3

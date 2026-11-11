@@ -89,14 +89,19 @@ def update_measurement(measurement_id):
     for key in ("input_data", "result_data", "source_info"):
         if key in body and body[key] is not None and not isinstance(body[key], Mapping):
             return jsonify({"status": "error", "message": f"{key} 必须为对象"}), 400
+    if "parcel_id" in body and (
+        not isinstance(body["parcel_id"], (str, int)) or not str(body["parcel_id"]).strip()
+    ):
+        return jsonify({"status": "error", "message": "parcel_id 必须有效"}), 400
     if "mode" in body and body["mode"] not in _MODES:
         return jsonify({"status": "error", "message": "酸化测算模式无效"}), 400
     if "status" in body and body["status"] not in {"draft", "completed"}:
         return jsonify({"status": "error", "message": "测算记录状态无效"}), 400
 
-    for key in ("input_data", "result_data", "source_info", "mode", "land_type", "status"):
+    for key in ("parcel_id", "input_data", "result_data", "source_info", "mode", "land_type", "status"):
         if key in body:
-            setattr(row, key, dict(body[key]) if key in {"input_data", "result_data", "source_info"} and body[key] is not None else body[key])
+            value = str(body[key]) if key == "parcel_id" else body[key]
+            setattr(row, key, dict(value) if key in {"input_data", "result_data", "source_info"} and value is not None else value)
     if row.status == "completed" and not row.result_data:
         return jsonify({"status": "error", "message": "已完成记录必须包含计算结果"}), 400
     db.session.commit()

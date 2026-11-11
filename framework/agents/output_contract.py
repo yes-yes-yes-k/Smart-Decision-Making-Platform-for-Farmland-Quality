@@ -6,11 +6,12 @@
 from __future__ import annotations
 
 import math
+import re
 from copy import deepcopy
 from dataclasses import dataclass
 from typing import Any, Dict, Iterable, List, Mapping, Optional, Tuple
 
-from framework.domain.public_field_labels import translate_public_text
+from framework.domain.public_field_labels import public_field_label, translate_public_text
 
 
 SCHEMA_VERSION = "2.0"
@@ -22,6 +23,51 @@ IMPUTED_INPUT = "IMPUTED_INPUT"
 #: Model-4 在回填/默认输入下不输出用量结论。
 MODEL4_QUANTITATIVE_UNAVAILABLE = "MODEL4_QUANTITATIVE_UNAVAILABLE"
 MODEL5_REAL_SOURCES = frozenset({"shaoguan_rf", "global_etr", "rf_model"})
+
+#: 面向最终 LLM 的标准化字段展示：字段 → (标准中文名称, 单位)。
+#: 空字符串表示无量纲指标，提示词要求只展示数值、不提示单位缺失。
+LLM_FIELD_PRESENTATION: Dict[str, Tuple[str, str]] = {
+    "quality_grade": ("耕地质量等级", "级"),
+    "composite_index": ("耕地质量综合指数", ""),
+    "score": ("综合得分", ""),
+    "obstacle_type": ("障碍类型", ""),
+    "primary_factors": ("主要障碍因素", ""),
+    "secondary_factors": ("次要障碍因素", ""),
+    "grade_boundary_note": ("等级临界说明", ""),
+    "acidification_level": ("酸化程度", ""),
+    "soil_conditioner_dosage": ("土壤调理剂（亿土康）建议施用量", "公斤/公顷"),
+    "woody_peat_dosage": ("木本泥炭建议施用量", "公斤/公顷"),
+    "soc_prediction": ("土壤有机碳预测值", "g/kg"),
+    "dose_prediction": ("有机肥建议施用量", "公斤/亩"),
+    "soc_confidence": ("有机碳预测置信度", ""),
+    "dose_confidence": ("施用量预测置信度", ""),
+    "dose_warning": ("用量模型提示", ""),
+    "imputed_features": ("模型回填特征", ""),
+    "imputed_inputs": ("模型回填输入", ""),
+    "region": ("区域", ""),
+    "land_type": ("土地利用类型", ""),
+}
+
+
+_NUMERIC_GRADE = re.compile(r"^\d+(?:\.\d+)?$")
+
+
+def _display_grade(value: Any) -> Any:
+    """等级是 1~10 的离散标签，用户可见时不得带小数。"""
+    if value is None or isinstance(value, bool):
+        return value
+    if isinstance(value, (int, float)):
+        return str(int(round(float(value))))
+    if isinstance(value, str) and _NUMERIC_GRADE.fullmatch(value.strip()):
+        return str(int(float(value.strip())))
+    return value
+
+
+def _round_dose_to_ten(value: Any) -> Any:
+    """模型估算的有机肥用量取整到最近的 10 公斤/亩，避免伪精度。"""
+    if isinstance(value, bool) or not isinstance(value, (int, float)):
+        return value
+    return float(int(round(float(value) / 10.0) * 10))
 
 
 @dataclass(frozen=True)
@@ -262,8 +308,17 @@ def _normalize_result(agent_key: str, raw: Any, payload: Mapping[str, Any]) -> O
         }
     if agent_key == "model-4":
         metadata = source.get("metadata") if isinstance(source.get("metadata"), Mapping) else {}
+        soil_ph = first_present("soil_ph", "SJD")
+        acidification_level = first_present("acidification_level", "level")
+        if acidification_level is None and soil_ph is not None:
+            from framework.domain.statistics.indicator_definitions import classify_indicator
+            bucket = classify_indicator("soil_ph", soil_ph)
+            if bucket is not None:
+                acidification_level = bucket.label
         return {
-            "acidification_level": first_present("acidification_level", "level"),
+            "soil_ph": soil_ph,
+            "acidification_level": acidification_level,
+            "land_type": first_present("land_type"),
             "background_acid": first_present("background_acid", "Aback"),
             "acid_deposition_input": first_present("acid_deposition_input", "Adep"),
             "crop_acid_output": first_present("crop_acid_output", "Acrop"),
@@ -413,6 +468,10 @@ def normalize_execution(agent: Any, payload: Optional[Mapping[str, Any]], execut
     extra_issues: List[Dict[str, Any]] = []
     envelope["result"] = sanitize_json(envelope["result"], extra_issues, "result")
     envelope["meta"] = sanitize_json(envelope["meta"], extra_issues, "meta")
+    # 等级临界提示是展示辅助信息，放在 meta 中，避免改变模型结果字段契约。
+    boundary_note = raw_result.get("grade_boundary_note") if isinstance(raw_result, Mapping) else None
+    if boundary_note:
+        envelope["meta"]["grade_boundary_note"] = boundary_note
     # 相同 issue 只保留一份。
     seen = set()
     envelope["issues"] = [item for item in envelope["issues"] + extra_issues if not ((item.get("code"), item.get("field")) in seen or seen.add((item.get("code"), item.get("field"))))]
@@ -452,12 +511,38 @@ def llm_context(model_result: Mapping[str, Any]) -> Dict[str, Any]:
     key_result: Dict[str, Any] = {}
     if isinstance(result, Mapping):
         for key in (
-            "region", "score", "grade", "quality_grade", "composite_index", "obstacle_type",
-            "primary_factors", "secondary_factors", "acidification_level", "soil_conditioner_dosage",
-            "woody_peat_dosage", "soc_prediction", "dose_prediction", "soc_confidence", "dose_confidence",
+            "region", "land_type", "score", "grade", "quality_grade", "composite_index",
+            "grade_boundary_note", "obstacle_type", "primary_factors", "secondary_factors",
+            "obstacle_degrees", "obstacle_levels",
+            "soil_ph", "acidification_level", "soil_conditioner_dosage", "woody_peat_dosage",
+            "soc_prediction", "dose_prediction", "soc_confidence", "dose_confidence",
+            "dose_warning", "imputed_features", "imputed_inputs", "modules",
         ):
             if key in result:
                 key_result[key] = result[key]
+        for key in ("primary_factors", "secondary_factors"):
+            factors = key_result.get(key)
+            if isinstance(factors, str):
+                key_result[key] = [
+                    public_field_label(item)
+                    for item in factors.replace("；", ";").split(";")
+                    if item and item != "无"
+                ]
+            elif isinstance(factors, (list, tuple)):
+                key_result[key] = [public_field_label(item) for item in factors]
+        if "quality_grade" in key_result:
+            key_result["quality_grade"] = _display_grade(key_result["quality_grade"])
+        if "grade" in key_result:
+            key_result["grade"] = _display_grade(key_result["grade"])
+        if "dose_prediction" in key_result:
+            key_result["dose_prediction"] = _round_dose_to_ten(key_result["dose_prediction"])
+    meta = model_result.get("meta")
+    if (
+        isinstance(result, Mapping)
+        and isinstance(meta, Mapping)
+        and meta.get("grade_boundary_note")
+    ):
+        key_result["grade_boundary_note"] = meta["grade_boundary_note"]
     return sanitize_json({
         "model_id": model_result.get("model_id"),
         "status": model_result.get("status"),
@@ -540,7 +625,9 @@ def deterministic_answer(model_result: Mapping[str, Any]) -> str:
     for key, label in labels.items():
         if result.get(key) is not None:
             value = result[key]
-            if isinstance(value, float):
+            if key in ("quality_grade", "grade"):
+                value = _display_grade(value)
+            elif isinstance(value, float):
                 precision = 3 if key in {
                     "composite_index", "score", "soc_prediction",
                     "soc_confidence", "dose_confidence",
@@ -550,11 +637,81 @@ def deterministic_answer(model_result: Mapping[str, Any]) -> str:
     if result.get("primary_factors"):
         parts.append(f"主要障碍因素：{result['primary_factors']}")
     answer = "；".join(parts) or "模型已完成分析，但没有可展示的关键指标。"
+    # 确定性兜底：model-1 历史相关模块因历史不足无值且 LLM 不可用时，
+    # 仍须明确告知原因与补救路径，不得含糊成「无有效结果」。
+    if (
+        str(model_result.get("model_id") or "") == "stability-risk-evaluation"
+        and isinstance(result.get("modules"), Mapping)
+    ):
+        history_modules = ("module_5", "module_6", "module_7", "module_9")
+        lacks_history = False
+        for key in history_modules:
+            module = result["modules"].get(key)
+            if not isinstance(module, Mapping):
+                continue
+            if str(module.get("reason") or "") == "insufficient_history":
+                lacks_history = True
+                break
+            business_values = [
+                value for value in module.values()
+                if not str(value) == str(module.get("reason")) and value is not None
+            ]
+            if not business_values:
+                lacks_history = True
+                break
+        if lacks_history:
+            answer += (
+                "。因缺少该地块至少 2 期历史等级快照，"
+                "暂无法判断稳定性与退化风险高低，需补充历史等级记录后重新评估"
+            )
     return translate_public_text(answer)
+
+
+def _measurement_value_text(value: Any) -> str:
+    """把测算数值转成简洁展示文本，避免科学计数法或长尾小数。"""
+    if isinstance(value, bool) or value is None:
+        return str(value)
+    try:
+        num = float(value)
+    except (TypeError, ValueError):
+        return str(value)
+    if not math.isfinite(num):
+        return str(value)
+    # 与前端酸化卡片展示位数（ACID_RESULT_DIGITS=3）保持一致，
+    # 避免后被 round_long_decimals 把 0.093483… 压成 0.09。
+    return f"{num:.3f}".rstrip("0").rstrip(".")
+
+
+def acid_measurement_answer(context: Mapping[str, Any]) -> str:
+    """按本轮酸化测算权威记录渲染确定性回答。
+
+    只消费 ChatRequestService 从 AcidificationMeasurement 读取的
+    ``analysis_context.acidification_result_context``（mode/metric/value/unit/
+    material）。当 LLM 正文为空或不可信时，用它代替 Model-4 摘要或「暂无可用
+    结果」，保证回答解释的是用户本轮测算出的结果本身，而不是其他材料的剂量。
+    """
+    if not isinstance(context, Mapping):
+        return ""
+    if context.get("value") is None:
+        return "本轮酸化测算未返回有效数值，需重新测算或核对测算记录后再解读。"
+    value = _measurement_value_text(context.get("value"))
+    metric = str(context.get("metric") or "unknown")
+    unit = str(context.get("unit") or "").strip()
+    if metric == "quicklime_dose":
+        material = str(context.get("material") or "").strip() or "生石灰"
+        if unit:
+            return f"本次治理需{material}用量：{value} {unit}（来自本轮测算记录）"
+        return f"本轮治理测算结果为 {value}，单位未提供，需确认单位后再解读。"
+    if metric == "ph_drop_amount":
+        return f"模型预测 pH 下降量为 {value}（这是下降幅度，不是当前 pH 测量值）"
+    return (
+        f"本轮酸化测算结果为 {value}，单位未提供且结果指标语义尚未配置，"
+        "需确认该数值是预测 pH 值、pH 下降量还是其他指标后再解读。"
+    )
 
 
 __all__ = [
     "SCHEMA_VERSION", "LEGACY_SCHEMA_VERSION", "VALID_STATUSES", "Issue", "sanitize_json", "validate_result",
     "normalize_execution", "public_full", "chat_compact", "llm_context", "audit_projection",
-    "legacy_projection", "deterministic_answer",
+    "legacy_projection", "deterministic_answer", "acid_measurement_answer",
 ]

@@ -53,3 +53,24 @@ class ResultProvenanceBuilder:
                 else f"分析对象：{analysis_context.object.display_name}"
             ),
         }
+
+
+def prepend_object_title(answer: str | None, *, object_title: str) -> str:
+    """在正文前拼接“分析对象”标题，并剥离正文开头重复的地块描述。
+
+    字段直查前缀以「区域 地块 N：」开头（如“广东省韶关市仁化县 地块 131：
+    耕地质量等级为 6等。”），标题已承载同一地块描述时，正文开头的重复
+    描述与冒号会被剥离，保证「区域+地块编号」只出现一次。
+    """
+    body = str(answer or "").strip()
+    if not object_title:
+        return body
+    descriptor = object_title.split("：", 1)[-1].strip()
+    if descriptor and body.startswith(descriptor):
+        tail = body[len(descriptor):]
+        if tail.startswith("："):
+            tail = tail[1:]
+        body = tail.strip()
+    if not body:
+        return object_title
+    return f"{object_title}\n\n{body}"

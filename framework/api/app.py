@@ -5,7 +5,7 @@ from flask_cors import CORS
 from flask_jwt_extended import JWTManager
 from framework.config import Config, config_map
 from framework.models.user import db
-from framework.api.routes.auth import auth_bp
+from framework.api.routes.auth import auth_bp, users_bp
 from framework.api.routes.chat import chat_bp
 from framework.api.routes.models import models_bp
 from framework.api.routes.docs import docs_bp
@@ -293,6 +293,7 @@ def create_app(config_name: str = 'default') -> Flask:
     _ensure_acidification_measurement_table(app)
 
     app.register_blueprint(auth_bp, url_prefix='/api/v1/auth')
+    app.register_blueprint(users_bp, url_prefix='/api/v1/users')
     app.register_blueprint(chat_bp, url_prefix='/api/v1/chat')
     app.register_blueprint(models_bp, url_prefix='/api/v1/models')
     app.register_blueprint(docs_bp, url_prefix='/api/v1/docs')

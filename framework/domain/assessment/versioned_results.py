@@ -304,6 +304,26 @@ def _publish(
         ).first()
 
 
+def _try_push_app_context() -> Any | None:
+    """在无 Flask 上下文的执行路径（如 SSE 流式生成器）临时提供应用上下文。
+
+    与 BaseAgent._persist_result 使用同一模式：对话/报告路径一旦执行模型，
+    就必须产出带版本化元数据的可发布结果；缺失上下文时 execute_versioned
+    会退回裸计算，导致字段直查误报「暂无可发布的已验证模型结果」。
+    推送失败返回 None，调用方按原逻辑回退。
+    """
+    app_ctx = None
+    try:
+        if has_app_context():
+            return None
+        from framework.api.app import create_app
+        app_ctx = create_app("default").app_context()
+        app_ctx.push()
+        return app_ctx
+    except Exception:
+        return None
+
+
 def execute_versioned(
     agent: Any,
     payload: Mapping[str, Any] | None,
@@ -311,49 +331,58 @@ def execute_versioned(
 ) -> dict[str, Any]:
     """Get or calculate one result for every Model-1..6 execution path."""
     request = dict(payload or {})
+    temp_ctx = None
     if not has_app_context():
-        return dict(calculate())
-
-    agent_id = agent.agent_id
-    snapshot = build_input_snapshot(agent_id, request)
-    digest = input_fingerprint(snapshot)
-    subject_type, subject_id, area_code = _subject(snapshot, request, digest)
-    version = MODEL_RUNTIME_VERSIONS.get(agent_id, "unknown")
+        temp_ctx = _try_push_app_context()
+        if temp_ctx is None and not has_app_context():
+            return dict(calculate())
     try:
-        row = _find_exact(agent_id, subject_type, subject_id, version, digest)
-        if row is not None:
-            return _with_metadata(row.result_payload or {}, row, cache_hit=True)
-    except (SQLAlchemyError, RuntimeError) as exc:
-        logger.warning("读取版本化结果失败，执行现场计算 agent=%s: %s", agent_id, exc)
+        agent_id = agent.agent_id
+        snapshot = build_input_snapshot(agent_id, request)
+        digest = input_fingerprint(snapshot)
+        subject_type, subject_id, area_code = _subject(snapshot, request, digest)
+        version = MODEL_RUNTIME_VERSIONS.get(agent_id, "unknown")
         try:
-            from framework.models import db
-            db.session.rollback()
-        except Exception:
-            pass
+            row = _find_exact(agent_id, subject_type, subject_id, version, digest)
+            if row is not None:
+                return _with_metadata(row.result_payload or {}, row, cache_hit=True)
+        except (SQLAlchemyError, RuntimeError) as exc:
+            logger.warning("读取版本化结果失败，执行现场计算 agent=%s: %s", agent_id, exc)
+            try:
+                from framework.models import db
+                db.session.rollback()
+            except Exception:
+                pass
 
-    execution = dict(calculate())
-    try:
-        row = _publish(
-            agent=agent,
-            execution=execution,
-            snapshot=snapshot,
-            digest=digest,
-            subject_type=subject_type,
-            subject_id=subject_id,
-            area_code=area_code,
-        )
-        if row is not None:
-            # Reactivating a historical row must return that row's immutable
-            # payload, not a separately recalculated in-memory value.
-            return _with_metadata(row.result_payload or execution, row, cache_hit=False)
-    except (SQLAlchemyError, RuntimeError) as exc:
-        logger.warning("发布版本化结果失败 agent=%s: %s", agent_id, exc)
+        execution = dict(calculate())
         try:
-            from framework.models import db
-            db.session.rollback()
-        except Exception:
-            pass
-    return execution
+            row = _publish(
+                agent=agent,
+                execution=execution,
+                snapshot=snapshot,
+                digest=digest,
+                subject_type=subject_type,
+                subject_id=subject_id,
+                area_code=area_code,
+            )
+            if row is not None:
+                # Reactivating a historical row must return that row's immutable
+                # payload, not a separately recalculated in-memory value.
+                return _with_metadata(row.result_payload or execution, row, cache_hit=False)
+        except (SQLAlchemyError, RuntimeError) as exc:
+            logger.warning("发布版本化结果失败 agent=%s: %s", agent_id, exc)
+            try:
+                from framework.models import db
+                db.session.rollback()
+            except Exception:
+                pass
+        return execution
+    finally:
+        if temp_ctx is not None:
+            try:
+                temp_ctx.pop()
+            except Exception:
+                pass
 
 
 def business_result(row_or_execution: Any) -> dict[str, Any]:

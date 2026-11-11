@@ -14,9 +14,13 @@ from framework.agents.capabilities import (
 )
 from framework.analysis_context.contracts import AnalysisContext
 from framework.analysis_context.errors import AnalysisObjectInvalid
-from framework.analysis_context.provenance import ResultProvenanceBuilder
+from framework.analysis_context.provenance import (
+    ResultProvenanceBuilder,
+    prepend_object_title,
+)
 from framework.analysis_context.service import AnalysisContextService
 from framework.domain.public_field_labels import translate_public_text
+from framework.domain.public_numbers import round_long_decimals
 from framework.models import AcidificationMeasurement, Conversation, Message, ParcelInfo, db
 from framework.observability.analysis_context_metrics import (
     EVENT_LEGACY_FIELD_USED,
@@ -79,6 +83,7 @@ class ChatRequestService:
                 conversation, user_id=user_id, body=body,
             )
             acidification_history = []
+            current_measurement = None
             measurement_id = body.get("acidification_measurement_id")
             if measurement_id is not None:
                 try:
@@ -117,6 +122,23 @@ class ChatRequestService:
             snapshot = deepcopy(resolved.snapshot())
             if measurement_id is not None:
                 snapshot["acidification_measurement_id"] = measurement_id
+                # Use the conversation-owned persisted measurement as the authority;
+                # never trust client-supplied result values for the agent context.
+                snapshot["acidification_result_context"] = {
+                    "mode": current_measurement.mode,
+                    "model_id": (current_measurement.result_data or {}).get("model_id"),
+                    "metric": (
+                        "quicklime_dose" if current_measurement.mode == "governance"
+                        else "ph_drop_amount" if (current_measurement.result_data or {}).get("model_id") == 38
+                        else "unknown"
+                    ),
+                    "value": (((current_measurement.result_data or {}).get("predictions") or [{}])[0]).get("result"),
+                    "unit": (((current_measurement.result_data or {}).get("predictions") or [{}])[0]).get("unit"),
+                    "material": "生石灰" if current_measurement.mode == "governance" else None,
+                    "source": (current_measurement.result_data or {}).get("source"),
+                    "inputs": current_measurement.input_data or {},
+                    "assumptions": (current_measurement.result_data or {}).get("assumed_fields", {}),
+                }
             execution_identifiers = self._execution_identifiers(
                 snapshot, resolved.validated_identifiers,
             )
@@ -141,9 +163,12 @@ class ChatRequestService:
             request_data.update({
                 "question": (
                     question
+                    + "\n\n【本轮酸化结果权威上下文】\n"
+                    + json.dumps(snapshot.get("acidification_result_context", {}), ensure_ascii=False, separators=(",", ":"))
+                    + "\n仅解释本轮结果。治理模式只回答生石灰剂量；预测 model_id=38 的结果是 pH 下降量，不是预测后的 pH。不得引入其他酸化模型或其他材料的剂量。"
                     + "\n\n【当前会话全部酸化测算记录】\n"
                     + json.dumps(acidification_history, ensure_ascii=False, separators=(",", ":"))
-                    + "\n请将以上记录作为本轮分析上下文，区分每条记录的地块、模式和结果来源。"
+                    + "\n请将以上记录作为本轮分析上下文，区分每条记录的地块、模式和结果类别。"
                     if measurement_id is not None else question
                 ),
                 "analysis_context": deepcopy(snapshot),
@@ -284,11 +309,12 @@ class ChatRequestService:
             provenance = self._stream_provenance(prepared, normalized)
             if provenance:
                 normalized["provenance"] = provenance
-                title = provenance["object_title"]
-                answer = normalized.get("answer", "")
-                if answer and not answer.startswith(title):
-                    normalized["answer"] = f"{title}\n\n{answer}"
+                normalized["answer"] = prepend_object_title(
+                    normalized.get("answer", ""),
+                    object_title=provenance["object_title"],
+                )
         normalized["answer"] = translate_public_text(normalized.get("answer", ""))
+        normalized["answer"] = round_long_decimals(normalized["answer"])
         if isinstance(normalized.get("report_draft"), str):
             normalized["report_draft"] = translate_public_text(normalized["report_draft"])
         recommendations = normalized.get("recommendations")

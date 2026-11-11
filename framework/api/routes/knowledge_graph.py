@@ -36,7 +36,7 @@ from framework.vector_store.chroma_store import vector_store
 
 
 knowledge_graph_bp = Blueprint("knowledge_graph_admin", __name__)
-REVIEWER_ROLES = {"admin", "domain_reviewer"}
+REVIEWER_ROLES = {"admin"}
 JOB_STATES = {"pending", "running", "retry", "completed", "dead_letter"}
 CANDIDATE_KINDS = {"entity", "relation", "claim"}
 
@@ -51,7 +51,7 @@ def _actor(*, admin=False):
         return None
     if admin:
         return user if user.is_admin() else None
-    return user if user.role in REVIEWER_ROLES else None
+    return user if user.status == 1 and user.role in REVIEWER_ROLES else None
 
 
 def _page_args():

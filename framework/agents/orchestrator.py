@@ -16,6 +16,7 @@ from .nodes import (
     execute_models,
     retrieve_professional_evidence,
     llm_generate,
+    build_professional_answer_prompt,
     rag_chat_node,
     boundary_pending_node,
     aggregate_results,
@@ -194,7 +195,7 @@ class MultiAgentOrchestrator:
                         }}
             elif route == "boundary_pending":
                 state = boundary_pending_node(state)
-                full_answer = state["model_results"]["data"]["summary"]
+                full_answer = state["model_results"].get("answer", "")
             else:
                 # 模型路径：先执行模型（阻塞），再流式生成
                 state = execute_models(state)
@@ -213,6 +214,20 @@ class MultiAgentOrchestrator:
                     sources = rag_response.get("sources", [])
 
                 if question:
+                    # 酸化状态确定性前缀：任何路径（FC/流式/非流式）都必须强制
+                    # 输出权威地块快照中的实测土壤酸碱度与酸化分级，修复
+                    # 「数据库存在 soil_ph 却回复缺少数据」链路断点（F1/F4）。
+                    object_ctx = (state.get("analysis_context") or {}).get("object") or {}
+                    parcel_id = (
+                        object_ctx.get("id") if object_ctx.get("type") == "parcel" else None
+                    )
+                    acid_prefix = ""
+                    if question_type == 4:
+                        from .nodes import build_acidification_state_prefix
+                        acid_prefix = build_acidification_state_prefix(
+                            (agent_data.get("models") if isinstance(agent_data, dict) else None) or {},
+                            parcel_id=parcel_id,
+                        )
                     # function calling 已生成答复时直接使用，避免重复调 LLM
                     fc_summary = agent_data.get("answer", "") if isinstance(agent_data, dict) else ""
                     routing_method = agent_data.get("routing_method", "") if isinstance(agent_data, dict) else ""
@@ -221,11 +236,18 @@ class MultiAgentOrchestrator:
                         and fc_summary
                         and not agent_data.get("field_query")
                     ):
-                        full_answer = fc_summary
-                        yield {"type": "token", "content": fc_summary}
+                        # FC 路径同样强制拼接酸化确定性前缀（LLM 自行总结时可能
+                        # 忽略 tool 结果中的 soil_ph，导致误报"缺实测"）。
+                        if acid_prefix:
+                            full_answer = acid_prefix + "\n\n" + fc_summary
+                            yield {"type": "token", "content": acid_prefix + "\n\n"}
+                            yield {"type": "token", "content": fc_summary}
+                        else:
+                            full_answer = fc_summary
+                            yield {"type": "token", "content": fc_summary}
                     else:
-                        # 复刻 llm_generate 节点的 prompt 构造逻辑
-                        # 提取关键模型结果摘要，便于排查
+                        # 流式与非流式共用 build_professional_answer_prompt，
+                        # 避免两处规则漂移（稳定性历史不足、酸化分级、只答所问等）。
                         from .output_contract import llm_context
                         from .parcel_field_query import prepend_field_answer
                         contexts = {
@@ -234,51 +256,61 @@ class MultiAgentOrchestrator:
                         }
                         field_query = agent_data.get("field_query")
                         field_answer = str((field_query or {}).get("answer") or "").strip()
-                        if field_answer:
-                            full_answer = field_answer + "\n\n"
+                        # acid_prefix/object_ctx/parcel_id 已在 `if question:` 开头统一计算
+                        head = "\n\n".join(part for part in (field_answer, acid_prefix) if part)
+                        if head:
+                            full_answer = head + "\n\n"
                             yield {"type": "token", "content": full_answer}
                         evidence_context = str(
                             state.get("rag_response", {}).get("context") or ""
                         )
-                        prompt = (
-                            "你是耕地质量与土壤改良领域的助手。请基于专业智能体结果，"
-                            "整合成一份准确、简洁、可执行的中文答复。不要编造未提供的数据，"
-                            "保留明确的数值、单位和建议。回复中必须使用中文标准字段名称，"
-                            "不得向用户展示 GGNL、DXBW、SXJ 等模型内部字段缩写。\n"
-                            "知识图谱证据只能解释专业模型结果，不得覆盖模型实际计算值；"
-                            "若证据不足，应省略扩展解释。指标分类角色与指标获取方式是独立维度。\n"
-                            "如有地块字段直查结果，该实际值已经由系统展示；不得否定或声称缺失，"
-                            "不要重复该句，只需继续回答诊断和治理建议。\n"
-                            f"用户问题：{question}\n"
-                            f"地块字段直查结果：{field_query or '无'}\n"
-                            f"专业模型紧凑结果：{contexts}\n"
-                            f"经权限过滤的知识图谱/知识库证据：{evidence_context or '无'}"
-                        )
+                        # 会话上下文已知前提注入：同会话同地块上一轮模型结论\n                        # （如障碍度中「土壤酸碱度 0.14」），供本轮回答引用，\n                        # 使其能区分「障碍度 ≠ 实测 pH」，消除跨轮矛盾观感。\n                        from .nodes import extract_prior_knowledge\n                        prior_knowledge = extract_prior_knowledge(\n                            conversation_history,\n                            (object_ctx or {}).get(\"id\")\n                            if (object_ctx or {}).get(\"type\") == \"parcel\" else None,\n                        )\n                        if prior_knowledge:\n                            evidence_context = (\n                                evidence_context + \"\\n\\n【上一轮已知前提】\\n\" + prior_knowledge\n                            ).strip()\n                        prompt = build_professional_answer_prompt(\n                            question=question,\n                            field_query=field_query,\n                            contexts=contexts,\n                            evidence_context=evidence_context,\n                        )
                         from framework.llm.service import llm_service
+                        body = ""
                         try:
                             for chunk in llm_service.generate_stream(prompt, messages=conversation_history):
+                                body += chunk
                                 full_answer += chunk
                                 yield {"type": "token", "content": chunk}
                         except Exception:
                             # LLM 失败时直接根据同一份规范模型结果生成答复，
-                            # 不重新执行任何专业 Agent。
-                            from .output_contract import deterministic_answer
-                            fallback_answer = "\n".join(
-                                deterministic_answer(item) for item in agent_data.get("models", {}).values()
-                            ) or "暂无可用结果"
-                            previous = full_answer
-                            full_answer = prepend_field_answer(field_query, fallback_answer)
-                            remaining = full_answer[len(previous):] if full_answer.startswith(previous) else full_answer
-                            if remaining:
-                                yield {"type": "token", "content": remaining}
+                            # 不重新执行任何专业 Agent（body 保持空，走下方兜底）。
+                            body = ""
+                        # 空正文兜底：LLM 失败或空流（无 token），或正文含白名单外
+                        # 幻觉字段名（如「耕作制度」）→ 确定性摘要拼接。
+                        from .nodes import has_prohibited_field_name
+                        if not body.strip() or has_prohibited_field_name(body):
+                            # 酸化测算兜底优先：正文为空或不可信时，若本轮携带
+                            # 权威酸化测算上下文，则解释本轮测算结果本身，而不是
+                            # 拼接 Model-4 其他材料剂量或输出「暂无可用结果」。
+                            from .output_contract import deterministic_answer, acid_measurement_answer
+                            acid_ctx = (
+                                (state.get("analysis_context") or {})
+                                .get("acidification_result_context") or {}
+                            )
+                            if acid_ctx:
+                                body = acid_measurement_answer(acid_ctx)
+                            else:
+                                body = "\n".join(
+                                    deterministic_answer(item) for item in agent_data.get("models", {}).values()
+                                ) or "暂无可用结果"
+                            full_answer += body
+                            yield {"type": "token", "content": body}
 
             # 最终结果
             done_models = {} if question_type == 0 else state.get("model_results", {}).get("models", {})
             if not full_answer and question_type != 0:
-                from .output_contract import deterministic_answer
-                full_answer = "\n".join(
-                    deterministic_answer(item) for item in done_models.values()
-                ) or "暂无可用结果"
+                from .output_contract import deterministic_answer, acid_measurement_answer
+                acid_ctx = (
+                    (state.get("analysis_context") or {})
+                    .get("acidification_result_context") or {}
+                )
+                if acid_ctx:
+                    full_answer = acid_measurement_answer(acid_ctx)
+                else:
+                    full_answer = "\n".join(
+                        deterministic_answer(item) for item in done_models.values()
+                    ) or "暂无可用结果"
             field_query = state.get("model_results", {}).get("field_query")
             yield {
                 "type": "done",

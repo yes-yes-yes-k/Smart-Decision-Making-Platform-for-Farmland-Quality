@@ -92,6 +92,47 @@ class ParcelDataAccessor:
             logger.warning("查询 parcel snapshot 失败 (parcel_id=%s): %s", parcel_id, exc)
             return None
 
+    def resolve_region_path(self, area_code: str) -> str:
+        """按 area_code 解析省/市/县行政区划名称链（如“广东省韶关市乐昌市”）。
+
+        无法解析或缺失上级行政区时返回空字符串，调用方据此决定是否省略区域前缀。
+        """
+        if not area_code:
+            return ""
+        try:
+            from framework.models.thematic_model import SpatialRegionCatalog
+            app = self._get_app()
+            ctx = app.app_context() if app else None
+            if ctx: ctx.push()
+            try:
+                current = SpatialRegionCatalog.query.filter_by(
+                    object_type="county", object_id=area_code, enabled=True
+                ).one_or_none()
+                if current is None:
+                    return ""
+                names = [current.display_name]
+                seen = {(current.object_type, current.object_id)}
+                while current.parent_object_type and current.parent_object_id:
+                    parent = SpatialRegionCatalog.query.filter_by(
+                        object_type=current.parent_object_type,
+                        object_id=current.parent_object_id,
+                        enabled=True,
+                    ).one_or_none()
+                    if parent is None:
+                        break
+                    key = (parent.object_type, parent.object_id)
+                    if key in seen:
+                        break
+                    seen.add(key)
+                    names.append(parent.display_name)
+                    current = parent
+                return "".join(reversed(names))
+            finally:
+                if ctx: ctx.pop()
+        except Exception as exc:
+            logger.warning("解析区域路径失败 (area_code=%s): %s", area_code, exc)
+            return ""
+
     def get_parcel_record(self, parcel_id: str) -> Optional[dict]:
         """按 parcel_id 返回地块记录 dict（含 soil_indicators/land_type/fertilizer_type/target_ph）。
 

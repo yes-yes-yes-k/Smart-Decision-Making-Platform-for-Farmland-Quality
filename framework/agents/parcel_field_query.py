@@ -11,6 +11,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from datetime import datetime
 import math
+import re
 from typing import Any, Iterable
 from collections.abc import Mapping
 
@@ -172,6 +173,12 @@ _FIELDS: tuple[ParcelField, ...] = (
         category="derived_model_result", source_kind="model",
         model_agent_id="model-2",
     ),
+    ParcelField(
+        "obstacle_degree", "obstacle_degrees", "障碍度排序", "", 3,
+        ("障碍度排序", "障碍度", "障碍程度排序"),
+        category="derived_model_result", source_kind="model",
+        model_agent_id="model-3",
+    ),
 )
 
 
@@ -205,6 +212,28 @@ _QUALITY_FLAG_LABELS = {
     "verified": "已核验",
 }
 
+#: 模型结果不可发布的用户化原因文案。核心句「暂无可发布的已验证模型结果」
+#: 必须保留（对外契约与测试锚点），后缀给出具体原因辅助归因。
+_DERIVED_UNAVAILABLE_MESSAGES: dict[str, str] = {
+    "model_result_missing": "暂无可发布的已验证模型结果（对应模型本轮未执行评价）",
+    "model_status_not_ok": "暂无可发布的已验证模型结果（对应模型本轮计算未通过）",
+    "model_subject_mismatch": "暂无可发布的已验证模型结果（模型结果未通过地块一致性校验）",
+    "model_provenance_incomplete": "暂无可发布的已验证模型结果（结果缺少验证性发布元数据）",
+    "model_value_missing": "暂无可发布的已验证模型结果（对应模型未输出该指标数值）",
+}
+
+
+def _derived_unavailable_clause(label: str, unavailable_reason: str | None) -> str:
+    message = _DERIVED_UNAVAILABLE_MESSAGES.get(
+        unavailable_reason or "model_provenance_incomplete",
+        "暂无可发布的已验证模型结果",
+    )
+    return f"{label}{message}"
+
+
+#: “目标 pH = 数值”是用户指定计算参数，不是查询地块字段值。
+_TARGET_PH_ASSIGNMENT = re.compile(r"目标(?:土壤酸碱度|酸碱度|ph值|ph)[^\d]{0,5}\d")
+
 
 def requested_parcel_fields(question: str) -> tuple[ParcelField, ...]:
     """Return explicitly mentioned parcel fields, preserving registry order."""
@@ -217,6 +246,10 @@ def requested_parcel_fields(question: str) -> tuple[ParcelField, ...]:
     # "目标 pH" is a management target, not a request for the current pH.
     if any(field.key == "target_ph" for field in matched):
         matched = [field for field in matched if field.key != "soil_ph"]
+        # “目标酸碱度为 6.5”是用户指定目标值用于测算，而非查询地块字段，
+        # 不应触发直查并误报“暂无记录”。
+        if _TARGET_PH_ASSIGNMENT.search(folded):
+            matched = [field for field in matched if field.key != "target_ph"]
     return tuple(matched)
 
 
@@ -328,6 +361,8 @@ def _classification(field: ParcelField, value: Any) -> tuple[str | None, str | N
 
 
 def _format_value(value: Any, decimals: int, key: str | None = None) -> str:
+    from collections.abc import Mapping
+
     enum_label = _ENUM_LABELS.get(key or "", {}).get(str(value).casefold())
     if enum_label is not None:
         return enum_label
@@ -336,6 +371,27 @@ def _format_value(value: Any, decimals: int, key: str | None = None) -> str:
     if isinstance(value, (int, float)):
         rendered = f"{float(value):.{decimals}f}"
         return rendered.rstrip("0").rstrip(".") if "." in rendered else rendered
+    if isinstance(value, Mapping):
+        # 障碍度排序/隶属度/权重等数值型有序字典：渲染为 GFM Markdown 表格，
+        # 按数值降序排列，前端已支持表格样式；
+        # 非数值型字典（如元数据）仍按「标签 数值」平铺，禁止 str(dict) 把 Python 字面量暴露给用户。
+        if value and all(isinstance(v, (int, float)) for v in value.values()):
+            rows = sorted(value.items(), key=lambda kv: kv[1], reverse=True)
+            lines = ["| 指标 | 数值 |", "| --- | --- |"]
+            lines += [
+                f"| {item_key} | {_format_value(item_value, decimals, str(item_key))} |"
+                for item_key, item_value in rows
+                if item_key not in (None, "无")
+            ]
+            return "\n".join(lines)
+        return "；".join(
+            f"{str(item_key)} {_format_value(item_value, decimals, str(item_key))}"
+            for item_key, item_value in value.items()
+            if item_key not in (None, "无")
+        )
+    if isinstance(value, (list, tuple)):
+        # 障碍度排序、主要障碍因素等模型结果本身是列表，逐项渲染。
+        return "、".join(_format_value(item, decimals, key) for item in value if item not in (None, "无"))
     return str(value)
 
 
@@ -374,26 +430,38 @@ def _metadata_clauses(item: Mapping[str, Any], requested: Iterable[str]) -> list
     return clauses
 
 
-def format_field_query_answer(field_query: dict[str, Any]) -> str:
-    """Build the exact, non-LLM answer prefix used by HTTP and SSE paths."""
+def format_field_query_answer(field_query: dict[str, Any], location_only: bool = False) -> str:
+    """Build the exact, non-LLM answer prefix used by HTTP and SSE paths.
+
+    ``location_only=True`` 用于“现状 + 预测”这类综合咨询：正文会由专业结果
+    统一列出指标，直查前缀只保留地域与地块编号，避免指标值重复出现。
+    """
     parcel_id = field_query.get("parcel_id") or "当前地块"
     if field_query.get("status") == "parcel_not_found":
         return f"未找到地块 {parcel_id} 的指标快照。"
     if field_query.get("status") == "needs_indicator_for_metadata":
         return "请明确需要查询哪个指标的测量年份、数据来源、插补状态或质量标记。"
 
-    clauses: list[str] = []
+    region = field_query.get("region") or ""
+    region_prefix = f"{region} " if region else ""
+    if location_only:
+        return f"{region_prefix}地块 {parcel_id}"
+
+    phrases: list[str] = []
+    table_blocks: list[str] = []
     requested_metadata = field_query.get("requested_metadata", [])
     for item in field_query.get("fields", []):
         label = item["label"]
         value = item.get("value")
         if value is None:
             if item.get("category") == "derived_model_result":
-                clause = f"{label}暂无可发布的已验证模型结果"
+                clause = _derived_unavailable_clause(
+                    label, item.get("unavailable_reason")
+                )
             else:
                 clause = f"{label}暂无记录"
             metadata = _metadata_clauses(item, requested_metadata)
-            clauses.append("，".join([clause, *metadata]))
+            phrases.append("，".join([clause, *metadata]))
             continue
         rendered = _format_value(
             value, int(item.get("decimals", 2)), str(item.get("key") or ""),
@@ -401,12 +469,26 @@ def format_field_query_answer(field_query: dict[str, Any]) -> str:
         unit = item.get("unit") or ""
         if unit and rendered.endswith(unit):
             unit = ""
-        classification = item.get("classification")
-        suffix = f"（{classification}）" if classification else ""
-        clause = f"{label}为 {rendered}{unit}{suffix}"
+        # 表格类结果（含换行的 Markdown 表格）必须独立成块，表头独占一行，
+        # 否则表头被拼到标签后面导致 marked 无法识别为表格。
+        if "\n" in rendered:
+            table_blocks.append(f"{label}为：\n\n{rendered}")
+            continue
+        clause = f"{label}为 {rendered}{unit}"
         metadata = _metadata_clauses(item, requested_metadata)
-        clauses.append("，".join([clause, *metadata]))
-    return f"地块 {parcel_id}：" + "；".join(clauses) + "。"
+        phrases.append("，".join([clause, *metadata]))
+    if not phrases and not table_blocks:
+        return ""
+    region = field_query.get("region") or ""
+    region_prefix = f"{region} " if region else ""
+    head = f"{region_prefix}地块 {parcel_id}："
+    body = "；".join(phrases) + "。" if phrases else ""
+    tables = "\n\n".join(table_blocks) if table_blocks else ""
+    if body and tables:
+        return f"{head}{body}\n\n{tables}"
+    if tables:
+        return f"{head}\n\n{tables}"
+    return f"{head}{body}"
 
 
 def query_requested_parcel_fields(
@@ -428,7 +510,8 @@ def query_requested_parcel_fields(
     if (not fields and not metadata_fields) or not parcel_id:
         return None
 
-    snapshot = (accessor or ParcelDataAccessor()).get_parcel_snapshot(str(parcel_id))
+    accessor = accessor or ParcelDataAccessor()
+    snapshot = accessor.get_parcel_snapshot(str(parcel_id))
     if snapshot is None:
         result: dict[str, Any] = {
             "status": "parcel_not_found",
@@ -438,6 +521,11 @@ def query_requested_parcel_fields(
         }
         result["answer"] = format_field_query_answer(result)
         return result
+
+    region = ""
+    resolve_region = getattr(accessor, "resolve_region_path", None)
+    if resolve_region is not None:
+        region = resolve_region(snapshot.area_code) or ""
 
     if metadata_fields and not fields:
         result = {
@@ -485,6 +573,7 @@ def query_requested_parcel_fields(
     result = {
         "status": "ok" if any(item["value"] is not None for item in items) else "missing",
         "parcel_id": snapshot.parcel_id,
+        "region": region,
         "fields": items,
         "requested_metadata": list(metadata_fields),
         "preconditions": {
@@ -508,7 +597,13 @@ def query_requested_parcel_fields(
             ),
             "rules": list(FIELD_CATEGORY_PRECONDITIONS["indicator_provenance"]),
         }
-    result["answer"] = format_field_query_answer(result)
+    # “现状 + 预测”综合咨询（如酸化现状与预测含义）由正文统一列出指标，
+    # 直查前缀只保留地域与地块编号，避免与正文重复。
+    location_only = (
+        "预测" in question
+        and ("酸化" in question or "现状" in question or "状态" in question)
+    )
+    result["answer"] = format_field_query_answer(result, location_only=location_only)
     return result
 
 
