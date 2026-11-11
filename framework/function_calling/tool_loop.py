@@ -19,6 +19,45 @@ from framework.analysis_context.errors import AnalysisContextConflict
 
 logger = logging.getLogger(__name__)
 
+
+def _inject_model4_soil_ph(payload: Dict[str, Any], arguments: Dict[str, Any]) -> Dict[str, Any]:
+    """Model-4 工具结果若缺 soil_ph/acidification_level，从权威地块快照兜底注入。
+
+    修复「数据库存在实测 soil_ph，LLM 却回复缺少数据」：无论模型 envelope 在
+    execute/normalize 链路中是否丢字段，工具返回给 LLM 的内容都必须携带实测
+    土壤酸碱度与酸化分级，避免 LLM 依据不完整投影误报「缺少实测酸碱度」。
+    """
+    if not isinstance(payload, dict):
+        return payload
+    result = payload.get("result")
+    if not isinstance(result, dict):
+        return payload
+    if result.get("soil_ph") is not None:
+        return payload
+    parcel_id = arguments.get("parcel_id")
+    if not parcel_id:
+        return payload
+    from framework.domain.data.parcel_data_accessor import ParcelDataAccessor
+    from framework.domain.statistics.indicator_definitions import classify_indicator
+
+    try:
+        snapshot = ParcelDataAccessor().get_parcel_snapshot(str(parcel_id))
+    except Exception:
+        return payload
+    if snapshot is None:
+        return payload
+    soil_ph = snapshot.indicators.get("soil_ph")
+    if soil_ph is None:
+        return payload
+    result["soil_ph"] = soil_ph
+    try:
+        bucket = classify_indicator("soil_ph", soil_ph)
+    except Exception:
+        bucket = None
+    if bucket is not None:
+        result["acidification_level"] = bucket.label
+    return payload
+
 # system prompt 模板：注入能力清单 + 上下文
 _SYSTEM_PROMPT_TEMPLATE = """你是耕地质量与土壤改良领域的助手。你可以调用以下专业工具来回答用户问题：
 
@@ -194,6 +233,17 @@ class ToolCallingLoop:
                 # （酸化 spec 要求不暴露中间变量）；该副本只用于提示词，不回写
                 # 工具结果、API 响应或数据库。
                 raw_payload = result.get("result", result.get("error", ""))
+                # Model-4 结果若缺 soil_ph，从权威地块快照兜底注入实测值，
+                # 修复「数据库有 pH 却回复缺少数据」断点（LLM 依据不完整结果误报）。
+                if (
+                    result.get("success")
+                    and isinstance(raw_payload, dict)
+                    and agent_id == "model-4"
+                ):
+                    try:
+                        _inject_model4_soil_ph(raw_payload, merged_args)
+                    except Exception:
+                        pass
                 tool_payload = raw_payload
                 if result.get("success") and isinstance(raw_payload, dict):
                     try:

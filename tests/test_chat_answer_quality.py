@@ -10,6 +10,8 @@
 """
 from __future__ import annotations
 
+from types import SimpleNamespace
+
 import pytest
 
 
@@ -139,3 +141,31 @@ def test_extract_prior_knowledge_cross_parcel_blocked():
         },
     ]
     assert extract_prior_knowledge(history, "3597") == ""
+
+
+def test_tool_loop_injects_model4_soil_ph_from_snapshot(monkeypatch):
+    """Model-4 工具结果缺 soil_ph 时，从权威快照兜底注入实测值，防 LLM 误报。"""
+    from framework.function_calling.tool_loop import _inject_model4_soil_ph
+
+    # 模拟权威快照：2621 实测 pH 5.43（强酸性 [4.5,5.5)）
+    fake_snapshot = SimpleNamespace(
+        indicators={
+            "soil_ph": 5.434989,
+            "organic_matter": 29.0,
+        }
+    )
+    import framework.domain.data.parcel_data_accessor as pda_module
+
+    monkeypatch.setattr(
+        pda_module.ParcelDataAccessor,
+        "get_parcel_snapshot",
+        lambda self, pid: fake_snapshot,
+    )
+
+    payload = {
+        "status": "ok",
+        "result": {"parcel_id": "2621", "Aback": 108048.48},
+    }
+    _inject_model4_soil_ph(payload, {"parcel_id": "2621"})
+    assert payload["result"]["soil_ph"] == 5.434989
+    assert payload["result"]["acidification_level"] == "强酸性"

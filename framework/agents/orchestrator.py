@@ -214,6 +214,20 @@ class MultiAgentOrchestrator:
                     sources = rag_response.get("sources", [])
 
                 if question:
+                    # 酸化状态确定性前缀：任何路径（FC/流式/非流式）都必须强制
+                    # 输出权威地块快照中的实测土壤酸碱度与酸化分级，修复
+                    # 「数据库存在 soil_ph 却回复缺少数据」链路断点（F1/F4）。
+                    object_ctx = (state.get("analysis_context") or {}).get("object") or {}
+                    parcel_id = (
+                        object_ctx.get("id") if object_ctx.get("type") == "parcel" else None
+                    )
+                    acid_prefix = ""
+                    if question_type == 4:
+                        from .nodes import build_acidification_state_prefix
+                        acid_prefix = build_acidification_state_prefix(
+                            (agent_data.get("models") if isinstance(agent_data, dict) else None) or {},
+                            parcel_id=parcel_id,
+                        )
                     # function calling 已生成答复时直接使用，避免重复调 LLM
                     fc_summary = agent_data.get("answer", "") if isinstance(agent_data, dict) else ""
                     routing_method = agent_data.get("routing_method", "") if isinstance(agent_data, dict) else ""
@@ -222,8 +236,15 @@ class MultiAgentOrchestrator:
                         and fc_summary
                         and not agent_data.get("field_query")
                     ):
-                        full_answer = fc_summary
-                        yield {"type": "token", "content": fc_summary}
+                        # FC 路径同样强制拼接酸化确定性前缀（LLM 自行总结时可能
+                        # 忽略 tool 结果中的 soil_ph，导致误报"缺实测"）。
+                        if acid_prefix:
+                            full_answer = acid_prefix + "\n\n" + fc_summary
+                            yield {"type": "token", "content": acid_prefix + "\n\n"}
+                            yield {"type": "token", "content": fc_summary}
+                        else:
+                            full_answer = fc_summary
+                            yield {"type": "token", "content": fc_summary}
                     else:
                         # 流式与非流式共用 build_professional_answer_prompt，
                         # 避免两处规则漂移（稳定性历史不足、酸化分级、只答所问等）。
@@ -233,20 +254,9 @@ class MultiAgentOrchestrator:
                             aid: llm_context(item)
                             for aid, item in agent_data.get("models", {}).items()
                         }
-                        object_ctx = (state.get("analysis_context") or {}).get("object") or {}
-                        parcel_id = (
-                            object_ctx.get("id") if object_ctx.get("type") == "parcel" else None
-                        )
                         field_query = agent_data.get("field_query")
                         field_answer = str((field_query or {}).get("answer") or "").strip()
-                        # 酸化状态确定性前缀：Model-4 有实测 pH 必须报告分级，
-                        # 修复「数据库存在 soil_ph 却回复缺少数据」链路断点。
-                        acid_prefix = ""
-                        if question_type == 4:
-                            from .nodes import build_acidification_state_prefix
-                            acid_prefix = build_acidification_state_prefix(
-                                agent_data.get("models", {}), parcel_id=parcel_id,
-                            )
+                        # acid_prefix/object_ctx/parcel_id 已在 `if question:` 开头统一计算
                         head = "\n\n".join(part for part in (field_answer, acid_prefix) if part)
                         if head:
                             full_answer = head + "\n\n"
