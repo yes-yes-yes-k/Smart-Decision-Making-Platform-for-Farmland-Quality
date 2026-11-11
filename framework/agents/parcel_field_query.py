@@ -372,8 +372,18 @@ def _format_value(value: Any, decimals: int, key: str | None = None) -> str:
         rendered = f"{float(value):.{decimals}f}"
         return rendered.rstrip("0").rstrip(".") if "." in rendered else rendered
     if isinstance(value, Mapping):
-        # 障碍度排序等有序字典：按权威键顺序渲染为「标签 数值」，
-        # 禁止 str(dict) 把 Python 字面量暴露给用户。
+        # 障碍度排序/隶属度/权重等数值型有序字典：渲染为 GFM Markdown 表格，
+        # 按数值降序排列，前端已支持表格样式；
+        # 非数值型字典（如元数据）仍按「标签 数值」平铺，禁止 str(dict) 把 Python 字面量暴露给用户。
+        if value and all(isinstance(v, (int, float)) for v in value.values()):
+            rows = sorted(value.items(), key=lambda kv: kv[1], reverse=True)
+            lines = ["| 指标 | 数值 |", "| --- | --- |"]
+            lines += [
+                f"| {item_key} | {_format_value(item_value, decimals, str(item_key))} |"
+                for item_key, item_value in rows
+                if item_key not in (None, "无")
+            ]
+            return "\n".join(lines)
         return "；".join(
             f"{str(item_key)} {_format_value(item_value, decimals, str(item_key))}"
             for item_key, item_value in value.items()
@@ -437,7 +447,8 @@ def format_field_query_answer(field_query: dict[str, Any], location_only: bool =
     if location_only:
         return f"{region_prefix}地块 {parcel_id}"
 
-    clauses: list[str] = []
+    phrases: list[str] = []
+    table_blocks: list[str] = []
     requested_metadata = field_query.get("requested_metadata", [])
     for item in field_query.get("fields", []):
         label = item["label"]
@@ -450,7 +461,7 @@ def format_field_query_answer(field_query: dict[str, Any], location_only: bool =
             else:
                 clause = f"{label}暂无记录"
             metadata = _metadata_clauses(item, requested_metadata)
-            clauses.append("，".join([clause, *metadata]))
+            phrases.append("，".join([clause, *metadata]))
             continue
         rendered = _format_value(
             value, int(item.get("decimals", 2)), str(item.get("key") or ""),
@@ -458,14 +469,26 @@ def format_field_query_answer(field_query: dict[str, Any], location_only: bool =
         unit = item.get("unit") or ""
         if unit and rendered.endswith(unit):
             unit = ""
+        # 表格类结果（含换行的 Markdown 表格）必须独立成块，表头独占一行，
+        # 否则表头被拼到标签后面导致 marked 无法识别为表格。
+        if "\n" in rendered:
+            table_blocks.append(f"{label}为：\n\n{rendered}")
+            continue
         clause = f"{label}为 {rendered}{unit}"
         metadata = _metadata_clauses(item, requested_metadata)
-        clauses.append("，".join([clause, *metadata]))
-    if not clauses:
+        phrases.append("，".join([clause, *metadata]))
+    if not phrases and not table_blocks:
         return ""
     region = field_query.get("region") or ""
     region_prefix = f"{region} " if region else ""
-    return f"{region_prefix}地块 {parcel_id}：" + "；".join(clauses) + "。"
+    head = f"{region_prefix}地块 {parcel_id}："
+    body = "；".join(phrases) + "。" if phrases else ""
+    tables = "\n\n".join(table_blocks) if table_blocks else ""
+    if body and tables:
+        return f"{head}{body}\n\n{tables}"
+    if tables:
+        return f"{head}\n\n{tables}"
+    return f"{head}{body}"
 
 
 def query_requested_parcel_fields(

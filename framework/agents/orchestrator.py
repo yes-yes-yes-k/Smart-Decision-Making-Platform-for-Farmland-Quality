@@ -280,20 +280,37 @@ class MultiAgentOrchestrator:
                         # 幻觉字段名（如「耕作制度」）→ 确定性摘要拼接。
                         from .nodes import has_prohibited_field_name
                         if not body.strip() or has_prohibited_field_name(body):
-                            from .output_contract import deterministic_answer
-                            body = "\n".join(
-                                deterministic_answer(item) for item in agent_data.get("models", {}).values()
-                            ) or "暂无可用结果"
+                            # 酸化测算兜底优先：正文为空或不可信时，若本轮携带
+                            # 权威酸化测算上下文，则解释本轮测算结果本身，而不是
+                            # 拼接 Model-4 其他材料剂量或输出「暂无可用结果」。
+                            from .output_contract import deterministic_answer, acid_measurement_answer
+                            acid_ctx = (
+                                (state.get("analysis_context") or {})
+                                .get("acidification_result_context") or {}
+                            )
+                            if acid_ctx:
+                                body = acid_measurement_answer(acid_ctx)
+                            else:
+                                body = "\n".join(
+                                    deterministic_answer(item) for item in agent_data.get("models", {}).values()
+                                ) or "暂无可用结果"
                             full_answer += body
                             yield {"type": "token", "content": body}
 
             # 最终结果
             done_models = {} if question_type == 0 else state.get("model_results", {}).get("models", {})
             if not full_answer and question_type != 0:
-                from .output_contract import deterministic_answer
-                full_answer = "\n".join(
-                    deterministic_answer(item) for item in done_models.values()
-                ) or "暂无可用结果"
+                from .output_contract import deterministic_answer, acid_measurement_answer
+                acid_ctx = (
+                    (state.get("analysis_context") or {})
+                    .get("acidification_result_context") or {}
+                )
+                if acid_ctx:
+                    full_answer = acid_measurement_answer(acid_ctx)
+                else:
+                    full_answer = "\n".join(
+                        deterministic_answer(item) for item in done_models.values()
+                    ) or "暂无可用结果"
             field_query = state.get("model_results", {}).get("field_query")
             yield {
                 "type": "done",

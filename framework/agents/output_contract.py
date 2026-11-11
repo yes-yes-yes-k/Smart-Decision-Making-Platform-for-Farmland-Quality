@@ -667,8 +667,51 @@ def deterministic_answer(model_result: Mapping[str, Any]) -> str:
     return translate_public_text(answer)
 
 
+def _measurement_value_text(value: Any) -> str:
+    """把测算数值转成简洁展示文本，避免科学计数法或长尾小数。"""
+    if isinstance(value, bool) or value is None:
+        return str(value)
+    try:
+        num = float(value)
+    except (TypeError, ValueError):
+        return str(value)
+    if not math.isfinite(num):
+        return str(value)
+    # 与前端酸化卡片展示位数（ACID_RESULT_DIGITS=3）保持一致，
+    # 避免后被 round_long_decimals 把 0.093483… 压成 0.09。
+    return f"{num:.3f}".rstrip("0").rstrip(".")
+
+
+def acid_measurement_answer(context: Mapping[str, Any]) -> str:
+    """按本轮酸化测算权威记录渲染确定性回答。
+
+    只消费 ChatRequestService 从 AcidificationMeasurement 读取的
+    ``analysis_context.acidification_result_context``（mode/metric/value/unit/
+    material）。当 LLM 正文为空或不可信时，用它代替 Model-4 摘要或「暂无可用
+    结果」，保证回答解释的是用户本轮测算出的结果本身，而不是其他材料的剂量。
+    """
+    if not isinstance(context, Mapping):
+        return ""
+    if context.get("value") is None:
+        return "本轮酸化测算未返回有效数值，需重新测算或核对测算记录后再解读。"
+    value = _measurement_value_text(context.get("value"))
+    metric = str(context.get("metric") or "unknown")
+    unit = str(context.get("unit") or "").strip()
+    if metric == "quicklime_dose":
+        material = str(context.get("material") or "").strip() or "生石灰"
+        if unit:
+            return f"本次治理需{material}用量：{value} {unit}（来自本轮测算记录）"
+        return f"本轮治理测算结果为 {value}，单位未提供，需确认单位后再解读。"
+    if metric == "ph_drop_amount":
+        return f"模型预测 pH 下降量为 {value}（这是下降幅度，不是当前 pH 测量值）"
+    return (
+        f"本轮酸化测算结果为 {value}，单位未提供且结果指标语义尚未配置，"
+        "需确认该数值是预测 pH 值、pH 下降量还是其他指标后再解读。"
+    )
+
+
 __all__ = [
     "SCHEMA_VERSION", "LEGACY_SCHEMA_VERSION", "VALID_STATUSES", "Issue", "sanitize_json", "validate_result",
     "normalize_execution", "public_full", "chat_compact", "llm_context", "audit_projection",
-    "legacy_projection", "deterministic_answer",
+    "legacy_projection", "deterministic_answer", "acid_measurement_answer",
 ]

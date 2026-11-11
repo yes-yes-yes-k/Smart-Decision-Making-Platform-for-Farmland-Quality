@@ -104,10 +104,19 @@ class ParcelObjectResolver:
                     display_name=region.display_name,
                     area_code=region.area_code,
                 ),)
+        # 地块展示名带行政区链前缀（如“广东省韶关市仁化县 地块 131”），
+        # 与字段直查前缀（parcel_field_query）保持一致，避免回答只出现编号而缺区域。
+        region_names = "".join(
+            item.display_name for item in parent_path if getattr(item, "display_name", None)
+        )
+        display_name = (
+            f"{region_names} 地块 {parcel.parcel_id}"
+            if region_names else f"地块 {parcel.parcel_id}"
+        )
         return AnalysisObject(
             type=ObjectType.PARCEL,
             id=parcel.parcel_id,
-            display_name=f"地块 {parcel.parcel_id}",
+            display_name=display_name,
             area_code=parcel.area_code,
             parent_path=parent_path,
             source="parcel_info",

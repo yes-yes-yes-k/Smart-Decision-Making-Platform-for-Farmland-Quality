@@ -72,15 +72,21 @@ def test_stability_priority_preserved_in_keyword_mode():
     assert question_type == 1
 
 
-def test_obstacle_degree_mapping_rendered_itemwise():
-    """障碍度 dict 按「标签 数值」逐项渲染，禁止 str(dict) 字面量。"""
+def test_obstacle_degree_mapping_rendered_table():
+    """障碍度数值型 dict 渲染为 GFM Markdown 表格（按数值降序），禁止 str(dict) 字面量。"""
     from framework.agents.parcel_field_query import _format_value
 
     rendered = _format_value(
         {"土壤酸碱度": 0.14, "有机质": 0.23, "质地构型": 0.23}, 3,
     )
-    assert "土壤酸碱度 0.14" in rendered
-    assert "有机质 0.23" in rendered
+    rows = rendered.split("\n")
+    assert rows[0] == "| 指标 | 数值 |"
+    assert rows[1] == "| --- | --- |"
+    assert "| 有机质 | 0.23 |" in rows
+    assert "| 土壤酸碱度 | 0.14 |" in rows
+    # 降序：两条 0.23 在前，0.14 在后
+    assert rows.index("| 有机质 | 0.23 |") == 2
+    assert rows.index("| 土壤酸碱度 | 0.14 |") == 4
     assert "{" not in rendered
     assert "'" not in rendered
 

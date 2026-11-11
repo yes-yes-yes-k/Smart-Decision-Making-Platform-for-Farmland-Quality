@@ -25,7 +25,10 @@ from .routing import (
 from .capabilities import get_capability_by_question_type
 from framework.analysis_context.contracts import AnalysisContext
 from framework.analysis_context.guard import AnalysisRequirementGuard
-from framework.analysis_context.provenance import ResultProvenanceBuilder
+from framework.analysis_context.provenance import (
+    ResultProvenanceBuilder,
+    prepend_object_title,
+)
 
 analysis_requirement_guard = AnalysisRequirementGuard()
 result_provenance_builder = ResultProvenanceBuilder()
@@ -664,6 +667,9 @@ def build_professional_answer_prompt(
         "不得新增或改写字段名（如不得把「耕层质地」写成「耕作制度」）；"
         "若结果未提供某字段则不得以任何名称输出该类字段。\n"
         "- 若上下文提供 labels/units，必须使用其中的标准名称和单位。\n"
+        "- 若用户问题包含【本轮酸化结果权威上下文】，该上下文是本次酸化测算的唯一结果依据；"
+        "治理模式只解释生石灰剂量与原单位，预测 model_id=38 只解释 pH 下降量；"
+        "严禁引用其他酸化模型、其他材料剂量或其他测算轮次的结果。用户只问结果时简短回答结果含义，不扩展治理方案。\n"
         "- 综合指数保留两位小数；耕地质量等级必须是 1~10 的整数（如 7 级，不得写成 7.00 级）；"
         "有机肥建议施用量取整到最近的 10 公斤/亩，并在数值前加“约”。\n"
         "- 不得输出 potential_increase 等未在结果中提供的字段。\n"
@@ -697,6 +703,15 @@ def build_professional_answer_prompt(
         "- 障碍度排序：若上下文提供各障碍因子具体障碍度数值（obstacle_degrees），用户询问障碍度排序时"
         "必须逐项给出因子名称与数值，不得省略数值；若上下文未提供具体数值，"
         "必须明确说明「本次仅提供障碍因子排序，未提供各障碍因子的具体障碍度数值」，不得编造数值。\n"
+        "- 表格渲染：回答中涉及障碍度排序时，必须使用 Markdown 表格呈现，不得用分号连接的平铺长句。"
+        "表格采用 GFM 竖线语法（例如 `| 排名 | 障碍因子 | 障碍度 | 障碍程度 |`，表头下方紧跟"
+        " `| --- | --- | --- | --- |` 分隔行），行按障碍度降序排列，每行障碍度保留两位小数；"
+        "障碍度等于 0 的因子不得逐行列出，合并为一行「其余 N 项：约 0（无障碍）」；"
+        "表格上方先输出一句「障碍度排序（降序）：」作为引导。\n"
+        "- 列表排版：主要障碍因素、次要障碍因素等列表项用顿号「、」分隔连贯输出，"
+        "不得输出 Python 列表样式（如 [\"速效钾\", \"地形部位\"]）或 JSON 数组样式；"
+        "「综合指数」「质量等级」等少量关键数值对，优先用 Markdown 表格或加粗键值对（如 **综合指数：0.91**）呈现，"
+        "便于用户快速定位结论。\n"
         "- 有机肥：若上下文含 dose_confidence 且低于 0.6，或含 dose_warning，"
         "必须写成“约 N 公斤/亩（模型可信度偏低，仅供参考，实际用量需田间试验核定）”；"
         "若存在 imputed_features 或 imputed_inputs，在同一句末用括号简要说明“部分输入为模型回填”。\n"
@@ -841,11 +856,21 @@ def aggregate_results(state: MultiAgentState) -> MultiAgentState:
                 not str(answer_body or "").strip()
                 or has_prohibited_field_name(str(answer_body))
             ):
-                from .output_contract import deterministic_answer
-                body_only = "\n".join(
-                    deterministic_answer(item)
-                    for item in final_result.get("models", {}).values()
-                ) or "暂无可用结果"
+                # 酸化测算兜底优先：正文为空或不可信时，若本轮携带权威酸化测算
+                # 上下文，则渲染本轮测算结果本身，而不是拼接其他模型摘要或输出
+                # 「暂无可用结果」。
+                from .output_contract import deterministic_answer, acid_measurement_answer
+                acid_ctx = (
+                    (state.get("analysis_context") or {})
+                    .get("acidification_result_context") or {}
+                )
+                if acid_ctx:
+                    body_only = acid_measurement_answer(acid_ctx)
+                else:
+                    body_only = "\n".join(
+                        deterministic_answer(item)
+                        for item in final_result.get("models", {}).values()
+                    ) or "暂无可用结果"
                 answer_body = ("\n\n" + body_only) if answer_body else body_only
 
             # 酸化状态确定性前缀：Model-4 有实测 pH 必须报告分级，修复
@@ -881,7 +906,9 @@ def aggregate_results(state: MultiAgentState) -> MultiAgentState:
                     calculated_at=datetime.now(timezone.utc),
                 )
                 final_result["provenance"] = provenance
-                final_result["answer"] = provenance["object_title"] + "\n\n" + answer_body
+                final_result["answer"] = prepend_object_title(
+                    answer_body, object_title=provenance["object_title"],
+                )
             else:
                 final_result["answer"] = answer_body
 

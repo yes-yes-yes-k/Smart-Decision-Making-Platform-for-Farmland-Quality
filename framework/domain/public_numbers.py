@@ -11,7 +11,10 @@ from decimal import ROUND_HALF_UP, Decimal
 from typing import Any
 
 #: 匹配长小数，同时避免改写 2.1.0、2026.10.24 这类版本号或编号。
-LONG_DECIMAL = re.compile(r"(?<![\w.])(\d+\.\d{3,})(?![\w.])")
+#: 仅对 4 位及以上小数四舍五入到 decimals 位；3 位小数按原值保留，
+#: 与酸化卡片展示位数（ACID_RESULT_DIGITS=3）及各模型 3 位精度输出一致，
+#: 避免「0.093 t/mu」被压成「0.09」造成卡片与回答数值不一致。
+LONG_DECIMAL = re.compile(r"(?<![\w.])(\d+\.\d{4,})(?![\w.])")
 
 
 def _quantizer(decimals: int) -> Decimal:
