@@ -93,11 +93,13 @@ class ToolCallingLoop:
         max_iterations: int = 3,
         default_args: Optional[Dict[str, Any]] = None,
         trace_id: Optional[str] = None,
+        allowed_tool_names: set[str] | None = None,
     ):
         self._llm = llm
         self._max_iterations = max_iterations
         self._default_args = default_args or {}
         self._trace_id = trace_id
+        self._allowed_tool_names = allowed_tool_names
         self._trace: List[Dict[str, Any]] = []
         self._tool_results: Dict[str, Any] = {}  # agent_id → result
 
@@ -176,6 +178,8 @@ class ToolCallingLoop:
                 tc_name = tc.get("name", "") if isinstance(tc, dict) else getattr(tc, "name", "")
                 tc_args = tc.get("args", {}) if isinstance(tc, dict) else getattr(tc, "args", {})
                 tc_id = tc.get("id", "") if isinstance(tc, dict) else getattr(tc, "id", "")
+                if self._allowed_tool_names is not None and tc_name not in self._allowed_tool_names:
+                    return {"success": False, "reason": "tool_not_allowed"}
 
                 # 合并 default_args（LLM 参数优先）
                 try:
@@ -293,9 +297,9 @@ class ToolCallingLoop:
         if not accepted_keys:
             return dict(llm_args)
 
-        locked_keys = frozenset({"parcel_id", "parcel_code", "area_code"})
+        locked_keys = frozenset({"parcel_id", "parcel_code", "area_code", "region_id", "region_type"})
         for key in locked_keys:
-            if key in llm_args and key in self._default_args and llm_args[key] != self._default_args[key]:
+            if llm_args.get(key) is not None and key in self._default_args and llm_args[key] != self._default_args[key]:
                 raise AnalysisContextConflict(f"工具参数 {key} 与当前分析对象不一致")
         merged: Dict[str, Any] = {}
         for key in accepted_keys:

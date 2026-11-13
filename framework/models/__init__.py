@@ -3,6 +3,7 @@ from .user import User
 from .conversation import Conversation
 from .message import Message
 from .acidification_measurement import AcidificationMeasurement
+from .cd_trial import CdTrial
 from .document import Document
 from .document_label import DocumentLabel
 from .ingestion import IngestionBatch, IngestionItem
@@ -36,6 +37,7 @@ from .cd_prediction import (
     CdEffectivePredictionResult,
     CdPortedParcelTownship,
 )
+from .cd_flux import CdFluxInput, CdFluxOutput
 from .thematic_model import (
     ThematicModelRegistry,
     ModelExecutionLog,

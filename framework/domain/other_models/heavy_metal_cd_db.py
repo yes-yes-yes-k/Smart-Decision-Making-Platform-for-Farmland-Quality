@@ -91,7 +91,7 @@ def map_indicators(indicators: Mapping[str, Any] | None, model_id: str) -> dict[
     }
 
 
-def build_inputs(parcel_id: str, model_id: str) -> dict[str, Any]:
+def build_inputs(parcel_id: str, model_id: str, *, year: int | None = None) -> dict[str, Any]:
     """按地块编号从当前库读取输入（可选通道）。"""
     _require_app_context()
     from framework.models import ParcelInfo
@@ -106,7 +106,14 @@ def build_inputs(parcel_id: str, model_id: str) -> dict[str, Any]:
             "missing_fields": list(_API_FIELDS.get(model_id, ())),
             "sample_granularity": "parcel",
         }
-    return map_indicators(row.soil_indicators, model_id)
+    if year is None:
+        return map_indicators(row.soil_indicators, model_id)
+
+    from framework.models.thematic_model import ParcelHistorySnapshot
+
+    snapshot = ParcelHistorySnapshot.query.filter_by(parcel_id=str(parcel_id), survey_year=year).first()
+    result = map_indicators(snapshot.soil_indicators if snapshot else None, model_id)
+    return {**result, "year": year, "status": result["status"] if snapshot else "no_data"}
 
 
 def build_inputs_from_row(row: Mapping[str, Any], model_id: str) -> dict[str, Any]:

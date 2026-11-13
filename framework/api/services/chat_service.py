@@ -69,6 +69,19 @@ class ChatRequestService:
 
         try:
             conversation = self._get_or_create_owned_conversation(user_id, body, question)
+            cd_message = max(
+                (item for item in conversation.messages if item.role == "assistant"
+                 and (item.analysis_context_snapshot or {}).get("cd_draft")),
+                key=lambda item: item.analysis_context_snapshot["cd_draft"]["revision"],
+                default=None,
+            )
+            cd_snapshot = cd_message.analysis_context_snapshot if cd_message else {}
+            cd_draft = cd_snapshot.get("cd_draft")
+            artifact_context = max(
+                (item.analysis_context_snapshot["cd_artifact_context"] for item in conversation.messages
+                 if item.role == "assistant" and (item.analysis_context_snapshot or {}).get("cd_artifact_context")),
+                key=lambda context: context["revision"], default=None,
+            )
             history = [
                 {
                     "role": item.role,
@@ -178,6 +191,10 @@ class ChatRequestService:
                 "capabilities": public_comprehensive_capabilities(),
                 "user_id": user_id,
                 "conversation_id": conversation.id,
+                "_cd_draft": deepcopy(cd_draft),
+                "_cd_artifact_context": deepcopy(artifact_context),
+                "_cd_trial_message_id": cd_message.id if cd_snapshot.get("cd_trial_result") else None,
+                "_cd_revision": user_message.id,
             })
             if measurement_id is not None:
                 request_data["acidification_measurement_id"] = measurement_id
@@ -213,6 +230,23 @@ class ChatRequestService:
         snapshot = deepcopy(prepared.context_snapshot)
         snapshot["trace_id"] = normalized.get("trace_id")
         snapshot["provenance"] = deepcopy(normalized.get("provenance") or {})
+        cd_revision = prepared.orchestrator_request.get("_cd_revision")
+        if "_cd_artifact_scope" in normalized and cd_revision is not None:
+            snapshot["cd_artifact_context"] = {"scope":deepcopy(normalized["_cd_artifact_scope"]),
+                                               "revision":cd_revision}
+        cd_result = models.get("cd_conversation", {})
+        if cd_result.get("attachments"):
+            snapshot["cd_artifacts"] = deepcopy(cd_result)
+        if normalized.get("_cd_draft") and cd_revision is not None:
+            snapshot["cd_draft"] = {
+                **deepcopy(normalized["_cd_draft"]),
+                "revision": cd_revision,
+            }
+            cd_result = models.get("cd_conversation", {})
+            snapshot.pop('cd_trial_result',None)
+            if cd_result.get("status") in {"success", "degraded"} and (cd_result.get("prediction") is not None or
+                    (cd_result.get('calculation_type')=='flux' and cd_result.get('net_cd') is not None)):
+                snapshot["cd_trial_result"] = {key: value for key, value in cd_result.items() if key != "draft"}
         message = Message(
             conversation_id=prepared.conversation.id,
             role="assistant",

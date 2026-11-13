@@ -38,14 +38,21 @@
 - 文档：`docs/cd-ported-dataset.md`、`docs/cd-data-requirements.md`（给业务方的需求清单）
 - 归档目录：`openspec/changes/archive/2026-10-31-import-cd-ported-dataset/`
 
-**阶段 4｜add-heavy-metal-cd-visualization｜规划中**
-- 交付：Cd 分布图、直方图、行政区描边、空间插值、栅格输出、图片与数据文件导出
-- 前置：阶段 3
-- 依赖：需补 `rasterio` / `geopandas` / `seaborn`
+**阶段 4｜add-heavy-metal-cd-visualization｜已归档（2026-11-07）**
+- 交付：结果表 + 地块质心栅格化、可选 griddata 插值（nearest/linear/cubic，点数不足降级 nearest）、分级地图（作物三档 / 有效态分位数 6 级）、行政区描边（多要素，凸包兜底）、直方图、GeoTIFF 可选导出、产物目录 + meta.json + 3 个 HTTP 端点
+- 前置：阶段 3（已归档）
+- 实测：全部 Cd 测试 83 passed；真实库 40100 行 → 栅格 344×259、有效像元 17082、值域 0.0048–0.438 mg/kg；map.jpg / histogram.jpg / raster.tif 均生成
+- 资产：原系统 `template.tif` 迁入 `data/model_artifacts/heavy_metal_cd/visualization/`（manifest 记录 SHA-256）
+- 备注：21/21 tasks 完成；A/B/C 三项人工确认已于 2026-11-07 拍板——保留模板资产、有效态保留分位数 6 级（相对分级）、产物不自动清理
+- 归档目录：`openspec/changes/archive/2026-11-07-add-heavy-metal-cd-visualization/`
 
-**阶段 5｜add-cd-flux-accounting｜规划中**
-- 交付：输入/输出/净 Cd 通量计算、统计与空间结果、结果持久化、CSV 导出
-- 前置：可与阶段 2 并行
+**阶段 5｜add-cd-flux-accounting｜已归档（2026-11-07）**
+- 交付：`cd_flux_input` / `cd_flux_output` 两表、CSV 导入（同键覆盖）、输入/输出/净通量与当年浓度计算（统一数据库模式公式，容重/初始值回退计数）、区域统计与四类分布（end 三档 GB15618、net 互斥三档、in/out 相对三档）、点位 GeoJSON、地图/直方图（复用阶段 4 引擎）、CSV 导出、7 个 HTTP 端点
+- 前置：阶段 2 统计口径 + 阶段 3 归属依据（均已归档）
+- 修正：原系统 net_cd 分箱重叠（负值/接近平衡可重复计入，占比可超 100%）→ 互斥三档并补差保证和恰为 100；CSV/DB 两套公式 → 统一数据库模式
+- 实测：test_cd_flux 11 passed、全部 Cd 相关 94 passed；真实库建表成功、探针导入 3 行（回退计数 bd020_90=1/initial_cd=1）、计算 3 行、net 分布 0/66.67/33.33、导出 3 行、探针数据已清理
+- 备注：22/25 tasks 完成；A（bd020_90 权威来源）/ B（net 平衡阈值 ±5）/ C（end_cd 阈值细分）三条人工确认项待拍板
+- 归档目录：`openspec/changes/archive/2026-11-07-add-cd-flux-accounting/`
 
 **阶段 6｜add-cd-removal-calculation｜规划中**
 - 交付：籽粒移除、秸秆移除、地下渗流、地表径流，触发通量重算
@@ -56,6 +63,15 @@
 - 前置：阶段 5、阶段 6（净通量）、阶段 3（空间）
 
 依赖主链：`0 → 1 → 2 → 3 → 4`，`2 → 5 → 6 → 7`。
+
+## 对话能力接入
+
+**阶段 C1｜add-cd-conversation-capabilities｜已归档（2026-11-04）**
+- 交付范围为已有土壤 Cd 统计、Cd 预测结果、参数查询、纯参数预测、多轮补参和独立试算保存的对话接入。
+- 前置能力为阶段 0–3、D1 及现有区域与地块统计服务，按实际数据覆盖开放。
+- 八类通量在本阶段登记能力状态与缺项说明。阶段 5、6 完成相应服务后，在后续独立变更中接入计算与统计。
+- 第一批通过文字和表格呈现结果，阶段 4 的可视化按独立需求推进。
+- 需求见 `docs/cd-conversation-design.md`，任务及验收见 `openspec/changes/archive/2026-11-04-add-cd-conversation-capabilities/`。相关回归 227 项通过。
 
 ## 二、为什么每个阶段独立归档，而不是"攒到最后统一归档"
 

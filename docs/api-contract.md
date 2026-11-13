@@ -1,5 +1,38 @@
 # 基础能力接口契约
 
+## Cd 对话查询与试算
+
+开发环境需要启用 `FUNCTION_CALLING_ENABLED` 和模型工具调用，并执行试算记录表迁移后再使用保存命令。
+
+通过 `POST /api/v1/chat/` 或 `POST /api/v1/chat/stream` 发送 `message`，多轮操作传相同的 `conversation_id`。地区和地块可使用聊天已有的 `analysis_context` 选择方式。带 `include_model_results: true` 时，普通响应和 SSE 的 `done` 事件都在 `data.cd_conversation` 返回结构化 Cd 结果。
+
+- 土壤总镉查询支持地块和已覆盖的省、市、县、乡镇，可指定快照年度。区域均值按相交面积加权。
+- 作物和土壤有效态 Cd 预测统计按来源分别返回。移植记录仅支持乡镇归属，预测记录时期未知且单位未核验。
+- 参数查询返回输入定义与地块已有值。试算缺项时返回 `missing_fields` 和 `input_issues`。只有缺少溶液态镉对数值且其他输入通过校验时，用户可回复「同意使用训练集中位数」。结果标记为 `degraded` 并记录实际使用的值与来源。
+- 完成试算后发送「保存这次试算结果」，返回 `status: saved` 和 `record_id`。再次保存同一结果返回相同编号。
+- 通量支持分项定义、已有输入、统计、明细、年度对比和一年期试算。查询可按省、市、县、乡镇或地块筛选，并保留来源、年度、公式版本及记录覆盖。旧七项记录、未知年度和未知企业输入各自保留原状态。
+
+通量输入、计算及迁移回滚见 [年度 Cd 通量 v2](cd-flux-v2-api-and-migration.md)。恢复开发库当前有移植预测结果，通量输入和结果均无业务记录。
+
+### Cd 对话示例
+
+- 「梅花镇的作物镉预测值分布怎样？」查询移植预测的乡镇统计，附预测时期与单位核验状态。
+- 「比较当前地块 2023 年和 2024 年的镉净通量。」按来源和年度展示计算结果及各年覆盖。缺数据时返回 `no_data`。
+- 「用当前地块 2024 年已有参数试算镉通量。」有唯一匹配输入时读取已记录值。可继续说「企业输入改为 3 g/ha/a，重新试算镉通量」。
+- 容重或厚度需要采用列出的情景默认值时，使用「同意使用通量默认值：bulk_density_g_cm3」等明确确认。企业输入可明确提供零，未知时只返回已知分项小计。
+- 查询后说「画成图」或「下载刚才的数据」，沿用该查询范围。预测图可追加「并导出GeoTIFF」，通量制图使用单一年度。
+
+### 聊天附件
+
+普通聊天与 SSE 的 `done` 事件通过 `data.cd_artifacts` 返回成功生成的附件。该字段包含 `attachments`、`scope`、`query_revision`、`metadata` 和 `status`，独立于 `include_model_results`。历史消息在对应助手消息上返回 `cd_artifacts`。
+
+| 方法与路径 | 用途 |
+| --- | --- |
+| GET `/api/v1/chat/conversations/<id>/attachments` | 当前用户查看所属会话附件 |
+| GET `/api/v1/chat/conversations/<id>/attachments/<artifact_id>/<kind>` | 获取 JPEG 地图/直方图、预测 GeoTIFF 或 CSV |
+
+请求使用现有 Bearer 认证。前端通过带 Authorization 的 fetch 获取 Blob，在预览关闭或组件卸载时释放对象 URL。CSV/TIFF 按响应文件名下载。无认证返回 401，越权、删除会话及文件不存在返回 404。共享缓存关闭。CSV 上限 10 万行，地图最多使用 2 万点并标明截断。
+
 ## 运行方式
 
 当前实现提供两类调用方式：

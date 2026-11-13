@@ -10,6 +10,7 @@ def _warn(prompt: str):
     print(prompt, file=sys.stderr, flush=True)
 
 class Config:
+    CD_FLUX_V2_ENABLED = os.environ.get('CD_FLUX_V2_ENABLED', 'true').lower() == 'true'
     PROJECT_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
     SECRET_KEY = os.environ.get('SECRET_KEY')
     if not SECRET_KEY:

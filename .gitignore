@@ -153,3 +153,6 @@ jieba.cache
 
 # Local live-validation outputs contain source excerpts and runtime data
 /artifacts/frontend-live-20261101/
+
+# Cd 可视化产物（阶段 4，可重生成）
+data/cd_visualization/

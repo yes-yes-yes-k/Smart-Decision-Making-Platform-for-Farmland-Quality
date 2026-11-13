@@ -1,0 +1,26 @@
+"""Cd chat input definitions from docs/cd-data-requirements.md."""
+
+FIELD_DEFINITIONS = {
+    "silt_fraction": ("粉粒质量占比", "%"),
+    "sand_fraction": ("砂粒质量占比", "%"),
+    "gravel_fraction": ("石砾质量占比", "%"),
+    "available_phosphorus": ("有效磷", "mg/kg"),
+    "available_potassium": ("速效钾", "mg/kg"),
+    "slowly_available_potassium": ("缓效钾", "mg/kg"),
+    "total_aluminum": ("全铝", "%"),
+    "total_calcium": ("全钙", "%"),
+    "total_iron": ("全铁", "%"),
+    "total_magnesium": ("全镁", "%"),
+    "total_manganese": ("全锰", "mg/kg"),
+    "total_nitrogen": ("全氮", "g/kg"),
+    "total_sulfur": ("全硫", "g/kg"),
+    "solution": ("MSM 溶液态镉对数值", "无量纲"),
+    "cdsolution": ("MSM 溶液态镉对数值", "无量纲"),
+    "oc_fe_0_30": ("0–30 cm 有机碳与铁结合态", None),
+    "electrical_conductivity": ("电导率", None),
+    "total_cadmium": ("土壤全镉", "mg/kg"),
+    "exchangeable_base": ("交换性盐基总量", None),
+    "exchangeable_hydrogen": ("交换性氢", "cmol/kg"),
+    "total_potassium": ("全钾", "g/kg"),
+    "total_phosphorus": ("全磷", "g/kg"),
+}

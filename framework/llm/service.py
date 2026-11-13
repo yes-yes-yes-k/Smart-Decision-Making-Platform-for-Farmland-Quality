@@ -135,6 +135,7 @@ class LLMService:
         default_args: Optional[Dict[str, Any]] = None,
         max_iterations: Optional[int] = None,
         trace_id: Optional[str] = None,
+        restrict_tools: bool = False,
     ) -> Dict[str, Any]:
         """带工具调用的生成（function calling）。
 
@@ -162,6 +163,7 @@ class LLMService:
             max_iterations=max_iter,
             default_args=default_args or {},
             trace_id=trace_id,
+            allowed_tool_names={tool.name for tool in tools} if restrict_tools else None,
         )
         started_at = time.perf_counter()
         print(

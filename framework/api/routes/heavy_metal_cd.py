@@ -11,12 +11,14 @@ from __future__ import annotations
 import logging
 from typing import Any
 
-from flask import Blueprint, Response, jsonify, request
-from flask_jwt_extended import jwt_required
+from flask import Blueprint, Response, jsonify, request, send_file
+from flask_jwt_extended import jwt_required, get_jwt_identity
+from framework.api.services.cd_chat_artifacts import legacy_access
 
 from framework.domain.other_models import heavy_metal_cd
 from framework.domain.other_models import heavy_metal_cd_statistics as statistics
 from framework.domain.other_models import heavy_metal_cd_spatial as spatial
+from framework.domain.other_models import heavy_metal_cd_visualization as visualization
 
 LOG = logging.getLogger(__name__)
 
@@ -230,3 +232,74 @@ def spatial_points():
     except spatial.CdSpatialError as exc:
         return _spatial_error(exc)
     return jsonify(payload)
+
+
+# ----------------------------- 可视化（阶段 4） -----------------------------
+
+
+def _visualization_error(exc) -> tuple[Any, int]:
+    code = str(getattr(exc, "code", "visualization_failed"))
+    if code in {"unknown_model", "invalid_region", "invalid_region_type", "invalid_interpolation_method",
+                "invalid_resolution_factor", "invalid_limit", "invalid_artifact_id", "invalid_kind",
+                "invalid_source"}:
+        return jsonify({"status": "error", "reason": code}), 400
+    if code in {"region_not_found", "no_data", "no_data_in_template", "artifact_not_found"}:
+        return jsonify({"status": "error", "reason": code}), 404
+    if code == "template_missing":
+        return jsonify({"status": "error", "reason": code}), 503
+    LOG.exception("Cd 可视化接口失败: %s", code)
+    return jsonify({"status": "error", "reason": "visualization_failed"}), 500
+
+
+@heavy_metal_cd_bp.route("/visualization", methods=["POST"])
+@jwt_required()
+def create_visualization():
+    """生成一份 Cd 可视化产物（地图 + 直方图 + 可选 GeoTIFF）。"""
+    payload_body = request.get_json(silent=True) or {}
+    model_id = str(payload_body.get("model_id") or payload_body.get("model") or "crop_cd").strip()
+    try:
+        data = visualization.generate(
+            model_id,
+            region_type=payload_body.get("region_type"),
+            region_id=payload_body.get("region_id"),
+            source=payload_body.get("source", "all"),
+            enable_interpolation=bool(payload_body.get("enable_interpolation", False)),
+            interpolation_method=payload_body.get("interpolation_method", "nearest"),
+            resolution_factor=payload_body.get(
+                "resolution_factor", visualization.DEFAULT_RESOLUTION_FACTOR
+            ),
+            save_raster=bool(payload_body.get("save_raster", False)),
+            owner_id=str(get_jwt_identity()),
+        )
+    except visualization.CdVisualizationError as exc:
+        return _visualization_error(exc)
+    return jsonify({"status": "ok", "message": "Cd 可视化产物生成成功", "data": data})
+
+
+@heavy_metal_cd_bp.route("/visualization/artifacts", methods=["GET"])
+@jwt_required()
+def list_visualization_artifacts():
+    """列出已有可视化产物，按生成时间降序。"""
+    model_id = (request.args.get("model") or request.args.get("model_id") or "").strip() or None
+    try:
+        data = visualization.list_artifacts(
+            model_id=model_id,
+            region_type=request.args.get("region_type"),
+            region_id=request.args.get("region_id"),
+            limit=request.args.get("limit", 50),
+            **legacy_access(get_jwt_identity()),
+        )
+    except visualization.CdVisualizationError as exc:
+        return _visualization_error(exc)
+    return jsonify({"status": "ok", "data": data})
+
+
+@heavy_metal_cd_bp.route("/visualization/artifacts/<artifact_id>/<kind>", methods=["GET"])
+@jwt_required()
+def get_visualization_artifact(artifact_id: str, kind: str):
+    """下载单个产物文件（kind: map | histogram | raster）。"""
+    try:
+        path, mime = visualization.artifact_path(artifact_id, kind, **legacy_access(get_jwt_identity()))
+    except visualization.CdVisualizationError as exc:
+        return _visualization_error(exc)
+    return send_file(path, mimetype=mime, as_attachment=False, download_name=path.name)

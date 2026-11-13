@@ -329,6 +329,7 @@ def available_models() -> list[dict[str, Any]]:
             "model_id": record.model_id,
             "prediction": record.prediction,
             "features": record.features,
+            "artifact_checksums": dict(record.files),
             "special_feature_index": record.special_feature_index,
             "special_feature_name": record.special_feature_name,
             "input_fields": list(_API_FIELDS[record.model_id]),
