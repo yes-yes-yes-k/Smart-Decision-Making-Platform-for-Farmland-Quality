@@ -23,7 +23,8 @@ def save_trial(user_id: int, conversation_id: int, message_id: int) -> int | Non
 
     key = {"user_id": user_id, "conversation_id": conversation_id, "result_revision": draft["revision"]}
     try:
-        record = CdTrial(**key, payload={"scope_and_inputs": draft, "result": result})
+        record = CdTrial(**key, payload={"schema_version":2,"calculation_type":draft.get('calculation_type','prediction'),
+                                        "scope_and_inputs": draft, "result": result})
         db.session.add(record)
         db.session.flush()
         record_id = record.id

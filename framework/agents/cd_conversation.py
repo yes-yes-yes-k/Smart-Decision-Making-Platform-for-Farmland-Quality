@@ -1,6 +1,7 @@
 """Chat adapter for the migrated cadmium services."""
 
 import math
+import json
 import re
 from contextvars import ContextVar
 from typing import Literal
@@ -14,6 +15,13 @@ from framework.domain.other_models.cd_parameter_contract import FIELD_DEFINITION
 FLUX_COMPONENTS = ("灌溉水", "农业投入品", "大气沉降", "企业输入", "粮食移除", "秸秆移除", "渗漏", "径流")
 ADMIN_LEVELS = ("province", "city", "county", "township")
 CAPABILITIES = {
+    'flux': {
+        'status':'available', 'data_category':'annual_flux_and_independent_trial',
+        'levels':(*ADMIN_LEVELS,'parcel'), 'time':'明确业务年度，未知年度单列；试算跨度一年',
+        'operations':['flux','flux_results','flux_parameters','flux_predict','flux_compare'],
+        'coverage':'查询受实际记录和归属映射限制；企业未知不填零；管理导入与业务重算不开放给对话',
+        'unit':'分项g/ha/a，初始储量g/ha，末期浓度mg/kg需完整单位条件',
+    },
     "soil": {
         "status": "available", "indicator": "cadmium", "data_category": "soil_snapshot",
         "levels": (*ADMIN_LEVELS, "parcel"), "time": "年度快照",
@@ -51,7 +59,7 @@ CD_ACCEPT_DEFAULT = re.compile(r"(?:我)?(?:同意|确认|接受)(?:使用|采�
 
 
 def query_cd(
-    operation: Literal["capabilities", "soil", "results", "parameters", "predict", "flux"],
+    operation: Literal["capabilities", "soil", "results", "parameters", "predict", "flux", "flux_parameters", "flux_predict", "flux_results", "flux_compare"],
     model_id: Literal["crop_cd", "effective_cd"] | None = None,
     year: int | None = None,
     region_name: str | None = None,
@@ -60,14 +68,27 @@ def query_cd(
     region_id: str | None = None,
     region_type: str | None = None,
     parameter_units: dict[str, str] | None = None,
+    source: Literal['all','native','ported','unknown'] | None = None,
+    field: Literal['in_cd','out_cd','net_cd','end_cd'] | None = None,
+    years: list[int] | None = None,
+    all_regions: bool = False,
+    limit: int = 100,
+    offset: int = 0,
 ) -> dict:
     """查询 Cd 能力、统计、模型参数或运行参数级预测。通量请求使用 flux。"""
-    if operation in {"capabilities", "flux"}:
+    if operation.startswith('flux'):
+        from .cd_flux_conversation import query
+        payload = query(operation,_draft_context.get(),year=year,region_name=region_name,parameters=parameters,
+                     parcel_id=parcel_id,region_id=region_id,region_type=region_type,parameter_units=parameter_units,
+                     source=source,field=field,years=years,all_regions=all_regions,limit=limit,offset=offset)
+        return json.loads(json.dumps(payload,default=str))
+    if operation == 'capabilities':
         return {
             "status": "unavailable" if operation == "flux" else "ok",
             "operations": ["soil", "results", "parameters", "predict"],
             "capabilities": CAPABILITIES,
-            "flux": dict.fromkeys(FLUX_COMPONENTS, "对应通量服务尚未接入"),
+            "flux": dict.fromkeys(FLUX_COMPONENTS, "支持八项定义、年度查询及纯试算；实际值由数据覆盖决定"),
+            "flux_operations": ['flux','flux_parameters','flux_predict','flux_results','flux_compare'],
         }
     if operation == "soil" and parcel_id:
         from framework.api.services.farmland_statistics import get_parcel_summary
@@ -113,6 +134,8 @@ def query_cd(
         return {
             "statistics_method": "记录算术均值及中位数", "period": "未知",
             "sources": sources,
+            "artifact_scope": {"category":"prediction","model_id":model_id,"source":"all",
+                               "region_type":region_type,"region_id":region_id,"period":"未知"},
         }
     from framework.domain.other_models import heavy_metal_cd as models
 
@@ -218,9 +241,15 @@ tool_registry.register(_TOOL.name, _TOOL)
 def answer_cd(request: dict, history: list | None) -> dict | None:
     question = str(request.get("question") or "")
     previous = request.get("_cd_draft")
-    accepts_default = bool(previous and CD_ACCEPT_DEFAULT.fullmatch(question.strip()))
+    from .cd_flux_conversation import accepted,parse_acceptance
+    flux_acceptance = parse_acceptance(question)
+    accepts_default = bool(previous and (CD_ACCEPT_DEFAULT.fullmatch(question.strip()) or flux_acceptance))
     if CD_SAVE.fullmatch(question.strip()) and (previous or CD_INTENT.search(question)):
         return _save_cd_answer(request)
+    from .cd_artifact_conversation import answer_attachment
+    attachment = answer_attachment(request, question)
+    if attachment is not None:
+        return attachment
     if not CD_INTENT.search(question) and not accepts_default and not (previous and CD_FOLLOWUP.search(question)):
         return None
 
@@ -239,28 +268,39 @@ def answer_cd(request: dict, history: list | None) -> dict | None:
     }
     token = _draft_context.set(previous)
     default_token = _default_accepted.set(accepts_default)
+    flux_token = accepted.set(flux_acceptance)
     try:
         result = _generate_cd_answer(llm_service, question, history, scope, previous)
     finally:
         _draft_context.reset(token)
         _default_accepted.reset(default_token)
+        accepted.reset(flux_token)
     payload = (result.get("tool_results") or result.get("partial_results") or {}).get(_TOOL.name)
     if not payload:
         if not result.get("success") or any(not call["success"] for call in result.get("tool_calls_trace", [])):
             return {"status": "ok", "answer": "Cd 服务暂时无法完成查询或计算，请稍后重试。",
+                    "_cd_artifact_scope": None,
                     "model_results": {"models": {"cd_conversation": {"status": "service_unavailable"}}}}
-        return {"status": "ok", "answer": "暂未取得 Cd 服务结果。请明确地区、指标与查询或计算需求。"}
+        return {"status": "ok", "answer": "暂未取得 Cd 服务结果。请明确地区、指标与查询或计算需求。",
+                "_cd_artifact_scope": None}
     draft = payload.get("draft")
+    payload = dict(payload)
+    artifact_scope = payload.pop("artifact_scope", None)
     answer = {
         "no_data": "指定范围内没有可用的 Cd 数据。",
         "unsupported_year": payload.get("message"),
         "unavailable": "该 Cd 通量服务尚未接入。",
+        "service_unavailable": "Cd 服务暂时无法完成查询或计算，请稍后重试。",
+        "needs_analysis_object": "请明确地区、地块或全域范围；如有同名地区，请选择具体对象。",
+        "needs_scenario_inputs": "请补充或核对本次计算所需的参数、年度与单位。",
+        "partial": "已返回已知通量分项小计，仍有缺项，尚不能给出完整净收支或末期浓度。",
     }.get(payload.get("status"))
     return {
         "status": "ok",
         "answer": answer or result.get("content") or "Cd 服务已返回结构化结果。",
         "model_results": {"models": {"cd_conversation": payload}},
         "_cd_draft": draft,
+        "_cd_artifact_scope": artifact_scope,
     }
 
 
@@ -273,7 +313,15 @@ def _generate_cd_answer(llm_service, question, history, scope, previous):
             "预测结果按来源分别展示有效记录数和已归属地块数。区分该层级不受支持与该范围无记录。"
             "参数计算前确认输入单位，不得用此前助手的文本作为参数值来源。"
             "parameter_units 仅传用户明确确认的单位。只有用户确认采用原训练标度时，未核验字段才传 model_native。"
-            "补参或重算时调用 predict，parameters 只传本轮用户明确提供的值。"
+            "作物或有效态预测补参或重算时调用 predict，parameters 只传本轮用户明确提供的值。"
+            "通量查询调用flux，明细flux_results，参数flux_parameters，试算及补参flux_predict，年度对比flux_compare。"
+            "用户要求试算时必须调用 flux_predict 才能给出计算结果。"
+            "用地块已有记录试算时直接调用 flux_predict，传年度和来源，parameters 留空，让服务读取已记录值。"
+            "flux_parameters 只用于参数查询，不得用该操作代替试算或把记录值复制为用户输入。"
+            "全域仅在用户明确要求时传all_regions=true。企业未知不能填零。通量跨度一年，须明确情景year。"
+            "通量默认接受须用户原话为：同意使用通量默认值：字段名（多项逗号分隔），服务端校验，不能自行接受。"
+            "只提供partial或缺项时追问，不宣称已完成完整试算。禁止导入和业务覆盖重算。"
+            f"当前通量草稿为 {previous if (previous or {}).get('calculation_type') == 'flux' else None}。"
             "只缺溶液态镉对数值且用户明确同意训练集中位数时，调用 predict 并保留该缺项，由服务填充并标记降级。"
             "切换年份或地区时传入新值。"
             f"当前 Cd 参数草稿模型为 {(previous or {}).get('model_id')}。"

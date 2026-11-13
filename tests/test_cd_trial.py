@@ -24,7 +24,8 @@ def test_saved_trials_are_owned_and_idempotent(tmp_path, monkeypatch):
             db.session.add(Message(
                 conversation_id=conversation_id, role="assistant", content="试算",
                 analysis_context_snapshot={
-                    "cd_draft": {"revision": revision, "parameters": {"solution": revision}},
+                    "cd_draft": {"revision": revision, "parameters": {"solution": revision},
+                                 "calculation_type":"flux" if revision==2 else "prediction"},
                     "cd_trial_result": {"status": "success" if revision < 3 else "needs_scenario_inputs"},
                 },
             ))

@@ -123,16 +123,25 @@ def _check_region(region_type: str | None, region_id: str | None) -> tuple[str |
 
 def _region_parcels(region_type: str | None, region_id: str | None, source: str) -> set[str] | None:
     """按来源取归属映射并返回目标区域的地块集合；无区域限制时返回 None。"""
-    if region_type is None:
-        return None
     spatial = _spatial()
     statistics = _statistics()
     source = statistics.normalize_source(source)
+    if region_type is None:
+        if source == 'all':
+            return None
+        # Legacy records have no source column: use verified mapping membership.
+        from framework.models import ParcelInfo
+        from framework.models.user import db
+        ported = set(spatial.ported_region_map())
+        if source == 'ported':
+            return ported
+        return {str(r[0]) for r in db.session.query(ParcelInfo.parcel_id).all()} - ported
     mapping: dict[str, str] = {}
     if source in ("native", "all"):
         mapping.update(spatial.parcel_region_map(region_type))
-    if source in ("ported", "all") and region_type == "township":
-        mapping.update(spatial.ported_region_map())
+    if source in ("ported", "all"):
+        from .cd_flux_v2 import mapping as flux_mapping
+        mapping.update(flux_mapping('ported', region_type)[0])
     return {parcel_id for parcel_id, rid in mapping.items() if rid == str(region_id)}
 
 
@@ -606,7 +615,8 @@ def _legend(field: str, raster) -> dict[str, Any]:
     if field == "net_cd":
         return {
             "mode": "threshold",
-            "bounds": [float(np.nanmin(valid)) - 1.0, -NET_BALANCE, NET_BALANCE, float(np.nanmax(valid)) + 1.0],
+            "bounds": [min(float(np.nanmin(valid)) - 1.0, -NET_BALANCE - 1.0), -NET_BALANCE,
+                       math.nextafter(NET_BALANCE, math.inf), max(float(np.nanmax(valid)) + 1.0, NET_BALANCE + 1.0)],
             "colors": ["#4F959D", "#FFF085", "#BE3D2A"],
             "labels": ["负通量 (< -5)", "接近平衡 (-5~5)", "正通量 (> 5)"],
             "note": "互斥三档；单位 g/ha/a",
@@ -630,6 +640,7 @@ def visualize(
     region_id: str | None = None,
     source: str = "all",
     resolution_factor: float = 4.0,
+    owner_id: str | None = None,
 ) -> dict[str, Any]:
     """生成通量地图/直方图，复用阶段 4 的栅格化与渲染引擎。"""
     field = _check_field(field)
@@ -667,6 +678,7 @@ def visualize(
     viz._render_histogram(raster, title=f"{title} Frequency", xlabel=f"{title} ({FIELDS[field]['unit']})", out_path=hist_path)  # noqa: SLF001
     meta = {
         "artifact_id": artifact_id,
+        "owner_id": owner_id,
         "field": field,
         "title": FIELDS[field]["title"],
         "unit": FIELDS[field]["unit"],
@@ -682,8 +694,11 @@ def visualize(
     return meta
 
 
-def artifact_path(artifact_id: str, kind: str):
+def artifact_path(artifact_id: str, kind: str, **access):
     """下载校验转交阶段 4 的实现（同一产物根目录）。"""
     from framework.domain.other_models import heavy_metal_cd_visualization as viz
 
-    return viz.artifact_path(artifact_id, kind)
+    try:
+        return viz.artifact_path(artifact_id, kind, **access)
+    except viz.CdVisualizationError as exc:
+        raise CdFluxError(exc.code) from exc

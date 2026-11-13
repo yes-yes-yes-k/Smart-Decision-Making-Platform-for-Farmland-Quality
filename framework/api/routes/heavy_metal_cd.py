@@ -12,7 +12,8 @@ import logging
 from typing import Any
 
 from flask import Blueprint, Response, jsonify, request, send_file
-from flask_jwt_extended import jwt_required
+from flask_jwt_extended import jwt_required, get_jwt_identity
+from framework.api.services.cd_chat_artifacts import legacy_access
 
 from framework.domain.other_models import heavy_metal_cd
 from framework.domain.other_models import heavy_metal_cd_statistics as statistics
@@ -268,6 +269,7 @@ def create_visualization():
                 "resolution_factor", visualization.DEFAULT_RESOLUTION_FACTOR
             ),
             save_raster=bool(payload_body.get("save_raster", False)),
+            owner_id=str(get_jwt_identity()),
         )
     except visualization.CdVisualizationError as exc:
         return _visualization_error(exc)
@@ -285,6 +287,7 @@ def list_visualization_artifacts():
             region_type=request.args.get("region_type"),
             region_id=request.args.get("region_id"),
             limit=request.args.get("limit", 50),
+            **legacy_access(get_jwt_identity()),
         )
     except visualization.CdVisualizationError as exc:
         return _visualization_error(exc)
@@ -296,7 +299,7 @@ def list_visualization_artifacts():
 def get_visualization_artifact(artifact_id: str, kind: str):
     """下载单个产物文件（kind: map | histogram | raster）。"""
     try:
-        path, mime = visualization.artifact_path(artifact_id, kind)
+        path, mime = visualization.artifact_path(artifact_id, kind, **legacy_access(get_jwt_identity()))
     except visualization.CdVisualizationError as exc:
         return _visualization_error(exc)
     return send_file(path, mimetype=mime, as_attachment=False, download_name=path.name)

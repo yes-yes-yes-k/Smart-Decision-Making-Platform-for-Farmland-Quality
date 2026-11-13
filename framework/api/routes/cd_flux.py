@@ -11,14 +11,93 @@ from __future__ import annotations
 import logging
 from typing import Any
 
-from flask import Blueprint, Response, jsonify, request, send_file
-from flask_jwt_extended import jwt_required
+from flask import Blueprint, Response, current_app, jsonify, request, send_file
+from flask_jwt_extended import jwt_required, get_jwt_identity
+from framework.api.services.cd_chat_artifacts import legacy_access
 
 from framework.domain.other_models import cd_flux
 
 LOG = logging.getLogger(__name__)
 
 cd_flux_bp = Blueprint("cd_flux", __name__)
+
+
+@cd_flux_bp.before_request
+def v2_availability():
+    if '/v2/' in request.path and not current_app.config.get('CD_FLUX_V2_ENABLED', True):
+        return jsonify(status='unavailable', reason='cd_flux_v2_disabled'), 503
+
+
+def _v2_scope():
+    return {name: request.args.get(name) for name in
+            ('source', 'year', 'parcel_id', 'region_type', 'region_id') if request.args.get(name) is not None}
+
+
+@cd_flux_bp.route('/v2/inputs/import', methods=['POST'])
+@jwt_required()
+def import_v2():
+    from framework.domain.other_models import cd_flux_v2
+    upload = request.files.get('file')
+    if upload is None:
+        return jsonify(reason='missing_file'), 400
+    try:
+        result = cd_flux_v2.import_csv(upload.read(), legacy=request.args.get('mode') == 'legacy')
+        return jsonify(status='ok', data=result)
+    except (ValueError, UnicodeError) as exc:
+        return jsonify(status='error', reason=str(exc)), 400
+
+
+@cd_flux_bp.route('/v2/calculate', methods=['POST'])
+@jwt_required()
+def calculate_v2():
+    from framework.domain.other_models import cd_flux_v2
+    body = request.get_json(silent=True) or {}
+    allowed = {'source','year','parcel_id','region_type','region_id'}
+    if not isinstance(body, dict) or set(body) - allowed:
+        return jsonify(reason='invalid_scope'), 400
+    try:
+        return jsonify(status='ok', data=cd_flux_v2.calculate(**body))
+    except ValueError as exc:
+        return jsonify(status='error', reason=str(exc)), 400
+
+
+@cd_flux_bp.route('/v2/statistics', methods=['GET'])
+@jwt_required()
+def statistics_v2():
+    from framework.domain.other_models import cd_flux_v2
+    try:
+        return jsonify(status='ok', data=cd_flux_v2.statistics(field=request.args.get('field', 'net_cd'), **_v2_scope()))
+    except ValueError as exc:
+        return jsonify(status='error', reason=str(exc)), 400
+
+
+@cd_flux_bp.route('/v2/compare', methods=['GET'])
+@jwt_required()
+def compare_v2():
+    from framework.domain.other_models import cd_flux_v2
+    try:
+        scope = _v2_scope()
+        if 'year' in scope:
+            raise ValueError('use_years_for_comparison')
+        return jsonify(status='ok', data=cd_flux_v2.compare(request.args.getlist('years'), field=request.args.get('field', 'net_cd'), **scope))
+    except ValueError as exc:
+        return jsonify(status='error', reason=str(exc)), 400
+
+
+@cd_flux_bp.route('/v2/results', methods=['GET'])
+@jwt_required()
+def results_v2():
+    from framework.domain.other_models import cd_flux_v2
+    try:
+        limit, offset = int(request.args.get('limit', 100)), int(request.args.get('offset', 0))
+        if not 1 <= limit <= 1000 or offset < 0:
+            raise ValueError('invalid_limit')
+        result = cd_flux_v2.results(calculation_version=request.args.get('calculation_version', cd_flux_v2.VERSION), **_v2_scope())
+        result['total'] = len(result['rows'])
+        result['rows'] = result['rows'][offset:offset + limit]
+        return jsonify(status='ok', data=result)
+    except ValueError as exc:
+        return jsonify(status='error', reason=str(exc)), 400
 
 _BAD_REQUEST_CODES = {
     "unknown_field",
@@ -29,6 +108,8 @@ _BAD_REQUEST_CODES = {
     "invalid_csv",
     "invalid_encoding",
     "invalid_row",
+    "invalid_artifact_id",
+    "invalid_kind",
 }
 
 
@@ -38,7 +119,7 @@ def _error(exc) -> tuple[Any, int]:
         return jsonify({"status": "error", "reason": code}), 400
     if code in _BAD_REQUEST_CODES:
         return jsonify({"status": "error", "reason": code}), 400
-    if code == "region_not_found" or code == "no_data":
+    if code in {"region_not_found", "no_data", "artifact_not_found"}:
         return jsonify({"status": "error", "reason": code}), 404
     if code == "too_many_rows":
         return jsonify({"status": "error", "reason": code}), 413
@@ -63,6 +144,7 @@ def import_inputs():
         return jsonify({"status": "error", "reason": "missing_file"}), 400
     try:
         data = cd_flux.import_csv(upload.read())
+        data.update(contract_version='legacy_v1', accounting_year=None, enterprise_input_status='unknown')
     except cd_flux.CdFluxError as exc:
         return _error(exc)
     return jsonify({"status": "ok", "message": "通量输入行导入完成", "data": data})
@@ -79,6 +161,7 @@ def calculate():
             region_id=body.get("region_id"),
             source=body.get("source", "all"),
         )
+        data.update(contract_version='legacy_v1', accounting_year=None, enterprise_input_status='unknown')
     except cd_flux.CdFluxError as exc:
         return _error(exc)
     return jsonify({"status": "ok", "message": "Cd 通量计算完成", "data": data})
@@ -172,6 +255,7 @@ def visualization():
             region_id=body.get("region_id"),
             source=body.get("source", "all"),
             resolution_factor=body.get("resolution_factor", 4.0),
+            owner_id=str(get_jwt_identity()),
         )
     except cd_flux.CdFluxError as exc:
         return _error(exc)
@@ -183,7 +267,7 @@ def visualization():
 def artifact(artifact_id: str, kind: str):
     """下载通量地图/直方图产物。"""
     try:
-        path, mime = cd_flux.artifact_path(artifact_id, kind)
+        path, mime = cd_flux.artifact_path(artifact_id, kind, **legacy_access(get_jwt_identity()))
     except cd_flux.CdFluxError as exc:
         return _error(exc)
     return send_file(path, mimetype=mime, as_attachment=False, download_name=path.name)

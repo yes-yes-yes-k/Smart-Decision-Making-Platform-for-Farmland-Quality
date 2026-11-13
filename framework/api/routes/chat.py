@@ -1,5 +1,5 @@
 import json
-from flask import Blueprint, request, jsonify, Response, current_app, stream_with_context
+from flask import Blueprint, request, jsonify, Response, current_app, stream_with_context, send_file
 from flask_jwt_extended import jwt_required, get_jwt_identity
 from framework.models.conversation import Conversation
 from framework.models.user import db
@@ -95,6 +95,8 @@ def _serialize_prepared_response(prepared, result, message_id, *, include_model_
         response["data"]["cd_conversation"] = {
             key: value for key, value in cd_result.items() if key != "draft"
         }
+    if isinstance(cd_result, dict) and cd_result.get("attachments"):
+        response["data"]["cd_artifacts"] = cd_result
     for key in (
         "interaction_state", "analysis_context", "provenance", "scenario_result",
         "spatial_object", "object_title", "required_object_types", "missing_inputs", "trace_id",
@@ -137,6 +139,11 @@ def delete_conversation(id):
         return jsonify({"status": "error", "message": "对话不存在"}), 404
     db.session.delete(conversation)
     db.session.commit()
+    from framework.api.services import cd_chat_artifacts
+    try:
+        cd_chat_artifacts.remove_conversation(user_id, id)
+    except (OSError, ValueError):
+        current_app.logger.warning("Cd attachment file cleanup failed for conversation %s", id)
     return jsonify({"status": "ok", "message": "对话删除成功"})
 
 @chat_bp.route('/conversations/<int:id>/messages', methods=['GET'])
@@ -151,8 +158,36 @@ def get_messages(id):
         payload = message.to_dict()
         if message.role == "assistant":
             payload["content"] = translate_public_text(payload.get("content", ""))
+            artifacts = (message.analysis_context_snapshot or {}).get("cd_artifacts")
+            if artifacts:
+                payload["cd_artifacts"] = artifacts
         messages.append(payload)
     return jsonify({"status": "ok", "data": messages})
+
+
+@chat_bp.route('/conversations/<int:id>/attachments', methods=['GET'])
+@jwt_required()
+def list_cd_attachments(id):
+    from framework.api.services import cd_chat_artifacts
+    try:
+        return jsonify(status="ok", data=cd_chat_artifacts.list_owned(get_jwt_identity(), id))
+    except cd_chat_artifacts.ArtifactError:
+        return jsonify(status="error", reason="artifact_not_found"), 404
+
+
+@chat_bp.route('/conversations/<int:id>/attachments/<artifact_id>/<kind>', methods=['GET'])
+@jwt_required()
+def get_cd_attachment(id, artifact_id, kind):
+    from framework.api.services import cd_chat_artifacts
+    try:
+        path, mime = cd_chat_artifacts.download(get_jwt_identity(), id, artifact_id, kind)
+    except cd_chat_artifacts.ArtifactError:
+        return jsonify(status="error", reason="artifact_not_found"), 404
+    response = send_file(path, mimetype=mime, as_attachment=kind in ("csv", "raster"),
+                         download_name=path.name, max_age=0)
+    response.headers["Cache-Control"] = "private, no-store"
+    response.headers["X-Content-Type-Options"] = "nosniff"
+    return response
 
 @chat_bp.route('/', methods=['POST'])
 @jwt_required()

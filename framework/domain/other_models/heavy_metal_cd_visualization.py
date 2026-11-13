@@ -323,6 +323,16 @@ def _rasterize(
         boundary_source = "catalog"
     else:
         mask_geom = MultiPoint([(p[1], p[2]) for p in kept]).convex_hull
+    if mask_geom is not None and not mask_geom.is_empty and mask_geom.area == 0:
+        # Points and lines have no area. Crop to the cells actually written by
+        # rasterize, since a zero-width geometry window can miss those cells.
+        rows, columns = np.where(np.isfinite(raster))
+        if rows.size:
+            top, bottom = int(rows.min()), int(rows.max()) + 1
+            left, right = int(columns.min()), int(columns.max()) + 1
+            raster = raster[top:bottom, left:right]
+            transform = transform @ rasterio_affine_translation(left, top)
+        return raster, transform, boundary_source, dropped, None
     if mask_geom is not None and not mask_geom.is_empty:
         inside = geometry_mask([mask_geom], out_shape=(height, width), transform=transform, invert=True)
         raster = np.where(inside, raster, np.nan)
@@ -602,6 +612,7 @@ def generate(
     interpolation_method: str = "nearest",
     resolution_factor: float = DEFAULT_RESOLUTION_FACTOR,
     save_raster: bool = False,
+    owner_id: str | None = None,
 ) -> dict[str, Any]:
     """生成一份可视化产物，返回元信息（含下载相对路径）。"""
     model_id = _check_model(model_id)
@@ -663,6 +674,7 @@ def generate(
 
     meta: dict[str, Any] = {
         "artifact_id": artifact_id,
+        "owner_id": owner_id,
         "model_id": model_id,
         "request": {
             "region_type": region_type,
@@ -707,6 +719,8 @@ def list_artifacts(
     region_type: str | None = None,
     region_id: str | None = None,
     limit: int = 50,
+    owner_id: str | None = None,
+    allow_unowned: bool = False,
 ) -> dict[str, Any]:
     """列出已有产物（读取 meta.json），按生成时间降序。"""
     if model_id:
@@ -725,6 +739,8 @@ def list_artifacts(
                 meta = json.loads(meta_file.read_text(encoding="utf-8"))
             except (OSError, json.JSONDecodeError):
                 continue
+            if not _artifact_visible(meta, owner_id, allow_unowned):
+                continue
             if model_id and meta.get("model_id") != model_id:
                 continue
             request = meta.get("request") or {}
@@ -737,7 +753,14 @@ def list_artifacts(
     return {"count": len(items), "items": items[:limit]}
 
 
-def artifact_path(artifact_id: str, kind: str) -> tuple[Path, str]:
+def _artifact_visible(meta, owner_id, allow_unowned):
+    if owner_id is None:
+        return True
+    saved_owner = meta.get("owner_id")
+    return allow_unowned if saved_owner is None else str(saved_owner) == str(owner_id)
+
+
+def artifact_path(artifact_id: str, kind: str, *, owner_id=None, allow_unowned=False) -> tuple[Path, str]:
     """校验并返回产物文件路径与 MIME；越界或非法请求一律拒绝。"""
     artifact_id = str(artifact_id or "").strip()
     kind = str(kind or "").strip().lower()
@@ -755,5 +778,12 @@ def artifact_path(artifact_id: str, kind: str) -> tuple[Path, str]:
         raise CdVisualizationError("invalid_artifact_id")
     if not path.exists():
         raise CdVisualizationError("artifact_not_found")
+    if owner_id is not None:
+        try:
+            meta = json.loads((path.parent / "meta.json").read_text(encoding="utf-8"))
+        except (OSError, ValueError) as exc:
+            raise CdVisualizationError("artifact_not_found") from exc
+        if not _artifact_visible(meta, owner_id, allow_unowned):
+            raise CdVisualizationError("artifact_not_found")
     mime = "image/jpeg" if kind != "raster" else "image/tiff"
     return path, mime
