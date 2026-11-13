@@ -247,21 +247,27 @@ def _ensure_analysis_context_compatibility(app: Flask):
 def _ensure_versioned_model_results(app: Flask) -> None:
     """Create the additive shared publication table during rolling upgrades."""
     from framework.models.thematic_model import VersionedModelResult
+    from sqlalchemy import inspect as sa_inspect
     from sqlalchemy import text as sa_text
 
     with app.app_context():
         VersionedModelResult.__table__.create(bind=db.engine, checkfirst=True)
         if db.engine.dialect.name == "postgresql":
+            # 全新库上这些表还没被 db.create_all() 建出来（init_db.py 先 create_app 再建表），
+            # 直接 ALTER / CREATE INDEX 会撞 UndefinedTable，按表存在与否幂等跳过。
+            inspector = sa_inspect(db.engine)
             with db.engine.begin() as connection:
-                connection.execute(sa_text(
-                    "ALTER TABLE model_execution_log "
-                    "ALTER COLUMN model_version TYPE VARCHAR(128)"
-                ))
-                connection.execute(sa_text(
-                    "CREATE INDEX IF NOT EXISTS idx_parcel_info_geom_geography "
-                    "ON parcel_info USING GIST ((geom::geography)) "
-                    "WHERE geom IS NOT NULL"
-                ))
+                if inspector.has_table("model_execution_log"):
+                    connection.execute(sa_text(
+                        "ALTER TABLE model_execution_log "
+                        "ALTER COLUMN model_version TYPE VARCHAR(128)"
+                    ))
+                if inspector.has_table("parcel_info"):
+                    connection.execute(sa_text(
+                        "CREATE INDEX IF NOT EXISTS idx_parcel_info_geom_geography "
+                        "ON parcel_info USING GIST ((geom::geography)) "
+                        "WHERE geom IS NOT NULL"
+                    ))
                 connection.execute(sa_text(
                     "CREATE UNIQUE INDEX IF NOT EXISTS "
                     "uk_versioned_model_result_one_current "

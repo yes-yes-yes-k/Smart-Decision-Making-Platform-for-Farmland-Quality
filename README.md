@@ -56,6 +56,7 @@ cd agent_culti_demo
 
 # 安装依赖
 pip install -e .
+pip install -e . -i https://pypi.tuna.tsinghua.edu.cn/simple
 
 # 开发/测试环境
 pip install -e ".[dev]"

@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import logging
 import math
 from collections import Counter, OrderedDict
 from collections.abc import Iterable, Mapping
@@ -25,6 +26,8 @@ from framework.domain.statistics import (
 )
 from framework.models import ParcelInfo, SpatialRegionCatalog, db
 
+
+logger = logging.getLogger(__name__)
 
 MU_PER_SQUARE_METRE = 1.0 / 666.6666666666666
 SCOPE_VERSION = 1
@@ -779,7 +782,7 @@ def _dataset_sql(year: int | None) -> tuple[str, dict[str, Any]]:
             """SELECT p.id AS parcel_pk, p.parcel_id, p.area_code, p.geom,
                       p.soil_indicators, NULL::text AS quality_grade,
                       NULL::double precision AS composite_index,
-                      COALESCE(assessment.result_payload, '{}'::jsonb) AS assessment_result,
+                      COALESCE(assessment.result_payload::jsonb, '{}'::jsonb) AS assessment_result,
                       assessment.calculated_at AS assessment_calculated_at,
                       GREATEST(p.updated_at, assessment.calculated_at) AS updated_at
                FROM parcel_info AS p
@@ -1275,6 +1278,10 @@ def pick_parcel(
             "mu_per_sqm": MU_PER_SQUARE_METRE,
         }).mappings().first()
     except sa.exc.SQLAlchemyError as exc:
+        logger.exception(
+            "parcel pick SQL failed: year=%s lon=%s lat=%s tolerance=%s -> %s",
+            data_year, lon, lat, tolerance, exc,
+        )
         raise StatisticsError("statistics_unavailable", "地块点选服务暂时不可用", 503) from exc
     if selected is None:
         raise StatisticsError("parcel_not_found", "该位置未命中地块", 404)
