@@ -16,8 +16,6 @@
 - **WHEN** 同一初始量、净通量与容重，但 `soil_depth_m` 分别为 0.2 与 0.3
 - **THEN** 两次外推结果 MUST 完全相同（公式不含 `soil_depth_m`）
 
-## MODIFIED Requirements（区域与来源过滤）
-
 ### Requirement: 区域与来源过滤
 
 系统 SHALL 支持按区域（区域类型 + 标识）、数据来源与核算年度过滤。与原系统一致，**区域参数 MUST 仅记录在响应中（`area_filter: not_applied`），MUST NOT 参与数据查询**；数据来源过滤 MUST 生效。`accounting_year` 为 v2 的数据维度筛选，MUST 可选：给出时只取该年度的输入行，未给出时 MUST 不限年度（保持与原系统「全量一套结果」的可比性），响应 MUST 记录实际生效的年度。
