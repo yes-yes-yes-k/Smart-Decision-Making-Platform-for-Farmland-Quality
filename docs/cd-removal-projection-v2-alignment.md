@@ -60,9 +60,11 @@
 | `db_enterprise_qa_20261013`（`.env` 当前指向） | `cd_flux_input_v2` / `cd_flux_output_v2` **不存在**；`cd_flux_input` / `cd_flux_output` 各 0 行；`cd_crop_prediction_result` 40100 行；`cd_ported_parcel_township` 40100 行 |
 | `db_enterprise_qa_cd_20261103`（`docs/cd-flux-v2-api-and-migration.md` 记录的 apply 库） | **不存在**。实例内数据库仅：`acid_test`、`db_enterprise_qa`、`db_enterprise_qa_20261013`、`postgres`、`soilgd`、`soilgd_test` |
 
-**结论**：v2 的两张表在本机开发库尚未创建，阶段 6 移植后**没有可写回的 v2 行**。端到端验证的前置条件是：
+**结论（2026-11-14 当日已解决）**：v2 的两张表当时尚未创建，现已按用户授权完成建表与端到端验证：
 
-1. 在开发库执行 `scripts/migrate_cd_flux_v2.py --apply`（先跑 `scripts/backup_cd_development_db.py` 备份）——属持久结构变更，需用户授权并登记台账；
-2. 导入至少一批 v2 CSV 输入（否则 `select_inputs` 返回空，写回/重算只能验证空数据分支）。
+1. 全库备份 → `D:\temp\cd_backup\db_enterprise_qa_20261013_20261114.dump`（89 MB，SHA-256 `b77c5cad…d609`，archive_list 校验通过）；
+2. `scripts/migrate_cd_flux_v2.py --apply` 建表（先无 `--apply` 演练确认 `rehearsal_rolled_back`），v1 两表原样保留；
+3. `D:\temp\probe_stage67_v2.py` 端到端：3 个真实 `SGD_` 地块 → v2 导入 → 重算 → 阶段 6 写回（grain/straw 与公式逐位吻合、`input_revision` 1→2、其他列未动）→ 阶段 7 十年预测（逐点 diff=0）；
+4. 探针行全部清理，两表回到 0 行，`cd_crop_prediction_result` 40100 行与 `parcel_info` 45588 行均未变。
 
-**这带来一个设计后果**：v2 下写回必须显式携带 `accounting_year`（v2 唯一键含年度，而 `cd_crop_prediction_result` 无年度字段，无法自动推导）。这一条已从"待决策 A"变成技术必然。
+**这带来一个设计后果**：v2 下写回必须显式携带 `accounting_year`（v2 唯一键含年度，而 `cd_crop_prediction_result` 无年度字段，无法自动推导）。这一条已从"待决策 A"变成技术必然，并已在实现与规格中固化。

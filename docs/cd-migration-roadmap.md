@@ -59,7 +59,7 @@
 - 前置：阶段 5（已归档）+ master 上的通量 v2 契约（`cd_flux_v2`、`cd_flux_input_v2` / `cd_flux_output_v2`）
 - v2 适配：写回按 `select_inputs` 返回的 `id` 精确定位，只改两列并递增 `input_revision`，不触碰其他列；v2 唯一键含 `accounting_year`，而作物结果表无年度字段，因此**写回必须显式提供 `year`**（技术必然，不是可选项）；`legacy_v1` 行不计算也不写回并计数披露；同地块样点在同一范围内命中多来源时判为歧义、拒绝写回
 - 口径：与原系统一致——分母非正静默跳过（仅日志，响应计数只作可观测字段）；移除计算按全量执行、area 仅作出图边界
-- 实测：`test_cd_removal` 15 passed（含年度隔离、legacy 跳过、歧义拒绝、修订递增、HTTP 端点）；Cd 相关回归 163 passed / 2 skipped；PG 测试用临时 schema 隔离，public 表零污染
+- 实测：`test_cd_removal` 15 passed（含年度隔离、legacy 跳过、歧义拒绝、修订递增、HTTP 端点）；Cd 相关回归 163 passed / 2 skipped；PG 测试用临时 schema 隔离，public 表零污染；**真实库端到端已通过**（3 个 SGD_ 地块：grain 0.727536/0.737164/1.057904 与公式逐位吻合、`input_revision` 1→2、其他列未动，探针行已清理）
 - 备注：原 stage67 版（2026-11-07，基于 v1 通量契约）未合入主线，已被本 v2 实现取代；A（f11 原库实际值）/ B（秸秆经验式 0.76/0.0034 出处）/ C（是否建参数表）三条确认项登记在 `docs/cd-legacy-known-issues.md` 待议
 
 **阶段 7｜add-future-cd-projection｜已实现（2026-11-14，v2 基线，分支 `zsj_1114`）**
