@@ -15,7 +15,7 @@ from flask import Blueprint, Response, current_app, jsonify, request, send_file
 from flask_jwt_extended import jwt_required, get_jwt_identity
 from framework.api.services.cd_chat_artifacts import legacy_access
 
-from framework.domain.other_models import cd_flux
+from framework.domain.other_models import cd_flux, cd_projection, cd_removal
 
 LOG = logging.getLogger(__name__)
 
@@ -271,3 +271,236 @@ def artifact(artifact_id: str, kind: str):
     except cd_flux.CdFluxError as exc:
         return _error(exc)
     return send_file(path, mimetype=mime, as_attachment=False, download_name=path.name)
+
+
+# ----------------------------- 移除项计算（阶段 6，v2 基线） -----------------------------
+
+_REMOVAL_BAD_CODES = {*_BAD_REQUEST_CODES, "invalid_f11", "invalid_year", "year_required"}
+_PROJECTION_BAD_CODES = {*_BAD_REQUEST_CODES, "invalid_accounting_year"}
+
+
+def _removal_error(exc) -> tuple[Any, int]:
+    code = str(getattr(exc, "code", "cd_removal_failed"))
+    if code in _REMOVAL_BAD_CODES:
+        return jsonify({"status": "error", "reason": code}), 400
+    if code in {"region_not_found", "no_data"}:
+        return jsonify({"status": "error", "reason": code}), 404
+    if code == "too_many_rows":
+        return jsonify({"status": "error", "reason": code}), 413
+    LOG.exception("Cd 移除项接口失败: %s", code)
+    return jsonify({"status": "error", "reason": "cd_removal_failed"}), 500
+
+
+def _projection_error(exc) -> tuple[Any, int]:
+    code = str(getattr(exc, "code", "cd_projection_failed"))
+    if code in _PROJECTION_BAD_CODES:
+        return jsonify({"status": "error", "reason": code}), 400
+    if code in {"region_not_found", "no_data"}:
+        return jsonify({"status": "error", "reason": code}), 404
+    if code == "too_many_rows":
+        return jsonify({"status": "error", "reason": code}), 413
+    LOG.exception("Cd 未来预测接口失败: %s", code)
+    return jsonify({"status": "error", "reason": "cd_projection_failed"}), 500
+
+
+@cd_flux_bp.route("/v2/removal/calculate", methods=["POST"])
+@jwt_required()
+def removal_calculate():
+    """计算籽粒/秸秆移除，写回 v2 输入表并触发 v2 重算（写回时必须给 ``year``）。"""
+    body = request.get_json(silent=True) or {}
+    try:
+        data = cd_removal.calculate(
+            f11=body.get("f11", cd_removal.F11_DEFAULT),
+            region_type=body.get("region_type"),
+            region_id=body.get("region_id"),
+            source=body.get("source", "all"),
+            year=body.get("year"),
+            write_back=bool(body.get("write_back", True)),
+            recalculate=bool(body.get("recalculate", True)),
+        )
+    except cd_removal.CdRemovalError as exc:
+        return _removal_error(exc)
+    return jsonify({"status": "ok", "message": "Cd 移除项计算完成", "data": data})
+
+
+@cd_flux_bp.route("/v2/removal/statistics", methods=["GET"])
+@jwt_required()
+def removal_statistics():
+    """四类移除项的区域统计。"""
+    try:
+        data = cd_removal.statistics(
+            (request.args.get("field") or "grain").strip(),
+            f11=request.args.get("f11"),
+            region_type=request.args.get("region_type"),
+            region_id=request.args.get("region_id"),
+            source=_source(),
+            year=request.args.get("year"),
+        )
+    except cd_removal.CdRemovalError as exc:
+        return _removal_error(exc)
+    return jsonify({"status": "ok", "data": data})
+
+
+@cd_flux_bp.route("/v2/removal/points", methods=["GET"])
+@jwt_required()
+def removal_points():
+    """四类移除项点位 GeoJSON。"""
+    try:
+        data = cd_removal.points_geojson(
+            (request.args.get("field") or "grain").strip(),
+            f11=request.args.get("f11"),
+            region_type=request.args.get("region_type"),
+            region_id=request.args.get("region_id"),
+            source=_source(),
+            year=request.args.get("year"),
+            limit=request.args.get("limit", 5000),
+        )
+    except cd_removal.CdRemovalError as exc:
+        return _removal_error(exc)
+    return jsonify(data)
+
+
+@cd_flux_bp.route("/v2/removal/export.csv", methods=["GET"])
+@jwt_required()
+def removal_export_csv():
+    """四类移除项 CSV 导出。"""
+    field = (request.args.get("field") or "grain").strip()
+    try:
+        text, count = cd_removal.export_csv(
+            field,
+            f11=request.args.get("f11"),
+            region_type=request.args.get("region_type"),
+            region_id=request.args.get("region_id"),
+            source=_source(),
+            year=request.args.get("year"),
+        )
+    except cd_removal.CdRemovalError as exc:
+        return _removal_error(exc)
+    return Response(
+        text,
+        mimetype="text/csv; charset=utf-8",
+        headers={
+            "Content-Disposition": f"attachment; filename=cd_removal_{field}.csv",
+            "X-Row-Count": str(count),
+        },
+    )
+
+
+@cd_flux_bp.route("/v2/removal/visualization", methods=["POST"])
+@jwt_required()
+def removal_visualization():
+    """生成移除项地图/直方图（复用阶段 4 引擎）。"""
+    body = request.get_json(silent=True) or {}
+    try:
+        data = cd_removal.visualize(
+            str(body.get("field") or "grain"),
+            f11=body.get("f11"),
+            region_type=body.get("region_type"),
+            region_id=body.get("region_id"),
+            source=body.get("source", "all"),
+            year=body.get("year"),
+            resolution_factor=body.get("resolution_factor", 4.0),
+        )
+    except cd_removal.CdRemovalError as exc:
+        return _removal_error(exc)
+    return jsonify({"status": "ok", "message": "Cd 移除项地图生成成功", "data": data})
+
+
+# ----------------------------- 未来情景预测（阶段 7，v2 基线） -----------------------------
+
+
+@cd_flux_bp.route("/v2/projection", methods=["POST"])
+@jwt_required()
+def projection():
+    """多年份情景预测（``years`` 可单个或列表；``accounting_year`` 为 v2 数据维度筛选）。"""
+    body = request.get_json(silent=True) or {}
+    try:
+        data = cd_projection.predict(
+            body.get("years", 10),
+            region_type=body.get("region_type"),
+            region_id=body.get("region_id"),
+            source=body.get("source", "all"),
+            accounting_year=body.get("accounting_year"),
+        )
+    except cd_projection.CdProjectionError as exc:
+        return _projection_error(exc)
+    return jsonify({"status": "ok", "message": "Cd 未来情景预测完成", "data": data})
+
+
+@cd_flux_bp.route("/v2/projection/statistics", methods=["GET"])
+@jwt_required()
+def projection_statistics():
+    """单年份未来 Cd 统计。"""
+    try:
+        data = cd_projection.statistics(
+            request.args.get("years", 10),
+            region_type=request.args.get("region_type"),
+            region_id=request.args.get("region_id"),
+            source=_source(),
+            accounting_year=request.args.get("accounting_year"),
+        )
+    except cd_projection.CdProjectionError as exc:
+        return _projection_error(exc)
+    return jsonify({"status": "ok", "data": data})
+
+
+@cd_flux_bp.route("/v2/projection/points", methods=["GET"])
+@jwt_required()
+def projection_points():
+    """未来 Cd 点位 GeoJSON。"""
+    try:
+        data = cd_projection.points_geojson(
+            request.args.get("years", 10),
+            region_type=request.args.get("region_type"),
+            region_id=request.args.get("region_id"),
+            source=_source(),
+            accounting_year=request.args.get("accounting_year"),
+            limit=request.args.get("limit", 5000),
+        )
+    except cd_projection.CdProjectionError as exc:
+        return _projection_error(exc)
+    return jsonify(data)
+
+
+@cd_flux_bp.route("/v2/projection/export.csv", methods=["GET"])
+@jwt_required()
+def projection_export_csv():
+    """未来 Cd CSV 导出。"""
+    years = request.args.get("years", 10)
+    try:
+        text, count = cd_projection.export_csv(
+            years,
+            region_type=request.args.get("region_type"),
+            region_id=request.args.get("region_id"),
+            source=_source(),
+            accounting_year=request.args.get("accounting_year"),
+        )
+    except cd_projection.CdProjectionError as exc:
+        return _projection_error(exc)
+    return Response(
+        text,
+        mimetype="text/csv; charset=utf-8",
+        headers={
+            "Content-Disposition": f"attachment; filename=cd_projection_{years}y.csv",
+            "X-Row-Count": str(count),
+        },
+    )
+
+
+@cd_flux_bp.route("/v2/projection/visualization", methods=["POST"])
+@jwt_required()
+def projection_visualization():
+    """未来 Cd 空间分布地图/直方图（复用阶段 4 引擎）。"""
+    body = request.get_json(silent=True) or {}
+    try:
+        data = cd_projection.visualize(
+            body.get("years", 10),
+            region_type=body.get("region_type"),
+            region_id=body.get("region_id"),
+            source=body.get("source", "all"),
+            accounting_year=body.get("accounting_year"),
+            resolution_factor=body.get("resolution_factor", 4.0),
+        )
+    except cd_projection.CdProjectionError as exc:
+        return _projection_error(exc)
+    return jsonify({"status": "ok", "message": "Cd 未来情景地图生成成功", "data": data})
