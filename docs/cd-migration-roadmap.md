@@ -54,13 +54,21 @@
 - 备注：22/25 tasks 完成；A（bd020_90 权威来源）/ B（net 平衡阈值 ±5）/ C（end_cd 阈值细分）三条人工确认项待拍板
 - 归档目录：`openspec/changes/archive/2026-11-07-add-cd-flux-accounting/`
 
-**阶段 6｜add-cd-removal-calculation｜规划中**
-- 交付：籽粒移除、秸秆移除、地下渗流、地表径流，触发通量重算
-- 前置：阶段 5；籽粒/秸秆移除另需阶段 2 的作物 Cd 预测结果
+**阶段 6｜add-cd-removal-calculation｜已实现（2026-11-14，v2 基线，分支 `zsj_1114`）**
+- 交付：籽粒移除 `exp(ln)×f11×0.5×15/1000`、秸秆移除 `exp(ln)/(exp(ln)×0.76−0.0034)×f11×0.5×15/1000`（分母非正按原系统静默跳过）、写回 v2 输入表 `grain_removal/straw_removal` 并触发 v2 重算、四类移除项统计/点位/导出/地图、5 个端点（`/api/v1/cd-flux/v2/removal/*`）
+- 前置：阶段 5（已归档）+ master 上的通量 v2 契约（`cd_flux_v2`、`cd_flux_input_v2` / `cd_flux_output_v2`）
+- v2 适配：写回按 `select_inputs` 返回的 `id` 精确定位，只改两列并递增 `input_revision`，不触碰其他列；v2 唯一键含 `accounting_year`，而作物结果表无年度字段，因此**写回必须显式提供 `year`**（技术必然，不是可选项）；`legacy_v1` 行不计算也不写回并计数披露；同地块样点在同一范围内命中多来源时判为歧义、拒绝写回
+- 口径：与原系统一致——分母非正静默跳过（仅日志，响应计数只作可观测字段）；移除计算按全量执行、area 仅作出图边界
+- 实测：`test_cd_removal` 15 passed（含年度隔离、legacy 跳过、歧义拒绝、修订递增、HTTP 端点）；Cd 相关回归 163 passed / 2 skipped；PG 测试用临时 schema 隔离，public 表零污染
+- 备注：原 stage67 版（2026-11-07，基于 v1 通量契约）未合入主线，已被本 v2 实现取代；A（f11 原库实际值）/ B（秸秆经验式 0.76/0.0034 出处）/ C（是否建参数表）三条确认项登记在 `docs/cd-legacy-known-issues.md` 待议
 
-**阶段 7｜add-future-cd-projection｜规划中**
-- 交付：当年 Cd 浓度、未来 N 年情景、多年份对比、未来空间分布
+**阶段 7｜add-future-cd-projection｜已实现（2026-11-14，v2 基线，分支 `zsj_1114`）**
+- 交付：`Future_Cd=(Initial+Net×years)/(2000×bulk_density_g_cm3)`（years 1–100，单个/列表）、回退计数、区域参数仅记录、原系统统计口径 + GB15618 三档、点位/地图/CSV 导出、5 个端点（`/api/v1/cd-flux/v2/projection/*`）
 - 前置：阶段 5、阶段 6（净通量）、阶段 3（空间）
+- v2 适配：取数走 `cd_flux_input_v2` ⋈ `cd_flux_output_v2`（按 `input_id + input_revision` 取**当前修订**的输出），跳过 `legacy_v1` 行；新增可选 `accounting_year` 作为数据维度筛选（默认不限年度，保持与原系统「全量一套结果」的可比性）
+- 口径：**土重严格照抄原系统**——分母固定 `2000 × bulk_density_g_cm3`，**不读 `soil_depth_m`**（该式与 v2 `calculate` 的 `end_cd` 在 0.2m 耕层时数值等价，其他深度存在差异，已登记 `docs/cd-legacy-known-issues.md`）；`area` 仅记录不参与查询（`area_filter: not_applied`）；统计用样本标准差（ddof=1）+ 线性插值分位
+- 实测：`test_cd_projection` 10 passed（含「soil_depth 不参与公式」守门用例、多年份、回退计数、年度隔离）；Cd 相关回归 163 passed
+- 备注：A（年份上限 100 是否调）/ B（负浓度是否截断）/ C（是否落库缓存）三条确认项待拍板
 
 依赖主链：`0 → 1 → 2 → 3 → 4`，`2 → 5 → 6 → 7`。
 
