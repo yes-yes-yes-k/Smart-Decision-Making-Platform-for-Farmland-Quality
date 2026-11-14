@@ -50,3 +50,19 @@
 2. 重写数据访问层：`_crop_rows`（作物 Cd 读数）、`_input_series`、`_write_back`，改为走 `cd_flux_v2.select_inputs` 与 v2 修订写回。
 3. 按新口径重跑 `tests/test_cd_removal.py` / `test_cd_projection.py`，并补"多年份同地块样点不被误写"的回归用例。
 4. 工件侧不需要新 change：阶段 6/7 的 spec 已归档在 stage67 分支，应随实现一起移植（`openspec/specs/cd-removal-calculation`、`cd-future-projection`），然后按"规格追平实现"补一条 v2 适配的 delta。
+
+## 六、开发库实测（2026-11-14，只读探针）
+
+探针：`D:\temp\probe_cd_flux_v2.py`（psycopg2，`set_session(readonly=True)`，口令取自 `.env` 且不回显）。
+
+| 库 | 实测结果 |
+| --- | --- |
+| `db_enterprise_qa_20261013`（`.env` 当前指向） | `cd_flux_input_v2` / `cd_flux_output_v2` **不存在**；`cd_flux_input` / `cd_flux_output` 各 0 行；`cd_crop_prediction_result` 40100 行；`cd_ported_parcel_township` 40100 行 |
+| `db_enterprise_qa_cd_20261103`（`docs/cd-flux-v2-api-and-migration.md` 记录的 apply 库） | **不存在**。实例内数据库仅：`acid_test`、`db_enterprise_qa`、`db_enterprise_qa_20261013`、`postgres`、`soilgd`、`soilgd_test` |
+
+**结论**：v2 的两张表在本机开发库尚未创建，阶段 6 移植后**没有可写回的 v2 行**。端到端验证的前置条件是：
+
+1. 在开发库执行 `scripts/migrate_cd_flux_v2.py --apply`（先跑 `scripts/backup_cd_development_db.py` 备份）——属持久结构变更，需用户授权并登记台账；
+2. 导入至少一批 v2 CSV 输入（否则 `select_inputs` 返回空，写回/重算只能验证空数据分支）。
+
+**这带来一个设计后果**：v2 下写回必须显式携带 `accounting_year`（v2 唯一键含年度，而 `cd_crop_prediction_result` 无年度字段，无法自动推导）。这一条已从"待决策 A"变成技术必然。
